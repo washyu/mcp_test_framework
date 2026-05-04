@@ -1,0 +1,16 @@
+# config.example.yaml -- copy to config.yaml and set MCPTF_CONFIG_FILE=./config.yaml.
+# YAML overlay sits BELOW env in precedence: CLI > env > .env > YAML > defaults.
+
+ollama:
+  base_url: http://127.0.0.1:11434
+  model: qwen3.6:latest
+  timeout_seconds: 120
+
+mcp_server:
+  command: homelab-mcp
+  args: []
+
+target:
+  tool_name: list_registered_servers
+
+judge_timeout_seconds: 120
