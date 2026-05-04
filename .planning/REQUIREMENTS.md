@@ -107,45 +107,52 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Phase mappings will be populated by the roadmapper.
+Phase mappings populated by the roadmapper.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETUP-01 | TBD | Pending |
-| SETUP-02 | TBD | Pending |
-| SETUP-03 | TBD | Pending |
-| CORE-01 | TBD | Pending |
-| CORE-02 | TBD | Pending |
-| CORE-03 | TBD | Pending |
-| CORE-04 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| TEST-05 | TBD | Pending |
-| TEST-06 | TBD | Pending |
-| TEST-07 | TBD | Pending |
-| TEST-08 | TBD | Pending |
-| TEST-09 | TBD | Pending |
-| TEST-10 | TBD | Pending |
-| FIX-01 | TBD | Pending |
-| FIX-02 | TBD | Pending |
-| FIX-03 | TBD | Pending |
-| CLI-01 | TBD | Pending |
-| CLI-02 | TBD | Pending |
-| CLI-03 | TBD | Pending |
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
-| OPS-03 | TBD | Pending |
-| DOCS-01 | TBD | Pending |
-| DOCS-02 | TBD | Pending |
-| DOCS-03 | TBD | Pending |
+| SETUP-01 | Phase 1 | Pending |
+| SETUP-02 | Phase 1 | Pending |
+| SETUP-03 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Pending |
+| CORE-02 | Phase 1 | Pending |
+| CORE-03 | Phase 2 | Pending |
+| CORE-04 | Phase 3 | Pending |
+| TEST-01 | Phase 4 | Pending |
+| TEST-02 | Phase 4 | Pending |
+| TEST-03 | Phase 4 | Pending |
+| TEST-04 | Phase 4 | Pending |
+| TEST-05 | Phase 4 | Pending |
+| TEST-06 | Phase 4 | Pending |
+| TEST-07 | Phase 4 | Pending |
+| TEST-08 | Phase 4 | Pending |
+| TEST-09 | Phase 4 | Pending |
+| TEST-10 | Phase 4 | Pending |
+| FIX-01 | Phase 4 | Pending |
+| FIX-02 | Phase 4 | Pending |
+| FIX-03 | Phase 4 | Pending |
+| CLI-01 | Phase 5 | Pending |
+| CLI-02 | Phase 5 | Pending |
+| CLI-03 | Phase 5 | Pending |
+| OPS-01 | Phase 3 | Pending |
+| OPS-02 | Phase 3 | Pending |
+| OPS-03 | Phase 5 | Pending |
+| DOCS-01 | Phase 5 | Pending |
+| DOCS-02 | Phase 1 | Pending |
+| DOCS-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 29 ⚠️ (will be resolved by roadmapper)
+- Mapped to phases: 29 ✓
+- Unmapped: 0
+
+**Phase distribution:**
+- Phase 1 (Foundation & Pure-Data Core): 6 requirements (SETUP-01, SETUP-02, SETUP-03, CORE-01, CORE-02, DOCS-02)
+- Phase 2 (MCP Client Wrapper): 1 requirement (CORE-03)
+- Phase 3 (Ollama Judge): 4 requirements (CORE-04, OPS-01, OPS-02, DOCS-03)
+- Phase 4 (Fixtures & Test Cases): 13 requirements (FIX-01, FIX-02, FIX-03, TEST-01..TEST-10)
+- Phase 5 (CLI, README & Acceptance): 5 requirements (CLI-01, CLI-02, CLI-03, OPS-03, DOCS-01)
 
 ---
 *Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 after initial definition*
+*Last updated: 2026-05-04 after roadmap creation (29/29 mapped)*
