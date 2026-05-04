@@ -31,7 +31,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `Config.load()` (or equivalent) resolves a setting with precedence `CLI flag > env var > YAML > default` and exposes a frozen Pydantic `Config` model — verified by a dedicated unit test
   5. `validate_tool_schema(tool)` returns the spec's 7 structural-issue checks against a synthetic tool with `severity`, `path`, and `message` populated; auto-detects the JSON Schema draft via `validator_for`
   6. `.env.example` and `config.example.yaml` enumerate every configurable setting with example values
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 01-01-PLAN.md — Project skeleton: pyproject.toml (deps, pytest-asyncio strict, ruff TID251), uv.lock, src/tests packages, .gitignore, delete main.py
+  - [ ] 01-02-PLAN.md — Config layer: models.py sub-models + frozen Config(BaseSettings) with CLI>env>.env>YAML>default precedence, tests, .env.example, config.example.yaml
+  - [ ] 01-03-PLAN.md — schema_validator.py: ValidationIssue + validate_tool_schema (7 structural checks, JSON-Pointer paths) and 12 unit tests
+  - [ ] 01-04-PLAN.md — Black-box belt-and-suspenders: tests/conftest.py sys.modules guard + ruff TID251 smoke test (fixture proves the rule fires)
 
 ### Phase 2: MCP Client Wrapper
 **Goal**: Driving `homelab-mcp` over stdio works end-to-end via `McpTestClient`, with explicit timeouts and `CallToolResult` shape handling proven in a smoke script before any fixture depends on it.
@@ -88,7 +92,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Pure-Data Core | 0/TBD | Not started | - |
+| 1. Foundation & Pure-Data Core | 0/4 | Not started | - |
 | 2. MCP Client Wrapper | 0/TBD | Not started | - |
 | 3. Ollama Judge | 0/TBD | Not started | - |
 | 4. Fixtures & Test Cases | 0/TBD | Not started | - |
