@@ -54,3 +54,10 @@ select = ["E", "F", "I", "TID"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# Hatchling cannot auto-detect the package directory because the project name
+# (mvp-test-framework) differs from the package name (mcp_test_framework) -- "mvp" vs "mcp".
+# Without this, `uv sync` fails with "Unable to determine which files to ship".
+# Deviation Rule 3 (auto-fix blocking issue) -- documented in 01-01-SUMMARY.md.
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_test_framework"]
