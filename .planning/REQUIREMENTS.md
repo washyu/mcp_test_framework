@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Project Setup
 
-- [ ] **SETUP-01**: Project uses `uv` for dependency management with a committed `uv.lock`; `uv sync` produces a clean install on a fresh checkout (Python 3.14)
-- [ ] **SETUP-02**: `pyproject.toml` configures `pytest-asyncio` with `asyncio_mode = "strict"` and `asyncio_default_fixture_loop_scope = "session"` to match the framework's session-scoped fixture pattern
-- [ ] **SETUP-03**: A lint rule (e.g. ruff `flake8-tidy-imports` ban or equivalent) prevents any code under `src/` and `tests/` from importing `homelab_mcp`, mechanically enforcing the black-box principle
+- [x] **SETUP-01**: Project uses `uv` for dependency management with a committed `uv.lock`; `uv sync` produces a clean install on a fresh checkout (Python 3.14)
+- [x] **SETUP-02**: `pyproject.toml` configures `pytest-asyncio` with `asyncio_mode = "strict"` and `asyncio_default_fixture_loop_scope = "session"` to match the framework's session-scoped fixture pattern
+- [x] **SETUP-03**: A lint rule (e.g. ruff `flake8-tidy-imports` ban or equivalent) prevents any code under `src/` and `tests/` from importing `homelab_mcp`, mechanically enforcing the black-box principle
 
 ### Core Modules
 
@@ -111,9 +111,9 @@ Phase mappings populated by the roadmapper.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETUP-01 | Phase 1 | Pending |
-| SETUP-02 | Phase 1 | Pending |
-| SETUP-03 | Phase 1 | Pending |
+| SETUP-01 | Phase 1 | Complete |
+| SETUP-02 | Phase 1 | Complete |
+| SETUP-03 | Phase 1 | Complete |
 | CORE-01 | Phase 1 | Pending |
 | CORE-02 | Phase 1 | Pending |
 | CORE-03 | Phase 2 | Pending |
