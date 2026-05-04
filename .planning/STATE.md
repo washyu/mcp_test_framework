@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 01-01 complete; ready to plan/execute 01-02
-last_updated: "2026-05-04T22:13:26.810Z"
+stopped_at: Plan 01-03 complete; ready to plan/execute 01-04
+last_updated: "2026-05-04T22:17:17Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 01 (foundation-pure-data-core) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-04
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [█████░░░░░] 50%
 *Updated after each plan completion*
 | Phase 01 P01 | 2 min 29 sec | 2 tasks | 6 files |
 | Phase 01 P02 | 5 min | 3 tasks | 5 files |
+| Phase 01 P03 | 3 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,10 @@ Recent decisions affecting current work:
 - [Phase 01]: Phase 01-02: bare env names route to nested sub-models via custom _BareNameNestedEnvSource (env_nested_delimiter not used per CONTEXT.md lock)
 - [Phase 01]: Phase 01-02: AliasChoices(<env name>, <field name>) + populate_by_name=True needed on every sub-model so YAML overlay AND env routing both populate the field
 - [Phase 01]: Phase 01-02: Assumption A5 confirmed -- frozen does NOT propagate from parent BaseSettings to nested BaseModel; each sub-model needs its own ConfigDict(frozen=True)
+- [Phase 01]: Phase 01-03: validate_tool_schema uses inline f-string JSON-Pointer paths against the schema dict (not iter_errors-driven); _pointer_from_deque helper retained for future iter_errors callers
+- [Phase 01]: Phase 01-03: ValidationIssue.severity is Literal["error"] with NO default -- every call site must construct severity explicitly (D-02 forward-compat)
+- [Phase 01]: Phase 01-03: Tool.model_construct(...) is the chosen escape hatch for testing the "inputSchema is not a dict" branch (mcp.types.Tool's pydantic validator rejects None)
+- [Phase 01]: Phase 01-03: Cross-cutting tests use a two-tool union because Check 3 short-circuits -- no single tool can trigger all 7 checks at once
 
 ### Pending Todos
 
@@ -91,6 +96,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-04T22:13:16.838Z
-Stopped at: Plan 01-01 complete; ready to plan/execute 01-02
+Last session: 2026-05-04T22:17:17Z
+Stopped at: Plan 01-03 complete; ready to plan/execute 01-04
 Resume file: None
