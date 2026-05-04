@@ -1,0 +1,56 @@
+[project]
+name = "mvp-test-framework"
+version = "0.1.0"
+description = "Pytest framework for testing MCP servers end-to-end."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "mcp>=1.27",
+    "pydantic>=2.13,<3",
+    "pydantic-settings[yaml]>=2.14",
+    "jsonschema>=4.26",
+]
+
+# [project.scripts]
+# Wired in Phase 5 -- intentionally commented out until the CLI module lands.
+# mcp-test-framework = "mcp_test_framework.cli:app"
+
+# PEP 735 dev dependency group -- the canonical 2026 location for tooling.
+# Do NOT use the legacy `[tool.uv].dev-dependencies` block, and do NOT use
+# `[project.optional-dependencies].dev` (which would leak dev tools into
+# published PyPI metadata if/when this package is released).
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=1.3",
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+# pytest-asyncio strict mode: async tests MUST carry an explicit
+# `@pytest.mark.asyncio` marker. Phase 4's session-scoped fixtures
+# (mcp_client, judge, target_tool, config) need a session-scoped event
+# loop, hence asyncio_default_fixture_loop_scope = "session".
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "TID"]
+
+# Pitfall 4 (01-RESEARCH.md): TID251 does NOT catch submodule imports.
+# Banning "homelab_mcp" here will catch `import homelab_mcp` and
+# `from homelab_mcp import X`, but NOT `from homelab_mcp.client import X`
+# or `from homelab_mcp.server.tools import Y`. Belt-and-suspenders:
+# tests/conftest.py will ship a sys.modules guard (Plan 04) to catch the
+# submodule-import gap at test-session start.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"homelab_mcp" = { msg = "Do not import homelab_mcp -- it is a black-box subprocess under test (see PROJECT.md). Drive it via mcp.client.stdio.stdio_client only." }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
