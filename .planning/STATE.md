@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Plan 01-03 complete; ready to plan/execute 01-04
-last_updated: "2026-05-04T22:17:17Z"
+status: verifying
+stopped_at: Phase 01 complete; ready for Phase 02 (mcp-stdio-client)
+last_updated: "2026-05-04T22:28:09.555Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 Phase: 01 (foundation-pure-data-core) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-04
 
-Progress: [███████░░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 75%
 | Phase 01 P01 | 2 min 29 sec | 2 tasks | 6 files |
 | Phase 01 P02 | 5 min | 3 tasks | 5 files |
 | Phase 01 P03 | 3 min | 2 tasks | 2 files |
+| Phase 01 P04 | 2 min 2 sec | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Phase 01-03: ValidationIssue.severity is Literal["error"] with NO default -- every call site must construct severity explicitly (D-02 forward-compat)
 - [Phase 01]: Phase 01-03: Tool.model_construct(...) is the chosen escape hatch for testing the "inputSchema is not a dict" branch (mcp.types.Tool's pydantic validator rejects None)
 - [Phase 01]: Phase 01-03: Cross-cutting tests use a two-tool union because Check 3 short-circuits -- no single tool can trigger all 7 checks at once
+- [Phase 01]: Phase 01-04: ruff 0.15.12 catches the homelab_mcp submodule import case (from homelab_mcp.client import x) -- contradicts RESEARCH Pitfall 4 / ruff issue #1614. Belt-and-suspenders sys.modules guard remains the load-bearing runtime check across ruff version drift.
+- [Phase 01]: Phase 01-04: tests/_fixtures/<name>.py.txt is the storage shape for deliberately-malformed lintable fixtures -- the .py.txt extension hides the file from repo-wide ruff check while still being copyable to tmp_path for explicit ruff invocation.
+- [Phase 01]: Phase 01-04: smoke tests pin ruff to repo's pyproject.toml via --config flag so a developer's ~/.config/ruff override cannot interfere (T-04-03 mitigation).
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-04T22:17:17Z
-Stopped at: Plan 01-03 complete; ready to plan/execute 01-04
+Last session: 2026-05-04T22:28:09.547Z
+Stopped at: Phase 01 complete; ready for Phase 02 (mcp-stdio-client)
 Resume file: None
