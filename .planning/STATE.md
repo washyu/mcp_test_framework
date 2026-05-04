@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Plan 01-01 complete; ready to plan/execute 01-02
-last_updated: "2026-05-04T22:04:04.463Z"
+last_updated: "2026-05-04T22:13:26.810Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 01 (foundation-pure-data-core) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-04
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [███░░░░░░░] 25%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 2 min 29 sec | 2 tasks | 6 files |
+| Phase 01 P02 | 5 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 01-01: ruff target-version='py314' accepted by ruff 0.15.12 -- no fallback to py313 needed
 - [Phase ?]: Phase 01-01: mcp 1.27.0 installs cleanly on Python 3.14.3 -- no wheel-build issues
 - [Phase ?]: Phase 01-01: [tool.hatch.build.targets.wheel] packages=['src/mcp_test_framework'] required because project name (mvp-test-framework) differs from package name (mcp_test_framework)
+- [Phase 01]: Phase 01-02: bare env names route to nested sub-models via custom _BareNameNestedEnvSource (env_nested_delimiter not used per CONTEXT.md lock)
+- [Phase 01]: Phase 01-02: AliasChoices(<env name>, <field name>) + populate_by_name=True needed on every sub-model so YAML overlay AND env routing both populate the field
+- [Phase 01]: Phase 01-02: Assumption A5 confirmed -- frozen does NOT propagate from parent BaseSettings to nested BaseModel; each sub-model needs its own ConfigDict(frozen=True)
 
 ### Pending Todos
 
@@ -87,6 +91,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-04T22:04:04.456Z
+Last session: 2026-05-04T22:13:16.838Z
 Stopped at: Plan 01-01 complete; ready to plan/execute 01-02
 Resume file: None

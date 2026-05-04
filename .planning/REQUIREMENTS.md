@@ -15,7 +15,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Core Modules
 
-- [ ] **CORE-01**: `config.py` + `models.py` load configuration with precedence `CLI flags > env vars > YAML > defaults` using `pydantic-settings[yaml]`; produces a frozen `Config` Pydantic model consumed by all fixtures
+- [x] **CORE-01**: `config.py` + `models.py` load configuration with precedence `CLI flags > env vars > YAML > defaults` using `pydantic-settings[yaml]`; produces a frozen `Config` Pydantic model consumed by all fixtures
 - [ ] **CORE-02**: `schema_validator.py` performs the 7 deterministic structural checks from the spec (non-empty name, non-empty description, valid `inputSchema`, `type=object`, `required` ⊆ `properties`, every property documented, every property typed) using `jsonschema >= 4.18` with auto-detected draft via `validator_for`; returns a list of `ValidationIssue` records (`severity`, `path`, `message`)
 - [ ] **CORE-03**: `mcp_client.py` exposes an async `McpTestClient` wrapping the official `mcp` SDK's `stdio_client` + `ClientSession` with `list_tools`, `get_tool`, and `call_tool`; every SDK call is wrapped in `asyncio.timeout()`; defensive handling of `CallToolResult.isError` and the `content` vs `structuredContent` shape variance
 - [ ] **CORE-04**: `ollama_judge.py` implements a `Judge` Protocol (defined in `judge_protocol.py`) by POSTing to Ollama `/api/chat` with `stream:false`, `format:json`, `temperature:0`, `think:false`, `num_predict:256`, `keep_alive:"30m"`; system prompt includes `/no_think` directive and a delimited subject block; response parser strips `<think>...</think>` blocks defensively before JSON parsing and validates the `JudgeResult` shape (`passed`, `score 1-5`, `reasoning`, `raw_response`)
@@ -60,7 +60,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Documentation
 
 - [ ] **DOCS-01**: README in repo root explains setup (`uv sync`), configuration (env vars + YAML, with precedence rule), how to run tests, and Windows-specific troubleshooting
-- [ ] **DOCS-02**: `.env.example` and `config.example.yaml` stub files enumerate every configurable setting with example values
+- [x] **DOCS-02**: `.env.example` and `config.example.yaml` stub files enumerate every configurable setting with example values
 - [ ] **DOCS-03**: Judge failures surface the model's `raw_response` in the test failure output so debugging the rubric or response format does not require re-running the suite
 
 ## v2 Requirements
@@ -114,7 +114,7 @@ Phase mappings populated by the roadmapper.
 | SETUP-01 | Phase 1 | Complete |
 | SETUP-02 | Phase 1 | Complete |
 | SETUP-03 | Phase 1 | Complete |
-| CORE-01 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Complete |
 | CORE-02 | Phase 1 | Pending |
 | CORE-03 | Phase 2 | Pending |
 | CORE-04 | Phase 3 | Pending |
@@ -138,7 +138,7 @@ Phase mappings populated by the roadmapper.
 | OPS-02 | Phase 3 | Pending |
 | OPS-03 | Phase 5 | Pending |
 | DOCS-01 | Phase 5 | Pending |
-| DOCS-02 | Phase 1 | Pending |
+| DOCS-02 | Phase 1 | Complete |
 | DOCS-03 | Phase 3 | Pending |
 
 **Coverage:**
