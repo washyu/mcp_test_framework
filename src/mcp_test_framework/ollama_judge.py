@@ -266,10 +266,12 @@ def _parse_judge_response(content: str) -> JudgeResult:
     Step 4: Fallback ``JudgeResult(passed=False, score=1,
         reasoning="malformed judge response", raw_response=<original>)``.
 
-    Note: ``json.JSONDecodeError`` is a ``ValueError`` subclass; catching
-    ``(ValidationError, ValueError)`` covers both. The D-09 wording mentions
-    ``JSONDecodeError`` explicitly and is honored as dead-code documentation
-    per Pydantic v2.13.
+    Note: ``json.JSONDecodeError`` is a ``ValueError`` subclass; the
+    ``(ValidationError, ValueError)`` tuple intentionally covers both
+    Pydantic shape errors AND raw JSON syntax errors. Do NOT narrow the
+    catch to ``ValidationError`` alone -- step 3's brace-extracted retry
+    depends on syntax errors flowing here too, and step 2 must catch raw
+    ``json.loads`` failures so the brace recovery is reachable at all.
     """
     stripped = _strip_decorations(content)
 
