@@ -58,10 +58,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** Close out Phase 2's two `human_needed` UAT items (SC#1, SC#2) by running the `live_homelab` smoke tests against a real `homelab-mcp` subprocess; reconcile `.env.example` / `config.example.yaml` / `pyproject.toml` marker description with the actually-working `uvx homelab-mcp` invocation; commit the canonical spec at `docs/mcp_test_framework_mvp_spec.md`; gitignore `config.yaml`. Phase 2 verification flips `human_needed → passed` on green.
 **Requirements**: CORE-03 (completes Phase 2 UAT)
 **Depends on:** Phase 2
-**Plans:** 3 plans
-  - [ ] 02.1-01-PLAN.md — Drop errlog= from stdio_client(...) in mcp_client.py to fix Windows io.UnsupportedOperation: fileno crash; retain _LoggerWriter for future re-wiring
-  - [ ] 02.1-02-PLAN.md — Reconcile .env.example, config.example.yaml, pyproject.toml marker description to uvx homelab-mcp; gitignore config.yaml; commit docs/mcp_test_framework_mvp_spec.md
-  - [ ] 02.1-03-PLAN.md — Run both live_homelab smoke tests with MCPTF_CONFIG_FILE=./config.yaml; capture verbatim into 02-HUMAN-UAT.md; flip 02-VERIFICATION.md frontmatter to status: passed on green
+**Plans:** 3/3 plans complete
+  - [x] 02.1-01-PLAN.md — Drop errlog= from stdio_client(...) in mcp_client.py to fix Windows io.UnsupportedOperation: fileno crash; retain _LoggerWriter for future re-wiring
+  - [x] 02.1-02-PLAN.md — Reconcile .env.example, config.example.yaml, pyproject.toml marker description to uvx homelab-mcp; gitignore config.yaml; commit docs/mcp_test_framework_mvp_spec.md
+  - [x] 02.1-03-PLAN.md — Run both live_homelab smoke tests with MCPTF_CONFIG_FILE=./config.yaml; capture verbatim into 02-HUMAN-UAT.md; flip 02-VERIFICATION.md frontmatter to status: passed on green
 
 ### Phase 3: Ollama Judge
 **Goal**: `OllamaJudge` reliably returns a validated `JudgeResult` from the live Ollama at `127.0.0.1:11434` even on cold start, even with qwen3 thinking quirks, and the `Judge` Protocol seam is in place for post-MVP backend swaps.
@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Pure-Data Core | 4/4 | Complete   | 2026-05-04 |
 | 2. MCP Client Wrapper | 3/3 | Complete    | 2026-05-05 |
-| 02.1. Close Phase 2 verification gaps (config + UAT) | 0/3 | Planned   | - |
+| 02.1. Close Phase 2 verification gaps (config + UAT) | 3/3 | Complete   | 2026-05-05 |
 | 3. Ollama Judge | 0/TBD | Not started | - |
 | 4. Fixtures & Test Cases | 0/TBD | Not started | - |
 | 5. CLI, README & Acceptance | 0/TBD | Not started | - |
