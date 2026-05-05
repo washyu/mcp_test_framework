@@ -48,8 +48,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every SDK call (`initialize`, `list_tools`, `get_tool`, `call_tool`) is wrapped in `asyncio.timeout()` with explicit ceilings, and a manually-killed subprocess fails the call with a timeout error rather than hanging
   4. Server stderr is captured and surfaced via the SDK's `errlog` parameter to the framework logger
 **Plans**: 3 plans
-  - [ ] 02-01-PLAN.md — Config layer extension: McpServerConfig.timeout_seconds (D-05) + .env.example + config.example.yaml + precedence test (D-07)
-  - [ ] 02-02-PLAN.md — McpTestClient (mcp_client.py) + ToolNotFoundError + _LoggerWriter + sync unit tests + pyproject live_homelab marker registration (D-03)
+  - [x] 02-01-PLAN.md — Config layer extension: McpServerConfig.timeout_seconds (D-05) + .env.example + config.example.yaml + precedence test (D-07)
+  - [x] 02-02-PLAN.md — McpTestClient (mcp_client.py) + ToolNotFoundError + _LoggerWriter + sync unit tests + pyproject live_homelab marker registration (D-03)
   - [ ] 02-03-PLAN.md — Permanent live-marker smoke pytest (tests/smoke/) covering both Phase 2 success criteria #1 and #2 (D-01, D-04)
 
 ### Phase 3: Ollama Judge
