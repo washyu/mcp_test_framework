@@ -3,8 +3,8 @@ phase: 03-ollama-judge
 fixed_at: 2026-05-05T00:00:00Z
 review_path: .planning/phases/03-ollama-judge/03-REVIEW.md
 iteration: 1
-findings_in_scope: 4
-fixed: 4
+findings_in_scope: 5
+fixed: 5
 skipped: 0
 status: all_fixed
 ---
@@ -16,47 +16,82 @@ status: all_fixed
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 4 (all WARNING; 0 CRITICAL; 5 INFO out of scope under `critical_warning`)
-- Fixed: 4
+- Findings in scope: 5 (1 WARNING, 4 INFO -- fix_scope=all)
+- Fixed: 5
 - Skipped: 0
 
-All four WARNING findings were applied to `src/mcp_test_framework/ollama_judge.py`.
-The five INFO findings (IN-01 through IN-05) were intentionally not addressed
-because the configured `fix_scope` was `critical_warning`.
+All five findings from the re-review were applied as atomic commits. Unit
+test suite (47 tests) green after the changes; the new escaped-quote test
+case (IN-02) passes against the existing parser.
 
-Each fix was verified with Tier 1 (re-read of edited section) and Tier 2
-(`python -c "import ast; ast.parse(...)"` syntax check). WR-03 and WR-04 also
-got an additional functional smoke test invoking `_strip_decorations` and
-`_parse_judge_response` directly to confirm the existing happy-path behaviour
-was preserved and the new branches behave as expected.
+Fix commits live on branch `review-fix-03-sv-03-reviewfix-OnwiEL` (created
+from `master` in worktree `/tmp/sv-03-reviewfix-OnwiEL`); orchestrator
+should merge that branch into `master` to bring the five fix commits into
+the main working tree.
 
 ## Fixed Issues
 
-### WR-01: `assert self._client is not None` is elided under `python -O`
+### WR-05: `response.json()` on a 2xx-but-non-JSON body bypasses the defensive parser
 
 **Files modified:** `src/mcp_test_framework/ollama_judge.py`
-**Commit:** `f12bcf2`
-**Applied fix:** Replaced the bare `assert self._client is not None, "OllamaJudge not entered"` at the top of `judge()` with an explicit `if self._client is None: raise RuntimeError(...)`. The new error message points the caller at the correct `async with OllamaJudge(...) as judge:` pattern. The check now survives `python -O` / `PYTHONOPTIMIZE` so downstream consumers running pytest under optimized bytecode get the actionable lifecycle error instead of `AttributeError: 'NoneType' object has no attribute 'post'`.
+**Commit:** `66f29f9`
+**Applied fix:** Wrapped `response.json()` in `try/except ValueError` inside
+`OllamaJudge.judge`. On a non-JSON 2xx body (proxy HTML error page, empty
+body, OpenAPI route list from a misconfigured tunnel), the call now routes
+through `_parse_judge_response(response.text)` -- the same fallback path
+WR-02 used for malformed envelopes -- so `raw_response` is preserved and
+operators see the actual body in diagnostic output instead of a raw
+`json.JSONDecodeError` traceback. The except clause catches `ValueError`
+because `json.JSONDecodeError` is a `ValueError` subclass.
 
-### WR-02: malformed-but-2xx Ollama envelope bypasses the defensive parser
-
-**Files modified:** `src/mcp_test_framework/ollama_judge.py`
-**Commit:** `64058b2`
-**Applied fix:** Replaced the unguarded `content = data["message"]["content"]` with defensive `data.get("message")` / `message.get("content")` extraction with `isinstance` checks. When the envelope is malformed (e.g., `{"error": "..."}`, missing `message`, `null` content), the code now routes the verbatim `response.text` through `_parse_judge_response`, which lands the four-step fallback path and returns a `JudgeResult(passed=False, score=1, reasoning="malformed judge response", raw_response=<envelope>)`. Transport-level errors (D-10) remain unchanged because `raise_for_status()` runs first.
-
-### WR-03: trailing-fence regex requires end-of-string and silently no-ops on stray suffix text
-
-**Files modified:** `src/mcp_test_framework/ollama_judge.py`
-**Commit:** `c7c1ca8`
-**Applied fix:** Replaced the brittle single-pattern `_FENCE_RE` (which anchored its trailing-fence alternative on `$`) with a two-pass strategy: a one-shot `_FENCE_OPEN_RE.sub(..., count=1)` for the opening fence and `str.rpartition("```")` for the closing fence. The new code drops anything after the last closing fence, including stray model commentary like `\nDone.`, so brace recovery in step 3 no longer has to compensate for fence-stripping shortcomings. Functional smoke test (running `_strip_decorations` and `_parse_judge_response` against a `"<think>x</think>\n\`\`\`json\n{...}\n\`\`\`\nDone."` input) confirmed the new behavior parses cleanly via step 2 instead of falling into step 3 or step 4.
-
-**Logic-bug note:** This change touches a string-transformation routine that is well covered by existing unit tests for the happy path (`test_strip_decorations_*`, `test_parse_judge_response_think_block_then_fenced_json`). The reviewer suggested adding a unit test for the trailing-text case "to lock current behaviour either way" -- that is a follow-up not part of this fix scope. The Phase 4 verifier should still re-run the unit corpus to confirm no regression.
-
-### WR-04: `_extract_first_json_object` returns `None` for unbalanced braces -- silently swallowed at step 3
+### IN-05: "dead-code documentation" comment in `_parse_judge_response`
 
 **Files modified:** `src/mcp_test_framework/ollama_judge.py`
-**Commit:** `48c4c21`
-**Applied fix:** Added `_log.debug(...)` records on every parser branch transition: step 2 validation failure (with the exception message), step 3 success-or-no-balanced-object, step 3 validation failure (with the exception message), and step 4 fallback. Also added `data.get("done_reason")` to the response-shape debug log so an operator can distinguish `done_reason="length"` (num_predict exhaustion / truncated output) from genuine malformed model output when the parser falls through to step 4. Verified end-to-end by running each parser path with `logging.basicConfig(level=logging.DEBUG)` and confirming each branch emits exactly one debug record.
+**Commit:** `0d8d496`
+**Applied fix:** Reworded the docstring note that previously claimed
+`ValueError` was 'honored as dead-code documentation per Pydantic v2.13'.
+The new wording makes it explicit that the `(ValidationError, ValueError)`
+union catches both Pydantic shape errors AND raw JSON syntax errors, that
+step 3's brace-extracted retry depends on syntax errors flowing through
+step 2, and that narrowing the catch to `ValidationError` alone would
+break brace-recovery. This removes a footgun for future maintainers.
+
+### IN-02: missing test for escaped-quote brace-scanner branch
+
+**Files modified:** `tests/unit/test_ollama_judge.py`
+**Commit:** `47e18d4`
+**Applied fix:** Added `_ESCAPED_QUOTE` corpus entry containing literal
+`\"` escape sequences in the reasoning value, plus
+`test_extract_first_json_object_handles_escaped_quotes_in_strings`
+asserting both raw extraction (escapes preserved verbatim) and parser
+round-trip (decoded `reasoning == 'say "hi"'`). This pins the `escape`
+branch of the brace-scanner state machine so a future refactor cannot
+silently drop it as dead code. Test executes and passes against the
+existing parser implementation.
+
+### IN-04: smoke docstring overstates fail-fast behaviour
+
+**Files modified:** `tests/smoke/test_smoke_ollama_judge.py`
+**Commit:** `5c3d36f`
+**Applied fix:** Tightened the module docstring to scope the fail-fast
+claim to the cold-start test only. The Protocol-shape test
+(`test_judge_protocol_satisfied_by_ollama_judge`) constructs `OllamaJudge`
+without entering `async with` and therefore never opens a connection, so
+it passes regardless of Ollama availability -- the new docstring states
+that explicitly so the docs no longer mislead operators triaging a
+degraded environment.
+
+### IN-03: stray `print` in smoke test
+
+**Files modified:** `tests/smoke/test_smoke_ollama_judge.py`
+**Commit:** `7c69ad7`
+**Applied fix:** Replaced `print(f"judge result: {result!r}")` with
+`_log.info("cold-start judge result: %r", result)` on the same logger
+namespace as the production module
+(`mcp_test_framework.ollama_judge`). Default pytest runs stay quiet;
+verifiers can opt in via `pytest --log-cli-level=INFO`. Honors the
+production module's "never the full Ollama response body by default"
+logging policy.
 
 ---
 
