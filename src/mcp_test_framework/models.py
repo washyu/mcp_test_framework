@@ -55,6 +55,11 @@ class McpServerConfig(BaseModel):
         default_factory=list,
         validation_alias=AliasChoices("MCP_SERVER_ARGS", "args"),
     )
+    timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        validation_alias=AliasChoices("MCP_SERVER_TIMEOUT_SECONDS", "timeout_seconds"),
+    )
 
 
 class TargetConfig(BaseModel):

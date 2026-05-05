@@ -9,6 +9,7 @@ ollama:
 mcp_server:
   command: homelab-mcp
   args: []
+  timeout_seconds: 30
 
 target:
   tool_name: list_registered_servers
