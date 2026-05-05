@@ -347,7 +347,11 @@ class OllamaJudge:
         body) fall through the four-step defensive parser (D-09) and return
         a ``passed=False`` JudgeResult with ``raw_response`` preserved.
         """
-        assert self._client is not None, "OllamaJudge not entered"
+        if self._client is None:
+            raise RuntimeError(
+                "OllamaJudge.judge() called outside an `async with` block; "
+                "use `async with OllamaJudge(...) as judge: await judge.judge(...)`"
+            )
         body = _build_request_body(self._model, rubric, subject, context)
 
         _log.debug(
