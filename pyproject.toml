@@ -35,7 +35,7 @@ asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 markers = [
-  "live_homelab: requires live homelab-mcp on PATH",
+  "live_homelab: requires homelab-mcp runnable via uvx (or on PATH)",
 ]
 addopts = "-m 'not live_homelab'"
 

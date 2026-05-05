@@ -6,9 +6,11 @@ ollama:
   model: qwen3.6:latest
   timeout_seconds: 120
 
+# Default invocation uses uvx for zero-install. To use a globally-installed
+# binary, set command: homelab-mcp and args: [].
 mcp_server:
-  command: homelab-mcp
-  args: []
+  command: uvx
+  args: [homelab-mcp]
   timeout_seconds: 30
 
 target:
