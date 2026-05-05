@@ -75,6 +75,9 @@ _BRACE_IN_STRING = (
     '{"reasoning": "score = }5{ here", "passed": true, '
     '"score": 4, "raw_response": ""}'
 )
+_ESCAPED_QUOTE = (
+    r'{"passed": true, "score": 4, "reasoning": "say \"hi\"", "raw_response": ""}'
+)
 _GARBAGE = 'not json at all'
 
 
@@ -224,6 +227,27 @@ def test_extract_first_json_object_handles_braces_inside_strings() -> None:
     assert result.score == 4
     assert result.reasoning == "score = }5{ here"
     assert result.raw_response == _BRACE_IN_STRING
+
+
+def test_extract_first_json_object_handles_escaped_quotes_in_strings() -> None:
+    """IN-02: escaped-quote branch of the brace-scanner state machine.
+
+    Falsifies a future refactor that drops the ``escape`` branch as 'dead'.
+    Without ``escape`` tracking, the first ``\\"`` inside the reasoning
+    string would be misread as the closing quote of the string, leaving the
+    scanner in a bogus out-of-string state where the trailing ``}`` of the
+    object is consumed mid-string and the whole object fails to balance.
+    """
+    extracted = _extract_first_json_object(_ESCAPED_QUOTE)
+    assert extracted == _ESCAPED_QUOTE
+    # Round-trip through the parser: the model_validate step decodes the
+    # escape sequences so the in-Python reasoning value contains literal
+    # double quotes, not backslash-quote sequences.
+    result = _parse_judge_response(_ESCAPED_QUOTE)
+    assert result.passed is True
+    assert result.score == 4
+    assert result.reasoning == 'say "hi"'
+    assert result.raw_response == _ESCAPED_QUOTE
 
 
 # --------------------------------------------------------------------------
