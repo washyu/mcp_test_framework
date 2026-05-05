@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
   - [x] 02-01-PLAN.md — Config layer extension: McpServerConfig.timeout_seconds (D-05) + .env.example + config.example.yaml + precedence test (D-07)
   - [x] 02-02-PLAN.md — McpTestClient (mcp_client.py) + ToolNotFoundError + _LoggerWriter + sync unit tests + pyproject live_homelab marker registration (D-03)
-  - [ ] 02-03-PLAN.md — Permanent live-marker smoke pytest (tests/smoke/) covering both Phase 2 success criteria #1 and #2 (D-01, D-04)
+  - [x] 02-03-PLAN.md — Permanent live-marker smoke pytest (tests/smoke/) covering both Phase 2 success criteria #1 and #2 (D-01, D-04)
 
 ### Phase 3: Ollama Judge
 **Goal**: `OllamaJudge` reliably returns a validated `JudgeResult` from the live Ollama at `127.0.0.1:11434` even on cold start, even with qwen3 thinking quirks, and the `Judge` Protocol seam is in place for post-MVP backend swaps.
