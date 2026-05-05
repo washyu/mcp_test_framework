@@ -276,18 +276,23 @@ def _parse_judge_response(content: str) -> JudgeResult:
     # Step 2: try the stripped content directly.
     try:
         return _validate_with_raw(stripped, content)
-    except (ValidationError, ValueError):
-        pass
+    except (ValidationError, ValueError) as e:
+        _log.debug("ollama judge parse step 2 failed: %s", e)
 
     # Step 3: brace-extract the first balanced JSON object and retry.
     extracted = _extract_first_json_object(stripped)
     if extracted is not None:
         try:
             return _validate_with_raw(extracted, content)
-        except (ValidationError, ValueError):
-            pass
+        except (ValidationError, ValueError) as e:
+            _log.debug("ollama judge parse step 3 failed: %s", e)
+    else:
+        _log.debug(
+            "ollama judge parse step 3: no balanced JSON object found in stripped content"
+        )
 
     # Step 4: fallback. raw_response preserved verbatim per DOCS-03.
+    _log.debug("ollama judge parse step 4: returning malformed fallback")
     return JudgeResult(
         passed=False,
         score=1,
@@ -394,9 +399,14 @@ class OllamaJudge:
         if not isinstance(content, str):
             return _parse_judge_response(response.text)
 
+        # done_reason="length" indicates num_predict exhaustion / truncated
+        # output -- distinguishes "model went off the rails" from "we ran out
+        # of token budget" when the parser later falls through to step 4.
         _log.debug(
-            "ollama judge response: content_len=%d load_duration=%r eval_duration=%r",
+            "ollama judge response: content_len=%d done_reason=%r "
+            "load_duration=%r eval_duration=%r",
             len(content),
+            data.get("done_reason"),
             data.get("load_duration"),
             data.get("eval_duration"),
         )
