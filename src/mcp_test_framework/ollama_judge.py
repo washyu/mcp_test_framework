@@ -365,7 +365,20 @@ class OllamaJudge:
         response = await self._client.post("/api/chat", json=body)
         response.raise_for_status()  # D-10: 4xx/5xx propagates as httpx.HTTPStatusError
         data = response.json()
-        content = data["message"]["content"]
+
+        # Defensively extract content. A 2xx envelope can still be malformed
+        # (e.g. {"error": "model not found"}, missing "message", null content).
+        # Route any envelope-shape failure through the same four-step parser
+        # using the raw response text as raw_response, honoring the docstring
+        # contract that malformed 2xx bodies fall through to the fallback path
+        # rather than raising KeyError/TypeError. Transport errors (D-10) are
+        # already handled above by raise_for_status().
+        message = data.get("message") if isinstance(data, dict) else None
+        if not isinstance(message, dict):
+            return _parse_judge_response(response.text)
+        content = message.get("content")
+        if not isinstance(content, str):
+            return _parse_judge_response(response.text)
 
         _log.debug(
             "ollama judge response: content_len=%d load_duration=%r eval_duration=%r",
