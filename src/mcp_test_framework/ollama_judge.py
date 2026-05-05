@@ -383,7 +383,16 @@ class OllamaJudge:
 
         response = await self._client.post("/api/chat", json=body)
         response.raise_for_status()  # D-10: 4xx/5xx propagates as httpx.HTTPStatusError
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            # Non-JSON 2xx body (proxy HTML error page, empty body, OpenAPI
+            # route list from a misconfigured tunnel that only proxies
+            # /v1/chat/completions, etc.) -- same docstring contract as a
+            # malformed envelope: route through the four-step parser so
+            # raw_response is preserved verbatim and operators see the actual
+            # body in the diagnostic surface (WR-05).
+            return _parse_judge_response(response.text)
 
         # Defensively extract content. A 2xx envelope can still be malformed
         # (e.g. {"error": "model not found"}, missing "message", null content).
