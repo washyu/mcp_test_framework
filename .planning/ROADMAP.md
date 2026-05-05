@@ -89,7 +89,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The `target_tool` fixture fails the run early (not per-test) when `TARGET_TOOL_NAME` is absent from the server's tool list
   4. All 4 schema tests (Category 1) and all 3 output-conformance tests (Category 3) pass deterministically; all 3 description-quality tests (Category 2) pass with `score >= 4` against `list_registered_servers`'s description
   5. A green `pytest tests/` run completes against `homelab-mcp` with the expected pass count and zero ERRORs
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 04-01-PLAN.md — rubrics.py: Rubric base + ClarityRubric/DisambiguationRubric/ParametersRubric subclasses with shared hardening preamble (anti-verbosity + <<<SUBJECT>>> markers + 1-5 score anchors) + 9 unit tests locking the invariants
+  - [ ] 04-02-PLAN.md — fixtures.py: all 8 session-scoped fixtures (config, mcp_client, judge, target_tool, _preflight autouse gate, 3 rubric fixtures) with AsyncExitStack ownership + Judge Protocol annotation; tests/conftest.py registers the plugin while preserving the Phase 1 black-box guard verbatim
+  - [ ] 04-03-PLAN.md — tests/test_homelab_list_registered_servers.py: all 10 unmarked integration tests (TEST-01..10) + live green sweep against homelab-mcp + Ollama + Windows SC#1 zero-leftover-process verification
 
 ### Phase 5: CLI, README & Acceptance
 **Goal**: Users can install, configure, and run the framework against `homelab-mcp` via the `mcp-test-framework` CLI from a clean checkout, with all 6 spec acceptance criteria observable.
@@ -115,5 +118,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. MCP Client Wrapper | 3/3 | Complete    | 2026-05-05 |
 | 02.1. Close Phase 2 verification gaps (config + UAT) | 3/3 | Complete    | 2026-05-05 |
 | 3. Ollama Judge | 0/3 | Not started | - |
-| 4. Fixtures & Test Cases | 0/TBD | Not started | - |
+| 4. Fixtures & Test Cases | 0/3 | Not started | - |
 | 5. CLI, README & Acceptance | 0/TBD | Not started | - |
