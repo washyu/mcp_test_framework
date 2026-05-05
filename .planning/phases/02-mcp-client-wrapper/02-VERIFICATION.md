@@ -1,12 +1,12 @@
 ---
-status: human_needed
+status: passed
 phase: 02-mcp-client-wrapper
 phase_number: 02
 verified_at: 2026-05-04
-verifier: orchestrator (claude opus 4.7) — manual verification after subagent permission lockouts
+verifier: orchestrator (claude opus 4.7) — manual verification after subagent permission lockouts ; closed by Phase 02.1 (live UAT against uvx homelab-mcp on Windows 11)
 must_haves_total: 4
-must_haves_passed: 2
-must_haves_human: 2
+must_haves_passed: 4
+must_haves_human: 0
 must_haves_failed: 0
 requirements: [CORE-03]
 ---
@@ -106,6 +106,8 @@ uv run pytest -m live_homelab tests/smoke/test_smoke_homelab_mcp.py::test_wrappe
 ---
 
 ## Items requiring human verification
+
+> Resolved by Phase 02.1 on 2026-05-04: both items ran live and passed; see `02-HUMAN-UAT.md`. The two pending items below are kept for historical context.
 
 1. **SC#1 — raw stdio lists target tool.** On a machine with `homelab-mcp` installed:
    ```
