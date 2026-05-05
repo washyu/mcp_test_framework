@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Pure-Data Core | 4/4 | Complete   | 2026-05-04 |
 | 2. MCP Client Wrapper | 3/3 | Complete    | 2026-05-05 |
-| 02.1. Close Phase 2 verification gaps (config + UAT) | 3/3 | Complete   | 2026-05-05 |
+| 02.1. Close Phase 2 verification gaps (config + UAT) | 3/3 | Complete    | 2026-05-05 |
 | 3. Ollama Judge | 0/TBD | Not started | - |
 | 4. Fixtures & Test Cases | 0/TBD | Not started | - |
 | 5. CLI, README & Acceptance | 0/TBD | Not started | - |
