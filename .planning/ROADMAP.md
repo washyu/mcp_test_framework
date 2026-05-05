@@ -53,6 +53,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 02-02-PLAN.md — McpTestClient (mcp_client.py) + ToolNotFoundError + _LoggerWriter + sync unit tests + pyproject live_homelab marker registration (D-03)
   - [x] 02-03-PLAN.md — Permanent live-marker smoke pytest (tests/smoke/) covering both Phase 2 success criteria #1 and #2 (D-01, D-04)
 
+### Phase 02.1: Close Phase 2 verification gaps (config + UAT) (INSERTED)
+
+**Goal:** Close out Phase 2's two `human_needed` UAT items (SC#1, SC#2) by running the `live_homelab` smoke tests against a real `homelab-mcp` subprocess; reconcile `.env.example` / `config.example.yaml` / `pyproject.toml` marker description with the actually-working `uvx homelab-mcp` invocation; commit the canonical spec at `docs/mcp_test_framework_mvp_spec.md`; gitignore `config.yaml`. Phase 2 verification flips `human_needed → passed` on green.
+**Requirements**: CORE-03 (completes Phase 2 UAT)
+**Depends on:** Phase 2
+**Plans:** TBD (run /gsd-plan-phase 02.1 to break down)
+
 ### Phase 3: Ollama Judge
 **Goal**: `OllamaJudge` reliably returns a validated `JudgeResult` from the live Ollama at `127.0.0.1:11434` even on cold start, even with qwen3 thinking quirks, and the `Judge` Protocol seam is in place for post-MVP backend swaps.
 **Depends on**: Phase 2
