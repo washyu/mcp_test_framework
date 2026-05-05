@@ -37,6 +37,15 @@ _SPEC_ENV_VARS: tuple[str, ...] = (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Chdir each test to a fresh tmp dir so the project root's `.env` does NOT
+    bleed into Config(). Tests that need a `.env` create one inside `tmp_path`.
+    Required after the BareNameNestedEnvSource was extended to read `.env` for
+    sub-model fields (Phase 02.1 follow-up — fix dotenv routing for nested fields)."""
+    monkeypatch.chdir(tmp_path)
+
+
 def _clear_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in _SPEC_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
@@ -88,6 +97,35 @@ def test_yaml_overrides_default(
     cfg = Config()
 
     assert cfg.ollama.base_url == "http://yaml:1"
+
+
+def test_dotenv_routes_to_sub_model_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`.env` bare-name lines reach sub-model fields (regression: Phase 02.1
+    follow-up — `.env`'s `MCP_SERVER_COMMAND=uvx` was previously a no-op)."""
+    _clear_env(monkeypatch)
+    (tmp_path / ".env").write_text(
+        'MCP_SERVER_COMMAND=uvx\nMCP_SERVER_ARGS=["homelab-mcp"]\n', encoding="utf-8"
+    )
+
+    cfg = Config()
+
+    assert cfg.mcp_server.command == "uvx"
+    assert cfg.mcp_server.args == ["homelab-mcp"]
+
+
+def test_env_overrides_dotenv_for_sub_model_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`os.environ` beats `.env` for sub-model fields (locked precedence)."""
+    _clear_env(monkeypatch)
+    (tmp_path / ".env").write_text("MCP_SERVER_COMMAND=from-dotenv\n", encoding="utf-8")
+    monkeypatch.setenv("MCP_SERVER_COMMAND", "from-env")
+
+    cfg = Config()
+
+    assert cfg.mcp_server.command == "from-env"
 
 
 def test_env_overrides_yaml(

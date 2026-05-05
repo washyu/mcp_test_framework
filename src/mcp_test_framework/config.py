@@ -27,10 +27,12 @@ NOTE on bare-name env routing:
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
 
+from dotenv import dotenv_values
 from pydantic import AliasChoices, Field
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
@@ -58,13 +60,45 @@ def _alias_env_names(field: FieldInfo) -> list[str]:
     return []
 
 
+def _maybe_json_decode(raw: str, annotation: Any) -> Any:
+    """For collection-typed fields, decode JSON-array/object strings (matches
+    pydantic-settings' built-in env source behavior). For other fields, return as-is.
+
+    Required so ``MCP_SERVER_ARGS=["homelab-mcp"]`` in ``.env``/``os.environ`` reaches the
+    nested ``list[str]`` field correctly. Without this, the raw string fails Pydantic
+    list validation.
+    """
+    origin_str = str(annotation)
+    is_collection = (
+        origin_str.startswith("list")
+        or origin_str.startswith("dict")
+        or origin_str.startswith("typing.List")
+        or origin_str.startswith("typing.Dict")
+        or origin_str.startswith("tuple")
+        or origin_str.startswith("set")
+    )
+    if not is_collection:
+        return raw
+    stripped = raw.strip()
+    if not stripped or stripped[0] not in "[{":
+        return raw
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        return raw
+
+
 class _BareNameNestedEnvSource(PydanticBaseSettingsSource):
     """Custom env source that walks sub-model ``BaseModel`` fields and reads bare env
     names declared via ``validation_alias=AliasChoices(...)`` on each sub-field, emitting
     a nested dict for the parent ``BaseSettings`` to merge with other sources.
 
+    Reads from BOTH ``os.environ`` and the ``.env`` file declared on the settings class
+    (via ``model_config['env_file']``). ``os.environ`` wins over ``.env`` per the
+    locked precedence (CLI > env > .env > YAML > defaults).
+
     Only sub-fields whose annotation is a ``BaseModel`` subclass are walked; top-level
-    primitive fields are left to the standard ``EnvSettingsSource``.
+    primitive fields are left to the standard ``EnvSettingsSource`` / ``DotEnvSettingsSource``.
     """
 
     def get_field_value(
@@ -73,9 +107,27 @@ class _BareNameNestedEnvSource(PydanticBaseSettingsSource):
         # Required override; this source does not use the per-field path. Sentinel.
         return None, field_name, False
 
+    def _build_effective_env(self) -> dict[str, str]:
+        """Merge ``.env`` (low precedence) under ``os.environ`` (high precedence)."""
+        effective: dict[str, str] = {}
+        # 1. Load .env first (lowest of the two)
+        env_file = self.settings_cls.model_config.get("env_file")
+        if env_file:
+            for env_path in (env_file if isinstance(env_file, (list, tuple)) else [env_file]):
+                path = Path(str(env_path))
+                if path.is_file():
+                    for k, v in dotenv_values(str(path)).items():
+                        if v is not None:
+                            effective[k] = v
+        # 2. os.environ overlays (wins on conflict)
+        for k, v in os.environ.items():
+            effective[k] = v
+        return effective
+
     def __call__(self) -> dict[str, Any]:
         from pydantic import BaseModel  # local import to avoid leaking at module scope
 
+        env = self._build_effective_env()
         result: dict[str, Any] = {}
         for field_name, field in self.settings_cls.model_fields.items():
             annotation = field.annotation
@@ -84,8 +136,10 @@ class _BareNameNestedEnvSource(PydanticBaseSettingsSource):
             sub_data: dict[str, Any] = {}
             for sub_name, sub_field in annotation.model_fields.items():
                 for env_name in _alias_env_names(sub_field):
-                    if env_name in os.environ:
-                        sub_data[sub_name] = os.environ[env_name]
+                    if env_name in env:
+                        sub_data[sub_name] = _maybe_json_decode(
+                            env[env_name], sub_field.annotation
+                        )
                         break
             if sub_data:
                 result[field_name] = sub_data
