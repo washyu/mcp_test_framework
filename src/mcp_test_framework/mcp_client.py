@@ -12,8 +12,10 @@ Per CONTEXT.md decisions (D-05..D-08, plus Discretion items):
   (Pitfall 1 mitigation).
 - Every SDK call (initialize, list_tools, call_tool) wrapped in
   asyncio.timeout(self._timeout_seconds) -- same uniform ceiling (D-06).
-- Server stderr captured via the SDK's errlog parameter and routed to
-  a stdlib logger named "mcp_test_framework.mcp_client.stderr".
+- Server stderr inherited from the parent process (SDK errlog default);
+  pytest captures it via its standard stderr capture. The named logger
+  "mcp_test_framework.mcp_client.stderr" is preserved for future re-wiring
+  (see 02.1 RESEARCH Option A) but receives no records from this version.
 - ToolNotFoundError is domain-local (parallels ValidationIssue in
   schema_validator.py); raised by get_tool() when name not present.
 - CallToolResult passed through unchanged; tests in Phase 4 assert shape.
@@ -113,7 +115,7 @@ class McpTestClient:
         stack = AsyncExitStack()
         try:
             read, write = await stack.enter_async_context(
-                stdio_client(params, errlog=_LoggerWriter(_log))
+                stdio_client(params)
             )
             session = await stack.enter_async_context(ClientSession(read, write))
             async with asyncio.timeout(self._timeout_seconds):
