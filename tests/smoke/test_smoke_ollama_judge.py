@@ -26,12 +26,15 @@ live_ollama and live_homelab failures are unambiguous.
 from __future__ import annotations
 
 import inspect
+import logging
 
 import pytest
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.ollama_judge import JudgeResult, OllamaJudge
+
+_log = logging.getLogger("mcp_test_framework.ollama_judge")
 
 pytestmark = [
     pytest.mark.live_ollama,
@@ -85,6 +88,9 @@ async def test_cold_start_returns_valid_judge_result() -> None:
     assert 1 <= result.score <= 5, f"score out of range: {result!r}"
     assert result.reasoning.strip(), f"empty reasoning: {result!r}"
     assert result.raw_response.strip(), f"empty raw_response: {result!r}"
-    # Diagnostic for cold-start UAT: print on success too so the verifier
-    # can eyeball the score distribution. Phase 5 README will document.
-    print(f"judge result: {result!r}")
+    # Diagnostic for cold-start UAT: log at INFO so the verifier can opt in
+    # via `--log-cli-level=INFO` to eyeball the score distribution without
+    # polluting default pytest output. Mirrors the production module's
+    # "never the full body by default" logging policy. Phase 5 README will
+    # document the opt-in.
+    _log.info("cold-start judge result: %r", result)
