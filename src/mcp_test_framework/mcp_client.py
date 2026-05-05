@@ -61,6 +61,12 @@ class ToolNotFoundError(LookupError):
         )
 
 
+# NOTE: _LoggerWriter is not currently wired into stdio_client (see 02.1
+# RESEARCH Finding #2: passing a TextIOBase as errlog crashes on Windows
+# because subprocess.Popen calls .fileno() on the stderr arg). The class
+# is retained as the seed for a future Option-A re-wiring (a real os.pipe
+# whose write end has a fileno, plus an asyncio reader task that forwards
+# bytes to this writer). Until then it is exercised only by unit tests.
 class _LoggerWriter(io.TextIOBase):
     """File-like adapter routing each written line to a stdlib logger.
 
