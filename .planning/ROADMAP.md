@@ -73,7 +73,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The response parser strips `<think>...</think>` blocks defensively, falls back to a `passed=False` JudgeResult on parse failure with the raw response preserved, and validates `1 <= score <= 5` plus all 3 required fields
   4. Every Ollama HTTP call uses `httpx.Timeout(120, connect=10)` and every MCP subprocess call uses `asyncio.timeout()` — no operation can hang indefinitely (a manual `ollama stop` mid-run produces a clean timeout failure, not a hang)
   5. When the judge fails (timeout or malformed JSON), the affected test fails with the model's `raw_response` visible in the diagnostic and the run continues for other tests — does not crash the suite
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 03-01-PLAN.md — Implementation surface: ollama_judge.py (OllamaJudge + JudgeResult + parser + body helper) + judge_protocol.py (Protocol seam) + pyproject.toml live_ollama marker registration
+  - [ ] 03-02-PLAN.md — Unit tests: parser slices (think-strip, malformed-JSON fallback, brace recovery, out-of-range, missing field) + locked request-body shape assertions
+  - [ ] 03-03-PLAN.md — Live smoke: tests/smoke/test_smoke_ollama_judge.py covering SC#1 (Protocol seam) and SC#2 (cold-start judge call) under live_ollama marker
 
 ### Phase 4: Fixtures & Test Cases
 **Goal**: All four session-scoped pytest-asyncio fixtures are wired together with `AsyncExitStack`-owned subprocess lifecycle, and the spec's 10 test cases run against `homelab-mcp` / `list_registered_servers` with green output.
@@ -110,6 +113,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Foundation & Pure-Data Core | 4/4 | Complete   | 2026-05-04 |
 | 2. MCP Client Wrapper | 3/3 | Complete    | 2026-05-05 |
 | 02.1. Close Phase 2 verification gaps (config + UAT) | 3/3 | Complete    | 2026-05-05 |
-| 3. Ollama Judge | 0/TBD | Not started | - |
+| 3. Ollama Judge | 0/3 | Not started | - |
 | 4. Fixtures & Test Cases | 0/TBD | Not started | - |
 | 5. CLI, README & Acceptance | 0/TBD | Not started | - |
