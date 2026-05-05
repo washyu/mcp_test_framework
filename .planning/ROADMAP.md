@@ -74,7 +74,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Every Ollama HTTP call uses `httpx.Timeout(120, connect=10)` and every MCP subprocess call uses `asyncio.timeout()` — no operation can hang indefinitely (a manual `ollama stop` mid-run produces a clean timeout failure, not a hang)
   5. When the judge fails (timeout or malformed JSON), the affected test fails with the model's `raw_response` visible in the diagnostic and the run continues for other tests — does not crash the suite
 **Plans**: 3 plans
-  - [ ] 03-01-PLAN.md — Implementation surface: ollama_judge.py (OllamaJudge + JudgeResult + parser + body helper) + judge_protocol.py (Protocol seam) + pyproject.toml live_ollama marker registration
+  - [x] 03-01-PLAN.md — Implementation surface: ollama_judge.py (OllamaJudge + JudgeResult + parser + body helper) + judge_protocol.py (Protocol seam) + pyproject.toml live_ollama marker registration
   - [ ] 03-02-PLAN.md — Unit tests: parser slices (think-strip, malformed-JSON fallback, brace recovery, out-of-range, missing field) + locked request-body shape assertions
   - [ ] 03-03-PLAN.md — Live smoke: tests/smoke/test_smoke_ollama_judge.py covering SC#1 (Protocol seam) and SC#2 (cold-start judge call) under live_ollama marker
 
