@@ -14,7 +14,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Pure-Data Core** - Bootstrap project, lock pytest-asyncio config, ban black-box imports, build config loader and schema validator
  (completed 2026-05-04)
-- [ ] **Phase 2: MCP Client Wrapper** - Async `McpTestClient` over stdio with subprocess lifecycle hardening; smoke-tested against live `homelab-mcp`
+- [x] **Phase 2: MCP Client Wrapper** - Async `McpTestClient` over stdio with subprocess lifecycle hardening; smoke-tested against live `homelab-mcp`
+ (completed 2026-05-05)
 - [ ] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
 - [ ] **Phase 4: Fixtures & Test Cases** - Session-scoped pytest-asyncio fixtures (AsyncExitStack-owned MCP client) plus all 10 spec'd tests against `homelab-mcp` / `list_registered_servers`
 - [ ] **Phase 5: CLI, README & Acceptance** - Typer CLI (`run`, `list-tools`, `version`), KeyboardInterrupt cleanup, README, and clean-checkout acceptance verification
@@ -97,7 +98,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Pure-Data Core | 4/4 | Complete   | 2026-05-04 |
-| 2. MCP Client Wrapper | 0/3 | Not started | - |
+| 2. MCP Client Wrapper | 3/3 | Complete    | 2026-05-05 |
 | 3. Ollama Judge | 0/TBD | Not started | - |
 | 4. Fixtures & Test Cases | 0/TBD | Not started | - |
 | 5. CLI, README & Acceptance | 0/TBD | Not started | - |
