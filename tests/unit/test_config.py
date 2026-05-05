@@ -30,6 +30,7 @@ _SPEC_ENV_VARS: tuple[str, ...] = (
     "OLLAMA_TIMEOUT_SECONDS",
     "MCP_SERVER_COMMAND",
     "MCP_SERVER_ARGS",
+    "MCP_SERVER_TIMEOUT_SECONDS",
     "TARGET_TOOL_NAME",
     "JUDGE_TIMEOUT_SECONDS",
     "MCPTF_CONFIG_FILE",
@@ -58,6 +59,7 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.ollama.timeout_seconds == 120
     assert cfg.mcp_server.command == "homelab-mcp"
     assert cfg.mcp_server.args == []
+    assert cfg.mcp_server.timeout_seconds == 30
     assert cfg.target.tool_name == "list_registered_servers"
     assert cfg.judge_timeout_seconds == 120
 
@@ -157,3 +159,21 @@ def test_invalid_yaml_path_skips_yaml_overlay(monkeypatch: pytest.MonkeyPatch) -
     cfg = Config()
 
     assert cfg.ollama.base_url == "http://127.0.0.1:11434"
+
+
+def test_mcp_server_timeout_seconds_env_overrides_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MCP_SERVER_TIMEOUT_SECONDS env var routes through _BareNameNestedEnvSource.
+
+    Phase 1 LEARNINGS lesson "EnvSettingsSource does not walk sub-model
+    validation_alias" means a missing precedence test would let the field
+    silently default-fallback with no exception trace. This is the
+    regression guard required by D-07.
+    """
+    _clear_env(monkeypatch)
+    monkeypatch.setenv("MCP_SERVER_TIMEOUT_SECONDS", "5")
+
+    cfg = Config()
+
+    assert cfg.mcp_server.timeout_seconds == 5
