@@ -12,7 +12,8 @@ The MVP delivers a `pytest`-runnable test suite that exercises one MCP tool end-
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Foundation & Pure-Data Core** - Bootstrap project, lock pytest-asyncio config, ban black-box imports, build config loader and schema validator (completed 2026-05-04)
+- [x] **Phase 1: Foundation & Pure-Data Core** - Bootstrap project, lock pytest-asyncio config, ban black-box imports, build config loader and schema validator
+ (completed 2026-05-04)
 - [ ] **Phase 2: MCP Client Wrapper** - Async `McpTestClient` over stdio with subprocess lifecycle hardening; smoke-tested against live `homelab-mcp`
 - [ ] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
 - [ ] **Phase 4: Fixtures & Test Cases** - Session-scoped pytest-asyncio fixtures (AsyncExitStack-owned MCP client) plus all 10 spec'd tests against `homelab-mcp` / `list_registered_servers`
@@ -46,7 +47,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `McpTestClient.call_tool("list_registered_servers", {})` returns a `CallToolResult` whose `isError` is false and whose `content` or `structuredContent` is non-empty
   3. Every SDK call (`initialize`, `list_tools`, `get_tool`, `call_tool`) is wrapped in `asyncio.timeout()` with explicit ceilings, and a manually-killed subprocess fails the call with a timeout error rather than hanging
   4. Server stderr is captured and surfaced via the SDK's `errlog` parameter to the framework logger
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 02-01-PLAN.md — Config layer extension: McpServerConfig.timeout_seconds (D-05) + .env.example + config.example.yaml + precedence test (D-07)
+  - [ ] 02-02-PLAN.md — McpTestClient (mcp_client.py) + ToolNotFoundError + _LoggerWriter + sync unit tests + pyproject live_homelab marker registration (D-03)
+  - [ ] 02-03-PLAN.md — Permanent live-marker smoke pytest (tests/smoke/) covering both Phase 2 success criteria #1 and #2 (D-01, D-04)
 
 ### Phase 3: Ollama Judge
 **Goal**: `OllamaJudge` reliably returns a validated `JudgeResult` from the live Ollama at `127.0.0.1:11434` even on cold start, even with qwen3 thinking quirks, and the `Judge` Protocol seam is in place for post-MVP backend swaps.
@@ -93,7 +97,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Pure-Data Core | 4/4 | Complete   | 2026-05-04 |
-| 2. MCP Client Wrapper | 0/TBD | Not started | - |
+| 2. MCP Client Wrapper | 0/3 | Not started | - |
 | 3. Ollama Judge | 0/TBD | Not started | - |
 | 4. Fixtures & Test Cases | 0/TBD | Not started | - |
 | 5. CLI, README & Acceptance | 0/TBD | Not started | - |
