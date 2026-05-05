@@ -165,8 +165,12 @@ def _build_request_body(
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 # Some models wrap JSON in ```json ... ``` fences despite the system prompt
-# forbidding it. Strip leading/trailing fence lines before parse.
-_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE | re.DOTALL)
+# forbidding it. Strip the first opening fence and the last closing fence
+# without depending on string anchors -- a stray newline + comment after the
+# closing fence (e.g. "```\nDone.") would defeat an end-of-string anchor and
+# leave the trailing fence in place, forcing brace-recovery to do work the
+# fence-stripper should have done.
+_FENCE_OPEN_RE = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
 
 
 def _strip_decorations(content: str) -> str:
@@ -175,9 +179,19 @@ def _strip_decorations(content: str) -> str:
     Returns the cleaned content with leading/trailing whitespace stripped.
     Idempotent. Handles unbalanced ``<think>`` (none stripped, brace-recovery
     in step 3 catches the JSON inside).
+
+    Strips the first opening fence and the last closing fence; text after the
+    closing fence (e.g. trailing model commentary) is discarded so it does
+    not contaminate ``json.loads``.
     """
     stripped = _THINK_RE.sub("", content)
-    stripped = _FENCE_RE.sub("", stripped)
+    # Strip the first opening fence anywhere in the text.
+    stripped = _FENCE_OPEN_RE.sub("", stripped, count=1)
+    # Reverse-strip on the last closing fence by partitioning from the right;
+    # everything from the last ``` onward is dropped.
+    if "```" in stripped:
+        head, _, _ = stripped.rpartition("```")
+        stripped = head
     return stripped.strip()
 
 
