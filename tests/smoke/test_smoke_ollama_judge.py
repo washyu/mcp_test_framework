@@ -14,8 +14,11 @@ Falsifies BOTH Phase 3 success criteria (D-04):
           this IS the first call (no warmup elsewhere -- D-08).
 
 Pre-req: Ollama reachable at cfg.ollama.base_url with cfg.ollama.model in
-/api/tags. If missing, the test fails fast inside the test body via
-httpx.ConnectError (transport error -- D-10 propagates).
+/api/tags. The cold-start test fails fast via httpx.ConnectError if
+missing (transport error -- D-10 propagates). The Protocol-shape test
+does not require a live Ollama and runs independently -- it constructs
+an OllamaJudge against a dummy base_url but never enters `async with`,
+so it exercises only the Protocol/signature/async-ness invariants.
 
 Subject is canned synthetic (D-04) -- decoupled from homelab-mcp so
 live_ollama and live_homelab failures are unambiguous.
