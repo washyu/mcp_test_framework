@@ -36,8 +36,9 @@ asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 markers = [
   "live_homelab: requires homelab-mcp runnable via uvx (or on PATH)",
+  "live_ollama: requires reachable Ollama at OLLAMA_BASE_URL with the configured model",
 ]
-addopts = "-m 'not live_homelab'"
+addopts = "-m 'not live_homelab and not live_ollama'"
 
 [tool.ruff]
 line-length = 100
