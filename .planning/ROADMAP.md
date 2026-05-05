@@ -75,8 +75,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. When the judge fails (timeout or malformed JSON), the affected test fails with the model's `raw_response` visible in the diagnostic and the run continues for other tests — does not crash the suite
 **Plans**: 3 plans
   - [x] 03-01-PLAN.md — Implementation surface: ollama_judge.py (OllamaJudge + JudgeResult + parser + body helper) + judge_protocol.py (Protocol seam) + pyproject.toml live_ollama marker registration
-  - [ ] 03-02-PLAN.md — Unit tests: parser slices (think-strip, malformed-JSON fallback, brace recovery, out-of-range, missing field) + locked request-body shape assertions
-  - [ ] 03-03-PLAN.md — Live smoke: tests/smoke/test_smoke_ollama_judge.py covering SC#1 (Protocol seam) and SC#2 (cold-start judge call) under live_ollama marker
+  - [x] 03-02-PLAN.md — Unit tests: parser slices (think-strip, malformed-JSON fallback, brace recovery, out-of-range, missing field) + locked request-body shape assertions
+  - [x] 03-03-PLAN.md — Live smoke: tests/smoke/test_smoke_ollama_judge.py covering SC#1 (Protocol seam) and SC#2 (cold-start judge call) under live_ollama marker
 
 ### Phase 4: Fixtures & Test Cases
 **Goal**: All four session-scoped pytest-asyncio fixtures are wired together with `AsyncExitStack`-owned subprocess lifecycle, and the spec's 10 test cases run against `homelab-mcp` / `list_registered_servers` with green output.
