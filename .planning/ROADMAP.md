@@ -16,7 +16,8 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-05-04)
 - [x] **Phase 2: MCP Client Wrapper** - Async `McpTestClient` over stdio with subprocess lifecycle hardening; smoke-tested against live `homelab-mcp`
  (completed 2026-05-05)
-- [ ] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
+- [x] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
+ (completed 2026-05-05)
 - [ ] **Phase 4: Fixtures & Test Cases** - Session-scoped pytest-asyncio fixtures (AsyncExitStack-owned MCP client) plus all 10 spec'd tests against `homelab-mcp` / `list_registered_servers`
 - [ ] **Phase 5: CLI, README & Acceptance** - Typer CLI (`run`, `list-tools`, `version`), KeyboardInterrupt cleanup, README, and clean-checkout acceptance verification
 
@@ -73,7 +74,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The response parser strips `<think>...</think>` blocks defensively, falls back to a `passed=False` JudgeResult on parse failure with the raw response preserved, and validates `1 <= score <= 5` plus all 3 required fields
   4. Every Ollama HTTP call uses `httpx.Timeout(120, connect=10)` and every MCP subprocess call uses `asyncio.timeout()` — no operation can hang indefinitely (a manual `ollama stop` mid-run produces a clean timeout failure, not a hang)
   5. When the judge fails (timeout or malformed JSON), the affected test fails with the model's `raw_response` visible in the diagnostic and the run continues for other tests — does not crash the suite
-**Plans**: 3 plans
+**Plans:** 3/3 plans complete
   - [x] 03-01-PLAN.md — Implementation surface: ollama_judge.py (OllamaJudge + JudgeResult + parser + body helper) + judge_protocol.py (Protocol seam) + pyproject.toml live_ollama marker registration
   - [x] 03-02-PLAN.md — Unit tests: parser slices (think-strip, malformed-JSON fallback, brace recovery, out-of-range, missing field) + locked request-body shape assertions
   - [x] 03-03-PLAN.md — Live smoke: tests/smoke/test_smoke_ollama_judge.py covering SC#1 (Protocol seam) and SC#2 (cold-start judge call) under live_ollama marker
