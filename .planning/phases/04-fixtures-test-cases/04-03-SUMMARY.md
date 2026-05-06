@@ -21,7 +21,7 @@ provides:
   - ".planning/phases/04-fixtures-test-cases/04-03-RUN.txt: verbatim live-sweep output (1 failed, 9 passed, 1 teardown error)"
 affects:
   - "Phase 4 acceptance: green with two documented caveats. (1) TEST-06 disambiguation=3 against `list_registered_servers` is a real judge signal about the SUT's description quality (homelab-mcp's owner, not framework); the framework correctly flagged it. (2) Cancel-scope teardown regression is reassigned to Phase 04.1."
-  - "Phase 04.1 (INSERTED) owns the Pitfall-1 fix for `mcp_client` fixture teardown -- exit-code 0 acceptance lives there, not here."
+  - "Phase 04.1 (INSERTED) owns the Pitfall-1 fix for `mcp_client` fixture teardown -- exit-code 0 acceptance lives there, not here. RESOLVED 2026-05-06 by 04.1-01-PLAN.md (owner-task + anyio.Event fixture rewrite)."
   - "Phase 5 (CLI + README) now depends on Phase 04.1, not directly on Phase 4."
 
 # Tech tracking
@@ -47,7 +47,8 @@ key-decisions:
 
 requirements-completed: [TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08, TEST-09, TEST-09, TEST-10]
 requirements-deferred: [DEF-04-03-A]  # TEST-06 against list_registered_servers: real signal, accepted; framework demonstrated green-path against list_keyring_credentials
-requirements-reassigned: [DEF-04-03-B]  # cancel-scope teardown -> Phase 04.1 (.planning/phases/04.1-mcp-client-teardown-fix/)
+requirements-reassigned: []
+requirements-resolved-by-followup: [DEF-04-03-B]  # cancel-scope teardown -> resolved by Phase 04.1 (see .planning/phases/04.1-mcp-client-teardown-fix/04.1-01-PLAN.md and 04.1-01-SUMMARY.md)
 
 # Metrics
 duration: ~3 min
@@ -273,7 +274,7 @@ None in the integration test file. All 10 tests are wired end-to-end:
 | ID | Type | Status | Description | Source |
 |----|------|--------|-------------|--------|
 | DEF-04-03-A | Judge signal | **accepted (real signal — not framework-side)** | TEST-06 disambiguation score=3 < 4 against homelab-mcp's `list_registered_servers` description. Framework correctly signaled a description-quality gap; the SUT's owner (homelab-mcp) is responsible for resolution if desired. Phase 4 demonstrated green-path against `list_keyring_credentials` (whose description disambiguates by usage context). | Live sweep TEST-06 failure; judge raw_response in `04-03-RUN.txt`; green retry in `04-03-RUN-retry-list_keyring.txt` |
-| DEF-04-03-B | Pitfall 1 regression | **reassigned to Phase 04.1** | Session-scoped `mcp_client` fixture teardown raises `RuntimeError: Attempted to exit cancel scope in a different task`. No process leak (Get-Process clean) but pytest exit code is non-zero. Speculative `asyncio_default_test_loop_scope=session` did NOT fix it; needs fixture-body restructure (anyio.Event-driven owner task — see `.planning/phases/04.1-mcp-client-teardown-fix/04.1-CONTEXT.md` D-01..D-06). | Live sweep TEST-10 teardown; full traceback in `04-03-RUN.txt` lines ~22-105 |
+| DEF-04-03-B | Pitfall 1 regression | **resolved (Phase 04.1)** | Session-scoped `mcp_client` fixture teardown raises `RuntimeError: Attempted to exit cancel scope in a different task`. No process leak (Get-Process clean) but pytest exit code is non-zero. Speculative `asyncio_default_test_loop_scope=session` did NOT fix it; needs fixture-body restructure (anyio.Event-driven owner task — see `.planning/phases/04.1-mcp-client-teardown-fix/04.1-CONTEXT.md` D-01..D-06). Resolved 2026-05-06 by Phase 04.1's owner-task + anyio.Event fixture rewrite (Variant B); see .planning/phases/04.1-mcp-client-teardown-fix/04.1-01-SUMMARY.md for verification evidence. | Live sweep TEST-10 teardown; full traceback in `04-03-RUN.txt` lines ~22-105 |
 | DEF-04-03-C | UX | open (Phase 5) | Default `Config()` uses `mcp_server.command = homelab-mcp` (not on PATH); requires `MCPTF_CONFIG_FILE=./config.yaml` for the uvx invocation pattern. Phase 5 README must document this verbatim. | Plan 04-03 Task 2 pre-run check |
 | DEF-04-03-D | Variance characterization | open (Phase 5) | TEST-05/07 passed but exact scores not surfaced (only failures echo). For Phase 5 README troubleshooting / variance baseline, run the live sweep 3-5 times and record the score distribution. | Live sweep diagnostic (passing tests are silent) |
 
