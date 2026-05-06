@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. A green `pytest tests/` run completes against `homelab-mcp` with the expected pass count and zero ERRORs
 **Plans**: 3 plans
   - [x] 04-01-PLAN.md — rubrics.py: Rubric base + ClarityRubric/DisambiguationRubric/ParametersRubric subclasses with shared hardening preamble (anti-verbosity + <<<SUBJECT>>> markers + 1-5 score anchors) + 9 unit tests locking the invariants
-  - [ ] 04-02-PLAN.md — fixtures.py: all 8 session-scoped fixtures (config, mcp_client, judge, target_tool, _preflight autouse gate, 3 rubric fixtures) with AsyncExitStack ownership + Judge Protocol annotation; tests/conftest.py registers the plugin while preserving the Phase 1 black-box guard verbatim
+  - [x] 04-02-PLAN.md — fixtures.py: all 8 session-scoped fixtures (config, mcp_client, judge, target_tool, _preflight autouse gate, 3 rubric fixtures) with AsyncExitStack ownership + Judge Protocol annotation; tests/conftest.py registers the plugin while preserving the Phase 1 black-box guard verbatim
   - [ ] 04-03-PLAN.md — tests/test_homelab_list_registered_servers.py: all 10 unmarked integration tests (TEST-01..10) + live green sweep against homelab-mcp + Ollama + Windows SC#1 zero-leftover-process verification
 
 ### Phase 5: CLI, README & Acceptance
