@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Plan 05-01 complete
-last_updated: "2026-05-06T23:07:17.561Z"
+last_updated: "2026-05-06T23:13:06.361Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 22
-  completed_plans: 19
-  percent: 86
+  completed_plans: 20
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (cli-readme-acceptance) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 86%
 | Phase 01 P04 | 2 min 2 sec | 2 tasks | 3 files |
 | Phase 05 P01 | 3 min | 2 tasks | 3 files |
 | Phase 05 P02 | 2 min | 2 tasks | 2 files |
+| Phase 05 P05-03 | 3 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase ?]: function-local import pytest inside run() preserves wheel install for users without dev extras (Plan 05-02)
 - [Phase ?]: Typer context_settings allow_extra_args + ignore_unknown_options is the canonical recipe for argv-after-dash forwarding to a stdlib runner (Plan 05-02)
 - [Phase ?]: Config loaded at the CLI seam BEFORE pytest.main() so config errors fail with clean diagnostic before pytest INTERNALERROR (Plan 05-02 D-discretion bullet 4)
+- [Phase ?]: asyncio.Runner over asyncio.run() in list-tools (D-teardown-1; reuses Phase 04.1 same-task lifecycle)
+- [Phase ?]: AsyncExitStack inside _list_tools_async even with single resource -- future-proof + Phase 04.1 ownership signal
+- [Phase ?]: Stdlib-only text formatting in list-tools (textwrap+shutil); no rich dep; default=str defensive JSON fallback
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-06T23:07:10.451Z
+Last session: 2026-05-06T23:13:00.540Z
 Stopped at: Plan 05-01 complete
 Resume file: None

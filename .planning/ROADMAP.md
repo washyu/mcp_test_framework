@@ -123,7 +123,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 5 plans
   - [x] 05-01-PLAN.md — cli.py scaffold (Typer app + _load_config + version) + pyproject.toml [project.scripts] uncomment
   - [x] 05-02-PLAN.md — `run` command body (CLI-01) with --config + pytest-args forwarding via `--`
-  - [ ] 05-03-PLAN.md — `list-tools` command body (CLI-02) with asyncio.Runner + AsyncExitStack-owned McpTestClient (D-teardown-1)
+  - [x] 05-03-PLAN.md — `list-tools` command body (CLI-02) with asyncio.Runner + AsyncExitStack-owned McpTestClient (D-teardown-1)
   - [ ] 05-04-PLAN.md — README.md replacement + docs/EXTENDING.md + .env.example sync verification (DOCS-01)
   - [ ] 05-05-PLAN.md — Acceptance walkthrough: live green run capture + manual OPS-03 UAT (Ctrl+C + Get-Process homelab-mcp)
 

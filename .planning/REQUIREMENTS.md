@@ -48,7 +48,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### CLI
 
 - [x] **CLI-01**: `mcp-test-framework run [-k EXPRESSION] [-v] [--config PATH]` resolves config, invokes `pytest.main()` against the test directory, and exits with pytest's exit code (the CI/CD entry point)
-- [ ] **CLI-02**: `mcp-test-framework list-tools [--config PATH]` connects to the configured MCP server via stdio and prints all available tools with their descriptions — without invoking pytest or Ollama
+- [x] **CLI-02**: `mcp-test-framework list-tools [--config PATH]` connects to the configured MCP server via stdio and prints all available tools with their descriptions — without invoking pytest or Ollama
 - [x] **CLI-03**: `mcp-test-framework version` prints the package version
 
 ### Operational
@@ -132,7 +132,7 @@ Phase mappings populated by the roadmapper.
 | FIX-02 | Phase 4 | Pending |
 | FIX-03 | Phase 4 | Pending |
 | CLI-01 | Phase 5 | Complete |
-| CLI-02 | Phase 5 | Pending |
+| CLI-02 | Phase 5 | Complete |
 | CLI-03 | Phase 5 | Complete |
 | OPS-01 | Phase 3 | Pending |
 | OPS-02 | Phase 3 | Pending |
