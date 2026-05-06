@@ -105,7 +105,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `Get-Process homelab-mcp` immediately after the run returns no matches (Windows SC#1 preserved)
   4. New regression smoke test in `tests/smoke/` exercises full mcp_client lifecycle and asserts clean teardown
   5. No changes to `tests/test_homelab_list_registered_servers.py` test bodies (proves the fixture API is stable)
-**Plans**: TBD (run `/gsd-plan-phase 04.1`)
+**Plans**: 1 plan
+  - [ ] 04.1-01-PLAN.md — Owner-task + anyio.Event fixture rewrite (D-01..D-06); _wrap classmethod; live verification; regression smoke test; flip DEF-04-03-B status in 04-03-SUMMARY.md
 
 ### Phase 5: CLI, README & Acceptance
 **Goal**: Users can install, configure, and run the framework against `homelab-mcp` via the `mcp-test-framework` CLI from a clean checkout, with all 6 spec acceptance criteria observable.
