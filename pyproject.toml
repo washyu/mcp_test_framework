@@ -5,7 +5,11 @@ description = "Pytest framework for testing MCP servers end-to-end."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "mcp>=1.27",
+    # `[cli]` extra pulls Typer (and python-dotenv) transitively. Phase 5
+    # CONTEXT.md / 05-01-PLAN.md: do NOT declare `typer` directly -- it must
+    # remain transitive via mcp[cli] so we have a single source of truth for
+    # the CLI framework version.
+    "mcp[cli]>=1.27",
     "pydantic>=2.13,<3",
     "pydantic-settings[yaml]>=2.14",
     "jsonschema>=4.26",
