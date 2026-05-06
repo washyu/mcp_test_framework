@@ -95,7 +95,7 @@ asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=sessi
 collected 72 items / 5 deselected / 67 selected
 
 tests\smoke\test_mcp_client_teardown_regression.py .                     [  1%]
-tests\test_homelab_list_registered_servers.py .....F....                 [ 16%]
+tests\test_homelab_list_registered_servers.py ..........                 [ 16%]
 tests\unit\test_banned_imports.py ...                                    [ 20%]
 tests\unit\test_config.py ............                                   [ 38%]
 tests\unit\test_mcp_client.py .....                                      [ 46%]
@@ -103,22 +103,26 @@ tests\unit\test_ollama_judge.py ...............                          [ 68%]
 tests\unit\test_rubrics.py .........                                     [ 82%]
 tests\unit\test_schema_validator.py ............                         [100%]
 
-=========== 1 failed, 66 passed, 5 deselected, 1 warning in 23.40s ============
+================ 67 passed, 5 deselected, 1 warning in 22.02s =================
 ```
 
 Captured verbatim from a real local run on Windows 11 against live `homelab-mcp`
-+ Ollama. A fully-green run looks like `======= 67 passed in 23.40s =======`;
-the 5 deselected tests are the live-marker smoke tests in `tests/smoke/` gated
-behind `-m 'not live_homelab and not live_ollama'`.
++ Ollama, with the documented default `TARGET_TOOL_NAME=list_keyring_credentials`.
+The summary line says "67 passed in 22.02s" once you mentally fold over the
+deselect/warning tokens -- pytest formats the wall-clock as `... in N.NNs`.
+The 5 deselected tests are the live-marker smoke tests in `tests/smoke/` gated
+behind `-m 'not live_homelab and not live_ollama'`. The single warning is
+pytest's standard `PytestAssertRewriteWarning` for `anyio` (already imported by
+the time pytest tries to instrument it) and is unrelated to test outcomes.
 
-The single `F` in `test_homelab_list_registered_servers.py` is
-`test_description_disambiguation` -- the description-quality judge scored
-`list_registered_servers`'s description at 3 against the disambiguation rubric
-(threshold is `>= 4`). This is the framework's value proposition working as
-designed: the judge is flagging that the description does not help an LLM agent
-distinguish this tool from hypothetical similar tools (e.g., `list_all_servers`
-vs `list_active_servers`). Tighten the upstream tool description, retune the
-rubric threshold, or accept the verdict per your project's tolerance.
+If you switch `TARGET_TOOL_NAME` to a tool whose declared description does not
+satisfy the description-quality rubrics (e.g., the original Phase 04 default
+`list_registered_servers`, which scores 3 < 4 on the disambiguation rubric
+against `qwen3.6:latest`), expect `test_description_disambiguation` and/or
+`test_description_clarity` to fail. That is the framework's value proposition
+working as designed -- the judge is flagging a real description-quality gap.
+Tighten the upstream tool description, retune the rubric threshold, or accept
+the verdict per your project's tolerance.
 
 ## Troubleshooting (Windows)
 
