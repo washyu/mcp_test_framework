@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 05-01 complete
-last_updated: "2026-05-06T23:13:06.361Z"
+stopped_at: Plan 05-04 complete
+last_updated: "2026-05-06T23:19:54.233Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 22
-  completed_plans: 20
-  percent: 91
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (cli-readme-acceptance) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [█████████░] 91%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████████░] 91%
 | Phase 05 P01 | 3 min | 2 tasks | 3 files |
 | Phase 05 P02 | 2 min | 2 tasks | 2 files |
 | Phase 05 P05-03 | 3 min | 2 tasks | 2 files |
+| Phase 05 P05-04 | 2 min 21 sec | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Recent decisions affecting current work:
 - [Phase ?]: asyncio.Runner over asyncio.run() in list-tools (D-teardown-1; reuses Phase 04.1 same-task lifecycle)
 - [Phase ?]: AsyncExitStack inside _list_tools_async even with single resource -- future-proof + Phase 04.1 ownership signal
 - [Phase ?]: Stdlib-only text formatting in list-tools (textwrap+shutil); no rich dep; default=str defensive JSON fallback
+- [Phase ?]: Phase 05-04: Pydantic defaults in README Default column; .env.example example values cited inline in Purpose to distinguish in-code defaults from the zero-install starter
+- [Phase ?]: Phase 05-04: Sample green run section ships with a `<!-- TODO Plan 05 -->` marker inside a fenced block so Plan 05-05 has a precisely-shaped slot to drop captured pytest output into
+- [Phase ?]: Phase 05-04: Manual .env.example<->README env-var sync verified by a committed bash sync-check artifact instead of an automated test (auto-generation from Pydantic deferred per CONTEXT.md)
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-06T23:13:00.540Z
-Stopped at: Plan 05-01 complete
+Last session: 2026-05-06T23:19:54.224Z
+Stopped at: Plan 05-04 complete
 Resume file: None

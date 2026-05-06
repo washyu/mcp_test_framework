@@ -59,7 +59,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Documentation
 
-- [ ] **DOCS-01**: README in repo root explains setup (`uv sync`), configuration (env vars + YAML, with precedence rule), how to run tests, and Windows-specific troubleshooting
+- [x] **DOCS-01**: README in repo root explains setup (`uv sync`), configuration (env vars + YAML, with precedence rule), how to run tests, and Windows-specific troubleshooting
 - [x] **DOCS-02**: `.env.example` and `config.example.yaml` stub files enumerate every configurable setting with example values
 - [ ] **DOCS-03**: Judge failures surface the model's `raw_response` in the test failure output so debugging the rubric or response format does not require re-running the suite
 
@@ -137,7 +137,7 @@ Phase mappings populated by the roadmapper.
 | OPS-01 | Phase 3 | Pending |
 | OPS-02 | Phase 3 | Pending |
 | OPS-03 | Phase 5 | Complete |
-| DOCS-01 | Phase 5 | Pending |
+| DOCS-01 | Phase 5 | Complete |
 | DOCS-02 | Phase 1 | Complete |
 | DOCS-03 | Phase 3 | Pending |
 
