@@ -54,8 +54,28 @@ def config() -> Config:
 # ---------------------------------------------------------------------------
 
 
+def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
+    """Skip preflight if every collected test lives under tests/unit/.
+
+    Unit tests are pure-data sync tests with no MCP/Ollama dependency. The
+    integration tests (tests/test_*.py) are the consumers preflight is
+    designed to gate -- D-preflight-1 / FIX-02. This guard preserves
+    `autouse=True` semantics for integration runs while letting
+    `uv run pytest tests/unit/` pass on a machine without homelab-mcp /
+    Ollama (Plan 04-02 Task 3 acceptance).
+    """
+    items = getattr(request.session, "items", []) or []
+    if not items:
+        return False
+    for item in items:
+        # item.nodeid uses forward slashes on every platform pytest supports
+        if not item.nodeid.startswith("tests/unit/"):
+            return True
+    return False
+
+
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
-async def _preflight(config: Config):
+async def _preflight(request: pytest.FixtureRequest, config: Config):
     """Three pre-test checks; pytest.exit(returncode=2) on any failure.
 
     Recommended order (CONTEXT D-discretion, cheapest first):
@@ -70,7 +90,15 @@ async def _preflight(config: Config):
 
     NO LLM warmup -- deferred per CONTEXT Deferred Ideas. Cold-start cost is
     paid by TEST-05 within the locked 120s httpx.Timeout.
+
+    The session-scope guard `_session_needs_preflight` short-circuits when
+    only `tests/unit/` items are collected -- unit tests have no MCP/Ollama
+    dependency and must not be gated by integration preconditions.
     """
+    if not _session_needs_preflight(request):
+        yield
+        return
+
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
         pytest.exit(
