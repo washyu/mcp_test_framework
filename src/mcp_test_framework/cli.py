@@ -25,13 +25,20 @@ Distribution-name vs package-name discrepancy:
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import os
+import shutil
+import textwrap
+from contextlib import AsyncExitStack
 from importlib import metadata
 from pathlib import Path
 
 import typer
+from mcp.types import Tool
 
 from mcp_test_framework.config import Config
+from mcp_test_framework.mcp_client import McpTestClient
 
 app = typer.Typer(
     name="mcp-test-framework",
@@ -112,6 +119,42 @@ def run(
     raise typer.Exit(code=pytest.main(["tests", *forwarded]))
 
 
+@app.command("list-tools")
+def list_tools(
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+    ),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit tools as a JSON array of full MCP tool records.",
+    ),
+) -> None:
+    """List all tools exposed by the configured MCP server (CLI-02).
+
+    Connects via stdio (no pytest, no Ollama). Default output is indented
+    blocks: name on its own line, full wrapped description indented beneath
+    (D-list-1, D-list-3). `--json` emits a JSON array of full MCP tool
+    records (D-list-2). Output sorted alphabetically by name (D-list-4).
+
+    Body uses asyncio.Runner + AsyncExitStack-owned McpTestClient
+    (D-teardown-1). KeyboardInterrupt propagates through the runner,
+    __aexit__ runs in the same task that did __aenter__,
+    stdio_client._terminate_process_tree kills the subprocess, exit code
+    130 with no message printed (D-teardown-3). This is the SAME pattern
+    Phase 04.1 hardened for the test path -- reused at the CLI surface.
+    """
+    cfg = _load_config(config)
+    with asyncio.Runner() as runner:
+        tools = runner.run(_list_tools_async(cfg))
+    if as_json:
+        typer.echo(_format_tools_json(tools), nl=False)
+    else:
+        typer.echo(_format_tools_text(tools))
+
+
 @app.command()
 def version() -> None:
     """Print the package version (CLI-03)."""
@@ -120,6 +163,70 @@ def version() -> None:
     except metadata.PackageNotFoundError:
         from mcp_test_framework import __version__ as v
     typer.echo(v)
+
+
+async def _list_tools_async(cfg: Config) -> list[Tool]:
+    """Drive the MCP client lifecycle on a single task.
+
+    AsyncExitStack is technically redundant with the single-context
+    `async with McpTestClient(...)` form, but it is used anyway to:
+    (1) future-proof against adding a second resource (e.g., a logger handle),
+    (2) explicitly mirror the Phase 04.1 ownership lesson,
+    (3) keep __aexit__ semantics identical regardless of how many resources land.
+    """
+    async with AsyncExitStack() as stack:
+        client = await stack.enter_async_context(
+            McpTestClient(
+                cfg.mcp_server.command,
+                cfg.mcp_server.args,
+                cfg.mcp_server.timeout_seconds,
+            )
+        )
+        return await client.list_tools()
+
+
+def _format_tools_text(tools: list[Tool]) -> str:
+    """Indented-block text format: name on its own line, full wrapped description beneath.
+
+    Width comes from shutil.get_terminal_size with an 80-col fallback
+    (D-list-3 / Discretion). Stdlib textwrap.fill handles wrapping --
+    no `rich` dependency.
+    """
+    width = max(40, shutil.get_terminal_size((80, 20)).columns)
+    sorted_tools = sorted(tools, key=lambda t: t.name)
+    if not sorted_tools:
+        return "(no tools registered on the server)"
+    blocks: list[str] = []
+    for t in sorted_tools:
+        desc = t.description or "(no description)"
+        wrapped = textwrap.fill(
+            desc,
+            width=max(20, width - 2),
+            initial_indent="  ",
+            subsequent_indent="  ",
+        )
+        blocks.append(f"{t.name}\n{wrapped}")
+    return "\n\n".join(blocks)
+
+
+def _format_tools_json(tools: list[Tool]) -> str:
+    """Full MCP tool record per tool: {name, description, inputSchema, outputSchema}.
+
+    Sorted alphabetically by name (D-list-4). Trailing newline so the
+    output composes with shell pipelines. `default=str` is a defensive
+    fallback for any non-serializable annotation values inside schemas.
+    """
+    sorted_tools = sorted(tools, key=lambda t: t.name)
+    payload = [
+        {
+            "name": t.name,
+            "description": t.description,
+            "inputSchema": t.inputSchema,
+            "outputSchema": getattr(t, "outputSchema", None),
+        }
+        for t in sorted_tools
+    ]
+    return json.dumps(payload, indent=2, default=str) + "\n"
 
 
 if __name__ == "__main__":  # pragma: no cover
