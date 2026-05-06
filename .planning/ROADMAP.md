@@ -19,7 +19,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
  (completed 2026-05-05)
 - [ ] **Phase 4: Fixtures & Test Cases** - Session-scoped pytest-asyncio fixtures (AsyncExitStack-owned MCP client) plus all 10 spec'd tests against `homelab-mcp` / `list_registered_servers`
-- [x] **Phase 04.1: McpTestClient session-teardown Pitfall-1 fix** - Restructure `mcp_client` fixture with anyio.Event-driven owner task so cancel scope is entered/exited on the same task (resolves DEF-04-03-B; gates exit-code 0 acceptance) (completed 2026-05-06)
+- [x] **Phase 04.1: McpTestClient session-teardown Pitfall-1 fix** - Restructure `mcp_client` fixture with anyio.Event-driven owner task so cancel scope is entered/exited on the same task (resolves DEF-04-03-B; gates exit-code 0 acceptance)
+ (completed 2026-05-06)
 - [ ] **Phase 5: CLI, README & Acceptance** - Typer CLI (`run`, `list-tools`, `version`), KeyboardInterrupt cleanup, README, and clean-checkout acceptance verification
 
 ## Phase Details
@@ -119,7 +120,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. KeyboardInterrupt at the CLI level cleanly tears down the MCP subprocess — `Get-Process homelab-mcp` after a Ctrl+C'd run returns no matches
   5. README in repo root explains setup (`uv sync`), configuration (env vars + YAML, with the explicit `CLI flag > env > YAML > default` precedence rule), how to run tests, and Windows-specific troubleshooting (`taskkill /F /IM homelab-mcp.exe`)
   6. From a clean `git clone`, `uv sync` then `uv run mcp-test-framework run` produces standard pytest terminal output and exits 0 against a healthy homelab-mcp + Ollama
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 05-01-PLAN.md — cli.py scaffold (Typer app + _load_config + version) + pyproject.toml [project.scripts] uncomment
+  - [ ] 05-02-PLAN.md — `run` command body (CLI-01) with --config + pytest-args forwarding via `--`
+  - [ ] 05-03-PLAN.md — `list-tools` command body (CLI-02) with asyncio.Runner + AsyncExitStack-owned McpTestClient (D-teardown-1)
+  - [ ] 05-04-PLAN.md — README.md replacement + docs/EXTENDING.md + .env.example sync verification (DOCS-01)
+  - [ ] 05-05-PLAN.md — Acceptance walkthrough: live green run capture + manual OPS-03 UAT (Ctrl+C + Get-Process homelab-mcp)
 
 ## Progress
 
@@ -133,4 +139,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 02.1. Close Phase 2 verification gaps (config + UAT) | 3/3 | Complete    | 2026-05-05 |
 | 3. Ollama Judge | 0/3 | Not started | - |
 | 4. Fixtures & Test Cases | 0/3 | Not started | - |
-| 5. CLI, README & Acceptance | 0/TBD | Not started | - |
+| 5. CLI, README & Acceptance | 0/5 | Not started | - |
