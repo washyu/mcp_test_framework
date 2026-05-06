@@ -109,6 +109,29 @@ class McpTestClient:
         self._stack: AsyncExitStack | None = None
         self._session: ClientSession | None = None
 
+    @classmethod
+    def _wrap(cls, session: ClientSession, timeout_seconds: int) -> "McpTestClient":
+        """Build an instance pre-bound to a live ClientSession (Phase 4.1 owner-task pattern).
+
+        Skips __aenter__ / AsyncExitStack ownership -- caller (the mcp_client
+        fixture's owner task) owns stdio_client + ClientSession lifecycle.
+        Used ONLY by the session-scoped fixture; smoke tests continue to use
+        `async with McpTestClient(...)`. Mixing modes is undefined.
+
+        The `_command`/`_args` attributes are set to placeholder values because
+        they are only consulted inside __aenter__'s shutil.which() pre-flight,
+        which this construction path bypasses. `_stack=None` signals "not
+        owned by this instance" to __aexit__ (which is a no-op when _stack is
+        None -- see existing __aexit__ guard).
+        """
+        instance = cls.__new__(cls)
+        instance._command = "<wrapped>"
+        instance._args = []
+        instance._timeout_seconds = timeout_seconds
+        instance._stack = None
+        instance._session = session
+        return instance
+
     async def __aenter__(self) -> "McpTestClient":
         # Pitfall 14: friendlier early error than the SDK's [WinError 2].
         # The SDK's get_windows_executable_command does its own which() walk;
