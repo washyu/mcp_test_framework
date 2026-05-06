@@ -20,8 +20,9 @@ provides:
   - "tests/test_homelab_list_registered_servers.py: 10 unmarked async integration tests (Cat 1: TEST-01..04; Cat 2: TEST-05..07; Cat 3: TEST-08..10)"
   - ".planning/phases/04-fixtures-test-cases/04-03-RUN.txt: verbatim live-sweep output (1 failed, 9 passed, 1 teardown error)"
 affects:
-  - "Phase 4 acceptance: SC#5 (pytest tests/ collects + runs all 10) is OBSERVED but NOT GREEN -- TEST-06 fails on judge signal; TEST-10 teardown raises Pitfall-1 cancel-scope error"
-  - "Phase 5 (CLI + README) is BLOCKED on user/planner decision about TEST-06 + the cancel-scope teardown regression"
+  - "Phase 4 acceptance: green with two documented caveats. (1) TEST-06 disambiguation=3 against `list_registered_servers` is a real judge signal about the SUT's description quality (homelab-mcp's owner, not framework); the framework correctly flagged it. (2) Cancel-scope teardown regression is reassigned to Phase 04.1."
+  - "Phase 04.1 (INSERTED) owns the Pitfall-1 fix for `mcp_client` fixture teardown -- exit-code 0 acceptance lives there, not here."
+  - "Phase 5 (CLI + README) now depends on Phase 04.1, not directly on Phase 4."
 
 # Tech tracking
 tech-stack:
@@ -44,9 +45,9 @@ key-decisions:
   - "TEST-10 PASSED its body assertions (>=1 TextContent block parsed as JSON) but the session-scoped mcp_client fixture's AsyncExitStack teardown raised RuntimeError('Attempted to exit cancel scope in a different task than it was entered in') -- Pitfall 1 surfacing despite Phase 2's mitigations. This is a deviation from Plan 04-03 acceptance criterion 'output does NOT contain Attempted to exit cancel scope' (5 occurrences in 04-03-RUN.txt)."
   - "Despite the cancel-scope teardown error, Get-Process homelab-mcp -ErrorAction SilentlyContinue after the run returned no matches -- Windows SC#1 (no leftover homelab-mcp.exe) IS met. The teardown error is a logging/exception-cleanliness regression, not a process-leak regression."
 
-requirements-completed: [TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-07, TEST-08, TEST-09, TEST-10]
-requirements-blocked: [TEST-06]
-requirements-flagged: [FIX-01]  # cancel-scope teardown regression in mcp_client fixture
+requirements-completed: [TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08, TEST-09, TEST-09, TEST-10]
+requirements-deferred: [DEF-04-03-A]  # TEST-06 against list_registered_servers: real signal, accepted; framework demonstrated green-path against list_keyring_credentials
+requirements-reassigned: [DEF-04-03-B]  # cancel-scope teardown -> Phase 04.1 (.planning/phases/04.1-mcp-client-teardown-fix/)
 
 # Metrics
 duration: ~3 min
@@ -160,22 +161,38 @@ The output contains 5 such occurrences. This is a teardown-time regression, not 
 
 The user/planner decides whether this is a Phase 4 blocker or a Phase 5+ hardening item.
 
-## CHECKPOINT REACHED (Task 3: human-verify)
+## CHECKPOINT RESOLVED (Task 3: human-verify) — 2026-05-05
 
 **Type:** human-verify
 **Plan:** 04-03
-**Progress:** 2/3 tasks completed (Task 3 awaiting user approval per plan resume-signal contract)
+**Progress:** 3/3 tasks completed
+**User decision:** Approved with two documented follow-ups (DEF-04-03-A accepted, DEF-04-03-B reassigned to Phase 04.1).
 
-### Awaiting
+### What changed at resolution
 
-The user must:
-1. Review `.planning/phases/04-fixtures-test-cases/04-03-RUN.txt` (215 lines, committed at `4e3f785`).
-2. Decide on Failure A (TEST-06 disambiguation=3) — accept signal, run more samples, or push back to homelab-mcp.
-3. Decide on Failure B (TEST-10 teardown cancel-scope regression) — Phase 4 blocker or Phase 5 hardening?
-4. Reply per the plan's `<resume-signal>`:
-   - "approved" — Phase 4 acceptance flips green despite the two findings (treats both as documented deferred items).
-   - Specific issues — name the issues and the orchestrator/planner spawns a repair plan.
-   - "preflight regression" — does NOT apply here; preflight passed cleanly.
+**1. DEF-04-03-A (TEST-06 disambiguation=3 on `list_registered_servers`) — accepted as real signal.**
+
+The user reasoned: the framework's job is to flag weak descriptions; a failing test here is the framework working correctly. Rather than weaken the rubric or change the test, demonstrate the framework's green-path against an alternate target tool whose description has the disambiguation criteria the rubric demands.
+
+**2. Green-path retry: `TARGET_TOOL_NAME=list_keyring_credentials uv run pytest tests/test_homelab_list_registered_servers.py`**
+
+```
+======================== 10 passed, 1 error in 25.32s =========================
+```
+
+Verbatim output captured at `.planning/phases/04-fixtures-test-cases/04-03-RUN-retry-list_keyring.txt`. All 10 tests PASSED including TEST-06 disambiguation. The judge correctly accepted `list_keyring_credentials`'s description because it explicitly disambiguates *when* to use it ("Call this before ssh_discover or ssh_execute_command") — the criterion the rubric scores against.
+
+**Choice rationale:** `list_keyring_credentials` is read-only with empty args (TEST-08 safe — no side effects on the live homelab), single optional parameter with a description and default value, and disambiguates by usage context.
+
+**Phase 5 spec impact:** None — the documented MVP target (`TARGET_TOOL_NAME=list_registered_servers`) stays the canonical example. The retry is a one-line env override demonstrating framework end-to-end correctness, not a change to the project's documented target.
+
+**3. DEF-04-03-B (cancel-scope teardown) — reassigned to Phase 04.1.**
+
+Speculative pyproject tweak (`asyncio_default_test_loop_scope = "session"`) was tried during checkpoint resolution and discarded — same RuntimeError, faster failure. Confirms the task mismatch is finalizer-task vs fixture-yield-task within the same loop, not loop-vs-loop. Real fix requires fixture-body restructure (anyio.Event-driven owner task pattern). Captured in detail at `.planning/phases/04.1-mcp-client-teardown-fix/04.1-CONTEXT.md` with locked decisions D-01..D-06.
+
+Phase 5 acceptance (clean exit code 0) now correctly depends on Phase 04.1 in `ROADMAP.md`.
+
+### Completed Work (recoverable from commits)
 
 ### Completed Work (recoverable from commits)
 
@@ -253,12 +270,12 @@ None in the integration test file. All 10 tests are wired end-to-end:
 
 ## Deferred Issues (for user / planner / next plan)
 
-| ID | Type | Description | Source |
-|----|------|-------------|--------|
-| DEF-04-03-A | Judge signal | TEST-06 disambiguation score=3 < 4 against homelab-mcp's `list_registered_servers` description. Real signal, not a rubric bug. Surface to homelab-mcp maintainers OR accept as Phase 4 acceptance documentation ("framework correctly signals quality issues"). | Live sweep TEST-06 failure; judge raw_response captured in 04-03-RUN.txt |
-| DEF-04-03-B | Pitfall 1 regression | Session-scoped `mcp_client` fixture teardown raises `RuntimeError: Attempted to exit cancel scope in a different task` (5 occurrences in run output). No process leak (Get-Process clean), but plan acceptance criterion "no Attempted to exit cancel scope in output" is violated. Possible fix: align `asyncio_default_test_loop_scope` to `session` in pyproject.toml; possible tradeoff: per-test subprocess respawn. Needs planner decision. | Live sweep TEST-10 teardown; full traceback in 04-03-RUN.txt lines ~22-105 |
-| DEF-04-03-C | UX | Default `Config()` uses `mcp_server.command = homelab-mcp` (not on PATH); requires `MCPTF_CONFIG_FILE=./config.yaml` for the uvx invocation pattern. Phase 5 README must document this verbatim. | Plan 04-03 Task 2 pre-run check |
-| DEF-04-03-D | Variance characterization | TEST-05/07 passed but exact scores not surfaced (only failures echo). For Phase 5 README troubleshooting / variance baseline, run the live sweep 3-5 times and record the score distribution. | Live sweep diagnostic (passing tests are silent) |
+| ID | Type | Status | Description | Source |
+|----|------|--------|-------------|--------|
+| DEF-04-03-A | Judge signal | **accepted (real signal — not framework-side)** | TEST-06 disambiguation score=3 < 4 against homelab-mcp's `list_registered_servers` description. Framework correctly signaled a description-quality gap; the SUT's owner (homelab-mcp) is responsible for resolution if desired. Phase 4 demonstrated green-path against `list_keyring_credentials` (whose description disambiguates by usage context). | Live sweep TEST-06 failure; judge raw_response in `04-03-RUN.txt`; green retry in `04-03-RUN-retry-list_keyring.txt` |
+| DEF-04-03-B | Pitfall 1 regression | **reassigned to Phase 04.1** | Session-scoped `mcp_client` fixture teardown raises `RuntimeError: Attempted to exit cancel scope in a different task`. No process leak (Get-Process clean) but pytest exit code is non-zero. Speculative `asyncio_default_test_loop_scope=session` did NOT fix it; needs fixture-body restructure (anyio.Event-driven owner task — see `.planning/phases/04.1-mcp-client-teardown-fix/04.1-CONTEXT.md` D-01..D-06). | Live sweep TEST-10 teardown; full traceback in `04-03-RUN.txt` lines ~22-105 |
+| DEF-04-03-C | UX | open (Phase 5) | Default `Config()` uses `mcp_server.command = homelab-mcp` (not on PATH); requires `MCPTF_CONFIG_FILE=./config.yaml` for the uvx invocation pattern. Phase 5 README must document this verbatim. | Plan 04-03 Task 2 pre-run check |
+| DEF-04-03-D | Variance characterization | open (Phase 5) | TEST-05/07 passed but exact scores not surfaced (only failures echo). For Phase 5 README troubleshooting / variance baseline, run the live sweep 3-5 times and record the score distribution. | Live sweep diagnostic (passing tests are silent) |
 
 ## TDD Gate Compliance
 
@@ -283,9 +300,9 @@ To reproduce the live sweep:
 
 ## Next Phase Readiness
 
-- **Phase 4 acceptance is BLOCKED** pending user decision on DEF-04-03-A and DEF-04-03-B (Task 3 checkpoint:human-verify).
-- **Phase 5 (CLI + README)** is unblocked from a code-surface standpoint: the test file is shipped, fixtures work, preflight works, and the integration suite is collectable. README work can begin in parallel with the user's Task 3 decision.
-- **No schema or fixture changes** are required for Phase 5 unless the user decides DEF-04-03-B is a Phase 4 blocker that needs an `asyncio_default_test_loop_scope = "session"` change in `pyproject.toml`.
+- **Phase 4 acceptance is GREEN with documented caveats** (user-approved 2026-05-05). DEF-04-03-A is a real signal about homelab-mcp's description, not a framework defect. DEF-04-03-B is reassigned to Phase 04.1.
+- **Phase 04.1 (INSERTED)** owns the `mcp_client` fixture teardown fix. Context locked at `.planning/phases/04.1-mcp-client-teardown-fix/04.1-CONTEXT.md`; phase 5 now depends on 04.1 in `ROADMAP.md`.
+- **Phase 5 (CLI + README)** unblocked once Phase 04.1 lands. README content from this SUMMARY ("User Setup Required" section above) is ready to be lifted; DEF-04-03-C and DEF-04-03-D are open Phase 5 line items.
 
 ## Self-Check
 
