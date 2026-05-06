@@ -1,0 +1,215 @@
+warning: `VIRTUAL_ENV=<home>\projects\mvp_test_framework\.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0 -- <home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: <home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf
+configfile: pyproject.toml
+plugins: anyio-4.13.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_homelab_list_registered_servers.py::test_target_tool_exists PASSED [ 10%]
+tests/test_homelab_list_registered_servers.py::test_schema_passes_structural_checks PASSED [ 20%]
+tests/test_homelab_list_registered_servers.py::test_description_min_length PASSED [ 30%]
+tests/test_homelab_list_registered_servers.py::test_every_parameter_has_description_and_type PASSED [ 40%]
+tests/test_homelab_list_registered_servers.py::test_description_clarity PASSED [ 50%]
+tests/test_homelab_list_registered_servers.py::test_description_disambiguation FAILED [ 60%]
+tests/test_homelab_list_registered_servers.py::test_parameters_self_explanatory PASSED [ 70%]
+tests/test_homelab_list_registered_servers.py::test_empty_args_call_returns_non_error PASSED [ 80%]
+tests/test_homelab_list_registered_servers.py::test_result_has_content_or_structured PASSED [ 90%]
+tests/test_homelab_list_registered_servers.py::test_text_content_parses_as_json PASSED [100%]
+tests/test_homelab_list_registered_servers.py::test_text_content_parses_as_json ERROR [100%]
+
+=================================== ERRORS ====================================
+____________ ERROR at teardown of test_text_content_parses_as_json ____________
+  + Exception Group Traceback (most recent call last):
+  |   File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 189, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 751, in __aexit__
+    |     cb_suppress = await cb(*exc_details)
+    |                   ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\mcp\shared\session.py", line 238, in __aexit__
+    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 810, in __aexit__
+    |     return self.cancel_scope.__exit__(exc_type, exc_val, exc_tb)
+    |            ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 455, in __exit__
+    |     raise RuntimeError(
+    |     ...<2 lines>...
+    |     )
+    | RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\pytest_asyncio\plugin.py", line 330, in finalizer
+    runner.run(async_finalizer(), context=context)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\pytest_asyncio\plugin.py", line 322, in async_finalizer
+    await gen_obj.__anext__()
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\src\mcp_test_framework\fixtures.py", line 177, in mcp_client
+    async with AsyncExitStack() as stack:
+               ~~~~~~~~~~~~~~^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 768, in __aexit__
+    raise exc
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 751, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\src\mcp_test_framework\mcp_client.py", line 146, in __aexit__
+    await stack.aclose()
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 705, in aclose
+    await self.__aexit__(None, None, None)
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 768, in __aexit__
+    raise exc
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 751, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 235, in __aexit__
+    await self.gen.athrow(value)
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 183, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 805, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\projects\mvp_test_framework\.claude\worktrees\agent-afcda7144af7c44bf\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 455, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+
+During handling of the above exception, another exception occurred:
+
+    def finalizer() -> None:
+        """Yield again, to finalize."""
+    
+        async def async_finalizer() -> None:
+            try:
+                await gen_obj.__anext__()
+            except StopAsyncIteration:
+                pass
+            else:
+                msg = "Async generator fixture didn't stop."
+                msg += "Yield only once."
+                raise ValueError(msg)
+    
+>       runner.run(async_finalizer(), context=context)
+
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:322: in async_finalizer
+    await gen_obj.__anext__()
+src\mcp_test_framework\fixtures.py:177: in mcp_client
+    async with AsyncExitStack() as stack:
+               ^^^^^^^^^^^^^^^^
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:768: in __aexit__
+    raise exc
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:751: in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+src\mcp_test_framework\mcp_client.py:146: in __aexit__
+    await stack.aclose()
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:705: in aclose
+    await self.__aexit__(None, None, None)
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:768: in __aexit__
+    raise exc
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:751: in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:235: in __aexit__
+    await self.gen.athrow(value)
+.venv\Lib\site-packages\mcp\client\stdio\__init__.py:183: in stdio_client
+    anyio.create_task_group() as tg,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:805: in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <anyio._backends._asyncio.CancelScope object at 0x0000021E02D6C590>
+exc_type = <class 'ExceptionGroup'>
+exc_val = ExceptionGroup('unhandled errors in a TaskGroup', [RuntimeError('Attempted to exit cancel scope in a different task than it was entered in')])
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
+        del exc_tb
+    
+        if not self._active:
+            raise RuntimeError("This cancel scope is not active")
+        if current_task() is not self._host_task:
+>           raise RuntimeError(
+                "Attempted to exit cancel scope in a different task than it was "
+                "entered in"
+            )
+E           RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:455: RuntimeError
+---------------------------- Captured stderr call -----------------------------
+INFO:mcp.server.lowlevel.server:Processing request of type CallToolRequest
+-------------------------- Captured stderr teardown ---------------------------
+INFO:homelab_mcp.server:Shutting down ResourceManager...
+INFO:homelab_mcp.resource_manager:Shutting down ResourceManager
+INFO:homelab_mcp.resource_manager:ResourceManager shut down
+INFO:homelab_mcp.server:ResourceManager shutdown complete
+================================== FAILURES ===================================
+_______________________ test_description_disambiguation _______________________
+
+judge = <mcp_test_framework.ollama_judge.OllamaJudge object at 0x0000021E02D82660>
+target_tool = Tool(name='list_registered_servers', title=None, description='List all registered servers with their SSH credentials a...le=None, readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=None), meta=None, execution=None)
+rubric_disambiguation = DisambiguationRubric(dimension='disambiguation', dimension_criteria='Does the description help an LLM agent decide WHE...he conditions / inputs / domain that distinguish this tool; penalize generic phrasing that would apply to many tools.')
+
+    async def test_description_disambiguation(
+        judge: Judge,
+        target_tool,
+        rubric_disambiguation,
+    ) -> None:
+        """TEST-06: disambiguation score >= 4 against tool description.
+    
+        Same subject/context shape as TEST-05 (D-rubrics-3).
+        """
+        result = await judge.judge(
+            str(rubric_disambiguation),
+            subject=target_tool.description,
+            context={
+                "tool_name": target_tool.name,
+                "inputSchema": target_tool.inputSchema,
+            },
+        )
+>       assert result.score >= 4, (
+            f"disambiguation score {result.score} < 4. "
+            f"reasoning={result.reasoning!r} raw_response={result.raw_response!r}"
+        )
+E       AssertionError: disambiguation score 3 < 4. reasoning="The description clearly states the tool's function (listing servers) and key output details (SSH credentials, status). However, it lacks specific disambiguation criteria to distinguish it from similar tools (e.g., 'list_all_servers' vs 'list_active_servers' or 'get_server_details'). It describes *what* the tool does but not *when* to choose it over alternatives, which is the core requirement of the disambiguation dimension. The 'active_only' parameter in the context suggests a distinction exists, but the description itself doesn't leverage this for disambiguation." raw_response='{\n  "passed": true,\n  "score": 3,\n  "reasoning": "The description clearly states the tool\'s function (listing servers) and key output details (SSH credentials, status). However, it lacks specific disambiguation criteria to distinguish it from similar tools (e.g., \'list_all_servers\' vs \'list_active_servers\' or \'get_server_details\'). It describes *what* the tool does but not *when* to choose it over alternatives, which is the core requirement of the disambiguation dimension. The \'active_only\' parameter in the context suggests a distinction exists, but the description itself doesn\'t leverage this for disambiguation."\n}'
+E       assert 3 >= 4
+E        +  where 3 = JudgeResult(passed=True, score=3, reasoning="The description clearly states the tool's function (listing servers) and key output details (SSH credentials, status). However, it lacks specific disambiguation criteria to distinguish it from similar tools (e.g., 'list_all_servers' vs 'list_active_servers' or 'get_server_details'). It describes *what* the tool does but not *when* to choose it over alternatives, which is the core requirement of the disambiguation dimension. The 'active_only' parameter in the context suggests a distinction exists, but the description itself doesn't leverage this for disambiguation.", raw_response='{\n  "passed": true,\n  "score": 3,\n  "reasoning": "The description clearly states the tool\'s function (listing servers) and key output details (SSH credentials, status). However, it lacks specific disambiguation criteria to distinguish it from similar tools (e.g., \'list_all_servers\' vs \'list_active_servers\' or \'get_server_details\'). It describes *what* the tool does but not *when* to choose it over alternatives, which is the core requirement of the disambiguation dimension. The \'active_only\' parameter in the context suggests a distinction exists, but the description itself doesn\'t leverage this for disambiguation."\n}').score
+
+tests\test_homelab_list_registered_servers.py:134: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_homelab_list_registered_servers.py::test_description_disambiguation
+ERROR tests/test_homelab_list_registered_servers.py::test_text_content_parses_as_json
+==================== 1 failed, 9 passed, 1 error in 27.84s ====================
