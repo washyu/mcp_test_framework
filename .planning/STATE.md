@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-06T22:16:46.447Z"
-last_activity: 2026-05-06 -- Phase 05 planning complete
+stopped_at: Plan 05-01 complete
+last_updated: "2026-05-06T23:01:27.618Z"
+last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 22
-  completed_plans: 17
-  percent: 77
+  completed_plans: 18
+  percent: 82
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema -> call -> judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 04.1 — mcp-client-teardown-fix
+**Current focus:** Phase 05 — cli-readme-acceptance
 
 ## Current Position
 
-Phase: 04.1 (mcp-client-teardown-fix) — EXECUTING
-Plan: 1 of 1
+Phase: 05 (cli-readme-acceptance) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-05-06 -- Phase 05 planning complete
+Last activity: 2026-05-06
 
-Progress: [██████████] 100%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 01 P02 | 5 min | 3 tasks | 5 files |
 | Phase 01 P03 | 3 min | 2 tasks | 2 files |
 | Phase 01 P04 | 2 min 2 sec | 2 tasks | 3 files |
+| Phase 05 P01 | 3 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Phase 01-04: ruff 0.15.12 catches the homelab_mcp submodule import case (from homelab_mcp.client import x) -- contradicts RESEARCH Pitfall 4 / ruff issue #1614. Belt-and-suspenders sys.modules guard remains the load-bearing runtime check across ruff version drift.
 - [Phase 01]: Phase 01-04: tests/_fixtures/<name>.py.txt is the storage shape for deliberately-malformed lintable fixtures -- the .py.txt extension hides the file from repo-wide ruff check while still being copyable to tmp_path for explicit ruff invocation.
 - [Phase 01]: Phase 01-04: smoke tests pin ruff to repo's pyproject.toml via --config flag so a developer's ~/.config/ruff override cannot interfere (T-04-03 mitigation).
+- [Phase ?]: Phase 05-01: Used mcp[cli] extra rather than declaring typer directly so the CLI framework version stays single-sourced via mcp SDK
+- [Phase ?]: Phase 05-01: No-op @app.callback() needed to lock Typer into multi-command mode when only one @app.command() exists -- preserves help shape across Plans 05-01..05-03
+- [Phase ?]: Phase 05-01: importlib.metadata.version('mvp-test-framework') uses distribution name (M-V-P), distinct from package (mcp_test_framework) and script name (mcp-test-framework) -- documented inline
 
 ### Pending Todos
 
@@ -105,6 +109,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-06T21:44:56.764Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-cli-readme-acceptance/05-CONTEXT.md
+Last session: 2026-05-06T23:01:27.609Z
+Stopped at: Plan 05-01 complete
+Resume file: None

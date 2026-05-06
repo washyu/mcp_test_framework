@@ -121,7 +121,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. README in repo root explains setup (`uv sync`), configuration (env vars + YAML, with the explicit `CLI flag > env > YAML > default` precedence rule), how to run tests, and Windows-specific troubleshooting (`taskkill /F /IM homelab-mcp.exe`)
   6. From a clean `git clone`, `uv sync` then `uv run mcp-test-framework run` produces standard pytest terminal output and exits 0 against a healthy homelab-mcp + Ollama
 **Plans**: 5 plans
-  - [ ] 05-01-PLAN.md — cli.py scaffold (Typer app + _load_config + version) + pyproject.toml [project.scripts] uncomment
+  - [x] 05-01-PLAN.md — cli.py scaffold (Typer app + _load_config + version) + pyproject.toml [project.scripts] uncomment
   - [ ] 05-02-PLAN.md — `run` command body (CLI-01) with --config + pytest-args forwarding via `--`
   - [ ] 05-03-PLAN.md — `list-tools` command body (CLI-02) with asyncio.Runner + AsyncExitStack-owned McpTestClient (D-teardown-1)
   - [ ] 05-04-PLAN.md — README.md replacement + docs/EXTENDING.md + .env.example sync verification (DOCS-01)
