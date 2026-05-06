@@ -1,6 +1,6 @@
 ---
 slug: fixture-teardown-cancel-scope
-status: fix-applied-awaiting-verify
+status: resolved
 trigger: "Phase 04.1 Variant B fixture rewrite failed live verification — RuntimeError: Attempted to exit cancel scope in a different task than it was entered in still raised at session-scoped mcp_client fixture teardown. The error moved from stdio_client's scope (Phase 4 / DEF-04-03-B) to the outer anyio.create_task_group() scope at fixtures.py:207, but is otherwise the same Pitfall 1 failure."
 created: 2026-05-06
 updated: 2026-05-05
@@ -254,13 +254,21 @@ preserved: `McpTestClient._wrap` classmethod (commit `08595de`)
 untouched; pyproject.toml, decorator, signature, and public API all
 unchanged. Diff scope: `src/mcp_test_framework/fixtures.py` only.
 
-**verification:**
-pending — awaiting user live pytest sweep.
+**verification:** confirmed live 2026-05-06 by user.
 - `uv run ruff check src/mcp_test_framework/fixtures.py` → All checks passed.
 - `uv run python -c "from mcp_test_framework.fixtures import mcp_client; print('OK')"` → `OK`.
 - `uv run pytest tests/unit/ -x -q --collect-only` → 56 tests collected, 0 errors.
-- Live integration sweep (`uv run pytest tests/test_homelab_list_registered_servers.py -v`)
-  must be run by the user against live homelab-mcp + Ollama; success criterion
-  is `EXIT_CODE=0` (no teardown RuntimeError; pre-existing DEF-04-03-A judge
-  score failure on `test_description_disambiguation` may still appear and is
-  out of scope for this debug session).
+- Live integration sweep (`uv run pytest tests/test_homelab_list_registered_servers.py -v`,
+  captured at `.planning/phases/04.1-mcp-client-teardown-fix/04.1-RUN.txt`):
+  - Result line: `1 failed, 9 passed in 26.55s` (no `, 1 error` — teardown clean).
+  - `Attempted to exit cancel scope` substring absent from output.
+  - `ERROR at teardown of` absent from output.
+  - `Get-Process homelab-mcp` returned empty immediately after the run (Windows SC#1).
+  - The remaining `1 failed` is `test_description_disambiguation` judge score 3 < 4
+    — pre-existing DEF-04-03-A signal against `list_registered_servers`, out of scope
+    for this debug session and explicitly accepted as `partial:` by Phase 04.1 plan
+    Task 3 `<resume-signal>`.
+
+**files_changed:**
+- `src/mcp_test_framework/fixtures.py` (commit `82fa53b` — pure-asyncio fixture body).
+- `src/mcp_test_framework/mcp_client.py` (commit `08595de` — `_wrap` classmethod, kept).

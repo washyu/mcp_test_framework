@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
  (completed 2026-05-05)
 - [ ] **Phase 4: Fixtures & Test Cases** - Session-scoped pytest-asyncio fixtures (AsyncExitStack-owned MCP client) plus all 10 spec'd tests against `homelab-mcp` / `list_registered_servers`
-- [ ] **Phase 04.1: McpTestClient session-teardown Pitfall-1 fix** - Restructure `mcp_client` fixture with anyio.Event-driven owner task so cancel scope is entered/exited on the same task (resolves DEF-04-03-B; gates exit-code 0 acceptance)
+- [x] **Phase 04.1: McpTestClient session-teardown Pitfall-1 fix** - Restructure `mcp_client` fixture with anyio.Event-driven owner task so cancel scope is entered/exited on the same task (resolves DEF-04-03-B; gates exit-code 0 acceptance) (completed 2026-05-06)
 - [ ] **Phase 5: CLI, README & Acceptance** - Typer CLI (`run`, `list-tools`, `version`), KeyboardInterrupt cleanup, README, and clean-checkout acceptance verification
 
 ## Phase Details
@@ -106,7 +106,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. New regression smoke test in `tests/smoke/` exercises full mcp_client lifecycle and asserts clean teardown
   5. No changes to `tests/test_homelab_list_registered_servers.py` test bodies (proves the fixture API is stable)
 **Plans**: 1 plan
-  - [ ] 04.1-01-PLAN.md — Owner-task + anyio.Event fixture rewrite (D-01..D-06); _wrap classmethod; live verification; regression smoke test; flip DEF-04-03-B status in 04-03-SUMMARY.md
+  - [x] 04.1-01-PLAN.md — Owner-task + anyio.Event fixture rewrite (D-01..D-06); _wrap classmethod; live verification; regression smoke test; flip DEF-04-03-B status in 04-03-SUMMARY.md
 
 ### Phase 5: CLI, README & Acceptance
 **Goal**: Users can install, configure, and run the framework against `homelab-mcp` via the `mcp-test-framework` CLI from a clean checkout, with all 6 spec acceptance criteria observable.
