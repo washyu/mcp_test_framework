@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Plan 05-01 complete
-last_updated: "2026-05-06T23:01:27.618Z"
+last_updated: "2026-05-06T23:07:17.561Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 22
-  completed_plans: 18
-  percent: 82
+  completed_plans: 19
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (cli-readme-acceptance) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████████░░] 82%
 | Phase 01 P03 | 3 min | 2 tasks | 2 files |
 | Phase 01 P04 | 2 min 2 sec | 2 tasks | 3 files |
 | Phase 05 P01 | 3 min | 2 tasks | 3 files |
+| Phase 05 P02 | 2 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 05-01: Used mcp[cli] extra rather than declaring typer directly so the CLI framework version stays single-sourced via mcp SDK
 - [Phase ?]: Phase 05-01: No-op @app.callback() needed to lock Typer into multi-command mode when only one @app.command() exists -- preserves help shape across Plans 05-01..05-03
 - [Phase ?]: Phase 05-01: importlib.metadata.version('mvp-test-framework') uses distribution name (M-V-P), distinct from package (mcp_test_framework) and script name (mcp-test-framework) -- documented inline
+- [Phase ?]: function-local import pytest inside run() preserves wheel install for users without dev extras (Plan 05-02)
+- [Phase ?]: Typer context_settings allow_extra_args + ignore_unknown_options is the canonical recipe for argv-after-dash forwarding to a stdlib runner (Plan 05-02)
+- [Phase ?]: Config loaded at the CLI seam BEFORE pytest.main() so config errors fail with clean diagnostic before pytest INTERNALERROR (Plan 05-02 D-discretion bullet 4)
 
 ### Pending Todos
 
@@ -109,6 +113,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-06T23:01:27.609Z
+Last session: 2026-05-06T23:07:10.451Z
 Stopped at: Plan 05-01 complete
 Resume file: None

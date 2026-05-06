@@ -47,7 +47,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### CLI
 
-- [ ] **CLI-01**: `mcp-test-framework run [-k EXPRESSION] [-v] [--config PATH]` resolves config, invokes `pytest.main()` against the test directory, and exits with pytest's exit code (the CI/CD entry point)
+- [x] **CLI-01**: `mcp-test-framework run [-k EXPRESSION] [-v] [--config PATH]` resolves config, invokes `pytest.main()` against the test directory, and exits with pytest's exit code (the CI/CD entry point)
 - [ ] **CLI-02**: `mcp-test-framework list-tools [--config PATH]` connects to the configured MCP server via stdio and prints all available tools with their descriptions — without invoking pytest or Ollama
 - [x] **CLI-03**: `mcp-test-framework version` prints the package version
 
@@ -55,7 +55,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **OPS-01**: Ollama timeouts and malformed JSON responses cause the affected test to fail with the raw response surfaced in the diagnostic; the run continues for other tests (does not crash the suite)
 - [ ] **OPS-02**: Subprocess (MCP server) and HTTP (Ollama) operations have explicit `asyncio.timeout()` / `httpx.Timeout(120, connect=10)` boundaries — no operation can hang indefinitely
-- [ ] **OPS-03**: KeyboardInterrupt at the CLI level cleanly tears down the MCP subprocess (no zombie `homelab-mcp.exe` on Windows)
+- [x] **OPS-03**: KeyboardInterrupt at the CLI level cleanly tears down the MCP subprocess (no zombie `homelab-mcp.exe` on Windows)
 
 ### Documentation
 
@@ -131,12 +131,12 @@ Phase mappings populated by the roadmapper.
 | FIX-01 | Phase 4 | Pending |
 | FIX-02 | Phase 4 | Pending |
 | FIX-03 | Phase 4 | Pending |
-| CLI-01 | Phase 5 | Pending |
+| CLI-01 | Phase 5 | Complete |
 | CLI-02 | Phase 5 | Pending |
 | CLI-03 | Phase 5 | Complete |
 | OPS-01 | Phase 3 | Pending |
 | OPS-02 | Phase 3 | Pending |
-| OPS-03 | Phase 5 | Pending |
+| OPS-03 | Phase 5 | Complete |
 | DOCS-01 | Phase 5 | Pending |
 | DOCS-02 | Phase 1 | Complete |
 | DOCS-03 | Phase 3 | Pending |
