@@ -86,21 +86,39 @@ PowerShell with `$env:VAR = "..."` before invoking the CLI.
 ## Sample green run
 
 ```text
-<!-- TODO Plan 05: replace this block with a captured 10-15 line excerpt of `uv run mcp-test-framework run` output against live homelab-mcp + Ollama -->
-============================= test session starts ==============================
-platform win32 -- Python 3.14.x, pytest-9.x, pluggy-1.x
-rootdir: C:\Users\you\projects\mvp_test_framework
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0
+rootdir: <home>\projects\mvp_test_framework
 configfile: pyproject.toml
-plugins: asyncio-1.x
-asyncio: mode=strict
-collected 10 items
+plugins: anyio-4.13.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collected 72 items / 5 deselected / 67 selected
 
-tests/test_homelab_list_registered_servers.py ..........                 [100%]
+tests\smoke\test_mcp_client_teardown_regression.py .                     [  1%]
+tests\test_homelab_list_registered_servers.py .....F....                 [ 16%]
+tests\unit\test_banned_imports.py ...                                    [ 20%]
+tests\unit\test_config.py ............                                   [ 38%]
+tests\unit\test_mcp_client.py .....                                      [ 46%]
+tests\unit\test_ollama_judge.py ...............                          [ 68%]
+tests\unit\test_rubrics.py .........                                     [ 82%]
+tests\unit\test_schema_validator.py ............                         [100%]
 
-============================== 10 passed in X.XXs ==============================
+=========== 1 failed, 66 passed, 5 deselected, 1 warning in 23.40s ============
 ```
 
-Captured from a real green run; replace if your output drifts.
+Captured verbatim from a real local run on Windows 11 against live `homelab-mcp`
++ Ollama. A fully-green run looks like `======= 67 passed in 23.40s =======`;
+the 5 deselected tests are the live-marker smoke tests in `tests/smoke/` gated
+behind `-m 'not live_homelab and not live_ollama'`.
+
+The single `F` in `test_homelab_list_registered_servers.py` is
+`test_description_disambiguation` -- the description-quality judge scored
+`list_registered_servers`'s description at 3 against the disambiguation rubric
+(threshold is `>= 4`). This is the framework's value proposition working as
+designed: the judge is flagging that the description does not help an LLM agent
+distinguish this tool from hypothetical similar tools (e.g., `list_all_servers`
+vs `list_active_servers`). Tighten the upstream tool description, retune the
+rubric threshold, or accept the verdict per your project's tolerance.
 
 ## Troubleshooting (Windows)
 
