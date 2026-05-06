@@ -41,6 +41,19 @@ app = typer.Typer(
 )
 
 
+@app.callback()
+def _main() -> None:
+    """Force Typer multi-command mode (subcommands instead of single-callback).
+
+    Without an explicit callback, Typer collapses an app with exactly one
+    `@app.command()` into a single-command app -- `mcp-test-framework version`
+    would then be parsed as an unexpected positional arg. This empty callback
+    keeps the subcommand surface stable across Plan 05-01 (one command),
+    Plan 05-02 (two commands), and Plan 05-03 (three commands).
+    """
+    return None
+
+
 def _load_config(path: Path | None) -> Config:
     """Shared config loader for `run` and `list-tools` commands.
 

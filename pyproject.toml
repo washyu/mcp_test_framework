@@ -15,9 +15,11 @@ dependencies = [
     "jsonschema>=4.26",
 ]
 
-# [project.scripts]
-# Wired in Phase 5 -- intentionally commented out until the CLI module lands.
-# mcp-test-framework = "mcp_test_framework.cli:app"
+[project.scripts]
+# Wired in Phase 5 (Plan 05-01). Distribution name is "mvp-test-framework";
+# the script name "mcp-test-framework" points at the importable package
+# "mcp_test_framework" and the Typer instance `app`.
+mcp-test-framework = "mcp_test_framework.cli:app"
 
 # PEP 735 dev dependency group -- the canonical 2026 location for tooling.
 # Do NOT use the legacy `[tool.uv].dev-dependencies` block, and do NOT use
