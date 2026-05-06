@@ -3,7 +3,7 @@
 A pytest-based Python framework for testing MCP (Model Context Protocol) servers.
 
 The MVP targets the `homelab-mcp` server over stdio and validates one tool
-(`list_registered_servers`) end-to-end through schema validation, an
+(`list_keyring_credentials` by default) end-to-end through schema validation, an
 Ollama-backed description-quality judge, and output conformance checks.
 
 ## Prerequisites
@@ -75,7 +75,7 @@ Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
 | `MCP_SERVER_COMMAND` | `homelab-mcp` | MCP server launcher binary. `.env.example` ships `uvx` for zero-install. |
 | `MCP_SERVER_ARGS` | `[]` (JSON list) | Args passed to the launcher. `.env.example` ships `["homelab-mcp"]` to pair with `uvx`. |
 | `MCP_SERVER_TIMEOUT_SECONDS` | `30` | Per-SDK-call timeout for stdio operations. |
-| `TARGET_TOOL_NAME` | `list_registered_servers` | Tool under test. |
+| `TARGET_TOOL_NAME` | `list_keyring_credentials` | Tool under test. The `.env.example` default was switched in Plan 05-05 from `list_registered_servers` (which fails the disambiguation rubric upstream). |
 | `JUDGE_TIMEOUT_SECONDS` | `120` | Outer-budget cap on judge calls. |
 | `MCPTF_CONFIG_FILE` | unset | Optional path to a YAML config overlay (sits below env in precedence). |
 

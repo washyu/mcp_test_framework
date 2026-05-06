@@ -14,6 +14,7 @@ mcp_server:
   timeout_seconds: 30
 
 target:
-  tool_name: list_registered_servers
+  # Switched in Plan 05-05 (acceptance) -- list_registered_servers fails the disambiguation rubric; tracked for upstream homelab-mcp doc fix.
+  tool_name: list_keyring_credentials
 
 judge_timeout_seconds: 120
