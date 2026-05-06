@@ -21,11 +21,12 @@ body internally instantiates OllamaJudge; tests use `judge: Judge`.
 """
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import shutil
 from contextlib import AsyncExitStack
 
 import anyio
-import anyio.abc
 import httpx
 import pytest
 import pytest_asyncio
@@ -165,54 +166,97 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
 
 # ---------------------------------------------------------------------------
-# mcp_client -- session-scoped, owner-task + anyio.Event (Phase 04.1; D-01)
+# mcp_client -- session-scoped, pure-asyncio driver + anyio owner task
+# (Phase 04.1 DEF-04-03-B follow-up; resolves debug session
+# fixture-teardown-cancel-scope)
 # ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def mcp_client(config: Config, _preflight):
-    """Long-lived McpTestClient session -- owner-task + anyio.Event (Pitfall 1 fix; D-01).
+    """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
-    The owner task opens stdio_client + ClientSession, signals readiness via
-    anyio's task_status.started(), parks on an anyio.Event until teardown,
-    then unwinds the contextmanagers. Cancel scope enter+exit happen inside
-    the SAME owner task -- anyio's task-pinning rule satisfied. Replaces the
-    Phase 4 AsyncExitStack-owned shape that triggered DEF-04-03-B.
+    The fixture body holds NO anyio cancel scopes across the yield. That was
+    the failure mode of the prior owner-task + outer ``anyio.create_task_group``
+    rewrite (DEF-04-03-B; debug session fixture-teardown-cancel-scope):
+    pytest-asyncio's session-scoped finalizer drives the generator's
+    ``__anext__`` from a different asyncio.Task than the one that ran setup,
+    and any anyio CancelScope spanning the yield is task-pinned to the setup
+    task -> ``RuntimeError: Attempted to exit cancel scope in a different
+    task than it was entered in`` at teardown.
 
-    Rationale: pytest-asyncio's session-finalizer drives this generator's
-    `__anext__` from a different task than the per-test task that first
-    triggered fixture setup. By moving the cancel scope into a long-lived
-    owner task that we deterministically signal via anyio.Event, both the
-    enter and exit of stdio_client's internal anyio.create_task_group()
-    happen on the owner task -- never the finalizer task.
+    Fix shape: all anyio scopes (``stdio_client``, ``ClientSession``,
+    ``anyio.fail_after``) live exclusively inside the owner task, which runs
+    as a stdlib ``asyncio.Task``. The fixture body coordinates with the owner
+    via an ``asyncio.Future`` (handoff of the ready ``McpTestClient``) and an
+    ``asyncio.Event`` (shutdown signal). Setup and teardown of the fixture
+    run on different ``asyncio.Task`` instances under pytest-asyncio's
+    session-scoped finalizer model -- tolerated here because no anyio
+    CancelScope is opened on one task and closed on another.
+
+    Cancellation semantics:
+    - If the owner crashes during setup before resolving the ready future,
+      the owner sets the future's exception, preserving the original error.
+    - The fixture body bounds the ready-await with ``asyncio.wait_for`` to
+      avoid hangs if the owner never sets the future.
+    - On teardown, the shutdown event is set; the owner is awaited with a
+      timeout. If still running, it is cancelled and the CancelledError is
+      swallowed so the owner's anyio scopes can unwind cleanly inside the
+      owner task.
     """
-    shutdown = anyio.Event()
     params = StdioServerParameters(
         command=config.mcp_server.command,
         args=config.mcp_server.args,
     )
+    loop = asyncio.get_running_loop()
+    ready: asyncio.Future[McpTestClient] = loop.create_future()
+    shutdown = asyncio.Event()
 
-    async def _owner_task(*, task_status: anyio.abc.TaskStatus[McpTestClient]) -> None:
-        # Cancel scope opens AND closes inside this owner task -> no Pitfall 1.
-        async with (
-            stdio_client(params) as (read, write),
-            ClientSession(read, write) as session,
-        ):
-            with anyio.fail_after(config.mcp_server.timeout_seconds):
-                await session.initialize()
-            client = McpTestClient._wrap(session, config.mcp_server.timeout_seconds)
-            task_status.started(client)  # unblocks tg.start; returns `client` to fixture body
-            await shutdown.wait()         # park until teardown signals shutdown
-
-    async with anyio.create_task_group() as tg:
-        # tg.start() awaits task_status.started() OR re-raises owner errors here
-        # (RESEARCH Pitfall A: owner task raising before started() propagates cleanly).
-        client = await tg.start(_owner_task)
+    async def _owner_task() -> None:
+        # All anyio cancel scopes enter AND exit on this single owner task.
         try:
-            yield client
-        finally:
-            shutdown.set()  # owner wakes, unwinds stdio_client + ClientSession on its own task
-        # Implicit on leaving `async with`: task_group.__aexit__ waits for owner to drain.
+            async with (
+                stdio_client(params) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                try:
+                    with anyio.fail_after(config.mcp_server.timeout_seconds):
+                        await session.initialize()
+                    client = McpTestClient._wrap(
+                        session, config.mcp_server.timeout_seconds
+                    )
+                except BaseException as exc:
+                    if not ready.done():
+                        ready.set_exception(exc)
+                    raise
+                ready.set_result(client)
+                await shutdown.wait()
+        except BaseException as exc:
+            if not ready.done():
+                ready.set_exception(exc)
+            raise
+
+    owner = asyncio.create_task(_owner_task(), name="mcp_client_owner")
+    try:
+        client = await asyncio.wait_for(
+            asyncio.shield(ready),
+            timeout=config.mcp_server.timeout_seconds + 5,
+        )
+    except BaseException:
+        owner.cancel()
+        with contextlib.suppress(BaseException):
+            await owner
+        raise
+    try:
+        yield client
+    finally:
+        shutdown.set()
+        try:
+            await asyncio.wait_for(owner, timeout=10)
+        except asyncio.TimeoutError:
+            owner.cancel()
+            with contextlib.suppress(BaseException):
+                await owner
 
 
 # ---------------------------------------------------------------------------
