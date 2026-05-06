@@ -1,0 +1,49 @@
+Plan 05-02 Task 2 -- run command smoke verification
+Captured: 2026-05-06
+
+==============================================================================
+Smoke 1: `uv run mcp-test-framework run --help` lists `--config`
+==============================================================================
+Result: PASS
+Output line matched:
+    | --config        PATH  Path to a YAML config overlay (sets               |
+
+==============================================================================
+Smoke 2: Bad `--config PATH` exits 2 with one-line stderr diagnostic
+==============================================================================
+Command: uv run mcp-test-framework run --config /tmp/definitely-does-not-exist-12345.yaml
+EXIT_BAD_CONFIG=2
+stderr: error: --config path not found: <home>\AppData\Local\Temp\definitely-does-not-exist-12345.yaml
+Result: PASS
+
+==============================================================================
+Smoke 3: `run -- --collect-only -q` forwards to pytest; clean stderr
+==============================================================================
+Command: uv run mcp-test-framework run -- --collect-only -q 2> /tmp/05-02-stderr.txt
+EXIT_COLLECT=0
+stderr file: empty (0 bytes)
+grep -cE "Traceback|ImportError|INTERNALERROR" /tmp/05-02-stderr.txt = 0
+pytest collected: 67/72 tests (5 deselected by addopts -m 'not live_homelab and not live_ollama')
+Result: PASS -- forwarding works, addopts contract honored, no traceback/ImportError/INTERNALERROR
+
+==============================================================================
+Smoke 4: Invalid pytest flag propagates pytest's exit code
+==============================================================================
+Command: uv run mcp-test-framework run -- --invalid-pytest-flag-that-does-not-exist
+EXIT_INVALID=4
+pytest message: "error: unrecognized arguments: --invalid-pytest-flag-that-does-not-exist"
+Result: PASS -- pytest's usage-error code (4) propagates through typer.Exit(code=...)
+
+==============================================================================
+Summary
+==============================================================================
+EXIT_HELP=0          (run --help exits clean and shows --config)
+EXIT_BAD_CONFIG=2    (Typer Exit code from _load_config)
+EXIT_COLLECT=0       (pytest collects, addopts skips live tests)
+EXIT_INVALID=4       (pytest usage error -- non-zero, NOT 0)
+
+stderr-cleanliness check on collect-only run: PASS (zero matches for Traceback|ImportError|INTERNALERROR)
+
+All four smoke checks pass. The `run` command resolves CLI args, calls
+_load_config, forwards correctly via `--`, and propagates pytest's exit code.
+Live test execution (CLI-01 SC#6 end-to-end) is verified in Plan 05 UAT.
