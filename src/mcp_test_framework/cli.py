@@ -70,6 +70,48 @@ def _load_config(path: Path | None) -> Config:
     return Config()
 
 
+@app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+)
+def run(
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+    ),
+    pytest_args: list[str] = typer.Argument(
+        None,
+        help="Args after `--` are forwarded to pytest.main([\"tests\", *args]).",
+    ),
+) -> None:
+    """Run the test suite (CLI-01).
+
+    Loads Config() at the CLI level so config errors surface as a clean
+    diagnostic BEFORE pytest's plugin chain produces an opaque
+    INTERNALERROR (D-discretion bullet 4). Then delegates entirely to
+    pytest.main() -- D-cli-flags-3: NO try/except wrap. pytest's own
+    SIGINT handling + Phase 04.1's AsyncExitStack-owned `mcp_client`
+    fixture cover OPS-03 for this path.
+
+    The `addopts = "-m 'not live_homelab and not live_ollama'"` contract
+    from pyproject.toml stays in effect -- `run` MUST NOT pass an explicit
+    `-m` flag (D-markers-3 / Phase 4 contract).
+
+    `import pytest` is function-local: pytest is in `[dependency-groups] dev`
+    only, not `[project.dependencies]`. Module-scope import would break
+    `version` and `list-tools` for users installing the wheel without dev
+    extras.
+    """
+    import pytest  # function-local: pytest is dev-only, not a runtime dep
+
+    _load_config(config)  # raises typer.Exit(2) on bad path; ValidationError propagates
+    forwarded = list(pytest_args or [])
+    raise typer.Exit(code=pytest.main(["tests", *forwarded]))
+
+
 @app.command()
 def version() -> None:
     """Print the package version (CLI-03)."""
