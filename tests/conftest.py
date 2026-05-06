@@ -1,13 +1,17 @@
 """Pytest session-level configuration.
 
-Phase 1 ships only the black-box `sys.modules` guard. Phase 4 adds the
-session-scoped fixtures (mcp_client, judge, target_tool, config) on top of
-this same conftest module.
+Phase 1 ships the black-box `sys.modules` guard. Phase 4 ships the
+session-scoped fixtures (mcp_client, judge, target_tool, config, _preflight,
+and three rubric fixtures) via `pytest_plugins` registration of
+`mcp_test_framework.fixtures` -- the load-bearing one-line seam adopters add
+to their own conftest to inherit the framework's fixture set (D-layout-1).
 """
 
 from __future__ import annotations
 
-import sys
+pytest_plugins = ["mcp_test_framework.fixtures"]
+
+import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
 
 
 def pytest_configure(config) -> None:
