@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Ollama Judge** - `Judge` Protocol + `OllamaJudge` with qwen3 belt-and-braces (think:false, /no_think, <think> strip, cold-start timeouts); smoke-tested against live Ollama
  (completed 2026-05-05)
 - [ ] **Phase 4: Fixtures & Test Cases** - Session-scoped pytest-asyncio fixtures (AsyncExitStack-owned MCP client) plus all 10 spec'd tests against `homelab-mcp` / `list_registered_servers`
+- [ ] **Phase 04.1: McpTestClient session-teardown Pitfall-1 fix** - Restructure `mcp_client` fixture with anyio.Event-driven owner task so cancel scope is entered/exited on the same task (resolves DEF-04-03-B; gates exit-code 0 acceptance)
 - [ ] **Phase 5: CLI, README & Acceptance** - Typer CLI (`run`, `list-tools`, `version`), KeyboardInterrupt cleanup, README, and clean-checkout acceptance verification
 
 ## Phase Details
@@ -94,9 +95,21 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 04-02-PLAN.md — fixtures.py: all 8 session-scoped fixtures (config, mcp_client, judge, target_tool, _preflight autouse gate, 3 rubric fixtures) with AsyncExitStack ownership + Judge Protocol annotation; tests/conftest.py registers the plugin while preserving the Phase 1 black-box guard verbatim
   - [ ] 04-03-PLAN.md — tests/test_homelab_list_registered_servers.py: all 10 unmarked integration tests (TEST-01..10) + live green sweep against homelab-mcp + Ollama + Windows SC#1 zero-leftover-process verification
 
+### Phase 04.1: McpTestClient session-teardown Pitfall-1 fix (INSERTED)
+**Goal**: Eliminate the `RuntimeError: Attempted to exit cancel scope in a different task` raised at session-scoped `mcp_client` fixture teardown. After this phase, `pytest tests/` exits with code 0 on a clean live run.
+**Depends on**: Phase 4
+**Requirements**: DEF-04-03-B (Pitfall 1 regression captured in `04-03-SUMMARY.md`)
+**Success Criteria** (what must be TRUE):
+  1. `uv run pytest tests/test_homelab_list_registered_servers.py` exits with code 0 against live homelab-mcp + Ollama (no teardown ERROR)
+  2. No `RuntimeError: Attempted to exit cancel scope in a different task` anywhere in the run output
+  3. `Get-Process homelab-mcp` immediately after the run returns no matches (Windows SC#1 preserved)
+  4. New regression smoke test in `tests/smoke/` exercises full mcp_client lifecycle and asserts clean teardown
+  5. No changes to `tests/test_homelab_list_registered_servers.py` test bodies (proves the fixture API is stable)
+**Plans**: TBD (run `/gsd-plan-phase 04.1`)
+
 ### Phase 5: CLI, README & Acceptance
 **Goal**: Users can install, configure, and run the framework against `homelab-mcp` via the `mcp-test-framework` CLI from a clean checkout, with all 6 spec acceptance criteria observable.
-**Depends on**: Phase 4
+**Depends on**: Phase 04.1
 **Requirements**: CLI-01, CLI-02, CLI-03, OPS-03, DOCS-01
 **Success Criteria** (what must be TRUE):
   1. `mcp-test-framework run [-k EXPRESSION] [-v] [--config PATH]` resolves config, invokes `pytest.main()` against the test directory, and exits with pytest's exit code (0 on green, non-zero on any failure)

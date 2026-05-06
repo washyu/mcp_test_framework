@@ -1,0 +1,143 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0 -- <home>\projects\mvp_test_framework\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: <home>\projects\mvp_test_framework
+configfile: pyproject.toml
+plugins: anyio-4.13.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_homelab_list_registered_servers.py::test_target_tool_exists PASSED [ 10%]
+tests/test_homelab_list_registered_servers.py::test_schema_passes_structural_checks PASSED [ 20%]
+tests/test_homelab_list_registered_servers.py::test_description_min_length PASSED [ 30%]
+tests/test_homelab_list_registered_servers.py::test_every_parameter_has_description_and_type PASSED [ 40%]
+tests/test_homelab_list_registered_servers.py::test_description_clarity PASSED [ 50%]
+tests/test_homelab_list_registered_servers.py::test_description_disambiguation PASSED [ 60%]
+tests/test_homelab_list_registered_servers.py::test_parameters_self_explanatory PASSED [ 70%]
+tests/test_homelab_list_registered_servers.py::test_empty_args_call_returns_non_error PASSED [ 80%]
+tests/test_homelab_list_registered_servers.py::test_result_has_content_or_structured PASSED [ 90%]
+tests/test_homelab_list_registered_servers.py::test_text_content_parses_as_json PASSED [100%]
+tests/test_homelab_list_registered_servers.py::test_text_content_parses_as_json ERROR [100%]
+
+=================================== ERRORS ====================================
+____________ ERROR at teardown of test_text_content_parses_as_json ____________
+  + Exception Group Traceback (most recent call last):
+  |   File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 189, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 751, in __aexit__
+    |     cb_suppress = await cb(*exc_details)
+    |                   ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\mcp\shared\session.py", line 238, in __aexit__
+    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 810, in __aexit__
+    |     return self.cancel_scope.__exit__(exc_type, exc_val, exc_tb)
+    |            ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 455, in __exit__
+    |     raise RuntimeError(
+    |     ...<2 lines>...
+    |     )
+    | RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\pytest_asyncio\plugin.py", line 330, in finalizer
+    runner.run(async_finalizer(), context=context)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\pytest_asyncio\plugin.py", line 322, in async_finalizer
+    await gen_obj.__anext__()
+  File "<home>\projects\mvp_test_framework\src\mcp_test_framework\fixtures.py", line 177, in mcp_client
+    async with AsyncExitStack() as stack:
+               ~~~~~~~~~~~~~~^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 768, in __aexit__
+    raise exc
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 751, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\projects\mvp_test_framework\src\mcp_test_framework\mcp_client.py", line 146, in __aexit__
+    await stack.aclose()
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 705, in aclose
+    await self.__aexit__(None, None, None)
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 768, in __aexit__
+    raise exc
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 751, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py", line 235, in __aexit__
+    await self.gen.athrow(value)
+  File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 183, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 805, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>\projects\mvp_test_framework\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 455, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+
+During handling of the above exception, another exception occurred:
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:330: in finalizer
+    runner.run(async_finalizer(), context=context)
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\asyncio\base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:322: in async_finalizer
+    await gen_obj.__anext__()
+src\mcp_test_framework\fixtures.py:177: in mcp_client
+    async with AsyncExitStack() as stack:
+               ^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:768: in __aexit__
+    raise exc
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:751: in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+src\mcp_test_framework\mcp_client.py:146: in __aexit__
+    await stack.aclose()
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:705: in aclose
+    await self.__aexit__(None, None, None)
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:768: in __aexit__
+    raise exc
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:751: in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\contextlib.py:235: in __aexit__
+    await self.gen.athrow(value)
+.venv\Lib\site-packages\mcp\client\stdio\__init__.py:183: in stdio_client
+    anyio.create_task_group() as tg,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:805: in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:455: in __exit__
+    raise RuntimeError(
+E   RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+---------------------------- Captured stderr call -----------------------------
+INFO:mcp.server.lowlevel.server:Processing request of type CallToolRequest
+-------------------------- Captured stderr teardown ---------------------------
+INFO:homelab_mcp.server:Shutting down ResourceManager...
+INFO:homelab_mcp.resource_manager:Shutting down ResourceManager
+INFO:homelab_mcp.resource_manager:ResourceManager shut down
+INFO:homelab_mcp.server:ResourceManager shutdown complete
+=========================== short test summary info ===========================
+ERROR tests/test_homelab_list_registered_servers.py::test_text_content_parses_as_json
+======================== 10 passed, 1 error in 25.32s =========================
