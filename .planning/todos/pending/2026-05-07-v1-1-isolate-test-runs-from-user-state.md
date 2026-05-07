@@ -2,6 +2,7 @@
 created: 2026-05-07T02:22:24.300Z
 title: v1.1 hard requirement — isolate test runs from user-visible homelab-mcp state
 area: testing
+resolves_phase: 6
 files:
   - src/mcp_test_framework/mcp_client.py
   - src/mcp_test_framework/fixtures.py

@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
 status: planning
-last_updated: "2026-05-07T06:57:19.368Z"
+last_updated: "2026-05-07T07:15:00.000Z"
 last_activity: 2026-05-07
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** v1.0 shipped. Next milestone not yet scoped — run `/gsd-new-milestone` to define v1.1.
+**Current focus:** v1.1 — Multi-Tool + Isolation + JUnit. Roadmap drafted (5 phases, 25 requirements). Phase 06 (isolation) is the gating first phase; the keyring-touch investigation (ISOL-01) is its first task.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 06 — Per-session host-state isolation (not yet started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-07 — Milestone v1.1 started
+Status: Roadmap created — ready to plan Phase 06
+Last activity: 2026-05-07 — v1.1 roadmap created (5 phases: 06–10)
+
+## Performance Metrics
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Phases planned | 5 | 06, 07, 08, 09, 10 |
+| Phases complete | 0 | |
+| Requirements scoped | 25 | All v1.1 reqs mapped 1:1 to phases (no orphans) |
+| Requirements complete | 0 | |
 
 ## Accumulated Context
 
@@ -35,9 +44,16 @@ Last activity: 2026-05-07 — Milestone v1.1 started
 
 Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 close).
 
+**v1.1 roadmapping decisions (2026-05-07):**
+- **Phase 06 first.** Isolation is a current usability bug AND a prerequisite for safely scaling the multi-tool surface in Phase 07. Without isolation, more spawns = more bleed-through.
+- **ISOL-01 (keyring investigation) is the gating first task** of Phase 06. Its outcome determines whether ISOL-04 (`PYTHON_KEYRING_BACKEND=null`) ships in v1.1 or is deferred with documented triggers.
+- **5 phases under "coarse" granularity.** Justified because each phase is genuinely separable (isolation precedes multi-tool; config registry is its own concern; JUnit is reporting; docs close out across all four). Merging would couple unrelated work; splitting would fragment.
+- **Forward-compat reservations honored.** TOOLCFG-03 reserves `setup:` / `depends_on:` for SEED-004 (v1.5+). TOOLCFG-04 uses string IDs for judges — keeps SEED-003 (v1.3 dynamic rubrics) additive, not breaking.
+- **No v1.2/v1.3/v1.4/v1.5 work in v1.1.** xdist (SEED-002), OpenAI-compat backend (SEED-005), dynamic rubrics (SEED-003), agentic judge (SEED-001), stateful testing (SEED-004) are all deferred per Long-term Vision.
+
 ### Blockers/Concerns
 
-None. All v1.0 blockers resolved at audit time. v2 deferrals tracked in `.planning/MILESTONES.md` v1.0 entry.
+None at roadmap stage. Open question Q2 from `260506-qxs/FINDINGS.md` (does `list_keyring_credentials` touch the OS keyring?) is intentionally surfaced as ISOL-01 — it's a planned investigation, not a roadmap blocker.
 
 ### Quick Tasks Completed
 
@@ -60,5 +76,5 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 ## Session Continuity
 
 Last session: 2026-05-07
-Stopped at: v1.0 milestone close + isolation recon spike (260506-qxs) complete
-Resume file: None — start v1.1 with `/gsd-new-milestone`. v1.1 must address host-state isolation (see todo + FINDINGS.md from quick task 260506-qxs)
+Stopped at: v1.1 roadmap created (5 phases, 25 requirements, 100% coverage)
+Resume file: None — start Phase 06 with `/gsd-plan-phase 6`. Phase 06's first task is the ISOL-01 keyring-touch investigation; it gates whether ISOL-04 ships or is deferred.

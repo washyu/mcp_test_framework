@@ -82,4 +82,42 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 ## Traceability
 
-(Filled by `gsd-roadmapper` during /gsd-new-milestone roadmap step. Maps each requirement to its implementing phase.)
+Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ISOL-01 | Phase 06 | Pending |
+| ISOL-02 | Phase 06 | Pending |
+| ISOL-03 | Phase 06 | Pending |
+| ISOL-04 | Phase 06 | Pending |
+| ISOL-05 | Phase 06 | Pending |
+| ISOL-06 | Phase 06 | Pending |
+| ISOL-07 | Phase 06 | Pending |
+| MULTI-01 | Phase 07 | Pending |
+| MULTI-02 | Phase 07 | Pending |
+| MULTI-03 | Phase 07 | Pending |
+| MULTI-04 | Phase 07 | Pending |
+| TOOLCFG-01 | Phase 08 | Pending |
+| TOOLCFG-02 | Phase 08 | Pending |
+| TOOLCFG-03 | Phase 08 | Pending |
+| TOOLCFG-04 | Phase 08 | Pending |
+| TOOLCFG-05 | Phase 08 | Pending |
+| TOOLCFG-06 | Phase 08 | Pending |
+| TOOLCFG-07 | Phase 08 | Pending |
+| OUTPUT-01 | Phase 09 | Pending |
+| OUTPUT-02 | Phase 09 | Pending |
+| OUTPUT-03 | Phase 09 | Pending |
+| DOC-04 | Phase 10 | Pending |
+| DOC-05 | Phase 10 | Pending |
+| DOC-06 | Phase 10 | Pending |
+| DOC-07 | Phase 10 | Pending |
+
+### Phase coverage summary
+
+| Phase | Goal | Requirement count |
+|-------|------|-------------------|
+| Phase 06: Per-session host-state isolation | Test runs no longer mutate user's real `~/.homelab_mcp/` state | 7 (ISOL-01..07) |
+| Phase 07: Multi-tool discovery & parameterized testing | Single run exercises all server-advertised tools | 4 (MULTI-01..04) |
+| Phase 08: Per-tool config registry | Declarative per-tool skip / args / judge selection | 7 (TOOLCFG-01..07) |
+| Phase 09: JUnit XML output & per-tool reporting | CI-ingestible JUnit + per-tool summary line | 3 (OUTPUT-01..03) |
+| Phase 10: v1.1 documentation | README + EXTENDING.md cover all v1.1 surface | 4 (DOC-04..07) |
