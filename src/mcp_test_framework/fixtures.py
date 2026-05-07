@@ -175,7 +175,7 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def _isolated_home() -> Path:
+async def _isolated_home():
     """Per-session tempdir owning the HOME/USERPROFILE redirect target.
 
     Single source of truth for the isolation tempdir (D-14). Plan 06-03's
