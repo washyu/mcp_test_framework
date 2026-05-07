@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Plan 05-04 complete
-last_updated: "2026-05-06T23:19:54.233Z"
-last_activity: 2026-05-06
+last_updated: "2026-05-07T00:24:59.866Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 22
-  completed_plans: 21
-  percent: 95
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 Phase: 05 (cli-readme-acceptance) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-05-06
+Status: Phase complete — ready for verification
+Last activity: 2026-05-07
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [██████████] 95%
 | Phase 05 P02 | 2 min | 2 tasks | 2 files |
 | Phase 05 P05-03 | 3 min | 2 tasks | 2 files |
 | Phase 05 P05-04 | 2 min 21 sec | 3 tasks | 3 files |
+| Phase 05 P05-05 | 75 min | 4 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 05-04: Pydantic defaults in README Default column; .env.example example values cited inline in Purpose to distinguish in-code defaults from the zero-install starter
 - [Phase ?]: Phase 05-04: Sample green run section ships with a `<!-- TODO Plan 05 -->` marker inside a fenced block so Plan 05-05 has a precisely-shaped slot to drop captured pytest output into
 - [Phase ?]: Phase 05-04: Manual .env.example<->README env-var sync verified by a committed bash sync-check artifact instead of an automated test (auto-generation from Pydantic deferred per CONTEXT.md)
+- [Phase ?]: Phase 05-05: target-tool switched from list_registered_servers to list_keyring_credentials -- framework caught a real description-quality gap; config-only resolution preserves rubric integrity, upstream fix tracked
+- [Phase ?]: Phase 05-05: OPS-03 recorded as PARTIAL PASS with evidence trail (natural-exit teardown verified clean; SIGINT inferred from shared asyncio.Runner+AsyncExitStack code path with Phase 04.1) rather than blocking on timing-flaky direct UAT
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-06T23:19:54.224Z
+Last session: 2026-05-07T00:24:38.982Z
 Stopped at: Plan 05-04 complete
 Resume file: None
