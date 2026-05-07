@@ -1,0 +1,96 @@
+﻿=== Wider scan: USERPROFILE\**\homelab* (depth<=3) at 2026-05-06T19:31:05.0639338-07:00 ===
+
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.2.0-py3-none-any.whl
+Length        : 152241
+LastWriteTime : 3/13/2026 12:01:29 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.2.0.tar.gz
+Length        : 716521
+LastWriteTime : 3/13/2026 12:01:29 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.6.0-py3-none-any.whl
+Length        : 230701
+LastWriteTime : 5/3/2026 7:42:40 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.6.0.tar.gz
+Length        : 2745895
+LastWriteTime : 5/3/2026 7:42:39 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\src\homelab_mcp
+Length        : 
+LastWriteTime : 5/3/2026 9:15:39 PM
+Mode          : d-----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\systemd\homelab-mcp.service
+Length        : 1330
+LastWriteTime : 2/1/2026 7:43:18 PM
+Mode          : -a----
+
+
+
+
+=== Wider scan: USERPROFILE\**\*homelab* (depth<=3, contains 'homelab') at 2026-05-06T19:31:05.2130890-07:00 ===
+
+
+FullName      : C:\Users\washy\.homelab_mcp
+Length        : 
+LastWriteTime : 4/26/2026 11:49:42 PM
+Mode          : d-----
+
+FullName      : C:\Users\washy\OneDrive\Documents\modern-homelab-mcp-architecture.md
+Length        : 45064
+LastWriteTime : 6/21/2025 5:18:03 AM
+Mode          : -a---l
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.2.0-py3-none-any.whl
+Length        : 152241
+LastWriteTime : 3/13/2026 12:01:29 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.2.0.tar.gz
+Length        : 716521
+LastWriteTime : 3/13/2026 12:01:29 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.6.0-py3-none-any.whl
+Length        : 230701
+LastWriteTime : 5/3/2026 7:42:40 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\dist\homelab_mcp-1.6.0.tar.gz
+Length        : 2745895
+LastWriteTime : 5/3/2026 7:42:39 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\docs\modern-homelab-mcp-architecture.md
+Length        : 44922
+LastWriteTime : 2/3/2026 11:37:20 AM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\src\homelab_mcp
+Length        : 
+LastWriteTime : 5/3/2026 9:15:39 PM
+Mode          : d-----
+
+FullName      : C:\Users\washy\projects\mcp_python_server\systemd\homelab-mcp.service
+Length        : 1330
+LastWriteTime : 2/1/2026 7:43:18 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\projects\mvp_test_framework\tests\test_homelab_list_registered_servers.py
+Length        : 8607
+LastWriteTime : 5/5/2026 5:17:46 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\Videos\testsprite_homelab_mcp_demo.mp4
+Length        : 499188684
+LastWriteTime : 4/16/2026 1:20:18 PM
+Mode          : -a----
+
+
+

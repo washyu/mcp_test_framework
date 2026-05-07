@@ -1,0 +1,15 @@
+﻿=== HOMELAB*, MCP*, XDG_* env vars at 2026-05-06T19:29:52.7412677-07:00 ===
+
+
+Name  : MCP_CONNECTION_NONBLOCKING
+Value : true
+
+
+
+
+=== Other potentially-relevant vars (HOME, USERPROFILE, APPDATA, LOCALAPPDATA, TEMP) ===
+HOME=C:\Users\washy
+USERPROFILE=C:\Users\washy
+APPDATA=C:\Users\washy\AppData\Roaming
+LOCALAPPDATA=C:\Users\washy\AppData\Local
+TEMP=C:\Users\washy\AppData\Local\Temp

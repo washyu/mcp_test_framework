@@ -17,6 +17,61 @@ A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema �
 - Live green: `uv run mcp-test-framework run` → `67 passed, exit 0` against live `homelab-mcp` (via `uvx`) + Ollama `qwen3.6:latest` at `127.0.0.1:11434`
 - Tested target: `homelab-mcp` / `list_keyring_credentials` (config-only switch from the original `list_registered_servers`, which surfaced a real description-quality gap the framework correctly caught)
 
+## Long-term Vision
+
+*Established 2026-05-07, post-v1.0 milestone, via `/gsd-explore` session.*
+
+**The product:** First-hand validation that LLM agents can find, understand, and use your MCP tools — including with the imperfect inputs real agents produce. CI-friendly, local-first, exit-code-clean.
+
+### Primary audience: CI engineers
+
+CI engineers wiring this into their PR pipelines are the first-class user. **Secondary:** audit/QA teams needing history and comparable scoring across runs. **Deprioritized:** MCP server *authors* doing fast local iteration — supported, but not the design driver.
+
+### What "first-hand validation" means
+
+Other test frameworks measure proxies for agent-usability ("is this schema valid?", "does this function return X?"). This framework measures it directly by putting an LLM in the loop. It answers three questions an agent has to answer to succeed with a tool:
+
+1. **Should I pick this tool right now?** — description quality / disambiguation
+2. **Can I construct a valid call?** — schema clarity, parameter documentation
+3. **Does the tool handle inputs real agents send — including imperfect ones?** — agent-realism / fuzz (lives inside the dynamic-rubrics milestone)
+
+### Anti-vision (deliberately NOT building)
+
+| Adjacent product | Why not |
+|------------------|---------|
+| Load tester | Different question (server throughput ≠ agent usability) |
+| Generic JSON-RPC tester | MCP-specific by design — generalizing to OpenAPI/gRPC is a fork, not a feature |
+| Production monitoring | Different lifecycle — we're shift-left; monitoring is shift-right |
+| Security scanner | Black-box info envelope: can't tell whether a JSON value is sensitive without reading server source |
+| Random adversarial fuzzer | Out of scope. *Agent-realistic-mistake* fuzz IS in scope (see #3 above) |
+
+### Cost model: local-first, hosted opt-in via OpenAI-compatible API
+
+The framework defaults to a **local LLM judge** on user-owned hardware (Ollama, llama.cpp, vLLM, LM Studio). **Test data never leaves the user's network** — a real value prop for security-conscious CI environments.
+
+**OpenAI-compatible API is the unifier:** one backend implementation, configured via `base_url` + `api_key`, covers Ollama (OpenAI-compat mode), vLLM, LM Studio, LiteLLM proxy, real OpenAI, hosted Anthropic via gateway. Local → hosted is one config value. The framework deliberately does not carry per-provider SDK dependencies — the interface *is* OpenAI-compatible.
+
+### Performance constraints
+
+- **Wall-clock target per run:** ~5 minutes for a typical multi-tool run. Achieved via warm-up stage (amortize cold-start across the run) + process-parallel test execution.
+- **Threading constraint:** `homelab-mcp` and many MCP servers are not thread-safe. Framework parallelizes at the **process level only** (`pytest-xdist` + per-worker isolated subprocess + tempdir). **Per-worker isolation (v1.1) is a hard prerequisite for parallelism (v1.2).**
+
+### Protocol boundary
+
+**MCP-only at the protocol-family level. All MCP transports eventually in scope.** stdio is v1.0; HTTP/SSE are future-work-not-anti-vision. Generalizing to OpenAPI/gRPC is a fork.
+
+### Indicative milestone shape (post-v1.0)
+
+| Milestone | Shape | Seeds activated |
+|-----------|-------|-----------------|
+| v1.1 | Multi-tool support + per-worker isolation + JUnit output | (none — sets prerequisite for SEED-002) |
+| v1.2 | Performance + portability: xdist parallelism + warm-up stage + OpenAI-compat backend | SEED-002, SEED-005 |
+| v1.3 | Dynamic rubrics (rubrics-as-data) including agent-realism input fuzz | SEED-003 |
+| v1.4+ | Agentic tool-use judge — full realization of the vision | SEED-001 |
+| Later | Stateful tool testing with setup/teardown | SEED-004 |
+
+Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone in turn.
+
 ## Requirements
 
 ### Validated
@@ -115,4 +170,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-07 after v1.0 milestone*
+*Last updated: 2026-05-07 — v1.0 milestone close + Long-term Vision pass via `/gsd-explore`*
