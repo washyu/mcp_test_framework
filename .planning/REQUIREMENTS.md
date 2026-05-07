@@ -18,13 +18,13 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 ### TOOLCFG — Per-tool config registry
 
-- [ ] **TOOLCFG-01**: Config supports a `tools.<tool_name>` block with at minimum these fields: `skip: bool`, `skip_reason: str`, `call_arguments: dict`, `judges: list[str]`. Pydantic-modeled.
-- [ ] **TOOLCFG-02**: Config schema includes a top-level `version: 1` field; forward-migration handle for future v2 schema changes.
-- [ ] **TOOLCFG-03**: Config schema reserves `setup:` and `depends_on:` as Optional/unused fields per SEED-004 forward-compat — typing-only, zero runtime behavior. v1.5+ stateful-testing milestone activates them additively.
-- [ ] **TOOLCFG-04**: `judges: [...]` field uses string IDs that resolve against the existing rubric constants (`clarity`, `disambiguation`, `parameters`) — per SEED-003, this keeps dynamic-rubric promotion (v1.3) additive, not breaking.
-- [ ] **TOOLCFG-05**: Pydantic model uses `extra="forbid"` so typos in field names (e.g. `clarty` instead of `clarity`, or `srtip` instead of `skip`) produce clear errors at config load time, not silent test omissions.
-- [ ] **TOOLCFG-06**: Tools with no config entry use safe defaults: `skip=False`, empty `call_arguments`, all available judges run. Test author can opt out per-tool without touching the registry by adding `skip: true`.
-- [ ] **TOOLCFG-07**: Skipped tools surface in pytest output via `pytest.skip(reason=skip_reason)` so the run record (terminal + JUnit) shows what was skipped and why — even when the config file isn't viewable.
+- [x] **TOOLCFG-01**: Config supports a `tools.<tool_name>` block with at minimum these fields: `skip: bool`, `skip_reason: str`, `call_arguments: dict`, `judges: list[str]`. Pydantic-modeled.
+- [x] **TOOLCFG-02**: Config schema includes a top-level `version: 1` field; forward-migration handle for future v2 schema changes.
+- [x] **TOOLCFG-03**: Config schema reserves `setup:` and `depends_on:` as Optional/unused fields per SEED-004 forward-compat — typing-only, zero runtime behavior. v1.5+ stateful-testing milestone activates them additively.
+- [x] **TOOLCFG-04**: `judges: [...]` field uses string IDs that resolve against the existing rubric constants (`clarity`, `disambiguation`, `parameters`) — per SEED-003, this keeps dynamic-rubric promotion (v1.3) additive, not breaking.
+- [x] **TOOLCFG-05**: Pydantic model uses `extra="forbid"` so typos in field names (e.g. `clarty` instead of `clarity`, or `srtip` instead of `skip`) produce clear errors at config load time, not silent test omissions.
+- [x] **TOOLCFG-06**: Tools with no config entry use safe defaults: `skip=False`, empty `call_arguments`, all available judges run. Test author can opt out per-tool without touching the registry by adding `skip: true`.
+- [x] **TOOLCFG-07**: Skipped tools surface in pytest output via `pytest.skip(reason=skip_reason)` so the run record (terminal + JUnit) shows what was skipped and why — even when the config file isn't viewable.
 
 ### ISOL — Per-session host-state isolation
 
@@ -97,13 +97,13 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 | MULTI-02 | Phase 07 | Complete |
 | MULTI-03 | Phase 07 | Complete |
 | MULTI-04 | Phase 07 | Complete |
-| TOOLCFG-01 | Phase 08 | Pending |
-| TOOLCFG-02 | Phase 08 | Pending |
-| TOOLCFG-03 | Phase 08 | Pending |
-| TOOLCFG-04 | Phase 08 | Pending |
-| TOOLCFG-05 | Phase 08 | Pending |
-| TOOLCFG-06 | Phase 08 | Pending |
-| TOOLCFG-07 | Phase 08 | Pending |
+| TOOLCFG-01 | Phase 08 | Complete |
+| TOOLCFG-02 | Phase 08 | Complete |
+| TOOLCFG-03 | Phase 08 | Complete |
+| TOOLCFG-04 | Phase 08 | Complete |
+| TOOLCFG-05 | Phase 08 | Complete |
+| TOOLCFG-06 | Phase 08 | Complete |
+| TOOLCFG-07 | Phase 08 | Complete |
 | OUTPUT-01 | Phase 09 | Pending |
 | OUTPUT-02 | Phase 09 | Pending |
 | OUTPUT-03 | Phase 09 | Pending |
