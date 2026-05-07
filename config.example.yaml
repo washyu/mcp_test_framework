@@ -14,8 +14,17 @@ mcp_server:
   timeout_seconds: 30
 
 target:
-  # Switched in Plan 05-05 (acceptance) -- list_registered_servers fails the disambiguation rubric; tracked for upstream homelab-mcp doc fix.
-  tool_name: list_keyring_credentials
+  # Phase 07 + Phase 08 default: leave tool_name unset so the suite parametrizes
+  # over ALL discovered tools and the per-tool `tools:` block (below) controls
+  # which actually run. With the safe-by-default skip entries in `tools:`, only
+  # `list_keyring_credentials` and `suggest_deployments` exercise the live test
+  # surface; everything else SKIPS with a readable reason in pytest output.
+  #
+  # To restrict to a single tool (CD-05 short-circuit -- skips collection-time
+  # MCP spawn and runs only the named tool's tests), uncomment one of:
+  #   tool_name: list_keyring_credentials
+  #   tool_name: suggest_deployments
+  tool_name: ""
 
 judge_timeout_seconds: 120
 
