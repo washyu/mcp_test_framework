@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import dotenv_values
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -46,6 +46,7 @@ from mcp_test_framework.models import (
     McpServerConfig,
     OllamaConfig,
     TargetConfig,
+    ToolConfig,
 )
 
 
@@ -157,7 +158,7 @@ class Config(BaseSettings):
         frozen=True,
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",
+        extra="forbid",
     )
 
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
@@ -167,6 +168,28 @@ class Config(BaseSettings):
     # JUDGE_TIMEOUT_SECONDS routes here without an explicit alias because
     # pydantic-settings uppercases top-level field names by default.
     judge_timeout_seconds: int = 120
+
+    # Phase 08 D-02 / TOOLCFG-02: top-level config schema version. Only `1` is
+    # accepted in v1.1; future schema changes either default to a higher version
+    # or branch on the loaded value. CD-01 chose an explicit field_validator
+    # over Field(ge=1, le=1) so the error message names the version explicitly.
+    version: int = 1
+
+    # Phase 08 D-01 / TOOLCFG-01: per-tool registry. Empty default = TOOLCFG-06
+    # (tools with no entry use ToolConfig() defaults). Annotation is `dict`,
+    # NOT `BaseModel`, so _BareNameNestedEnvSource (lines 91-146) skips it
+    # naturally -- D-19 honored automatically without code changes there.
+    tools: dict[str, ToolConfig] = Field(default_factory=dict)
+
+    @field_validator("version", mode="after")
+    @classmethod
+    def _validate_version(cls, v: int) -> int:
+        """Only `1` is accepted by this build (Phase 08 D-02 / CD-01)."""
+        if v != 1:
+            raise ValueError(
+                f"config version {v} not supported by this build, expected 1"
+            )
+        return v
 
     @classmethod
     def settings_customise_sources(
