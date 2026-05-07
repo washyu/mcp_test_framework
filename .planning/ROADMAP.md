@@ -59,7 +59,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 07-01-multi-tool-discovery-PLAN.md -- discovery hook + target_tool indirect parametrize + TargetConfig widening + module rename (MULTI-01..04)
+- [x] 07-01-multi-tool-discovery-PLAN.md -- discovery hook + target_tool indirect parametrize + TargetConfig widening + module rename (MULTI-01..04)
 
 ### Phase 08: Per-tool config registry
 **Goal**: A test author can declaratively control per-tool behavior (skip with reason, fixed `call_arguments`, judge subset selection) via a validated `tools.<tool_name>` config block, without touching framework code.

@@ -11,10 +11,10 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 ### MULTI — Multi-tool discovery and parameterized testing
 
-- [ ] **MULTI-01**: Framework discovers all tools from the connected MCP server at session startup (not hardcoded to one). The `target_tool` fixture pattern generalizes from "single tool" to "tool list".
-- [ ] **MULTI-02**: Tests parameterize over the discovered tool list at collection time using `pytest.mark.parametrize` (no codegen — declarative, always in sync with the server).
-- [ ] **MULTI-03**: Test IDs render as `<test_name>[<tool_name>]` (e.g. `test_schema_is_structurally_valid[list_keyring_credentials]`) so per-tool failures are immediately legible in pytest and JUnit output.
-- [ ] **MULTI-04**: Backwards-compat with v1.0's single-tool config: when `target.tool_name` is set explicitly, only that tool runs; when unset, all discovered tools run (modulo skip-list per TOOLCFG).
+- [x] **MULTI-01**: Framework discovers all tools from the connected MCP server at session startup (not hardcoded to one). The `target_tool` fixture pattern generalizes from "single tool" to "tool list".
+- [x] **MULTI-02**: Tests parameterize over the discovered tool list at collection time using `pytest.mark.parametrize` (no codegen — declarative, always in sync with the server).
+- [x] **MULTI-03**: Test IDs render as `<test_name>[<tool_name>]` (e.g. `test_schema_is_structurally_valid[list_keyring_credentials]`) so per-tool failures are immediately legible in pytest and JUnit output.
+- [x] **MULTI-04**: Backwards-compat with v1.0's single-tool config: when `target.tool_name` is set explicitly, only that tool runs; when unset, all discovered tools run (modulo skip-list per TOOLCFG).
 
 ### TOOLCFG — Per-tool config registry
 
@@ -93,10 +93,10 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 | ISOL-05 | Phase 06 | Complete |
 | ISOL-06 | Phase 06 | Pending |
 | ISOL-07 | Phase 06 | Complete |
-| MULTI-01 | Phase 07 | Pending |
-| MULTI-02 | Phase 07 | Pending |
-| MULTI-03 | Phase 07 | Pending |
-| MULTI-04 | Phase 07 | Pending |
+| MULTI-01 | Phase 07 | Complete |
+| MULTI-02 | Phase 07 | Complete |
+| MULTI-03 | Phase 07 | Complete |
+| MULTI-04 | Phase 07 | Complete |
 | TOOLCFG-01 | Phase 08 | Pending |
 | TOOLCFG-02 | Phase 08 | Pending |
 | TOOLCFG-03 | Phase 08 | Pending |

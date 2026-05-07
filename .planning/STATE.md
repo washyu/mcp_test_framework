@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
-status: planning
-stopped_at: Phase 07 context gathered
-last_updated: "2026-05-07T19:43:05.414Z"
-last_activity: 2026-05-07
+status: executing
+stopped_at: Phase 07 plan 01 complete
+last_updated: "2026-05-07T20:20:16Z"
+last_activity: 2026-05-07 -- Phase 07 plan 01 (multi-tool-discovery) complete
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 06 — per-session-host-state-isolation
+**Current focus:** Phase 07 — multi-tool-discovery-and-parameterized-testing
 
 ## Current Position
 
-Phase: 06 (per-session-host-state-isolation) — COMPLETE (Plans 1, 2, and 3 done)
-Plan: 3 of 3 (executed 2026-05-07)
-Status: Phase 06 closed; ready for Phase 07 planning (multi-tool discovery & parameterized testing)
-Last activity: 2026-05-07
+Phase: 07 (multi-tool-discovery-and-parameterized-testing) — PLAN 01 COMPLETE
+Plan: 1 of 1 (complete)
+Status: Phase 07 single-plan track complete -- ready for verification + summary
+Last activity: 2026-05-07 -- Phase 07 plan 01 (multi-tool-discovery) complete
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Last activity: 2026-05-07
 | Phase 06 P01 | 7min | 3 tasks | 15 files |
 | Phase 06 P02 | 4min | 3 tasks | 3 files |
 | Phase 06 P03 | 5min | 2 tasks | 9 files |
+| Phase 07 P01 | 6min | 3 tasks | 5 files (1 renamed) |
 
 ## Accumulated Context
 
@@ -58,6 +59,9 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 06-01: SHIP ISOL-04 (PyPI README documents OS keyring as sole credential store; Plan 06-02 must add PYTHON_KEYRING_BACKEND=keyring.backends.null.Null to _build_isolated_env)
 - [Phase ?]: Phase 06-02: ISOL-04 SHIPped — PYTHON_KEYRING_BACKEND=keyring.backends.null.Null injected; CLI __aenter__ path also isolated (D-16/D-17), Phase 04.1 anyio invariant preserved
 - [Phase ?]: Phase 06-03: ISOL-03/ISOL-06 verified — empirical PASS on Windows 11 (3/3 sha256 hashes byte-identical, 0 tempdir orphans); ISOL-06 POSIX-arm verification deferred to a future non-Windows dev run
+- [Phase 07-01]: TargetConfig.tool_name widened to Optional[str] (default None = discover-all); empty-string-to-None field_validator added; _preflight membership check made conditional on tool_name is not None
+- [Phase 07-01]: pytest_generate_tests + indirect parametrize hook added in tests/conftest.py; reuses McpTestClient.__aenter__ for the third spawn site (Phase 06 D-16 isolation inheritance); module-level _DISCOVERED_TOOL_NAMES cache (CD-01); CD-05 short-circuit when TARGET_TOOL_NAME is set
+- [Phase 07-01]: tests/test_homelab_list_registered_servers.py renamed -> tests/test_mcp_tool_contract.py via git mv (88% similarity); TEST-08/09/10 take target_tool fixture and use target_tool.name
 
 ### Blockers/Concerns
 
@@ -83,6 +87,6 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 
 ## Session Continuity
 
-Last session: 2026-05-07T19:43:05.397Z
-Stopped at: Phase 07 context gathered
-Resume file: .planning/phases/07-multi-tool-discovery-and-parameterized-testing/07-CONTEXT.md
+Last session: 2026-05-07T20:20:16Z
+Stopped at: Phase 07 plan 01 complete -- SUMMARY written
+Resume file: .planning/phases/07-multi-tool-discovery-and-parameterized-testing/07-01-SUMMARY.md
