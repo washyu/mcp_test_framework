@@ -41,6 +41,7 @@ from jsonschema.validators import Draft202012Validator
 
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
+from mcp_test_framework.models import ToolConfig
 from mcp_test_framework.schema_validator import validate_tool_schema
 
 # UNMARKED per D-markers-1; preflight is the gate (D-preflight-1..4).
@@ -53,7 +54,7 @@ pytestmark = [pytest.mark.asyncio(loop_scope="session")]
 # ===========================================================================
 
 
-async def test_target_tool_exists(target_tool) -> None:
+async def test_target_tool_exists(target_tool, tool_config: ToolConfig) -> None:
     """TEST-01: configured TARGET_TOOL_NAME present in server tool list.
 
     Defense in depth: _preflight + the target_tool fixture (FIX-03) already
@@ -61,25 +62,35 @@ async def test_target_tool_exists(target_tool) -> None:
     means the fixture resolved. The explicit assertion gives a diagnostic
     name to the test in pytest output.
     """
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     assert target_tool.name, f"target_tool.name is empty: {target_tool!r}"
 
 
-async def test_schema_passes_structural_checks(target_tool) -> None:
+async def test_schema_passes_structural_checks(target_tool, tool_config: ToolConfig) -> None:
     """TEST-02: validate_tool_schema returns no errors for the target tool."""
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     issues = validate_tool_schema(target_tool)
     assert issues == [], f"schema issues found: {issues!r}"
 
 
-async def test_description_min_length(target_tool) -> None:
+async def test_description_min_length(target_tool, tool_config: ToolConfig) -> None:
     """TEST-03: description is non-empty and >= 20 chars."""
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     desc = target_tool.description or ""
     assert len(desc) >= 20, (
         f"description too short ({len(desc)} chars): {desc!r}"
     )
 
 
-async def test_every_parameter_has_description_and_type(target_tool) -> None:
+async def test_every_parameter_has_description_and_type(
+    target_tool, tool_config: ToolConfig
+) -> None:
     """TEST-04: every input parameter has a description AND a type/oneOf/anyOf."""
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     schema = target_tool.inputSchema or {}
     properties = schema.get("properties") or {}
     for prop_name, prop_schema in properties.items():
@@ -100,11 +111,20 @@ async def test_description_clarity(
     judge: Judge,
     target_tool,
     rubric_clarity,
+    tool_config: ToolConfig,
 ) -> None:
     """TEST-05: clarity score >= 4 against tool description.
 
     Subject = description; context carries tool_name + inputSchema (D-rubrics-3).
+    Per Phase 08 D-08/D-09: skip when `tool_config.skip` is set or when
+    `clarity` is not in the configured `judges` subset.
     """
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
+    if tool_config.judges is not None and "clarity" not in tool_config.judges:
+        pytest.skip(
+            reason=f"judge 'clarity' not selected for tool {target_tool.name!r}"
+        )
     result = await judge.judge(
         str(rubric_clarity),
         subject=target_tool.description,
@@ -123,11 +143,18 @@ async def test_description_disambiguation(
     judge: Judge,
     target_tool,
     rubric_disambiguation,
+    tool_config: ToolConfig,
 ) -> None:
     """TEST-06: disambiguation score >= 4 against tool description.
 
     Same subject/context shape as TEST-05 (D-rubrics-3).
     """
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
+    if tool_config.judges is not None and "disambiguation" not in tool_config.judges:
+        pytest.skip(
+            reason=f"judge 'disambiguation' not selected for tool {target_tool.name!r}"
+        )
     result = await judge.judge(
         str(rubric_disambiguation),
         subject=target_tool.description,
@@ -146,8 +173,19 @@ async def test_parameters_self_explanatory(
     judge: Judge,
     target_tool,
     rubric_parameters,
+    tool_config: ToolConfig,
 ) -> None:
-    """TEST-07: parameters score >= 4. Subject = inputSchema JSON, NOT description (D-rubrics-3)."""
+    """TEST-07: parameters score >= 4. Subject = inputSchema JSON, NOT description (D-rubrics-3).
+
+    Rubric ID per D-10 / TOOLCFG-04 is `parameters` (the user-facing short
+    form), distinct from the prompt `dimension` `parameters_self_explanatory`.
+    """
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
+    if tool_config.judges is not None and "parameters" not in tool_config.judges:
+        pytest.skip(
+            reason=f"judge 'parameters' not selected for tool {target_tool.name!r}"
+        )
     result = await judge.judge(
         str(rubric_parameters),
         subject=json.dumps(target_tool.inputSchema, indent=2),
@@ -170,23 +208,29 @@ async def test_parameters_self_explanatory(
 async def test_empty_args_call_returns_non_error(
     mcp_client: McpTestClient,
     target_tool,
+    tool_config: ToolConfig,
 ) -> None:
-    """TEST-08: call_tool with {} returns isError=False.
+    """TEST-08: call_tool with configured args returns isError=False.
 
-    Per Phase 07 D-06: tools whose inputSchema.required is non-empty produce
-    isError=True and fail this test visibly. Phase 08 (TOOLCFG-07) ships the
-    user-facing skip mechanism; Phase 07 ships no auto-skip.
+    Per Phase 08 D-11: TEST-08/09/10 use tool_config.call_arguments (default
+    {}). With a tool whose inputSchema.required is non-empty, providing args
+    via the `tools.<name>.call_arguments` registry block unblocks all three.
     """
-    result = await mcp_client.call_tool(target_tool.name, {})
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
+    result = await mcp_client.call_tool(target_tool.name, tool_config.call_arguments)
     assert not result.isError, f"call_tool returned isError=True: {result!r}"
 
 
 async def test_result_has_content_or_structured(
     mcp_client: McpTestClient,
     target_tool,
+    tool_config: ToolConfig,
 ) -> None:
     """TEST-09: at least one content block OR non-null structuredContent."""
-    result = await mcp_client.call_tool(target_tool.name, {})
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
+    result = await mcp_client.call_tool(target_tool.name, tool_config.call_arguments)
     assert result.content or result.structuredContent is not None, (
         f"both content and structuredContent empty: {result!r}"
     )
@@ -195,13 +239,16 @@ async def test_result_has_content_or_structured(
 async def test_text_content_parses_as_json(
     mcp_client: McpTestClient,
     target_tool,
+    tool_config: ToolConfig,
 ) -> None:
     """TEST-10: >=1 TextContent block parses as JSON; if structuredContent
     AND target_tool.outputSchema both present, validate via Draft202012Validator
     (D-test10-1, D-test10-2). Black-box safe: NO key assertions on
     homelab-mcp internals.
     """
-    result = await mcp_client.call_tool(target_tool.name, {})
+    if tool_config.skip:
+        pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
+    result = await mcp_client.call_tool(target_tool.name, tool_config.call_arguments)
 
     # Step 1 -- attempt json.loads on each TextContent block; >=1 must parse.
     parsed_any = False
