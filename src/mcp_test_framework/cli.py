@@ -234,7 +234,7 @@ def _format_tools_json(tools: list[Tool]) -> str:
             "name": t.name,
             "description": t.description,
             "inputSchema": t.inputSchema,
-            "outputSchema": getattr(t, "outputSchema", None),
+            "outputSchema": t.outputSchema,
         }
         for t in sorted_tools
     ]
