@@ -89,7 +89,7 @@ def run(
         "--config",
         help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
     ),
-    pytest_args: list[str] = typer.Argument(
+    pytest_args: list[str] | None = typer.Argument(
         None,
         help="Args after `--` are forwarded to pytest.main([\"tests\", *args]).",
     ),
