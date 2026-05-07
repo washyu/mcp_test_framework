@@ -225,8 +225,10 @@ def _format_tools_json(tools: list[Tool]) -> str:
     """Full MCP tool record per tool: {name, description, inputSchema, outputSchema}.
 
     Sorted alphabetically by name (D-list-4). Trailing newline so the
-    output composes with shell pipelines. `default=str` is a defensive
-    fallback for any non-serializable annotation values inside schemas.
+    output composes with shell pipelines. No `default=` fallback: MCP
+    tool schemas are JSON Schema documents and MUST be JSON-serializable
+    by contract. If `json.dumps` raises `TypeError` here, that is the
+    correct signal that the SDK or schema is malformed.
     """
     sorted_tools = sorted(tools, key=lambda t: t.name)
     payload = [
@@ -238,7 +240,7 @@ def _format_tools_json(tools: list[Tool]) -> str:
         }
         for t in sorted_tools
     ]
-    return json.dumps(payload, indent=2, default=str) + "\n"
+    return json.dumps(payload, indent=2) + "\n"
 
 
 if __name__ == "__main__":  # pragma: no cover
