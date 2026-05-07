@@ -29,12 +29,12 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 ### ISOL — Per-session host-state isolation
 
 - [x] **ISOL-01**: First-task investigation verifies whether `homelab-mcp` tools (`list_keyring_credentials`, `list_registered_servers`) touch the OS keyring. Result determines whether ISOL-04 ships in v1.1 or is deferred. (Open question #2 in `260506-qxs/FINDINGS.md`.)
-- [ ] **ISOL-02**: Framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session `tempfile.TemporaryDirectory` via `StdioServerParameters(env=...)` at the spawn boundary in `mcp_client.py`.
+- [x] **ISOL-02**: Framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session `tempfile.TemporaryDirectory` via `StdioServerParameters(env=...)` at the spawn boundary in `mcp_client.py`.
 - [ ] **ISOL-03**: Test runs do NOT mutate the user's `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, or `~/.homelab_mcp/migration_state.json`. Verified by mtime/file-diff assertion in a dedicated test.
-- [ ] **ISOL-04**: If ISOL-01 confirms keyring-touching, `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` is set on the spawned subprocess. Otherwise documented as "not needed for v1.1's tool surface; revisit if v1.x adds tools that touch credentials."
-- [ ] **ISOL-05**: Per-session tempdir is created in a session-scoped fixture that owns the lifecycle; cleanup is automatic via context-manager exit. Orphaned tempdirs after a run = test failure.
+- [x] **ISOL-04**: If ISOL-01 confirms keyring-touching, `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` is set on the spawned subprocess. Otherwise documented as "not needed for v1.1's tool surface; revisit if v1.x adds tools that touch credentials."
+- [x] **ISOL-05**: Per-session tempdir is created in a session-scoped fixture that owns the lifecycle; cleanup is automatic via context-manager exit. Orphaned tempdirs after a run = test failure.
 - [ ] **ISOL-06**: Env override works on both Windows (`USERPROFILE`) and POSIX (`HOME`). CI-style smoke check on at least one of each — confirms `os.path.expanduser('~')` inside the subprocess resolves to the tempdir on both platforms.
-- [ ] **ISOL-07**: Passthrough allowlist for inherited env vars: `PATH`, `SYSTEMROOT` (Windows), `LANG`, `USERNAME`, plus `MCP_*`. Document the allowlist explicitly so future contributors don't accidentally widen it.
+- [x] **ISOL-07**: Passthrough allowlist for inherited env vars: `PATH`, `SYSTEMROOT` (Windows), `LANG`, `USERNAME`, plus `MCP_*`. Document the allowlist explicitly so future contributors don't accidentally widen it.
 
 ### OUTPUT — Output formats and reporting
 
@@ -87,12 +87,12 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ISOL-01 | Phase 06 | Complete |
-| ISOL-02 | Phase 06 | Pending |
+| ISOL-02 | Phase 06 | Complete |
 | ISOL-03 | Phase 06 | Pending |
-| ISOL-04 | Phase 06 | Pending |
-| ISOL-05 | Phase 06 | Pending |
+| ISOL-04 | Phase 06 | Complete |
+| ISOL-05 | Phase 06 | Complete |
 | ISOL-06 | Phase 06 | Pending |
-| ISOL-07 | Phase 06 | Pending |
+| ISOL-07 | Phase 06 | Complete |
 | MULTI-01 | Phase 07 | Pending |
 | MULTI-02 | Phase 07 | Pending |
 | MULTI-03 | Phase 07 | Pending |

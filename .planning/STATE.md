@@ -4,14 +4,14 @@ milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
 status: executing
 stopped_at: Phase 06 context gathered
-last_updated: "2026-05-07T15:35:55.476Z"
+last_updated: "2026-05-07T15:44:07.145Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 ## Current Position
 
 Phase: 06 (per-session-host-state-isolation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -39,6 +39,7 @@ Last activity: 2026-05-07
 | Requirements scoped | 25 | All v1.1 reqs mapped 1:1 to phases (no orphans) |
 | Requirements complete | 0 | |
 | Phase 06 P01 | 7min | 3 tasks | 15 files |
+| Phase 06 P02 | 4min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -54,6 +55,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **Forward-compat reservations honored.** TOOLCFG-03 reserves `setup:` / `depends_on:` for SEED-004 (v1.5+). TOOLCFG-04 uses string IDs for judges — keeps SEED-003 (v1.3 dynamic rubrics) additive, not breaking.
 - **No v1.2/v1.3/v1.4/v1.5 work in v1.1.** xdist (SEED-002), OpenAI-compat backend (SEED-005), dynamic rubrics (SEED-003), agentic judge (SEED-001), stateful testing (SEED-004) are all deferred per Long-term Vision.
 - [Phase ?]: Phase 06-01: SHIP ISOL-04 (PyPI README documents OS keyring as sole credential store; Plan 06-02 must add PYTHON_KEYRING_BACKEND=keyring.backends.null.Null to _build_isolated_env)
+- [Phase ?]: Phase 06-02: ISOL-04 SHIPped — PYTHON_KEYRING_BACKEND=keyring.backends.null.Null injected; CLI __aenter__ path also isolated (D-16/D-17), Phase 04.1 anyio invariant preserved
 
 ### Blockers/Concerns
 
@@ -79,6 +81,6 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 
 ## Session Continuity
 
-Last session: 2026-05-07T15:33:27.330Z
+Last session: 2026-05-07T15:44:00.367Z
 Stopped at: Phase 06 context gathered
 Resume file: None
