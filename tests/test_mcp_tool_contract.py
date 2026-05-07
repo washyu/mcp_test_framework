@@ -1,11 +1,17 @@
-"""Phase 4 integration tests against live homelab-mcp / list_registered_servers.
+"""Phase 4 + Phase 7 integration tests against the live MCP server.
+
+Tests are parametrized over the discovered tool list (Phase 07 MULTI-01..04)
+via tests/conftest.py's pytest_generate_tests hook. Test IDs render as
+test_<name>[<tool_name>] uniformly. With TARGET_TOOL_NAME set, the run is
+restricted to that tool (single-item parametrize list).
 
 UNMARKED tests (D-markers-1) -- the framework requires both MCP and Ollama
 to function; they aren't optional. The session-scoped autouse `_preflight`
 fixture in fixtures.py is the gate that fails fast with
 `pytest.exit(returncode=2)` if Ollama is unreachable, the configured model
-is missing from /api/tags, the MCP command is not on PATH, or the target
-tool is absent from the server's tool list.
+is missing from /api/tags, the MCP command is not on PATH, or (when an
+explicit target tool name is configured) the target tool is absent from
+the server's tool list.
 
 10 tests across 3 categories:
   Category 1 (deterministic schema):
@@ -33,7 +39,6 @@ import json
 import pytest
 from jsonschema.validators import Draft202012Validator
 
-from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
 from mcp_test_framework.schema_validator import validate_tool_schema
@@ -164,19 +169,24 @@ async def test_parameters_self_explanatory(
 
 async def test_empty_args_call_returns_non_error(
     mcp_client: McpTestClient,
-    config: Config,
+    target_tool,
 ) -> None:
-    """TEST-08: call_tool with {} returns isError=False."""
-    result = await mcp_client.call_tool(config.target.tool_name, {})
+    """TEST-08: call_tool with {} returns isError=False.
+
+    Per Phase 07 D-06: tools whose inputSchema.required is non-empty produce
+    isError=True and fail this test visibly. Phase 08 (TOOLCFG-07) ships the
+    user-facing skip mechanism; Phase 07 ships no auto-skip.
+    """
+    result = await mcp_client.call_tool(target_tool.name, {})
     assert not result.isError, f"call_tool returned isError=True: {result!r}"
 
 
 async def test_result_has_content_or_structured(
     mcp_client: McpTestClient,
-    config: Config,
+    target_tool,
 ) -> None:
     """TEST-09: at least one content block OR non-null structuredContent."""
-    result = await mcp_client.call_tool(config.target.tool_name, {})
+    result = await mcp_client.call_tool(target_tool.name, {})
     assert result.content or result.structuredContent is not None, (
         f"both content and structuredContent empty: {result!r}"
     )
@@ -185,14 +195,13 @@ async def test_result_has_content_or_structured(
 async def test_text_content_parses_as_json(
     mcp_client: McpTestClient,
     target_tool,
-    config: Config,
 ) -> None:
     """TEST-10: >=1 TextContent block parses as JSON; if structuredContent
     AND target_tool.outputSchema both present, validate via Draft202012Validator
     (D-test10-1, D-test10-2). Black-box safe: NO key assertions on
     homelab-mcp internals.
     """
-    result = await mcp_client.call_tool(config.target.tool_name, {})
+    result = await mcp_client.call_tool(target_tool.name, {})
 
     # Step 1 -- attempt json.loads on each TextContent block; >=1 must parse.
     parsed_any = False

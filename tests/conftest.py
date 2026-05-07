@@ -11,8 +11,8 @@ from __future__ import annotations
 
 pytest_plugins = ["mcp_test_framework.fixtures"]
 
-import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
 import asyncio  # noqa: E402
+import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
 from typing import Optional  # noqa: E402
 
 import pytest  # noqa: E402
