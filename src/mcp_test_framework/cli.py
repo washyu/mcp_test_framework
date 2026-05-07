@@ -68,12 +68,24 @@ def _load_config(path: Path | None) -> Config:
     settings_customise_sources picks up the YAML overlay. Pydantic
     ValidationError propagates uncaught -- Pydantic's own message is
     the diagnostic (CONTEXT.md Discretion bullet 2).
+
+    Note: on success, MCPTF_CONFIG_FILE is intentionally left set in
+    os.environ so the `run` path's pytest.main() plugin chain (and
+    fixtures) can observe the same overlay. On Config() failure the
+    var is popped to avoid leaking a bad path into subsequent calls
+    in the same process (e.g., test harnesses that invoke the CLI
+    multiple times).
     """
     if path is not None:
         if not path.is_file():
             typer.echo(f"error: --config path not found: {path}", err=True)
             raise typer.Exit(code=2)
         os.environ["MCPTF_CONFIG_FILE"] = str(path)
+        try:
+            return Config()
+        except Exception:
+            os.environ.pop("MCPTF_CONFIG_FILE", None)
+            raise
     return Config()
 
 
