@@ -1,0 +1,85 @@
+# Requirements — mcp_test_framework v1.1
+
+**Milestone:** v1.1 — Multi-Tool + Isolation + JUnit
+**Goal:** Generalize the framework from one-tool-per-run to N-tools-per-run, with per-session host-state isolation and JUnit XML output for CI ingestion.
+
+REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQUIREMENTS.md`). New v1.1 categories prefixed `MULTI-`, `TOOLCFG-`, `ISOL-`, `OUTPUT-`; v1.0 categories continue (`DOC-` for v1.1 docs).
+
+---
+
+## v1.1 Requirements
+
+### MULTI — Multi-tool discovery and parameterized testing
+
+- [ ] **MULTI-01**: Framework discovers all tools from the connected MCP server at session startup (not hardcoded to one). The `target_tool` fixture pattern generalizes from "single tool" to "tool list".
+- [ ] **MULTI-02**: Tests parameterize over the discovered tool list at collection time using `pytest.mark.parametrize` (no codegen — declarative, always in sync with the server).
+- [ ] **MULTI-03**: Test IDs render as `<test_name>[<tool_name>]` (e.g. `test_schema_is_structurally_valid[list_keyring_credentials]`) so per-tool failures are immediately legible in pytest and JUnit output.
+- [ ] **MULTI-04**: Backwards-compat with v1.0's single-tool config: when `target.tool_name` is set explicitly, only that tool runs; when unset, all discovered tools run (modulo skip-list per TOOLCFG).
+
+### TOOLCFG — Per-tool config registry
+
+- [ ] **TOOLCFG-01**: Config supports a `tools.<tool_name>` block with at minimum these fields: `skip: bool`, `skip_reason: str`, `call_arguments: dict`, `judges: list[str]`. Pydantic-modeled.
+- [ ] **TOOLCFG-02**: Config schema includes a top-level `version: 1` field; forward-migration handle for future v2 schema changes.
+- [ ] **TOOLCFG-03**: Config schema reserves `setup:` and `depends_on:` as Optional/unused fields per SEED-004 forward-compat — typing-only, zero runtime behavior. v1.5+ stateful-testing milestone activates them additively.
+- [ ] **TOOLCFG-04**: `judges: [...]` field uses string IDs that resolve against the existing rubric constants (`clarity`, `disambiguation`, `parameters`) — per SEED-003, this keeps dynamic-rubric promotion (v1.3) additive, not breaking.
+- [ ] **TOOLCFG-05**: Pydantic model uses `extra="forbid"` so typos in field names (e.g. `clarty` instead of `clarity`, or `srtip` instead of `skip`) produce clear errors at config load time, not silent test omissions.
+- [ ] **TOOLCFG-06**: Tools with no config entry use safe defaults: `skip=False`, empty `call_arguments`, all available judges run. Test author can opt out per-tool without touching the registry by adding `skip: true`.
+- [ ] **TOOLCFG-07**: Skipped tools surface in pytest output via `pytest.skip(reason=skip_reason)` so the run record (terminal + JUnit) shows what was skipped and why — even when the config file isn't viewable.
+
+### ISOL — Per-session host-state isolation
+
+- [ ] **ISOL-01**: First-task investigation verifies whether `homelab-mcp` tools (`list_keyring_credentials`, `list_registered_servers`) touch the OS keyring. Result determines whether ISOL-04 ships in v1.1 or is deferred. (Open question #2 in `260506-qxs/FINDINGS.md`.)
+- [ ] **ISOL-02**: Framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session `tempfile.TemporaryDirectory` via `StdioServerParameters(env=...)` at the spawn boundary in `mcp_client.py`.
+- [ ] **ISOL-03**: Test runs do NOT mutate the user's `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, or `~/.homelab_mcp/migration_state.json`. Verified by mtime/file-diff assertion in a dedicated test.
+- [ ] **ISOL-04**: If ISOL-01 confirms keyring-touching, `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` is set on the spawned subprocess. Otherwise documented as "not needed for v1.1's tool surface; revisit if v1.x adds tools that touch credentials."
+- [ ] **ISOL-05**: Per-session tempdir is created in a session-scoped fixture that owns the lifecycle; cleanup is automatic via context-manager exit. Orphaned tempdirs after a run = test failure.
+- [ ] **ISOL-06**: Env override works on both Windows (`USERPROFILE`) and POSIX (`HOME`). CI-style smoke check on at least one of each — confirms `os.path.expanduser('~')` inside the subprocess resolves to the tempdir on both platforms.
+- [ ] **ISOL-07**: Passthrough allowlist for inherited env vars: `PATH`, `SYSTEMROOT` (Windows), `LANG`, `USERNAME`, plus `MCP_*`. Document the allowlist explicitly so future contributors don't accidentally widen it.
+
+### OUTPUT — Output formats and reporting
+
+- [ ] **OUTPUT-01**: CLI accepts `--junit-xml=<path>` argument; passthrough to pytest; produces standard JUnit XML at the given path.
+- [ ] **OUTPUT-02**: JUnit output records per-tool granularity (test names include `[<tool_name>]`) so CI dashboards can filter and trend per-tool failure rates over time.
+- [ ] **OUTPUT-03**: Per-run summary (terminal output) includes a concise per-tool result section: `<tool_name>: PASS|FAIL|SKIP — <reason if skip>`. Helps CI engineers triage failures without reading the full pytest output.
+
+### DOC — Documentation updates for v1.1
+
+- [ ] **DOC-04**: README documents how to write a per-tool config block (skip, call_arguments, judges) with examples for the homelab-mcp tools currently exercised.
+- [ ] **DOC-05**: README documents the isolation guarantee ("test runs don't mutate your real homelab-mcp state") and how to verify (the ISOL-03 test).
+- [ ] **DOC-06**: README documents the JUnit XML output flag and a recommended GitHub Actions / generic CI snippet using it.
+- [ ] **DOC-07**: `docs/EXTENDING.md` updated to describe how to add a new MCP tool target via the per-tool config (no code changes required for tools that fit the existing rubric pattern).
+
+---
+
+## Future Requirements (deferred — see seeds and Long-term Vision in PROJECT.md)
+
+| REQ family | Target milestone | Seed |
+|------------|------------------|------|
+| Process-parallel test execution (xdist) | v1.2 | SEED-002 |
+| OpenAI-compat judge backend (`base_url` config) | v1.2 | SEED-005 |
+| Warm-up stage (amortize cold-start) | v1.2 | (no seed; co-shipped with SEED-002/005) |
+| Dynamic rubric system (rubrics-as-data) | v1.3 | SEED-003 |
+| Agent-realistic-mistake input fuzz | v1.3 | SEED-003 |
+| Agentic tool-use judge | v1.4+ | SEED-001 |
+| Stateful tool testing with setup/teardown | v1.5+ | SEED-004 |
+
+---
+
+## Out of Scope (explicit exclusions, with reasoning)
+
+| Excluded | Why |
+|----------|-----|
+| HTTP/SSE MCP transports | stdio remains sufficient for v1.1's value prop; transport expansion is its own milestone |
+| Multi-MCP-server orchestration | One server at a time stays the contract; multi-server is a fork-or-future-milestone decision |
+| Random adversarial fuzzing | Anti-vision per PROJECT.md (different product). Agent-realistic-mistake fuzz IS in scope but lives in v1.3 (SEED-003) |
+| Security testing (auth boundaries, prompt-injection resistance) | Anti-vision per PROJECT.md — black-box info envelope can't determine sensitivity of values |
+| Container/VM-based isolation | Recon spike (`260506-qxs/FINDINGS.md` §3) confirmed env-var override is sufficient; container is overkill for v1.1's surface |
+| Generic JSON-RPC tester (OpenAPI, gRPC, etc.) | MCP-specific by design — fork, not feature |
+| Production monitoring | Different lifecycle (shift-left vs shift-right) |
+| Web UI / dashboard | CLI-only; CI dashboard ingestion via JUnit is the integration point |
+
+---
+
+## Traceability
+
+(Filled by `gsd-roadmapper` during /gsd-new-milestone roadmap step. Maps each requirement to its implementing phase.)
