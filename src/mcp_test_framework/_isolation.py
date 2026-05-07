@@ -27,8 +27,11 @@ credential store. ``PYTHON_KEYRING_BACKEND=keyring.backends.null.Null`` short-
 circuits the Python ``keyring`` library's backend chain so any keyring access
 becomes a no-op. NOTE (recon §3 caveat / Q1): this only neutralises the
 ``keyring`` Python library — direct Win32 ``CredWrite`` / libsecret calls via
-``ctypes`` would bypass it. ISOL-03 in Plan 06-03 covers the residual surface
-with a ``cmdkey /list`` snapshot.
+``ctypes`` would bypass it. ISOL-03 in Plan 06-03 covers ONLY the
+``~/.homelab_mcp/`` filesystem state (sha256 of three registry files per D-08);
+it does NOT snapshot the keyring axis. The cmdkey before/after diff lives in
+06-keyring-recon.md §2 as a one-time recon (D-03) — it is NOT a permanent test
+and there is no continuous keyring-axis regression guard in the suite.
 
 DO NOT widen ``_PASSTHROUGH_ALLOWLIST`` without updating ``EXTENDING.md``
 (DOC-07 in Phase 10). Each new pass-through is a hole in the isolation guarantee
