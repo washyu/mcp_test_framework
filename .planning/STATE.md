@@ -72,6 +72,7 @@ None at roadmap stage. Open question Q2 from `260506-qxs/FINDINGS.md` (does `lis
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260506-qxs | Diagnostic spike — homelab-mcp host-state surface (recon for v1.1 isolation) | 2026-05-07 | 23cc6e1 | [260506-qxs-diagnostic-spike-identify-what-user-visi](./quick/260506-qxs-diagnostic-spike-identify-what-user-visi/) |
+| 260507-j6i | Enrich `MCP server command not on PATH` error with MCPTF_CONFIG_FILE / config.example.yaml hint | 2026-05-07 | bfc1e65 | [260507-j6i-enrich-mcp-server-not-on-path-error-with](./quick/260507-j6i-enrich-mcp-server-not-on-path-error-with/) |
 
 ## Deferred Items
 
