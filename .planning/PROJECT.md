@@ -17,6 +17,20 @@ A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema �
 - Live green: `uv run mcp-test-framework run` → `67 passed, exit 0` against live `homelab-mcp` (via `uvx`) + Ollama `qwen3.6:latest` at `127.0.0.1:11434`
 - Tested target: `homelab-mcp` / `list_keyring_credentials` (config-only switch from the original `list_registered_servers`, which surfaced a real description-quality gap the framework correctly caught)
 
+## Current Milestone: v1.1 Multi-Tool + Isolation + JUnit
+
+**Goal:** Generalize the framework from one-tool-per-run to N-tools-per-run, with per-session host-state isolation (so test runs no longer clobber the user's real `homelab-mcp` state) and JUnit XML output for CI ingestion.
+
+**Target features:**
+- Multi-tool discovery + parameterized testing (`parametrize` over the discovered tool list at collection time — no codegen)
+- Per-tool config registry: skip-list with reasons, `call_arguments`, judge selection — schema reserves `setup:` / `depends_on:` for SEED-004 (forward-compat)
+- Per-session host-state isolation (HOME/USERPROFILE override + per-session tempdir; keyring-isolation investigation as first task)
+- JUnit XML output for CI dashboards
+- Pytest-native skip reporting (each skipped tool surfaces with reason string)
+- Validated config schema (`extra="forbid"` + `version: 1` field; clear errors on typos)
+
+**Anti-scope (explicitly deferred):** xdist parallelism (→ v1.2), OpenAI-compat backend (→ v1.2), warm-up stage (→ v1.2), dynamic rubrics (→ v1.3), agent-realism fuzz (→ v1.3), agentic judge (→ v1.4+), stateful tool testing (→ v1.5+).
+
 ## Long-term Vision
 
 *Established 2026-05-07, post-v1.0 milestone, via `/gsd-explore` session.*
@@ -94,7 +108,7 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 
 ### Active
 
-(None — next milestone requirements will be defined via `/gsd-new-milestone`.)
+(Defining for v1.1 — requirements being scoped via `/gsd-new-milestone v1.1`.)
 
 ### Out of Scope
 
