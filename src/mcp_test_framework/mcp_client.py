@@ -34,12 +34,16 @@ import asyncio
 import io
 import logging
 import shutil
+import tempfile
 from contextlib import AsyncExitStack
+from pathlib import Path
 from typing import Any
 
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult, Tool
+
+from mcp_test_framework._isolation import _build_isolated_env
 
 _log = logging.getLogger("mcp_test_framework.mcp_client.stderr")
 
@@ -140,9 +144,25 @@ class McpTestClient:
             raise FileNotFoundError(
                 f"MCP server command not on PATH: {self._command!r}"
             )
-        params = StdioServerParameters(command=self._command, args=self._args)
         stack = AsyncExitStack()
         try:
+            # Per-instance short-lived tempdir for the CLI/preflight spawn path
+            # (Phase 06 D-16; D-17 -- enables unconditional README isolation
+            # claim in Phase 10 DOC-05). Distinct prefix from the session
+            # fixture to differentiate orphans in `dir %TEMP%`. Registered
+            # with the stack BEFORE stdio_client so reverse-order unwind
+            # tears down the subprocess first, then deletes the tempdir --
+            # correct on Windows (closed file handles before rmdir) and POSIX.
+            isolated_home = Path(
+                stack.enter_context(
+                    tempfile.TemporaryDirectory(prefix="mcp-test-fw-cli-")
+                )
+            )
+            params = StdioServerParameters(
+                command=self._command,
+                args=self._args,
+                env=_build_isolated_env(isolated_home),  # ISOL-02 / D-16 / D-17
+            )
             read, write = await stack.enter_async_context(
                 stdio_client(params)
             )
