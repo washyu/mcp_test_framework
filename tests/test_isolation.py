@@ -39,7 +39,6 @@ from pathlib import Path
 
 import pytest
 
-from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
 
 # UNMARKED per D-markers-1; preflight is the gate. loop_scope="session"
@@ -91,7 +90,6 @@ def _sha256_of(p: Path) -> str | None:
 async def test_real_state_unchanged(
     _isolated_home: Path,
     mcp_client: McpTestClient,
-    config: Config,
 ) -> None:
     """ISOL-03: real ~/.homelab_mcp/ files unchanged after the run.
 
