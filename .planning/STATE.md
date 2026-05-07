@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
 status: planning
-last_updated: "2026-05-07T07:15:00.000Z"
-last_activity: 2026-05-07
+stopped_at: Phase 06 context gathered
+last_updated: "2026-05-07T07:30:12.898Z"
+last_activity: "2026-05-07 — v1.1 roadmap created (5 phases: 06–10)"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -45,6 +45,7 @@ Last activity: 2026-05-07 — v1.1 roadmap created (5 phases: 06–10)
 Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 close).
 
 **v1.1 roadmapping decisions (2026-05-07):**
+
 - **Phase 06 first.** Isolation is a current usability bug AND a prerequisite for safely scaling the multi-tool surface in Phase 07. Without isolation, more spawns = more bleed-through.
 - **ISOL-01 (keyring investigation) is the gating first task** of Phase 06. Its outcome determines whether ISOL-04 (`PYTHON_KEYRING_BACKEND=null`) ships in v1.1 or is deferred with documented triggers.
 - **5 phases under "coarse" granularity.** Justified because each phase is genuinely separable (isolation precedes multi-tool; config registry is its own concern; JUnit is reporting; docs close out across all four). Merging would couple unrelated work; splitting would fragment.
@@ -75,6 +76,6 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 
 ## Session Continuity
 
-Last session: 2026-05-07
-Stopped at: v1.1 roadmap created (5 phases, 25 requirements, 100% coverage)
-Resume file: None — start Phase 06 with `/gsd-plan-phase 6`. Phase 06's first task is the ISOL-01 keyring-touch investigation; it gates whether ISOL-04 ships or is deferred.
+Last session: 2026-05-07T07:30:12.891Z
+Stopped at: Phase 06 context gathered
+Resume file: .planning/phases/06-per-session-host-state-isolation/06-CONTEXT.md
