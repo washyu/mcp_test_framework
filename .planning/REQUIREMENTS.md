@@ -28,7 +28,7 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 ### ISOL — Per-session host-state isolation
 
-- [ ] **ISOL-01**: First-task investigation verifies whether `homelab-mcp` tools (`list_keyring_credentials`, `list_registered_servers`) touch the OS keyring. Result determines whether ISOL-04 ships in v1.1 or is deferred. (Open question #2 in `260506-qxs/FINDINGS.md`.)
+- [x] **ISOL-01**: First-task investigation verifies whether `homelab-mcp` tools (`list_keyring_credentials`, `list_registered_servers`) touch the OS keyring. Result determines whether ISOL-04 ships in v1.1 or is deferred. (Open question #2 in `260506-qxs/FINDINGS.md`.)
 - [ ] **ISOL-02**: Framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session `tempfile.TemporaryDirectory` via `StdioServerParameters(env=...)` at the spawn boundary in `mcp_client.py`.
 - [ ] **ISOL-03**: Test runs do NOT mutate the user's `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, or `~/.homelab_mcp/migration_state.json`. Verified by mtime/file-diff assertion in a dedicated test.
 - [ ] **ISOL-04**: If ISOL-01 confirms keyring-touching, `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` is set on the spawned subprocess. Otherwise documented as "not needed for v1.1's tool surface; revisit if v1.x adds tools that touch credentials."
@@ -86,7 +86,7 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ISOL-01 | Phase 06 | Pending |
+| ISOL-01 | Phase 06 | Complete |
 | ISOL-02 | Phase 06 | Pending |
 | ISOL-03 | Phase 06 | Pending |
 | ISOL-04 | Phase 06 | Pending |

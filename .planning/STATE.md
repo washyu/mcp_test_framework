@@ -4,14 +4,14 @@ milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
 status: executing
 stopped_at: Phase 06 context gathered
-last_updated: "2026-05-07T08:06:57.658Z"
-last_activity: 2026-05-07 -- Phase 06 planning complete
+last_updated: "2026-05-07T15:35:55.476Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** v1.1 — Multi-Tool + Isolation + JUnit. Roadmap drafted (5 phases, 25 requirements). Phase 06 (isolation) is the gating first phase; the keyring-touch investigation (ISOL-01) is its first task.
+**Current focus:** Phase 06 — per-session-host-state-isolation
 
 ## Current Position
 
-Phase: 06 — Per-session host-state isolation (not yet started)
-Plan: —
+Phase: 06 (per-session-host-state-isolation) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-07 -- Phase 06 planning complete
+Last activity: 2026-05-07
 
 ## Performance Metrics
 
@@ -38,6 +38,7 @@ Last activity: 2026-05-07 -- Phase 06 planning complete
 | Phases complete | 0 | |
 | Requirements scoped | 25 | All v1.1 reqs mapped 1:1 to phases (no orphans) |
 | Requirements complete | 0 | |
+| Phase 06 P01 | 7min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -52,6 +53,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **5 phases under "coarse" granularity.** Justified because each phase is genuinely separable (isolation precedes multi-tool; config registry is its own concern; JUnit is reporting; docs close out across all four). Merging would couple unrelated work; splitting would fragment.
 - **Forward-compat reservations honored.** TOOLCFG-03 reserves `setup:` / `depends_on:` for SEED-004 (v1.5+). TOOLCFG-04 uses string IDs for judges — keeps SEED-003 (v1.3 dynamic rubrics) additive, not breaking.
 - **No v1.2/v1.3/v1.4/v1.5 work in v1.1.** xdist (SEED-002), OpenAI-compat backend (SEED-005), dynamic rubrics (SEED-003), agentic judge (SEED-001), stateful testing (SEED-004) are all deferred per Long-term Vision.
+- [Phase ?]: Phase 06-01: SHIP ISOL-04 (PyPI README documents OS keyring as sole credential store; Plan 06-02 must add PYTHON_KEYRING_BACKEND=keyring.backends.null.Null to _build_isolated_env)
 
 ### Blockers/Concerns
 
@@ -77,6 +79,6 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 
 ## Session Continuity
 
-Last session: 2026-05-07T07:30:12.891Z
+Last session: 2026-05-07T15:33:27.330Z
 Stopped at: Phase 06 context gathered
-Resume file: .planning/phases/06-per-session-host-state-isolation/06-CONTEXT.md
+Resume file: None
