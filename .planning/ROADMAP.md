@@ -40,7 +40,12 @@
   3. The first task of the phase (ISOL-01) produces a recorded answer to "does `list_keyring_credentials` / `list_registered_servers` touch the OS keyring?" — that answer either turns on `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` (ISOL-04) or documents the deferral with explicit triggers.
   4. The env-var passthrough allowlist (`PATH`, `SYSTEMROOT`, `LANG`, `USERNAME`, `MCP_*`) is documented in code comments and EXTENDING.md so future contributors don't widen it accidentally.
   5. No orphaned tempdirs exist on disk after a clean run completes (lifecycle owned by a session-scoped fixture; cleanup automatic via context-manager exit).
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md -- ISOL-01 keyring-touch recon (gating ship-or-defer for ISOL-04)
+- [ ] 06-02-PLAN.md -- _isolation.py module + _isolated_home fixture + env-injection at both spawn sites (ISOL-02/04/05/07)
+- [ ] 06-03-PLAN.md -- tests/test_isolation.py sha256-equality + tempdir-positive verification (ISOL-03/06)
 
 ### Phase 07: Multi-tool discovery & parameterized testing
 **Goal**: A single test-suite invocation exercises all tools advertised by the connected MCP server (modulo skip-list), with per-tool failures clearly attributed in pytest output.
