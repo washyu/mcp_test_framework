@@ -99,11 +99,25 @@ def _resolve_tool_names(config: Config) -> list[str]:
         except Exception as exc:  # noqa: BLE001 -- mirrors _preflight failure-mode parity
             # Match _preflight failure shape (fixtures.py:149-154) for exit-code parity.
             # See 07-RESEARCH §Pitfall 5.
-            pytest.exit(
+            msg = (
                 f"Tool discovery via {config.mcp_server.command!r} failed: "
-                f"{exc.__class__.__name__}: {exc}",
-                returncode=2,
+                f"{exc.__class__.__name__}: {exc}"
             )
+            # Quick-task 260507-j6i: enrich the cryptic "MCP server command not
+            # on PATH" FileNotFoundError with a hint pointing users at
+            # MCPTF_CONFIG_FILE / config.example.yaml. Keep in sync with
+            # src/mcp_test_framework/fixtures.py:_preflight (same hint string).
+            if isinstance(exc, FileNotFoundError) and str(exc).startswith(
+                "MCP server command not on PATH:"
+            ):
+                msg += (
+                    f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
+                    "If you intended to use a different command, point "
+                    "MCPTF_CONFIG_FILE at a config.yaml that defines "
+                    "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
+                    "The repo ships `config.example.yaml` you can copy and edit."
+                )
+            pytest.exit(msg, returncode=2)
     return _DISCOVERED_TOOL_NAMES
 
 

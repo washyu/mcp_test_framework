@@ -109,8 +109,16 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
+        # Quick-task 260507-j6i: enrich the bare "not found on PATH" with a
+        # hint pointing users at MCPTF_CONFIG_FILE / config.example.yaml.
+        # Keep in sync with tests/conftest.py:_resolve_tool_names (same hint).
         pytest.exit(
-            f"MCP command {config.mcp_server.command!r} not found on PATH",
+            f"MCP command {config.mcp_server.command!r} not found on PATH"
+            f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
+            "If you intended to use a different command, point "
+            "MCPTF_CONFIG_FILE at a config.yaml that defines "
+            "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
+            "The repo ships `config.example.yaml` you can copy and edit.",
             returncode=2,
         )
 
@@ -147,11 +155,25 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
         ) as brief_client:
             tools = await brief_client.list_tools()
     except Exception as exc:
-        pytest.exit(
+        msg = (
             f"MCP handshake with {config.mcp_server.command!r} failed: "
-            f"{exc.__class__.__name__}: {exc}",
-            returncode=2,
+            f"{exc.__class__.__name__}: {exc}"
         )
+        # Quick-task 260507-j6i: same MCPTF_CONFIG_FILE / config.example.yaml
+        # hint as Check 1 above and tests/conftest.py:_resolve_tool_names, in
+        # the rare case Check 1's shutil.which passed but McpTestClient's
+        # belt-and-suspenders re-check raised FileNotFoundError anyway.
+        if isinstance(exc, FileNotFoundError) and str(exc).startswith(
+            "MCP server command not on PATH:"
+        ):
+            msg += (
+                f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
+                "If you intended to use a different command, point "
+                "MCPTF_CONFIG_FILE at a config.yaml that defines "
+                "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
+                "The repo ships `config.example.yaml` you can copy and edit."
+            )
+        pytest.exit(msg, returncode=2)
 
     if config.target.tool_name is not None:
         tool_names = [t.name for t in tools]
