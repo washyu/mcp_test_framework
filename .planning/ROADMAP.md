@@ -22,7 +22,7 @@
 
 ### 🚧 v1.1 — Multi-Tool + Isolation + JUnit
 
-- [ ] **Phase 06: Per-session host-state isolation** — Spawn MCP subprocess in a per-session tempdir so test runs no longer mutate the user's real `~/.homelab_mcp/` state; gated by a keyring-touch investigation
+- [x] **Phase 06: Per-session host-state isolation** — Spawn MCP subprocess in a per-session tempdir so test runs no longer mutate the user's real `~/.homelab_mcp/` state; gated by a keyring-touch investigation (completed 2026-05-07)
 - [ ] **Phase 07: Multi-tool discovery & parameterized testing** — Generalize from one-tool-per-run to N-tools-per-run via `pytest.mark.parametrize` over discovered tools (no codegen)
 - [ ] **Phase 08: Per-tool config registry** — `tools.<name>` config block with skip / call_arguments / judges; reserve `setup:` / `depends_on:` for SEED-004 forward-compat; `extra="forbid"` + `version: 1`
 - [ ] **Phase 09: JUnit XML output & per-tool reporting** — `--junit-xml=<path>` passthrough; per-tool granularity in test IDs and summary line
@@ -40,12 +40,12 @@
   3. The first task of the phase (ISOL-01) produces a recorded answer to "does `list_keyring_credentials` / `list_registered_servers` touch the OS keyring?" — that answer either turns on `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` (ISOL-04) or documents the deferral with explicit triggers.
   4. The env-var passthrough allowlist (`PATH`, `SYSTEMROOT`, `LANG`, `USERNAME`, `MCP_*`) is documented in code comments and EXTENDING.md so future contributors don't widen it accidentally.
   5. No orphaned tempdirs exist on disk after a clean run completes (lifecycle owned by a session-scoped fixture; cleanup automatic via context-manager exit).
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
 - [x] 06-01-PLAN.md -- ISOL-01 keyring-touch recon (gating ship-or-defer for ISOL-04)
 - [x] 06-02-PLAN.md -- _isolation.py module + _isolated_home fixture + env-injection at both spawn sites (ISOL-02/04/05/07)
-- [ ] 06-03-PLAN.md -- tests/test_isolation.py sha256-equality + tempdir-positive verification (ISOL-03/06)
+- [x] 06-03-PLAN.md -- tests/test_isolation.py sha256-equality + tempdir-positive verification (ISOL-03/06)
 
 ### Phase 07: Multi-tool discovery & parameterized testing
 **Goal**: A single test-suite invocation exercises all tools advertised by the connected MCP server (modulo skip-list), with per-tool failures clearly attributed in pytest output.
@@ -102,7 +102,7 @@ Plans:
 | 04. Fixtures & Test Cases | v1.0 | 3/3 | Complete | 2026-05-06 |
 | 04.1. McpTestClient teardown fix | v1.0 | 1/1 | Complete | 2026-05-06 |
 | 05. CLI, README & Acceptance | v1.0 | 5/5 | Complete | 2026-05-06 |
-| 06. Per-session host-state isolation | v1.1 | 2/3 | In Progress|  |
+| 06. Per-session host-state isolation | v1.1 | 3/3 | Complete | 2026-05-07 |
 | 07. Multi-tool discovery & parameterized testing | v1.1 | 0/? | Not started | — |
 | 08. Per-tool config registry | v1.1 | 0/? | Not started | — |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 0/? | Not started | — |

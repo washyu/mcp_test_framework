@@ -30,10 +30,10 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 - [x] **ISOL-01**: First-task investigation verifies whether `homelab-mcp` tools (`list_keyring_credentials`, `list_registered_servers`) touch the OS keyring. Result determines whether ISOL-04 ships in v1.1 or is deferred. (Open question #2 in `260506-qxs/FINDINGS.md`.)
 - [x] **ISOL-02**: Framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session `tempfile.TemporaryDirectory` via `StdioServerParameters(env=...)` at the spawn boundary in `mcp_client.py`.
-- [ ] **ISOL-03**: Test runs do NOT mutate the user's `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, or `~/.homelab_mcp/migration_state.json`. Verified by mtime/file-diff assertion in a dedicated test.
+- [x] **ISOL-03**: Test runs do NOT mutate the user's `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, or `~/.homelab_mcp/migration_state.json`. Verified by sha256 hash-equality assertion in `tests/test_isolation.py::test_real_state_unchanged` (D-09 strengthens "mtime/file-diff" to sha256 — catches same-second identical-content overwrites).
 - [x] **ISOL-04**: If ISOL-01 confirms keyring-touching, `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` is set on the spawned subprocess. Otherwise documented as "not needed for v1.1's tool surface; revisit if v1.x adds tools that touch credentials."
 - [x] **ISOL-05**: Per-session tempdir is created in a session-scoped fixture that owns the lifecycle; cleanup is automatic via context-manager exit. Orphaned tempdirs after a run = test failure.
-- [ ] **ISOL-06**: Env override works on both Windows (`USERPROFILE`) and POSIX (`HOME`). CI-style smoke check on at least one of each — confirms `os.path.expanduser('~')` inside the subprocess resolves to the tempdir on both platforms.
+- [x] **ISOL-06**: Env override works on both Windows (`USERPROFILE`) and POSIX (`HOME`). CI-style smoke check on at least one of each — confirms `os.path.expanduser('~')` inside the subprocess resolves to the tempdir on both platforms. Verified on Windows 11 in Plan 06-03 (raw/isol-03-driver-run.log); POSIX-arm verification deferred per CD-04 — runs as a side-effect of normal v1.1 development on a non-Windows host.
 - [x] **ISOL-07**: Passthrough allowlist for inherited env vars: `PATH`, `SYSTEMROOT` (Windows), `LANG`, `USERNAME`, plus `MCP_*`. Document the allowlist explicitly so future contributors don't accidentally widen it.
 
 ### OUTPUT — Output formats and reporting
