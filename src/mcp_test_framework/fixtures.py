@@ -25,6 +25,7 @@ import asyncio
 import contextlib
 import shutil
 import tempfile
+import warnings
 from contextlib import AsyncExitStack
 from pathlib import Path
 
@@ -39,6 +40,7 @@ from mcp_test_framework._isolation import _build_isolated_env
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
+from mcp_test_framework.models import ToolConfig
 from mcp_test_framework.ollama_judge import OllamaJudge
 from mcp_test_framework.rubrics import (
     ClarityRubric,
@@ -175,6 +177,18 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
             )
         pytest.exit(msg, returncode=2)
 
+    # Phase 08 D-14 / D-18: unknown tool names in `config.tools` -> session-start
+    # warning (NOT load-time error, NOT a hard fail). The discovered list isn't
+    # known until the MCP handshake above runs, so this check lives here.
+    discovered_names = {t.name for t in tools}
+    for unknown_name in sorted(set(config.tools) - discovered_names):
+        warnings.warn(
+            f"tools.{unknown_name!r} configured but not in discovered tool list "
+            f"(available: {sorted(discovered_names)!r}); config entry has no effect",
+            UserWarning,
+            stacklevel=2,
+        )
+
     if config.target.tool_name is not None:
         tool_names = [t.name for t in tools]
         if config.target.tool_name not in tool_names:
@@ -182,6 +196,20 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
                 f"target tool {config.target.tool_name!r} not in MCP server tool list "
                 f"(available: {tool_names!r})",
                 returncode=2,
+            )
+
+    # Phase 08 D-12: when target.tool_name is set AND that tool's config has
+    # skip=True, the explicit single-target intent wins (the run still exercises
+    # the tool). Surface the override as a warning so the operator knows the
+    # configured skip was deliberately ignored.
+    if config.target.tool_name is not None:
+        explicit_cfg = config.tools.get(config.target.tool_name)
+        if explicit_cfg is not None and explicit_cfg.skip:
+            warnings.warn(
+                f"target.tool_name={config.target.tool_name!r} explicitly set; "
+                f"overriding tools.{config.target.tool_name!r}.skip=True for this run",
+                UserWarning,
+                stacklevel=2,
             )
 
     # All preflight checks passed; the brief MCP session has been closed by
@@ -366,6 +394,28 @@ async def target_tool(
     mcp_client (also session-scoped) is shared -- ONE long-lived MCP session.
     """
     return await mcp_client.get_tool(request.param)
+
+
+# ---------------------------------------------------------------------------
+# tool_config -- per-test ToolConfig resolution (Phase 08 D-04 / TOOLCFG-06)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tool_config(config: Config, target_tool) -> ToolConfig:
+    """Resolve `config.tools.get(target_tool.name, ToolConfig())` per test.
+
+    Default (function) scope is intentional: the fixture must reflect the
+    per-test parametrized `target_tool.name` -- a session-scoped fixture
+    would freeze on the first parameter and serve a stale entry to other
+    parametrized cases.
+
+    Tools with no `tools.<name>` entry receive a default `ToolConfig()`
+    (TOOLCFG-06: skip=False, call_arguments={}, judges=None -> all rubrics).
+    Sync fixture (no async resources) -- safe under Phase 04.1 cancel-scope
+    invariant; no anyio scope is opened across yield.
+    """
+    return config.tools.get(target_tool.name, ToolConfig())
 
 
 # ---------------------------------------------------------------------------
