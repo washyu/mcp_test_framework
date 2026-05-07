@@ -141,7 +141,7 @@ async def test_real_state_unchanged(
     # (POSIX) or USERPROFILE (Windows) was set correctly via
     # _build_isolated_env.
     tempdir_homelab = _isolated_home / ".homelab_mcp"
-    assert (_isolated_home / ".homelab_mcp").exists(), (
+    assert tempdir_homelab.exists(), (
         f"Tempdir {tempdir_homelab} was not created — redirection did not "
         f"take effect (ISOL-06 cross-platform signal); tools may have "
         f"no-op'd silently."
