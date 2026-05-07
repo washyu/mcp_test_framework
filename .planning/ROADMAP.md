@@ -56,7 +56,10 @@ Plans:
   2. Per-tool test IDs render as `<test_name>[<tool_name>]` (e.g. `test_schema_is_structurally_valid[list_keyring_credentials]`) in both terminal output and JUnit XML.
   3. With `target.tool_name` set explicitly, the run is restricted to that tool — full v1.0 behavior preserved.
   4. Discovery happens at collection time via `pytest.mark.parametrize`; the test list always reflects the live server, not a codegen artifact.
-**Plans**: TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 07-01-multi-tool-discovery-PLAN.md -- discovery hook + target_tool indirect parametrize + TargetConfig widening + module rename (MULTI-01..04)
 
 ### Phase 08: Per-tool config registry
 **Goal**: A test author can declaratively control per-tool behavior (skip with reason, fixed `call_arguments`, judge subset selection) via a validated `tools.<tool_name>` config block, without touching framework code.
@@ -103,7 +106,7 @@ Plans:
 | 04.1. McpTestClient teardown fix | v1.0 | 1/1 | Complete | 2026-05-06 |
 | 05. CLI, README & Acceptance | v1.0 | 5/5 | Complete | 2026-05-06 |
 | 06. Per-session host-state isolation | v1.1 | 3/3 | Complete | 2026-05-07 |
-| 07. Multi-tool discovery & parameterized testing | v1.1 | 0/? | Not started | — |
+| 07. Multi-tool discovery & parameterized testing | v1.1 | 0/1 | Planned | — |
 | 08. Per-tool config registry | v1.1 | 0/? | Not started | — |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 0/? | Not started | — |
 | 10. v1.1 documentation | v1.1 | 0/? | Not started | — |
