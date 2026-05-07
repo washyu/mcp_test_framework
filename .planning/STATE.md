@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: MVP
 status: shipped
 shipped_at: "2026-05-07T00:00:00.000Z"
-last_updated: "2026-05-07T00:00:00.000Z"
+last_updated: "2026-05-07T02:30:00.000Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 7
@@ -42,6 +42,12 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 
 None. All v1.0 blockers resolved at audit time. v2 deferrals tracked in `.planning/MILESTONES.md` v1.0 entry.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260506-qxs | Diagnostic spike — homelab-mcp host-state surface (recon for v1.1 isolation) | 2026-05-07 | 23cc6e1 | [260506-qxs-diagnostic-spike-identify-what-user-visi](./quick/260506-qxs-diagnostic-spike-identify-what-user-visi/) |
+
 ## Deferred Items
 
 Items acknowledged at v1.0 close and carried into v2 scope:
@@ -57,5 +63,5 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 ## Session Continuity
 
 Last session: 2026-05-07
-Stopped at: v1.0 milestone close
-Resume file: None — start v1.1 with `/gsd-new-milestone`
+Stopped at: v1.0 milestone close + isolation recon spike (260506-qxs) complete
+Resume file: None — start v1.1 with `/gsd-new-milestone`. v1.1 must address host-state isolation (see todo + FINDINGS.md from quick task 260506-qxs)
