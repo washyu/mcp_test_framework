@@ -159,8 +159,16 @@ def list_tools(
     Phase 04.1 hardened for the test path -- reused at the CLI surface.
     """
     cfg = _load_config(config)
-    with asyncio.Runner() as runner:
-        tools = runner.run(_list_tools_async(cfg))
+    try:
+        with asyncio.Runner() as runner:
+            tools = runner.run(_list_tools_async(cfg))
+    except KeyboardInterrupt:
+        # Enforce the docstring's exit-code-130 guarantee. Without this,
+        # Click's default standalone_mode catches KeyboardInterrupt and
+        # converts it to exit code 1 via Abort. Re-raising as
+        # typer.Exit(code=130) makes the SIGINT contract explicit and
+        # uniform across POSIX and Windows console-script wrappers.
+        raise typer.Exit(code=130)
     if as_json:
         typer.echo(_format_tools_json(tools), nl=False)
     else:
