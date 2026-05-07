@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
-status: human_needed
-stopped_at: Phase 07 verified PASS-WITH-NOTES -- 3 live MCP-server checks deferred to manual run
-last_updated: "2026-05-07T20:30:00Z"
-last_activity: 2026-05-07 -- Phase 07 verification complete (PASS-WITH-NOTES)
+status: verified
+stopped_at: Phase 07 verification PASS (live run: 580 tests discovered, ISOL-03 holds)
+last_updated: "2026-05-07T20:45:00Z"
+last_activity: 2026-05-07 -- Phase 07 verification complete (PASS, all live checks confirmed)
 progress:
   total_phases: 5
   completed_phases: 2
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 
 ## Current Position
 
-Phase: 07 (multi-tool-discovery-and-parameterized-testing) — VERIFIED (PASS-WITH-NOTES)
+Phase: 07 (multi-tool-discovery-and-parameterized-testing) — VERIFIED (PASS)
 Plan: 1 of 1 (complete)
-Status: Phase 07 complete; human verification needed for live MCP-server checks (collection IDs, single-tool restriction, ISOL-03 regression on machine with homelab-mcp on PATH)
-Last activity: 2026-05-07 -- Phase 07 verification complete
+Status: Phase 07 complete and live-verified -- 580 tests discovered (10 fns × 58 tools), CD-05 short-circuit confirmed, ISOL-03 holds
+Last activity: 2026-05-07 -- Phase 07 verification complete (live PASS)
 
 ## Performance Metrics
 
