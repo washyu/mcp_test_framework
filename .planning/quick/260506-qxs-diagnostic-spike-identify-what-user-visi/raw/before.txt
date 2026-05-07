@@ -1,0 +1,32 @@
+﻿=== Snapshot label: BEFORE handshake ===
+=== Captured: 2026-05-06T19:29:52.5852307-07:00 ===
+
+----- PATH: C:\Users\washy\AppData\Roaming\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\AppData\Roaming\homelab_mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\AppData\Local\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\AppData\Local\homelab_mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.config\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.local\share\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.cache\homelab-mcp -----
+ABSENT
+
+----- GLOB: C:\Users\washy\AppData\Local\Temp\homelab*  (homelab-mcp*, homelab_mcp*) -----
+
+
+=== ADDENDUM: C:\Users\washy\.homelab_mcp (the underscore variant -- discovered late, captured at 2026-05-06T19:31:38.1768580-07:00) ===
+NOTE: this entry was missing from the original BEFORE candidate list; the live snapshot of its current state is in discovered_state_dir.txt. Both before/after snapshots above showed only the hyphen variant '.homelab-mcp' as ABSENT.

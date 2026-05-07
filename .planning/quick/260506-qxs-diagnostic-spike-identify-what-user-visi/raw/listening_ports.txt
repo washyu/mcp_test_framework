@@ -1,0 +1,37 @@
+﻿=== netstat -ano | findstr LISTENING at 2026-05-06T19:29:52.7072875-07:00 ===
+
+  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       2064
+  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING       4
+  TCP    0.0.0.0:5040           0.0.0.0:0              LISTENING       9096
+  TCP    0.0.0.0:24563          0.0.0.0:0              LISTENING       18284
+  TCP    0.0.0.0:27036          0.0.0.0:0              LISTENING       10852
+  TCP    0.0.0.0:49664          0.0.0.0:0              LISTENING       1960
+  TCP    0.0.0.0:49665          0.0.0.0:0              LISTENING       1792
+  TCP    0.0.0.0:49666          0.0.0.0:0              LISTENING       3256
+  TCP    0.0.0.0:49667          0.0.0.0:0              LISTENING       4008
+  TCP    0.0.0.0:49668          0.0.0.0:0              LISTENING       4908
+  TCP    0.0.0.0:49669          0.0.0.0:0              LISTENING       1872
+  TCP    127.0.0.1:3001         0.0.0.0:0              LISTENING       25572
+  TCP    127.0.0.1:6463         0.0.0.0:0              LISTENING       16704
+  TCP    127.0.0.1:8888         0.0.0.0:0              LISTENING       13560
+  TCP    127.0.0.1:11434        0.0.0.0:0              LISTENING       13340
+  TCP    127.0.0.1:27060        0.0.0.0:0              LISTENING       10852
+  TCP    127.0.0.1:49513        0.0.0.0:0              LISTENING       10852
+  TCP    127.0.0.1:49514        0.0.0.0:0              LISTENING       10852
+  TCP    127.0.0.1:55923        0.0.0.0:0              LISTENING       32624
+  TCP    127.0.0.1:61895        0.0.0.0:0              LISTENING       29068
+  TCP    127.0.0.1:64218        0.0.0.0:0              LISTENING       31680
+  TCP    192.168.10.117:139     0.0.0.0:0              LISTENING       4
+  TCP    192.168.50.72:139      0.0.0.0:0              LISTENING       4
+  TCP    [::]:135               [::]:0                 LISTENING       2064
+  TCP    [::]:445               [::]:0                 LISTENING       4
+  TCP    [::]:49664             [::]:0                 LISTENING       1960
+  TCP    [::]:49665             [::]:0                 LISTENING       1792
+  TCP    [::]:49666             [::]:0                 LISTENING       3256
+  TCP    [::]:49667             [::]:0                 LISTENING       4008
+  TCP    [::]:49668             [::]:0                 LISTENING       4908
+  TCP    [::]:49669             [::]:0                 LISTENING       1872
+  TCP    [::1]:35783            [::]:0                 LISTENING       18540
+  TCP    [::1]:42050            [::]:0                 LISTENING       13208
+
+

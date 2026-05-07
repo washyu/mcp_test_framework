@@ -1,0 +1,36 @@
+﻿=== Get-Process homelab*, mcp* at 2026-05-06T19:29:52.6492424-07:00 ===
+
+
+Id          : 28752
+ProcessName : homelab-mcp
+Path        : C:\Users\washy\projects\mcp_python_server\.venv\Scripts\homelab-mcp.exe
+StartTime   : 5/6/2026 6:33:13 PM
+
+
+
+
+=== ALL python.exe processes (homelab-mcp could appear under python) ===
+
+
+Id          : 12344
+ProcessName : python
+Path        : C:\Users\washy\AppData\Roaming\uv\python\cpython-3.12.13-windows-x86_64-none\python.exe
+StartTime   : 5/6/2026 6:33:13 PM
+
+Id          : 37068
+ProcessName : python
+Path        : C:\Users\washy\projects\mcp_python_server\.venv\Scripts\python.exe
+StartTime   : 5/6/2026 6:33:13 PM
+
+Id          : 20652
+ProcessName : uv
+Path        : C:\Users\washy\scoop\apps\uv\current\uv.exe
+StartTime   : 5/6/2026 6:33:13 PM
+
+Id          : 33596
+ProcessName : uv
+Path        : C:\Users\washy\scoop\shims\uv.exe
+StartTime   : 5/6/2026 6:33:13 PM
+
+
+

@@ -1,0 +1,8 @@
+﻿=== Handshake attempt at 2026-05-06T19:29:52.6292426-07:00 ===
+Skipping pytest invocation to avoid disturbing the user's running homelab-mcp.
+The uvx --help / --version above counts as an instantiation of the package: uvx
+resolves the package, downloads it if not cached, and invokes its entry point.
+This means BEFORE/AFTER diff captures any state created by package install + entry-point startup,
+but NOT necessarily state created by an MCP stdio session (which loads tool registry).
+This caveat is documented in FINDINGS.md Open Questions.
+

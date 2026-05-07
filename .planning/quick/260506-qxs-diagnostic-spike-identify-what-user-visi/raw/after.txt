@@ -1,0 +1,32 @@
+﻿=== Snapshot label: AFTER handshake ===
+=== Captured: 2026-05-06T19:29:52.6332416-07:00 ===
+
+----- PATH: C:\Users\washy\AppData\Roaming\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\AppData\Roaming\homelab_mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\AppData\Local\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\AppData\Local\homelab_mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.config\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.local\share\homelab-mcp -----
+ABSENT
+
+----- PATH: C:\Users\washy\.cache\homelab-mcp -----
+ABSENT
+
+----- GLOB: C:\Users\washy\AppData\Local\Temp\homelab*  (homelab-mcp*, homelab_mcp*) -----
+
+
+=== ADDENDUM: C:\Users\washy\.homelab_mcp (underscore variant; discovered late) ===
+See discovered_state_dir.txt for current contents (PRESENT, modified 2026-04-26).

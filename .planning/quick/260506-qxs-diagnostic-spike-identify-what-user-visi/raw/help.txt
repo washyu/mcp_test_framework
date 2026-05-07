@@ -1,0 +1,74 @@
+﻿=== uvx homelab-mcp --help (captured 2026-05-06T19:29:49.2326828-07:00) ===
+usage: python.exe C:\Users\washy\AppData\Local\uv\cache\archive-v0\VOAyoI199Rl6EAPPV0hE1\Scripts\homelab-mcp
+       [-h] [--version] [--http] [--host HOST] [--port PORT] [--no-auth]
+       [--api-key API_KEY] [--ssl-cert SSL_CERT] [--ssl-key SSL_KEY]
+       {credentials} ...
+
+Homelab MCP Server - AI-powered homelab infrastructure management
+
+positional arguments:
+  {credentials}
+    credentials        Manage stored credentials
+
+options:
+  -h, --help           show this help message and exit
+  --version            show program's version number and exit
+  --http               Run in HTTP mode instead of stdio mode
+  --host HOST          HTTP server host (default: 127.0.0.1)
+  --port PORT          HTTP server port (default: 8080)
+  --no-auth            Disable API key authentication
+  --api-key API_KEY    API key for authentication
+  --ssl-cert SSL_CERT  Path to SSL certificate file (enables HTTPS)
+  --ssl-key SSL_KEY    Path to SSL private key file
+
+Examples:
+  uvx homelab-mcp                        # stdio mode (Claude Desktop)
+  uvx homelab-mcp --http --port 8080     # HTTP mode (OpenWebUI)
+
+Credential management (OS keyring):
+  uvx homelab-mcp credentials add <hostname> <username>                                     # store SSH credential (prompts for password)
+  uvx homelab-mcp credentials add <hostname> <username> --key-path PATH                     # store SSH key-path credential (D-09)
+  uvx homelab-mcp credentials add <hostname> <username> --type proxmox                      # store Proxmox credential
+  uvx homelab-mcp credentials add --type proxmox --scope cluster:<name> <username>          # store cluster-scoped Proxmox token
+  uvx homelab-mcp credentials list                                                          # list stored SSH credentials
+  uvx homelab-mcp credentials list --type proxmox                                           # (extended) shows Per-node + Cluster-scoped sections
+  uvx homelab-mcp credentials remove <hostname>                                             # remove SSH credential
+  uvx homelab-mcp credentials remove <hostname> --type proxmox                              # remove Proxmox credential
+  uvx homelab-mcp credentials remove --type proxmox --scope cluster:<name>                  # remove cluster-scoped Proxmox credential
+
+  Note: `add` is upsert ù re-running it for the same (hostname, username, type)
+  replaces the existing credential (both the keyring secret and the registry
+  entry's auth_type). There is no separate `update` subcommand.
+
+=== uvx homelab-mcp --version ===
+python.exe C:\Users\washy\AppData\Local\uv\cache\archive-v0\VOAyoI199Rl6EAPPV0hE1\Scripts\homelab-mcp 1.7.0
+
+
+=== uvx homelab-mcp credentials --help ===
+usage: python.exe C:\Users\washy\AppData\Local\uv\cache\archive-v0\VOAyoI199Rl6EAPPV0hE1\Scripts\homelab-mcp credentials
+       [-h] {add,list,remove,link,unlink} ...
+
+positional arguments:
+  {add,list,remove,link,unlink}
+    add                 Store a credential (upsert ù re-run to replace an
+                        existing entry)
+    list                List stored credential hostnames
+    remove              Remove a stored credential
+    link                Manually bind a sitemap row to a credential by UUID
+                        (Phase 38.1 R8 / D-24)
+    unlink              Clear a sitemap row's credential binding (Phase 38.1
+                        R8)
+
+options:
+  -h, --help            show this help message and exit
+
+=== uvx homelab-mcp credentials list --help ===
+usage: python.exe C:\Users\washy\AppData\Local\uv\cache\archive-v0\VOAyoI199Rl6EAPPV0hE1\Scripts\homelab-mcp credentials list
+       [-h] [--type {ssh,proxmox}] [--json]
+
+options:
+  -h, --help            show this help message and exit
+  --type {ssh,proxmox}
+  --json                Emit JSON array of all entries including credential_id
+                        (Phase 38.1 D-23). Default tabular view omits
+                        credential_id.

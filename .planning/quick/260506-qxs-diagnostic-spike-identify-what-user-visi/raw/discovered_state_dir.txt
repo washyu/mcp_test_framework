@@ -1,0 +1,22 @@
+﻿=== Contents of C:\Users\washy\.homelab_mcp\ at 2026-05-06T19:31:38.1383006-07:00 ===
+NOTE: filenames + sizes + mtimes only -- contents NOT read (some files may contain credentials, registry data, or homelab-mcp source -- all of which are forbidden under the black-box rule).
+
+
+
+FullName      : C:\Users\washy\.homelab_mcp\credential_registry.json
+Length        : 1940
+LastWriteTime : 5/4/2026 1:52:07 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\.homelab_mcp\known_hosts
+Length        : 6252
+LastWriteTime : 5/4/2026 1:52:52 PM
+Mode          : -a----
+
+FullName      : C:\Users\washy\.homelab_mcp\migration_state.json
+Length        : 136
+LastWriteTime : 4/26/2026 11:49:36 PM
+Mode          : -a----
+
+
+
