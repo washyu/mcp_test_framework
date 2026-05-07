@@ -71,7 +71,13 @@ Plans:
   3. A user can select a judge subset per tool via `judges: [clarity, parameters]`; only the listed rubrics run for that tool. Tools without a `judges` entry run all available rubrics.
   4. A user can pin `call_arguments: {key: value}` per tool; the framework passes those exact arguments to `call_tool` instead of the default `{}`.
   5. The config schema includes `version: 1` at top level and Optional unused `setup:` / `depends_on:` fields per tool — present in the model, ignored at runtime, ready for SEED-003 / SEED-004 to activate additively.
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — ToolConfig + version + Config wiring + rubric IDs (TOOLCFG-01..05)
+- [ ] 08-02-PLAN.md — Runtime guards: tool_config fixture + skip/judges/call_arguments threading + warnings (TOOLCFG-01/06/07)
+- [ ] 08-03-PLAN.md — config-init Typer subcommand (D-21..D-24; TOOLCFG-01/02/04)
+- [ ] 08-04-PLAN.md — Tests + worked config.example.yaml (TOOLCFG-01..07 verification)
 
 ### Phase 09: JUnit XML output & per-tool reporting
 **Goal**: A CI engineer can wire the test suite into their pipeline using JUnit XML and trend per-tool failure rates; locally, a concise per-tool summary helps triage failures without reading full pytest output.
@@ -107,6 +113,6 @@ Plans:
 | 05. CLI, README & Acceptance | v1.0 | 5/5 | Complete | 2026-05-06 |
 | 06. Per-session host-state isolation | v1.1 | 3/3 | Complete | 2026-05-07 |
 | 07. Multi-tool discovery & parameterized testing | v1.1 | 0/1 | Planned | — |
-| 08. Per-tool config registry | v1.1 | 0/? | Not started | — |
+| 08. Per-tool config registry | v1.1 | 0/4 | Planned | — |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 0/? | Not started | — |
 | 10. v1.1 documentation | v1.1 | 0/? | Not started | — |
