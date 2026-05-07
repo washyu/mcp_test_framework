@@ -119,3 +119,53 @@ This is consistent with the driver invoking only READ-side tools (`list_keyring_
 - **D-03 enforced:** this §2 procedure produced one-time recon evidence under `raw/`. No pytest test file (`tests/test_keyring*.py` or similar) was created. The keyring-axis regression guard is downstream in Plan 06-03's ISOL-03 hash-equality test (CONTEXT D-08).
 
 ---
+
+## 3. Decision: ship ISOL-04 in v1.1, or defer with trigger
+
+### Evidence summary
+
+- **§1 (PyPI README):** explicit and unambiguous. The README's "Credential Management" section states "Credentials are stored in the OS keyring (libsecret on Linux, Keychain on macOS)" and documents read+write keyring operations via the `homelab-mcp credentials add|list|remove` CLI. Independent corroboration came from the driver run, which captured a homelab-mcp v1.7.0 startup banner: `"v1.6: keyring is now the sole credential store"` (raw/driver.log). The MCP-tool name `list_keyring_credentials` itself names the keyring as the data source.
+- **§2 (cmdkey diff):** empty. The v1.1 read-only tool surface (`list_keyring_credentials` + `list_registered_servers`) did not mutate Windows Credential Manager state across one full session. This proves the *current* read-only surface is non-mutating but does not bound future tool additions.
+- **Yes/no:** YES, the framework's tool surface touches the OS keyring — for reads today (§1 + driver.log), with a documented mutation surface (`credentials add|remove`, the registered-server `register_server` tool exposed in driver.log's tool list) one tool addition away from being live in any test that exercises the credential-add MCP tool transitively.
+
+### Decision
+
+**SHIP: ISOL-04**
+
+Rationale: §1 produced positive evidence that the OS keyring is THE credential store at runtime (upstream-author confirmation in the v1.7.0 startup banner). Even though §2's empty cmdkey diff shows the *current* v1.1 read-only surface is non-mutating, the cost of injecting `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` into `_build_isolated_env` is one extra dict entry (zero runtime cost, zero API surface) versus the cost of forgetting it the first time a test exercises a mutation tool (a real keyring entry written to the developer's Credential Manager and then never cleaned up). Defense-in-depth: ISOL-02's `HOME` redirect protects the registry file, ISOL-04's null-keyring-backend protects the OS keyring; the two together make the spawned subprocess fully sandboxed against the credential surface §1 documents.
+
+### Trigger to re-open (only if DEFER)
+
+(N/A — shipping in v1.1.)
+
+### Plan 06-02 consequence
+
+Plan 06-02 MUST add `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` to the `_build_isolated_env` return dict.
+
+The recommended placement (per PATTERNS.md `_isolation.py` shape): a fourth module-level constant alongside `_PASSTHROUGH_ALLOWLIST`, `_MCP_PREFIX`, and `_HOME_OVERRIDES`:
+
+```python
+# ISOL-04: force the Python keyring library into a no-op backend so the
+# spawned subprocess CANNOT read or write the user's real OS keyring
+# (libsecret/Keychain/Windows Credential Manager). Decision recorded in
+# .planning/phases/06-.../06-keyring-recon.md §3 (SHIP: ISOL-04).
+_KEYRING_BACKEND_OVERRIDE: dict[str, str] = {
+    "PYTHON_KEYRING_BACKEND": "keyring.backends.null.Null",
+}
+```
+
+Caveat for Plan 06-02 implementer: this only short-circuits the Python `keyring` library's backend chain. If homelab-mcp's credential code ever bypasses `keyring` and calls Win32 `CredWrite` / libsecret directly via `ctypes`, the env var has no effect. The §1 evidence ("Credentials are stored in the OS keyring (libsecret on Linux, Keychain on macOS)") + the v1.7.0 startup banner ("keyring is now the sole credential store") strongly suggest the standard `keyring` library is the path — direct Win32/libsecret calls would be unusual and would also break the documented "headless servers fall back to environment variables" behavior. See §5 Q1 for the residual uncertainty.
+
+---
+
+## 5. Open questions
+
+1. **Q1: Does `cmdkey` capture the same keyring entries that the Python `keyring` library would write/read?** `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` only short-circuits the Python `keyring` library's backend chain. If homelab-mcp's credential code ever bypasses `keyring` and calls Win32 `CredWrite` (Windows) or libsecret (Linux) directly via `ctypes`, the env var has no effect and the cmdkey-axis ISOL-03 hash-equality test would still pass under isolation while the user's real keyring gets mutated. The §1 PyPI README evidence ("Credentials are stored in the OS keyring (libsecret on Linux, Keychain on macOS). When the OS keyring is unavailable (headless servers), credentials fall back to environment variables.") strongly implies the standard `keyring` library is the path — that fallback semantics is exactly what `keyring` provides. **What would answer it definitively:** snapshot `cmdkey /list` before/after a test that DOES write a credential under isolation; if the user's real cmdkey output gains a new `Target:` line, the env var was bypassed. Tracked for Plan 06-03's ISOL-03 design — see "Caveats from §2 that affect ISOL-03" in 06-01-SUMMARY.md.
+
+2. **Q2 (carried forward from 260506-qxs FINDINGS §5 Q3): `MCP_CONNECTION_NONBLOCKING` semantics — propagate or strip?** Currently set in user env (`raw/env_scan.txt` from the spike). Disposition per CONTEXT CD-03: passing through under the `MCP_*` allowlist by default; flip to strip if it causes flakiness during ISOL-01 recon. **Status from this recon:** the driver's MCP handshake completed cleanly with `MCP_CONNECTION_NONBLOCKING=true` set in the parent env (passthrough behavior, since the driver did not yet implement the ISOL-02 allowlist) — no observed flakiness. Default disposition (`MCP_*` allowlist passthrough) holds; no strip needed for v1.1.
+
+3. **Q3 (new, surfaced during Task 2):** the upstream startup banner `"v1.6: keyring is now the sole credential store"` (`raw/driver.log` line "Dropped legacy ssh_credentials table") implies an EARLIER homelab-mcp version stored credentials in a SQLite DB inside `~/.homelab_mcp/`. ISOL-03's hash list (`credential_registry.json`, `known_hosts`, `migration_state.json`, per CONTEXT D-08) does NOT cover any `*.db` file. Is there a stale `.db` file in `~/.homelab_mcp/` that could be mutated by a future homelab-mcp version that re-introduces DB-backed credentials, and if so should ISOL-03's file list expand to cover it? **What would answer it:** `dir %USERPROFILE%\.homelab_mcp\` → look for `.db` artifacts. Tracked for Plan 06-03's test-design pass — likely additive (one more file in the hash list, behind a "if exists" guard).
+
+4. **Q4 (new, surfaced during Task 2):** the driver's `list_tools()` returned 58 tools (raw/driver.log), including credential-mutation candidates like `register_server`, `decommission_device`, `purge_devices`, `update_device_config`. The v1.1 test surface only exercises 2 of these (`list_keyring_credentials`, `list_registered_servers`), but ISOL-04's null-keyring backend protects the WHOLE surface — including any tool that incidentally writes a credential. Should Plan 06-03's ISOL-03 test exercise a wider tool fan-out to surface mutation more aggressively? **What would answer it:** review of the 58-tool list against "which tools document keyring or credential side-effects". Out of scope for Plan 06-01 (recon, not test design); referenced for Plan 06-03 (test design + scope).
+
+5. **Q5 (new, surfaced during Task 2):** the homelab-mcp startup also emitted `"Dropped legacy drift_baselines table (v1.7: sitemap is now the single source of truth for drift)"`. This is upstream behavior unrelated to keyring isolation, but it implies homelab-mcp may run *destructive schema migrations* on subprocess start — a behavior that ISOL-02's `HOME` redirect should already neutralize (the redirected tempdir won't have a legacy table to drop) but worth flagging as a behavior the v1.1 surface inherits. **What would answer it:** post-Plan 06-02 verification that subsequent test-run boots do NOT emit "Dropped legacy ..." messages, confirming the migration doesn't re-trigger from the tempdir each session. Tracked as a Plan 06-03 verification-pass observation.
