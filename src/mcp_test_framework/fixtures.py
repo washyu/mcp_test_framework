@@ -329,14 +329,21 @@ async def judge(config: Config, _preflight) -> Judge:
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def target_tool(config: Config, mcp_client: McpTestClient, _preflight):
-    """Resolve target tool by name; raises ToolNotFoundError if absent.
+async def target_tool(
+    request: pytest.FixtureRequest,
+    mcp_client: McpTestClient,
+    _preflight,
+):
+    """Resolve target tool by name (parametrized indirectly via tests/conftest.py).
 
-    Defense in depth alongside _preflight's check (D-preflight-3). Phase 2's
-    McpTestClient.get_tool already raises ToolNotFoundError with the
-    candidate list in the message -- re-raise unchanged.
+    The pytest_generate_tests hook in tests/conftest.py populates request.param
+    with each discovered tool name. Test IDs render as test_<name>[<tool_name>]
+    uniformly -- including when config.target.tool_name is set (single-item
+    parametrize list per D-05). Indirect parametrize on a session-scoped fixture
+    creates one fixture instance per request.param value within session scope;
+    mcp_client (also session-scoped) is shared -- ONE long-lived MCP session.
     """
-    return await mcp_client.get_tool(config.target.tool_name)
+    return await mcp_client.get_tool(request.param)
 
 
 # ---------------------------------------------------------------------------

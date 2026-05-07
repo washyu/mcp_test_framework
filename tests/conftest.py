@@ -12,6 +12,13 @@ from __future__ import annotations
 pytest_plugins = ["mcp_test_framework.fixtures"]
 
 import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
+import asyncio  # noqa: E402
+from typing import Optional  # noqa: E402
+
+import pytest  # noqa: E402
+
+from mcp_test_framework.config import Config  # noqa: E402
+from mcp_test_framework.mcp_client import McpTestClient  # noqa: E402
 
 
 def pytest_configure(config) -> None:
@@ -40,3 +47,76 @@ def pytest_configure(config) -> None:
             f"at test start: {leaked}. The framework must drive homelab-mcp "
             f"via stdio_client only -- never import."
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 07 -- Tool discovery hook (pytest_generate_tests)
+#
+# Third spawn site (after _preflight in fixtures.py and mcp_client._owner_task).
+# This site MUST NOT open-code stdio_client(...) -- McpTestClient.__aenter__ is
+# already isolation-aware as of Phase 06 D-16 (it builds its own per-instance
+# tempdir + _build_isolated_env env block). Re-using __aenter__ inherits the
+# isolation contract for free; ISOL-03 hash-equality test in tests/test_isolation.py
+# remains the regression guard.
+#
+# Cache (CD-01: module-level dict over StashKey for simplicity).
+# ---------------------------------------------------------------------------
+
+_DISCOVERED_TOOL_NAMES: Optional[list[str]] = None
+
+
+async def _discover_tools(config: Config) -> list[str]:
+    """Brief MCP handshake -> list_tools -> tool names. Mirrors fixtures.py:142-148.
+
+    Reuses McpTestClient.__aenter__ (Phase 06 D-16) so the spawned subprocess
+    receives _build_isolated_env(<per-instance tempdir>) -- Phase 06 ISOL-02/04/07
+    contract preserved at this third spawn site (Phase 07 D-11).
+    """
+    async with McpTestClient(
+        config.mcp_server.command,
+        config.mcp_server.args,
+        config.mcp_server.timeout_seconds,
+    ) as client:
+        tools = await client.list_tools()
+    return [t.name for t in tools]
+
+
+def _resolve_tool_names(config: Config) -> list[str]:
+    """Resolve the parametrize tool-name list.
+
+    - If config.target.tool_name is set (truthy after empty-string-to-None
+      validator coercion in models.py): single-item list, NO collection-time
+      spawn (CD-05 short-circuit).
+    - Otherwise: discovered list, cached module-level for this pytest invocation.
+    """
+    global _DISCOVERED_TOOL_NAMES
+    explicit = config.target.tool_name
+    if explicit:
+        return [explicit]
+    if _DISCOVERED_TOOL_NAMES is None:
+        try:
+            _DISCOVERED_TOOL_NAMES = asyncio.run(_discover_tools(config))
+        except Exception as exc:  # noqa: BLE001 -- mirrors _preflight failure-mode parity
+            # Match _preflight failure shape (fixtures.py:149-154) for exit-code parity.
+            # See 07-RESEARCH §Pitfall 5.
+            pytest.exit(
+                f"Tool discovery via {config.mcp_server.command!r} failed: "
+                f"{exc.__class__.__name__}: {exc}",
+                returncode=2,
+            )
+    return _DISCOVERED_TOOL_NAMES
+
+
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """Inject indirect parametrize on `target_tool` for tests that request it.
+
+    Discovery happens lazily -- first test function that needs target_tool
+    triggers the (cached) one-shot subprocess spawn. McpTestClient.__aenter__
+    uses _build_isolated_env (Phase 06 D-16) so this spawn cannot leak state
+    to ~/.homelab_mcp/ (ISOL-03 contract preserved).
+    """
+    if "target_tool" not in metafunc.fixturenames:
+        return
+    config = Config()
+    names = _resolve_tool_names(config)
+    metafunc.parametrize("target_tool", names, indirect=True, ids=names)
