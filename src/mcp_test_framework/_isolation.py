@@ -52,7 +52,14 @@ _PASSTHROUGH_ALLOWLIST: tuple[str, ...] = (
     "SYSTEMROOT",   # Windows DLL resolution; without it, Python interpreters in
                     # the spawned subprocess fail to import stdlib modules
     "LANG",         # locale resolution for non-English MCP server output
-    "USERNAME",     # informational; some servers log it for diagnostics
+    "USERNAME",     # informational; some servers log it for diagnostics.
+                    # NOTE: POSIX ``USER`` is intentionally NOT in this allowlist
+                    # per D-07 — the locked allowlist names exactly ``USERNAME``.
+                    # On Linux/macOS, ``getpass.getuser()`` consults ``USER`` and
+                    # ``USERNAME`` is rarely set, so the spawned subprocess sees
+                    # no user identity at all. This is spec-faithful; widening
+                    # the allowlist would require a CONTEXT.md amendment and an
+                    # EXTENDING.md update (out of scope for a code-review fix).
 )
 _MCP_PREFIX = "MCP_"  # CD-03: pass MCP_* through (includes MCP_CONNECTION_NONBLOCKING)
 _HOME_OVERRIDES: tuple[str, ...] = (
