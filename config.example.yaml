@@ -18,3 +18,28 @@ target:
   tool_name: list_keyring_credentials
 
 judge_timeout_seconds: 120
+
+# Phase 08 schema version. Only `1` is accepted by this release.
+# Future schema changes will either default to `2+` or branch on this value.
+version: 1
+
+# Per-tool config registry (TOOLCFG-01..07).
+# Keys MUST match tool names returned by `mcp-test-framework list-tools`.
+# Tools with no entry here use safe defaults: skip=false, call_arguments={},
+# judges=null (run all rubrics).
+#
+# Each entry below illustrates one knob:
+#   - list_registered_servers: marked skip=true with a reason
+#   - list_keyring_credentials: judge subset (clarity only) for noisy rubrics
+#
+# Reserved fields `setup:` and `depends_on:` (TOOLCFG-03) are intentionally
+# omitted -- they are typed in the model for SEED-004 forward-compat but
+# have no runtime semantics in v1.1.
+tools:
+  list_registered_servers:
+    skip: true
+    skip_reason: "Description does not pass disambiguation rubric; tracked for upstream homelab-mcp doc fix."
+  list_keyring_credentials:
+    # Run only the clarity rubric on this tool's description; skip
+    # disambiguation and parameters judging.
+    judges: [clarity]
