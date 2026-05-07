@@ -108,9 +108,12 @@ async def test_real_state_unchanged(
     the real install — exactly where bleed-through bites.
     """
     # D-11: skip cleanly on hosts without a real homelab-mcp install.
-    if not REAL_HOMELAB_DIR.exists():
+    # Tightened: also skip when ~/.homelab_mcp/ exists but contains none of
+    # the three named files — otherwise step 3's equality assertion would
+    # pass vacuously (all before/after hashes are None).
+    if not REAL_HOMELAB_DIR.exists() or not any(p.exists() for p in REAL_FILES):
         pytest.skip(
-            "No real ~/.homelab_mcp/ to compare against — "
+            "No real ~/.homelab_mcp/ files to compare against — "
             "ISOL-03 vacuous on this host"
         )
 
