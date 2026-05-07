@@ -2,9 +2,12 @@
 id: SEED-003
 status: dormant
 planted: 2026-05-06
+revised: 2026-05-07
 planted_during: v1.0 / post-shipping conversation about v1.1 scoping
-trigger_when: After v1.1 (multi-tool support) ships, when scaling judges across N tools makes the static 3 feel limiting; or when comparing scoring across MCP server versions becomes a need; or when a milestone is opened that mentions "rubric", "judging", "evaluation", "scoring", or "judge backend".
+revised_during: v1.0 / `/gsd-explore` Long-term Vision pass
+trigger_when: REVISED — v1.3 milestone. The vision pass identified "agent-realistic-mistake input fuzz" as IN-SCOPE (not anti-vision) and assigned it to this seed as a rubric type. v1.3 ships the rubrics-as-data system + agent-realism fuzz rubrics together. Surface during /gsd-new-milestone v1.3, or any planning that touches rubrics/judges/scoring/evaluation.
 scope: Large
+target_milestone: v1.3
 ---
 
 # SEED-003: Dynamic judging protocol — rubrics as data, not code
@@ -139,3 +142,35 @@ Related code and decisions found in the current codebase:
   change and could be its own milestone." Captured verbatim because the
   framing ("really large… own milestone") IS the trigger for treating this
   as deferred-but-deliberate, not as v1.1 scope creep.
+
+## Vision-Pass Addendum (2026-05-07)
+
+The `/gsd-explore` long-term-vision pass added a **fourth load-bearing dimension** to this seed's scope: **agent-realistic-mistake input fuzz testing.**
+
+**Three agent-usability questions identified by the vision pass:**
+
+1. Should I pick this tool right now? (description quality / disambiguation) — covered by current static rubrics
+2. Can I construct a valid call? (schema clarity, parameter docs) — covered
+3. **Does the tool handle inputs real agents send — including imperfect ones?** — **new in scope**
+
+User framing (2026-05-07): "if the tools say string only for a parameter we can't assume the agent will always honor that … the llm agent use should be able to generate these kinds of test cases if asked when we add the dynamic style judging."
+
+**Concrete implications:**
+
+- **Input-generation rubrics become a first-class rubric category** alongside the current evaluation rubrics. An input-gen rubric takes a tool schema and produces N test calls — including imperfect ones an LLM agent might realistically emit (wrong types, missing fields, hallucinated parameter names, near-miss values). The framework runs those calls against the tool and observes the response behavior.
+- **NOT a fuzzer in the adversarial sense.** Random adversarial input is anti-vision per PROJECT.md. *Agent-realistic-mistake* fuzz is in scope: it answers a vision-aligned question ("does this tool break when an agent makes a normal LLM-style mistake?"), not "does this tool crash on `\x00\xff\xff` payloads."
+- **Collapses with the previously-distinct "test-input generation" deferral.** User clarification (2026-05-07): "test-input generation basically fuzz testing with extra test types." They are the same thing once an LLM is the generator. This seed absorbs both.
+
+**Updated scope (additions to the original 6 components):**
+
+7. **Agent-realism input-gen rubric type.** Rubric data shape that produces *test inputs* rather than scoring existing prose. Output: `(arguments_dict, expectation)` tuples where expectation ∈ {accept-and-parse, structured-error, undefined-behavior}.
+8. **Tool-call-then-observe loop harness.** Run each generated input against the tool via `McpTestClient.call_tool`; classify each response (success / typed-error / crash / unparseable). The classification IS the eval signal.
+9. **Reflection rubric over the call set.** After running all generated inputs for a tool, ask the judge to reflect on the result distribution and produce a `JudgeResult` with `passed/score/reasoning` shape.
+
+**Cohort relationships:**
+
+- **Depends on SEED-005 (v1.2).** The OpenAI-compat backend gives the judge access to structured-output primitives that materially simplify input-generation. Don't try to ship SEED-003 before SEED-005 lands.
+- **Sequences before SEED-001 (v1.4+).** The agentic judge IS a richer version of the call-then-observe loop introduced here. Sequencing SEED-003 first means SEED-001's reflection layer has somewhere clean to live (rubric data) instead of being hardcoded.
+- **Backend portability becomes a feature.** With SEED-005 in v1.2 and rubrics-as-data in v1.3, the framework can run the same rubric against the same tool via two different backends — exposing whether scores are model-dependent. Half the audit-secondary value prop comes from this comparability.
+
+**Why scope stayed "Large" rather than bumping further:** the input-gen rubric type is a natural extension of the rubrics-as-data system, not an architectural new direction. The data model, registry, resolver, and versioning all generalize over input-gen rubrics for free. The marginal cost is the call-then-observe loop harness (component 8) — material but bounded.

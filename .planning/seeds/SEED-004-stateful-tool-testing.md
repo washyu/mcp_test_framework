@@ -2,9 +2,12 @@
 id: SEED-004
 status: dormant
 planted: 2026-05-06
+revised: 2026-05-07
 planted_during: v1.0 / post-shipping conversation about v1.1 scoping
-trigger_when: After v1.1 (multi-tool support) ships, when the framework attempts to exercise tools that require prior state (register_server before list_registered_servers, auth handshakes, resource creation before manipulation). Surface during any milestone that mentions "setup", "fixtures", "resource", "stateful", "dependencies between tools", or "destructive testing".
+revised_during: v1.0 / `/gsd-explore` Long-term Vision pass
+trigger_when: REVISED — Later than v1.4 (i.e., after SEED-001 / agentic judge ships). The vision pass kept this seed at the back of the queue because (a) v1.1's per-tool config schema reservation makes future stateful-config additive, not breaking; (b) stateful testing pairs naturally with the agentic judge (agents in production are stateful); (c) v1.2/v1.3/v1.4 all ship without needing stateful semantics. Surface during /gsd-new-milestone after v1.4 lands, or earlier if a user files a request to test a stateful tool.
 scope: Large
+target_milestone: v1.5+ (post-SEED-001)
 ---
 
 # SEED-004: Stateful tool testing with resource setup/teardown
@@ -146,3 +149,26 @@ Related code and decisions in the current codebase:
   inherently stateful) and SEED-003 (dynamic rubrics — stateful tools
   often need rubrics about state-mutation correctness, not just description
   quality). All three may converge in a later milestone.
+
+## Vision-Pass Addendum (2026-05-07)
+
+The `/gsd-explore` long-term-vision pass (PROJECT.md "Long-term Vision" section) confirmed this seed's framing without architectural changes, but **clarified its sequencing in the milestone shape:**
+
+| Milestone | Includes | This seed |
+|-----------|----------|-----------|
+| v1.1 | Multi-tool + isolation + JUnit | not yet — but reserves config schema |
+| v1.2 | xdist parallelism + warm-up + OpenAI-compat backend | not yet |
+| v1.3 | Dynamic rubrics + agent-realism fuzz | not yet |
+| v1.4+ | Agentic tool-use judge | not yet |
+| **v1.5+** | **Stateful tool testing** | **this seed germinates** |
+
+**Why so late:** stateful testing has the largest design-space of any seed (setup/teardown contracts, inter-tool dependencies, isolation, destructive-tool gating). Each prior milestone makes the eventual stateful-testing implementation cleaner:
+
+- **v1.1 isolation** gives stateful tests a clean per-test-or-per-session sandbox. Without per-worker tempdir isolation, stateful tests would inherit the same bleed-through bug v1.1 fixes.
+- **v1.2 OpenAI-compat backend** is irrelevant to stateful semantics directly, but keeps the framework's backend story clean before adding another axis of complexity.
+- **v1.3 dynamic rubrics** lets stateful tests express their stateful-correctness criteria as rubric data ("after calling `register_server`, `list_registered_servers` should include the new entry"). Without rubrics-as-data, every stateful assertion is hardcoded Python.
+- **v1.4 agentic judge** is the natural consumer of stateful testing. Agents in production maintain state across tool calls; the agentic judge's call-and-reflect loop becomes much richer once stateful tools are testable.
+
+**Critical preservation requirement reaffirmed:** v1.1 MUST reserve `setup:` and `depends_on:` as Optional/unused fields in the per-tool Pydantic config model. The original seed already flagged this; the vision pass preserves it as a hard requirement. Without those reserved field names, this seed becomes a config migration; with them, it's purely additive.
+
+**Net:** no scope change, no design change. Position in the milestone queue is now explicit (v1.5+, post-SEED-001). Don't try to pull this earlier — the architectural prerequisites genuinely aren't ready until then.

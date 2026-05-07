@@ -2,9 +2,12 @@
 id: SEED-002
 status: dormant
 planted: 2026-05-04
+revised: 2026-05-07
 planted_during: v1.0 / Phase 01 (foundation-pure-data-core, just completed)
-trigger_when: When the framework generalizes beyond the single `homelab-mcp` / `list_registered_servers` target — i.e. when a milestone scopes "multi-tool" or "multi-server" support, or when CI throughput becomes the gating concern.
+revised_during: v1.0 / `/gsd-explore` Long-term Vision pass
+trigger_when: REVISED — v1.2 milestone. v1.1 (multi-tool + per-worker isolation) is now the **hard prerequisite** because process-parallel xdist workers stomp on each other's homelab-mcp state without per-worker tempdir isolation. Surface during /gsd-new-milestone for v1.2 ("performance + portability"), cohort with SEED-005 and warm-up stage.
 scope: Medium
+target_milestone: v1.2 (cohort with SEED-005 + warm-up stage)
 ---
 
 # SEED-002: Tool-level parallelism via pytest-xdist with read/write resource markers
@@ -147,3 +150,21 @@ phases:
 - Default-to-safe principle: tests without markers should be treated as
   full-write (fully serialized) rather than full-read (fully parallel).
   Better to be slow than to flake.
+
+## Vision-Pass Addendum (2026-05-07)
+
+The `/gsd-explore` long-term-vision pass (PROJECT.md "Long-term Vision" section) added two load-bearing constraints that lock this seed's milestone target and shape its scope:
+
+**1. Threading constraint identified as load-bearing project fact.** "homelab-mcp is not thread-safe" was confirmed as a current limitation of the test target. Per PROJECT.md "Performance constraints": **the framework parallelizes at the process level only.** This rules out any thread-pool variant of parallelism inside a single MCP subprocess — the only path is xdist + multiple subprocesses. That's exactly what this seed proposes; the architectural alignment is now explicit and locked.
+
+**2. Per-worker isolation is a HARD prerequisite.** v1.1's isolation work (HOME/USERPROFILE override + tempdir-per-session) was originally framed as a bug fix for `homelab-mcp` state-bleed-through. The vision pass clarified it's also the *prerequisite* for parallelism — without per-worker isolation, two xdist workers would write to the same `~/.homelab_mcp/credential_registry.json` and corrupt each other's runs. **v1.2 cannot ship parallelism until v1.1 ships isolation.**
+
+**3. Cohort-shipped with SEED-005 + warm-up stage in v1.2.** The vision pass committed v1.2 as "performance + portability" — three concerns that ship together because they share architectural muscles:
+
+- **SEED-002 (this seed):** xdist parallelism with per-worker isolated subprocess
+- **SEED-005:** OpenAI-compat backend (parallel workers each need a judge client; pooling/rate-limiting must be per-worker or globally negotiated)
+- **Warm-up stage:** a session-scoped fixture that issues a dummy judge call to amortize cold-start across the run. Without this, the project's wall-clock-budget target (~5 min/run) is unreachable on local Ollama.
+
+**4. Wall-clock target locked at ~5 min per run.** PROJECT.md's "Performance constraints" section codifies this. Without xdist parallelism + warm-up, the budget is unreachable for any reasonable multi-tool surface. This seed's cost/value justification is now anchored to a concrete number, not a hand-wave.
+
+**Net:** this seed is now scoped, sequenced, and architecturally pinned. v1.1 must enable it (isolation); v1.2 ships it. Don't delay the v1.1 isolation work because its real downstream consumer is here.

@@ -2,9 +2,12 @@
 id: SEED-001
 status: dormant
 planted: 2026-05-04
+revised: 2026-05-07
 planted_during: v1.0 / Phase 01 (foundation-pure-data-core, just completed)
-trigger_when: After Phase 02 (mcp-stdio-client) lands — re-evaluate the judge architecture before building Phase 03's rubric-style OllamaJudge, or surface during planning of any milestone that revisits judge design.
+revised_during: v1.0 / `/gsd-explore` Long-term Vision pass
+trigger_when: ORIGINAL — "After Phase 02 (mcp-stdio-client) lands…" (now obsolete; Phase 02 shipped). REVISED — v1.4+ milestone, **after** v1.3 (dynamic rubrics, SEED-003) and v1.2 (OpenAI-compat backend, SEED-005) have landed. The 2026-05-07 vision pass identified the agentic judge as the *full realization* of the project's "first-hand validation" vision — promote in priority but sequence after the supporting infrastructure.
 scope: Medium
+target_milestone: v1.4+
 ---
 
 # SEED-001: Replace rubric-style judge with full agent tool-use loop
@@ -125,3 +128,20 @@ Related code and decisions in the current codebase:
   single-shot rubric. With Ollama running locally at 127.0.0.1 this is
   free-but-slow; bound the loop carefully so CI runs stay under the spec's
   implied budget.
+
+## Vision-Pass Addendum (2026-05-07)
+
+The `/gsd-explore` long-term-vision pass (PROJECT.md "Long-term Vision" section, established 2026-05-07) identified the agentic judge as **the full realization of the project's vision**, not a "future enhancement."
+
+**The vision crystallized as:** "First-hand validation that LLM agents can find, understand, and use your MCP tools — including with the imperfect inputs real agents produce." The current rubric-style judge is a *proxy* for that vision (it grades prose-about-tools, not actual-tool-use). The agentic judge measures the vision question *directly*: an LLM looks at the tool, decides to call it, calls it, observes the result, and reflects on whether it succeeded. **That IS the answer to "can an agent use this tool?".**
+
+**What this changes:**
+
+- **Priority elevated.** Originally framed as a Medium-effort post-Phase-3 enhancement; now framed as the load-bearing milestone that delivers the full product vision.
+- **Sequence locked.** The seed sequences *after* SEED-003 (dynamic rubrics, v1.3) and SEED-005 (OpenAI-compat backend, v1.2). Reasons:
+  - SEED-005 gives the agentic loop a backend that natively supports tool-calling across providers (vLLM/OpenAI/etc. tool-use is more uniform than Ollama-specific tool-use).
+  - SEED-003's rubrics-as-data system gives the agentic judge somewhere to put its *reflection rubric* — the structured "did the call succeed?" prompt. Without SEED-003, the reflection rubric is hardcoded; with it, it's data.
+- **Co-evolution with SEED-003.** SEED-003 is the rubric/data layer; SEED-001 is the loop/behavior layer. Both can ship cleanly in sequence (v1.3 → v1.4) without architectural churn because both are oriented around the same `Judge` Protocol seam.
+- **No architectural changes needed in v1.1.** v1.1 (multi-tool + isolation + JUnit) does not need to know about the agentic judge yet. The Protocol seam already absorbs it.
+
+**Net:** keep this seed dormant until v1.4. Its eventual germination is now the project's headline milestone — promote the framing in any external comms (README, etc.) when v1.4 is on deck.
