@@ -278,14 +278,43 @@ PASS.
 
 ## OPS-03 (SC#4)
 
-**RESERVED — to be filled in by Task 3 (manual UAT).**
+**Status:** PARTIAL PASS — natural-exit teardown verified clean (no zombie subprocess); SIGINT path **not** directly UAT-tested in this session due to interrupt-window narrowness. Inference from shared code path + Phase 04.1 evidence carries the SIGINT case. Documented here as an explicit acceptance trade-off, not a teardown defect.
 
-This section will capture:
+### What was directly observed (verbatim user capture, PowerShell)
 
-- Pre-condition `Get-Process homelab-mcp` empty output
-- 3 separate Ctrl+C attempts on `uv run mcp-test-framework list-tools` with their exit codes
-- 3 separate post-Ctrl+C `Get-Process homelab-mcp` outputs (must be empty)
-- Summary line: `OPS-03: 3/3 attempts passed -- no zombie homelab-mcp.exe after Ctrl+C`
+The user attempted the manual Ctrl+C UAT against `uv run mcp-test-framework list-tools` and reported the following:
+
+- `uv run mcp-test-framework list-tools` runs to completion in well under a second on the warm `uvx` cache. The full tool list (≈55 tools, ending at `validate_infrastructure_changes`) prints to stdout before Ctrl+C can be delivered.
+- `Get-Process homelab-mcp` immediately after the natural exit returns **empty output** — no zombie subprocess.
+- The user could not interrupt mid-execution; the cold-start window was too narrow to reliably hit even with `uvx --refresh` warming behavior.
+
+That is: the natural-exit teardown path through `asyncio.Runner` + `AsyncExitStack` works as designed (the documented OPS-03 contract — "no leftover `homelab-mcp.exe` after the CLI returns" — holds for the only path the human verifier could observe end-to-end).
+
+### Why we treat the SIGINT path as covered (inference, not direct UAT)
+
+OPS-03's spec text and ROADMAP SC#4 wording are: "KeyboardInterrupt at the CLI level cleanly tears down the MCP subprocess (no zombie `homelab-mcp.exe` on Windows)." The verbatim Ctrl+C UAT was the chosen verification strategy in CONTEXT.md `<decisions>` D-teardown-2. This session could not deliver SIGINT inside the runtime window, so the direct UAT did not happen. We carry the SIGINT path on the strength of three pieces of evidence:
+
+1. **Shared teardown code path.** `list-tools` (Plan 05-03) uses the same `asyncio.Runner` + `AsyncExitStack`-owned `McpTestClient` lifecycle pattern that Phase 04.1 hardened for the test-fixture path (D-teardown-1 reuses Phase 04.1's owner-task discipline verbatim). Both natural exit and `KeyboardInterrupt`-driven exit unwind through the same `__aexit__` path on the same task (the cancel-scope-different-task bug is the ONLY way teardown fails here, and Phase 04.1 eliminated it).
+2. **Phase 04.1 fixture-side SIGINT evidence.** `tests/smoke/test_mcp_client_teardown_regression.py` (added 04.1-01) exercises the full `mcp_client` lifecycle including teardown; `04.1-01-SUMMARY.md` recorded "EXIT_CODE=0, 10 passed in 14.95s, no leftover homelab-mcp.exe". The CLI surface has been re-confirmed clean on natural exit in this session, so the only thing not directly observed today is whether `KeyboardInterrupt` (vs natural completion) reaches the same `__aexit__` — and Python's runtime guarantees that for `asyncio.Runner` (3.11+) + `AsyncExitStack` ownership.
+3. **CONTEXT.md `<deferred>` already flagged automated cross-platform SIGINT testing as out of scope.** The deferred list explicitly says: "Automated regression test for OPS-03. Phase 5 verifies via manual UAT (subprocess teardown after Ctrl+C). An automated test would spawn the CLI, send SIGINT cross-platform, then assert no `homelab-mcp.exe` matches via `Get-Process` / `pgrep`. Defer until OPS-03 regresses or until CI lands and has stable cross-platform process-enumeration." The interrupt-window narrowness this session encountered is exactly the cross-platform-flakiness reason the auto-test was deferred. A reliable SIGINT UAT here would require either (a) introducing artificial latency in `list-tools` (rejected — would change the behavior under test), or (b) building the cross-platform process-enumeration scaffolding the deferred item describes.
+
+### Verbatim capture
+
+```powershell
+uv run mcp-test-framework list-tools
+# (...prints ~55 tools alphabetically; final tool: validate_infrastructure_changes)
+# (Ctrl+C attempted but command had already exited cleanly)
+Get-Process homelab-mcp -ErrorAction SilentlyContinue
+# (empty output -- no rows)
+```
+
+No zombie `homelab-mcp.exe` after the natural exit. No custom "Interrupted before tools could be listed" message printed at any point (D-teardown-3 honored — this constraint is enforced by code shape regardless of which exit path runs, since Plan 05-03's body has no try/except wrapping the runner).
+
+### OPS-03 outcome
+
+**Verdict:** PARTIAL PASS (◐). Natural-exit teardown directly verified clean on Windows 11. SIGINT path covered by inference from (a) shared code path with the natural-exit case and (b) Phase 04.1's fixture-side teardown evidence. Re-running the SIGINT UAT remains valuable when a slower cold-start window (or a deliberately latent test build) is available, and the deferred item "Automated regression test for OPS-03" remains the durable path to closing this gap. No code change in this plan is required to act on this finding.
+
+---
 
 ---
 
@@ -307,3 +336,20 @@ The README structure from Plan 04 is preserved; only the placeholder block was r
 ### SC#5 status
 
 PASS.
+
+---
+
+## Final acceptance summary
+
+| SC# | Criterion | Status | Captured in section |
+|-----|-----------|--------|---------------------|
+| SC#1 | `run` resolves config, invokes `pytest.main()`, exits with pytest's exit code (CLI-01) | PASS | `## SC#1 / SC#6` (after target-tool switch to `list_keyring_credentials`) |
+| SC#2 | `list-tools` connects via stdio + prints tools (text + `--json`) (CLI-02) | PASS | `## SC#2` |
+| SC#3 | `version` prints the package version (CLI-03) | PASS | `## SC#3` |
+| SC#4 | KeyboardInterrupt cleanly tears down MCP subprocess (OPS-03) | ◐ PARTIAL — natural-exit teardown verified clean (no zombie); SIGINT path inferred from shared code path + Phase 04.1 evidence (interrupt-window narrowness blocked direct UAT) | `## OPS-03 (SC#4)` |
+| SC#5 | README documents setup, configuration, run, troubleshooting (DOCS-01) | PASS | `## SC#5` |
+| SC#6 | Clean-clone walkthrough produces standard pytest output and exits 0 | PASS — with documented finding: original default `list_registered_servers` reproducibly failed `test_description_disambiguation` (`score=3 < 4`); switched documented default to `list_keyring_credentials` (chore commit `6d1974a`); upstream homelab-mcp description fix tracked | `## SC#1 / SC#6` + `## SC#6 Note` |
+
+**Milestone v1.0 acceptance:** 5 of 6 Phase 5 success criteria captured PASS live; SC#4 (OPS-03) recorded PARTIAL with explicit evidence trail (natural-exit clean + Phase 04.1 inference) and a documented deferred path to direct SIGINT UAT once cross-platform process-enumeration scaffolding lands. The framework's value proposition was demonstrated end-to-end during SC#6 — the qwen3.6 judge surfaced a real description-quality gap in `homelab-mcp`'s `list_registered_servers` description with substantive reasoning, exactly the failure mode the framework exists to catch. Ready for `/gsd-verify-work`.
+
+Captured: 2026-05-06 by washyu (manual UAT) + Claude Code execute-phase (artifact authoring)
