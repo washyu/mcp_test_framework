@@ -153,13 +153,14 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
             returncode=2,
         )
 
-    tool_names = [t.name for t in tools]
-    if config.target.tool_name not in tool_names:
-        pytest.exit(
-            f"target tool {config.target.tool_name!r} not in MCP server tool list "
-            f"(available: {tool_names!r})",
-            returncode=2,
-        )
+    if config.target.tool_name is not None:
+        tool_names = [t.name for t in tools]
+        if config.target.tool_name not in tool_names:
+            pytest.exit(
+                f"target tool {config.target.tool_name!r} not in MCP server tool list "
+                f"(available: {tool_names!r})",
+                returncode=2,
+            )
 
     # All preflight checks passed; the brief MCP session has been closed by
     # AsyncExitStack on context-manager exit. The mcp_client fixture below

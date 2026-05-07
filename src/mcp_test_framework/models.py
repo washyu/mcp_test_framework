@@ -19,7 +19,9 @@ See plan-checker iter 1 BLOCKER #1 (resolved Option A) in 01-02-PLAN.md.
 
 from __future__ import annotations
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from typing import Optional
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 
 class OllamaConfig(BaseModel):
@@ -63,11 +65,25 @@ class McpServerConfig(BaseModel):
 
 
 class TargetConfig(BaseModel):
-    """Target tool to run all tests against."""
+    """Target tool to run all tests against. None = discover all tools (Phase 07 D-01)."""
 
     model_config = ConfigDict(frozen=True, populate_by_name=True)
 
-    tool_name: str = Field(
-        default="list_registered_servers",
+    tool_name: Optional[str] = Field(
+        default=None,
         validation_alias=AliasChoices("TARGET_TOOL_NAME", "tool_name"),
     )
+
+    @field_validator("tool_name", mode="before")
+    @classmethod
+    def _empty_to_none(cls, v):
+        """Empty string from env -> None (Phase 07 D-02 'empty equivalent to None').
+
+        The project's custom _BareNameNestedEnvSource (config.py:91-146) reads
+        an env var as present when membership-check passes, regardless of value.
+        TARGET_TOOL_NAME='' would land as '' (not None) without this coercion.
+        See 07-RESEARCH §Pitfall 2.
+        """
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
