@@ -24,7 +24,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import shutil
+import tempfile
 from contextlib import AsyncExitStack
+from pathlib import Path
 
 import anyio
 import httpx
@@ -33,6 +35,7 @@ import pytest_asyncio
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
+from mcp_test_framework._isolation import _build_isolated_env
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
@@ -166,6 +169,40 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
 
 # ---------------------------------------------------------------------------
+# _isolated_home -- session-scoped per-run tempdir for HOME/USERPROFILE redirect
+# (Phase 06 ISOL-05; D-12 fixture shape, D-14 single source of truth, D-15 cleanup)
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture(loop_scope="session", scope="session")
+async def _isolated_home() -> Path:
+    """Per-session tempdir owning the HOME/USERPROFILE redirect target.
+
+    Single source of truth for the isolation tempdir (D-14). Plan 06-03's
+    ISOL-03 verification test depends on this fixture directly to read the
+    redirected `.homelab_mcp/` subdirectory without reaching into mcp_client
+    internals (D-13). Future Phase 07/08 fixtures that need isolation
+    guarantees depend on the same fixture -- no duplicate tempdir creation.
+
+    Lifecycle owned via AsyncExitStack -- cleanup is automatic on session
+    exit (D-15). tempfile.TemporaryDirectory is a SYNC context manager, so
+    we use stack.enter_context (not enter_async_context). This is safe with
+    respect to the Phase 04.1 invariant ("no anyio cancel scope across the
+    yield") because TemporaryDirectory is stdlib sync -- it opens no anyio
+    cancel scope.
+
+    Tempdir prefix `mcp-test-fw-` per CONTEXT.md <specifics> -- orphaned
+    tempdirs (should ISOL-05 cleanup ever fail) are debuggable from
+    `dir %TEMP%` output.
+    """
+    async with AsyncExitStack() as stack:
+        tmpdir = stack.enter_context(
+            tempfile.TemporaryDirectory(prefix="mcp-test-fw-")
+        )
+        yield Path(tmpdir)
+
+
+# ---------------------------------------------------------------------------
 # mcp_client -- session-scoped, pure-asyncio driver + anyio owner task
 # (Phase 04.1 DEF-04-03-B follow-up; resolves debug session
 # fixture-teardown-cancel-scope)
@@ -173,7 +210,7 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_client(config: Config, _preflight):
+async def mcp_client(config: Config, _preflight, _isolated_home: Path):
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
@@ -207,6 +244,8 @@ async def mcp_client(config: Config, _preflight):
     params = StdioServerParameters(
         command=config.mcp_server.command,
         args=config.mcp_server.args,
+        # ISOL-02 / ISOL-07 -- Phase 06 (D-14: shared tempdir)
+        env=_build_isolated_env(_isolated_home),
     )
     loop = asyncio.get_running_loop()
     ready: asyncio.Future[McpTestClient] = loop.create_future()
