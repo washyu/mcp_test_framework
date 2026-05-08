@@ -5,11 +5,14 @@ session-scoped fixtures (mcp_client, judge, target_tool, config, _preflight,
 and three rubric fixtures) via `pytest_plugins` registration of
 `mcp_test_framework.fixtures` -- the load-bearing one-line seam adopters add
 to their own conftest to inherit the framework's fixture set (D-layout-1).
+Phase 9 ships the per-tool summary reporter (OUTPUT-03) as a sibling
+plugin (``mcp_test_framework._reporter``) registered alongside ``fixtures``
+in the same ``pytest_plugins`` seam.
 """
 
 from __future__ import annotations
 
-pytest_plugins = ["mcp_test_framework.fixtures"]
+pytest_plugins = ["mcp_test_framework.fixtures", "mcp_test_framework._reporter"]
 
 import asyncio  # noqa: E402
 import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
