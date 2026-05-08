@@ -9,13 +9,20 @@ Unit-level tests (no live MCP server needed):
   - pytest_runtest_logreport verdict aggregation rules (D-03, D-03a)
   - pytest_terminal_summary -q suppression (D-04b)
 
-Live tests (gated behind @live_homelab) are appended in Task 2.
+Live tests (gated behind @live_homelab):
+  - End-to-end JUnit XML produced by `mcp-test-framework run --junit-xml=...`
+    is well-formed and contains <testcase> entries with [<tool>] suffix in
+    `name` attribute (OUTPUT-01 + OUTPUT-02 free-ride per L-01).
+  - The per-tool summary section appears in the live run's terminal output
+    (OUTPUT-03 always-on per D-04).
 
 Decisions cited: D-01..D-05, CD-03, L-01..L-06 from
 .planning/phases/09-junit-xml-output-per-tool-reporting/09-CONTEXT.md.
 """
 from __future__ import annotations
 
+import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -407,3 +414,138 @@ def test_terminal_summary_skip_row_with_reason() -> None:
             f"ASCII-hyphen SKIP separator detected -- should be em-dash per "
             f"ROADMAP SC-3: {line!r}"
         )
+
+
+# ===========================================================================
+# Live: end-to-end JUnit XML + per-tool summary against real homelab-mcp
+# ===========================================================================
+
+
+def _run_framework_subprocess(
+    *args: str,
+    cwd: Path,
+) -> subprocess.CompletedProcess:
+    """Drive `mcp-test-framework run` in a subprocess so the plugin's
+    pytest_terminal_summary fires in its OWN pytest session (not nested
+    inside the calling test's session, which would skew terminalreporter
+    state).
+
+    Mirrors tests/test_tool_config.py's subprocess.run([sys.executable,
+    "-m", ...]) pattern. Uses the installed console-script via
+    ``uv run mcp-test-framework`` to exercise the actual entry point.
+    """
+    return subprocess.run(
+        [
+            "uv",
+            "run",
+            "mcp-test-framework",
+            "run",
+            *args,
+            "--",
+            "-m",
+            "live_homelab",
+        ],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.mark.live_homelab
+def test_junit_xml_emitted_and_well_formed(tmp_path: Path) -> None:
+    """OUTPUT-01: --junit-xml=PATH writes a well-formed XML file.
+
+    Drives a real `mcp-test-framework run --junit-xml=<path> -- -m live_homelab`
+    subprocess and parses the resulting XML via xml.etree.ElementTree.
+
+    Why subprocess: pytest_terminal_summary needs its own pytest session;
+    nesting CliRunner.invoke inside this test would conflate report streams.
+    """
+    repo_root = Path(__file__).parent.parent
+    target = tmp_path / "results.xml"
+
+    proc = _run_framework_subprocess(f"--junit-xml={target}", cwd=repo_root)
+
+    # The subprocess exit code mirrors pytest's exit code -- non-zero is
+    # acceptable here because Phase 08 retained an upstream-blocked failure
+    # (suggest_deployments disambiguation rubric). What we care about is
+    # that the XML file was produced.
+    assert target.exists(), (
+        f"JUnit XML not produced at {target}. "
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+
+    # Parse for well-formedness. ElementTree.parse raises on malformed XML.
+    tree = ET.parse(target)
+    root = tree.getroot()
+
+    # pytest emits <testsuites> as the root for multi-suite output, or
+    # <testsuite> for a single suite. Accept either per CD-01 (pytest defaults).
+    assert root.tag in {"testsuites", "testsuite"}, root.tag
+
+
+@pytest.mark.live_homelab
+def test_junit_xml_testcase_names_carry_tool_suffix(tmp_path: Path) -> None:
+    """OUTPUT-02 (ROADMAP SC-2): <testcase> name attributes carry the
+    `[<tool_name>]` SUFFIX -- name BOTH contains `[` AND ends with `]`.
+
+    L-01: parametrize IDs from Phase 07 free-ride into pytest's JUnit
+    reporter natively. Phase 09 verifies the contract; no Phase 09 code
+    produces this -- we just check pytest's defaults still emit it.
+
+    Tightness rationale: a previous version of this assertion checked only
+    ``"[" in name``, which would pass on a name like ``test_x[a]something``
+    that violates the ROADMAP SC-2 SUFFIX contract. We now require BOTH
+    ``"[" in name`` AND ``name.endswith("]")`` -- matching the parsing rule
+    in ``_extract_tool_name`` (09-02 PLAN line ~206).
+    """
+    repo_root = Path(__file__).parent.parent
+    target = tmp_path / "results.xml"
+
+    proc = _run_framework_subprocess(f"--junit-xml={target}", cwd=repo_root)
+    assert target.exists(), (
+        f"JUnit XML not produced. "
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+
+    tree = ET.parse(target)
+    root = tree.getroot()
+    # Find every <testcase> element regardless of nesting depth.
+    testcases = list(root.iter("testcase"))
+    # ROADMAP SC-2 SUFFIX contract: name has `[` AND ends with `]`.
+    names_with_suffix = [
+        tc.get("name", "")
+        for tc in testcases
+        if "[" in tc.get("name", "") and tc.get("name", "").endswith("]")
+    ]
+    assert names_with_suffix, (
+        "No <testcase> with `[<tool>]` SUFFIX found (name must contain `[` "
+        "AND end with `]`). Phase 07 IDs not flowing into JUnit XML, or "
+        "the SUFFIX contract from ROADMAP SC-2 is violated. "
+        f"All testcase names: {[tc.get('name', '') for tc in testcases]!r}\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+
+
+@pytest.mark.live_homelab
+def test_per_tool_summary_section_always_on() -> None:
+    """OUTPUT-03 + D-04: terminal output of `mcp-test-framework run` contains
+    a `per-tool summary` section by default.
+    """
+    repo_root = Path(__file__).parent.parent
+
+    proc = _run_framework_subprocess(cwd=repo_root)
+
+    # The section header is emitted via terminalreporter.write_sep with
+    # title="per-tool summary" -- pytest renders the title between '=' chars.
+    assert "per-tool summary" in proc.stdout, (
+        f"per-tool summary section missing from terminal output.\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+
+    # CD-03: grouping header line is present.
+    assert "grouping:" in proc.stdout, (
+        f"per-tool summary grouping header missing.\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
