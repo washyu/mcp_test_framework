@@ -44,10 +44,10 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 ### DOC — Documentation updates for v1.1
 
-- [ ] **DOC-04**: README documents how to write a per-tool config block (skip, call_arguments, judges) with examples for the homelab-mcp tools currently exercised.
-- [ ] **DOC-05**: README documents the isolation guarantee ("test runs don't mutate your real homelab-mcp state") and how to verify (the ISOL-03 test).
-- [ ] **DOC-06**: README documents the JUnit XML output flag and a recommended GitHub Actions / generic CI snippet using it.
-- [ ] **DOC-07**: `docs/EXTENDING.md` updated to describe how to add a new MCP tool target via the per-tool config (no code changes required for tools that fit the existing rubric pattern).
+- [x] **DOC-04**: README documents how to write a per-tool config block (skip, call_arguments, judges) with examples for the homelab-mcp tools currently exercised.
+- [x] **DOC-05**: README documents the isolation guarantee ("test runs don't mutate your real homelab-mcp state") and how to verify (the ISOL-03 test).
+- [x] **DOC-06**: README documents the JUnit XML output flag and a recommended GitHub Actions / generic CI snippet using it.
+- [x] **DOC-07**: `docs/EXTENDING.md` updated to describe how to add a new MCP tool target via the per-tool config (no code changes required for tools that fit the existing rubric pattern).
 
 ---
 
