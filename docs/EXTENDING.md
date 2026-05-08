@@ -149,6 +149,90 @@ arguments, all rubrics). Typos in field names are caught at config load by
 `extra="forbid"`, so a misspelled `srtip:` does not silently disable the safety
 of an explicit `skip: true`.
 
+## Environment passthrough allowlist
+
+The framework spawns the MCP server subprocess with a deliberately narrow
+environment. By default `mcp.client.stdio.stdio_client` would inherit the full
+parent shell -- your real `~/.homelab_mcp/` registry, OS keyring credentials,
+AWS keys, `GITHUB_TOKEN`, and similar -- into the subprocess under test. That
+violates the "test runs do not mutate user state" guarantee documented in the
+README's [Isolation guarantee](../README.md#isolation-guarantee) section.
+
+Instead, `src/mcp_test_framework/_isolation.py` ships a module-level
+`_PASSTHROUGH_ALLOWLIST` of exactly five entries:
+
+- `PATH` -- binary lookup for the MCP server command itself
+- `SYSTEMROOT` -- Windows DLL resolution; without it, Python interpreters in
+  the spawned subprocess fail to import stdlib modules
+- `LANG` -- locale resolution for non-English server output
+- `USERNAME` -- informational; some servers log it for diagnostics
+- `MCP_*` (prefix match) -- pass-through for framework-set MCP env vars
+  (e.g. `MCP_CONNECTION_NONBLOCKING`)
+
+Plus five always-overridden vars (`HOME`, `USERPROFILE`, `TEMP`, `TMP`,
+`TMPDIR`) that point at a per-session tempdir, and one keyring null-backend
+override (`PYTHON_KEYRING_BACKEND=keyring.backends.null.Null`) that
+short-circuits the Python `keyring` library so subprocess credential lookups
+become no-ops.
+
+### Do not widen this allowlist without justification
+
+This is the warning currently living at
+`src/mcp_test_framework/_isolation.py:33-36`, copied verbatim so contributors
+see it before reading source:
+
+> DO NOT widen `_PASSTHROUGH_ALLOWLIST` without updating `EXTENDING.md`
+> (DOC-07 in Phase 10). Each new pass-through is a hole in the isolation
+> guarantee and must be justified by a real subprocess need (e.g., locale
+> resolution for a non-English server) -- not "the test wouldn't run
+> otherwise" without a root cause.
+
+If you find yourself wanting to add an entry to `_PASSTHROUGH_ALLOWLIST`, the
+right workflow is:
+
+1. **Identify the real need.** What does the spawned MCP server fail to do
+   without the var? Capture a reproducer (`uv run mcp-test-framework run -v`
+   with the var stripped vs. present).
+2. **Try the override path first.** Most "I need X env var" cases are
+   actually "I need a redirected `HOME`" -- see the existing `_HOME_OVERRIDES`
+   tuple, which already covers `HOME` / `USERPROFILE` / `TEMP` / `TMP` /
+   `TMPDIR`.
+3. **If pass-through is genuinely required**, propose the change with a
+   CONTEXT-style decision record explaining: (a) which subprocess behaviour
+   requires it, (b) what threat surface it widens, (c) whether the var ever
+   carries secrets (e.g. `AWS_PROFILE` does in some shells, `GITHUB_TOKEN`
+   always does). Update this section's allowlist enumeration in the same PR.
+
+### Why POSIX `USER` is NOT in the allowlist
+
+A natural question reading the list above: on Windows the framework passes
+`USERNAME` through, but on POSIX (Linux / macOS), `getpass.getuser()`
+consults the `USER` env var and `USERNAME` is rarely set. The spawned
+subprocess on POSIX therefore sees no user identity at all.
+
+This is intentional and not a bug:
+
+- The locked v1.1 allowlist (Phase 06 D-07) names exactly `USERNAME`. The
+  HOME redirect -- which IS the load-bearing isolation guarantee -- does
+  not depend on user identity (it is driven by `HOME` / `USERPROFILE` /
+  `TEMP` / `TMP` / `TMPDIR`, none of which the subprocess derives from a
+  username).
+- `USERNAME` is documented in `_isolation.py:55-62` as "informational; some
+  servers log it for diagnostics." It is not consulted by any v1.1 code
+  path that affects test outcome, and the rubric/judge layer never sees it.
+- Widening `_PASSTHROUGH_ALLOWLIST` to include POSIX `USER` would require a
+  CONTEXT.md amendment and a code change, not just a doc edit. The
+  cross-platform-parity concern was explicitly recorded as informational in
+  `06-VERIFICATION.md` G-03 and `v1.1-MILESTONE-AUDIT.md` W-6, with the
+  agreed disposition being rationale-only (Branch B): no `USER` added to
+  `_PASSTHROUGH_ALLOWLIST`, the parity gap stays documented here.
+
+If a future MCP server target genuinely needs `USER` for non-diagnostic
+reasons (e.g. a server that derives a config path from
+`getpass.getuser()`), follow the "Do not widen this allowlist without
+justification" workflow above -- the absence of `USER` from
+`_PASSTHROUGH_ALLOWLIST` is a deliberate floor, not a forgotten ceiling.
+
 ## Further reading
 
 - [`README.md`](../README.md) -- back to setup and usage
@@ -156,3 +240,4 @@ of an explicit `skip: true`.
 - `src/mcp_test_framework/judge_protocol.py` -- Protocol definition + `JudgeResult` shape
 - [`Per-tool configuration`](../README.md#per-tool-configuration) -- README schema reference for the `tools.<name>:` registry
 - [`config.example.yaml`](../config.example.yaml) -- complete real-server per-tool config reference
+- [`Environment passthrough allowlist`](#environment-passthrough-allowlist) -- what the spawned MCP subprocess inherits, and why widening the list is dangerous
