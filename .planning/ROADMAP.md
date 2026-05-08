@@ -28,7 +28,7 @@
  (completed 2026-05-07)
 - [x] **Phase 09: JUnit XML output & per-tool reporting** — `--junit-xml=<path>` passthrough; per-tool granularity in test IDs and summary line
  (completed 2026-05-08)
-- [ ] **Phase 10: v1.1 documentation** — README + `docs/EXTENDING.md` updates: per-tool config, isolation guarantee, JUnit usage, adding new tool targets
+- [x] **Phase 10: v1.1 documentation** — README + `docs/EXTENDING.md` updates: per-tool config, isolation guarantee, JUnit usage, adding new tool targets (completed 2026-05-08)
 
 ## Phase Details
 
@@ -105,11 +105,11 @@ Plans:
   2. README has an "Isolation guarantee" section that states "test runs do not mutate your real homelab-mcp state" and points the reader at the ISOL-03 verification test as proof.
   3. README has a "CI integration" section with a copy-pasteable GitHub Actions snippet using `--junit-xml=` and the test-results action.
   4. `docs/EXTENDING.md` describes how to add a new MCP tool target via per-tool config alone (no code change required for tools that fit the existing rubric pattern); includes a worked example.
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 10-01-PLAN.md -- README new sections: Per-tool configuration, Isolation guarantee, CI integration + Further reading update + snippet-correctness regression tests (DOC-04, DOC-05, DOC-06)
-- [ ] 10-02-PLAN.md -- docs/EXTENDING.md new section: Add a new MCP tool target walkthrough + Further reading back-link to README schema (DOC-07)
+- [x] 10-01-PLAN.md -- README new sections: Per-tool configuration, Isolation guarantee, CI integration + Further reading update + snippet-correctness regression tests (DOC-04, DOC-05, DOC-06)
+- [x] 10-02-PLAN.md -- docs/EXTENDING.md new section: Add a new MCP tool target walkthrough + Further reading back-link to README schema (DOC-07)
 
 ## Progress
 
@@ -126,4 +126,4 @@ Plans:
 | 07. Multi-tool discovery & parameterized testing | v1.1 | 0/1 | Planned | — |
 | 08. Per-tool config registry | v1.1 | 4/4 | Complete    | 2026-05-07 |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete   | 2026-05-08 |
-| 10. v1.1 documentation | v1.1 | 0/2 | Planned | — |
+| 10. v1.1 documentation | v1.1 | 2/2 | Complete   | 2026-05-08 |
