@@ -154,3 +154,5 @@ of an explicit `skip: true`.
 - [`README.md`](../README.md) -- back to setup and usage
 - `src/mcp_test_framework/rubrics.py` -- built-in rubric examples
 - `src/mcp_test_framework/judge_protocol.py` -- Protocol definition + `JudgeResult` shape
+- [`Per-tool configuration`](../README.md#per-tool-configuration) -- README schema reference for the `tools.<name>:` registry
+- [`config.example.yaml`](../config.example.yaml) -- complete real-server per-tool config reference
