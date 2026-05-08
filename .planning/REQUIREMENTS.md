@@ -88,10 +88,10 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 |-------------|-------|--------|
 | ISOL-01 | Phase 06 | Complete |
 | ISOL-02 | Phase 06 | Complete |
-| ISOL-03 | Phase 06 | Pending |
+| ISOL-03 | Phase 06 | Complete |
 | ISOL-04 | Phase 06 | Complete |
 | ISOL-05 | Phase 06 | Complete |
-| ISOL-06 | Phase 06 | Pending |
+| ISOL-06 | Phase 06 | Complete |
 | ISOL-07 | Phase 06 | Complete |
 | MULTI-01 | Phase 07 | Complete |
 | MULTI-02 | Phase 07 | Complete |
@@ -107,10 +107,10 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 | OUTPUT-01 | Phase 09 | Complete |
 | OUTPUT-02 | Phase 09 | Complete |
 | OUTPUT-03 | Phase 09 | Complete |
-| DOC-04 | Phase 10 | Pending |
-| DOC-05 | Phase 10 | Pending |
-| DOC-06 | Phase 10 | Pending |
-| DOC-07 | Phase 10 | Pending |
+| DOC-04 | Phase 10 | Complete |
+| DOC-05 | Phase 10 | Complete |
+| DOC-06 | Phase 10 | Complete |
+| DOC-07 | Phase 10 | Complete |
 
 ### Phase coverage summary
 
