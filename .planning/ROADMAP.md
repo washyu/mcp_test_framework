@@ -29,7 +29,7 @@
 - [x] **Phase 09: JUnit XML output & per-tool reporting** — `--junit-xml=<path>` passthrough; per-tool granularity in test IDs and summary line
  (completed 2026-05-08)
 - [x] **Phase 10: v1.1 documentation** — README + `docs/EXTENDING.md` updates: per-tool config, isolation guarantee, JUnit usage, adding new tool targets (completed 2026-05-08)
-- [ ] **Phase 11: v1.1 cleanup & verification hygiene** — Close paper-only gaps from v1.1 milestone audit: backfill 09-VERIFICATION.md, EXTENDING.md env-allowlist section, REQUIREMENTS.md/ROADMAP.md traceability drift fixes (gap closure)
+- [x] **Phase 11: v1.1 cleanup & verification hygiene** — Close paper-only gaps from v1.1 milestone audit: backfill 09-VERIFICATION.md, EXTENDING.md env-allowlist section, REQUIREMENTS.md/ROADMAP.md traceability drift fixes (gap closure) (completed 2026-05-08)
 
 ## Phase Details
 
@@ -124,13 +124,13 @@ Plans:
   4. `ROADMAP.md` Phase 06 SC-1 wording uses "sha256" (not "mtimes") to match the D-09 strengthening that actually shipped (W-5).
   5. `ROADMAP.md` Phase 07 checkbox is `[x]` and Progress table row says "Complete 2026-05-07" (drift fix, found during plan-milestone-gaps).
   6. WR-04 disposition decided: either POSIX `USER` is added to `_PASSTHROUGH_ALLOWLIST` in `_isolation.py` with a corresponding test, or a one-paragraph rationale is recorded explaining why `USERNAME` alone is sufficient (W-6).
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 11-01-PLAN.md — Author 09-VERIFICATION.md from 09-0N-SUMMARY trio + tests/test_reporter.py evidence (W-1)
-- [ ] 11-02-PLAN.md — ROADMAP.md drift fixes: Phase 06 SC-1 mtimes→sha256 + Phase 07 checkbox/progress-row completion (W-5)
-- [ ] 11-03-PLAN.md — REQUIREMENTS.md traceability cleanup: 6 Pending→Complete cells + DOC-04..07 [ ]→[x] (W-4)
-- [ ] 11-04-PLAN.md — docs/EXTENDING.md '## Environment passthrough allowlist' section absorbing _isolation.py:33-36 warning + WR-04 Branch B rationale (W-3, W-6)
+- [x] 11-01-PLAN.md — Author 09-VERIFICATION.md from 09-0N-SUMMARY trio + tests/test_reporter.py evidence (W-1)
+- [x] 11-02-PLAN.md — ROADMAP.md drift fixes: Phase 06 SC-1 mtimes→sha256 + Phase 07 checkbox/progress-row completion (W-5)
+- [x] 11-03-PLAN.md — REQUIREMENTS.md traceability cleanup: 6 Pending→Complete cells + DOC-04..07 [ ]→[x] (W-4)
+- [x] 11-04-PLAN.md — docs/EXTENDING.md '## Environment passthrough allowlist' section absorbing _isolation.py:33-36 warning + WR-04 Branch B rationale (W-3, W-6)
 
 
 
@@ -148,4 +148,4 @@ Plans:
 | 08. Per-tool config registry | v1.1 | 4/4 | Complete    | 2026-05-07 |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete   | 2026-05-08 |
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete   | 2026-05-08 |
-| 11. v1.1 cleanup & verification hygiene | v1.1 | 0/4 | Planned | — |
+| 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete    | 2026-05-08 |
