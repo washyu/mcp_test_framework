@@ -14,7 +14,229 @@ mcp_server:
   timeout_seconds: 30
 
 target:
-  # Switched in Plan 05-05 (acceptance) -- list_registered_servers fails the disambiguation rubric; tracked for upstream homelab-mcp doc fix.
-  tool_name: list_keyring_credentials
+  # Phase 07 + Phase 08 default: leave tool_name unset so the suite parametrizes
+  # over ALL discovered tools and the per-tool `tools:` block (below) controls
+  # which actually run. With the safe-by-default skip entries in `tools:`, only
+  # `list_keyring_credentials` and `suggest_deployments` exercise the live test
+  # surface; everything else SKIPS with a readable reason in pytest output.
+  #
+  # To restrict to a single tool (CD-05 short-circuit -- skips collection-time
+  # MCP spawn and runs only the named tool's tests), uncomment one of:
+  #   tool_name: list_keyring_credentials
+  #   tool_name: suggest_deployments
+  tool_name: ""
 
 judge_timeout_seconds: 120
+
+# Phase 08 schema version. Only `1` is accepted by this release.
+# Future schema changes will either default to `2+` or branch on this value.
+version: 1
+
+# Per-tool config registry (TOOLCFG-01..07).
+# Keys MUST match tool names returned by `mcp-test-framework list-tools`.
+# Tools with no entry here use safe defaults: skip=false, call_arguments={},
+# judges=null (run all rubrics).
+#
+# Each entry below illustrates one knob:
+#   - list_registered_servers: marked skip=true with a reason
+#   - list_keyring_credentials: judge subset (clarity only) for noisy rubrics
+#
+# Reserved fields `setup:` and `depends_on:` (TOOLCFG-03) are intentionally
+# omitted -- they are typed in the model for SEED-004 forward-compat but
+# have no runtime semantics in v1.1.
+#
+# SAFE-BY-DEFAULT POSTURE (260507-n0g):
+#   homelab-mcp's tool surface mixes pure reads with destructive operations
+#   (delete_proxmox_vm, decommission_device, destroy_terraform_service,
+#   control_vm, remove_*, rollback_infrastructure_changes, run_ansible_playbook,
+#   ssh_execute_command, ...). Phase 07's multi-tool discovery means TEST-08
+#   calls every discovered tool. We default-skip everything except two
+#   confirmed-safe reads: `list_keyring_credentials` (judged with clarity-only
+#   for noisy rubric reasons) and `suggest_deployments` (read-only inventory
+#   suggestion). Operators uncomment / opt-in per-tool after reading docs.
+tools:
+  # ---- Confirmed-safe enabled tools (no skip) -----------------------------
+  list_keyring_credentials:
+    # Run only the clarity rubric on this tool's description; skip
+    # disambiguation and parameters judging.
+    judges: [clarity]
+  # suggest_deployments: enabled with no entry -> ToolConfig() defaults
+  #                      (skip=False, judges=None -> all rubrics, call_arguments={}).
+
+  # ---- Pre-existing (Phase 04/05/08 v1.0 baseline) ------------------------
+  list_registered_servers:
+    skip: true
+    skip_reason: "Description does not pass disambiguation rubric; tracked for upstream homelab-mcp doc fix."
+
+  # ---- Destructive: modifies homelab infrastructure -----------------------
+  clone_proxmox_vm:
+    skip: true
+    skip_reason: "destructive: clones Proxmox VM image"
+  control_vm:
+    skip: true
+    skip_reason: "destructive: changes VM power/run state"
+  create_infrastructure_backup:
+    skip: true
+    skip_reason: "destructive: creates persistent backup artifact"
+  create_proxmox_lxc:
+    skip: true
+    skip_reason: "destructive: provisions Proxmox LXC container"
+  create_proxmox_vm:
+    skip: true
+    skip_reason: "destructive: provisions Proxmox VM"
+  decommission_device:
+    skip: true
+    skip_reason: "destructive: decommissions a managed device"
+  delete_proxmox_vm:
+    skip: true
+    skip_reason: "destructive: permanently deletes a Proxmox VM"
+  deploy_infrastructure:
+    skip: true
+    skip_reason: "destructive: applies infrastructure-as-code"
+  deploy_vm:
+    skip: true
+    skip_reason: "destructive: provisions a VM via deploy pipeline"
+  destroy_terraform_service:
+    skip: true
+    skip_reason: "destructive: tears down Terraform-managed service"
+  install_service:
+    skip: true
+    skip_reason: "destructive: installs a service into the cluster"
+  manage_proxmox_vm:
+    skip: true
+    skip_reason: "destructive: mutating Proxmox VM management endpoint"
+  plan_terraform_service:
+    skip: true
+    skip_reason: "destructive: invokes Terraform plan against live state"
+  purge_devices:
+    skip: true
+    skip_reason: "destructive: bulk-removes devices from inventory"
+  purge_failed_discoveries:
+    skip: true
+    skip_reason: "destructive: deletes failed-discovery records"
+  refresh_terraform_service:
+    skip: true
+    skip_reason: "destructive: refreshes Terraform state file"
+  register_server:
+    skip: true
+    skip_reason: "destructive: writes a new server into managed inventory"
+  remove_device:
+    skip: true
+    skip_reason: "destructive: removes a device from inventory"
+  remove_vm:
+    skip: true
+    skip_reason: "destructive: removes a VM from inventory"
+  rollback_infrastructure_changes:
+    skip: true
+    skip_reason: "destructive: rolls infrastructure back to a prior state"
+  run_ansible_playbook:
+    skip: true
+    skip_reason: "destructive: executes arbitrary Ansible playbook"
+  scale_services:
+    skip: true
+    skip_reason: "destructive: scales service replica counts"
+  ssh_execute_command:
+    skip: true
+    skip_reason: "destructive: runs an arbitrary command over SSH"
+  start_interactive_shell:
+    skip: true
+    skip_reason: "destructive: opens an interactive remote shell"
+  update_device_config:
+    skip: true
+    skip_reason: "destructive: writes device configuration"
+  update_device_fingerprint:
+    skip: true
+    skip_reason: "destructive: writes a device fingerprint into inventory"
+
+  # ---- Side effects on homelab inventory (writes during read) -------------
+  bulk_discover_and_map:
+    skip: true
+    skip_reason: "side effects on homelab inventory: bulk discovery writes"
+  discover_and_map:
+    skip: true
+    skip_reason: "side effects on homelab inventory: discovery writes"
+  scan_infrastructure_drift:
+    skip: true
+    skip_reason: "side effects on homelab inventory: drift scan persists state"
+  ssh_discover:
+    skip: true
+    skip_reason: "side effects on homelab inventory: SSH discovery writes"
+
+  # ---- Preview of destructive op (uncomment with caution) -----------------
+  decommission_device_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  delete_proxmox_vm_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  destroy_terraform_service_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  purge_devices_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  remove_device_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  remove_vm_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  rollback_infrastructure_changes_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+  update_device_fingerprint_preview:
+    skip: true
+    skip_reason: "preview of destructive op; uncomment with caution"
+
+  # ---- Read-only but requires live homelab infrastructure -----------------
+  analyze_network_topology:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  check_ansible_service:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  check_service_requirements:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_device_changes:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_network_sitemap:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_proxmox_node_status:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_proxmox_script_info:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_proxmox_vm_status:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_service_info:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_service_status:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_vm_logs:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  get_vm_status:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  list_available_services:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  list_proxmox_resources:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  list_vms:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  search_proxmox_scripts:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"
+  validate_infrastructure_changes:
+    skip: true
+    skip_reason: "requires live homelab infrastructure"

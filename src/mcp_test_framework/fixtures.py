@@ -24,7 +24,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import shutil
+import tempfile
+import warnings
 from contextlib import AsyncExitStack
+from pathlib import Path
 
 import anyio
 import httpx
@@ -33,9 +36,11 @@ import pytest_asyncio
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
+from mcp_test_framework._isolation import _build_isolated_env
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
+from mcp_test_framework.models import ToolConfig
 from mcp_test_framework.ollama_judge import OllamaJudge
 from mcp_test_framework.rubrics import (
     ClarityRubric,
@@ -106,8 +111,16 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
+        # Quick-task 260507-j6i: enrich the bare "not found on PATH" with a
+        # hint pointing users at MCPTF_CONFIG_FILE / config.example.yaml.
+        # Keep in sync with tests/conftest.py:_resolve_tool_names (same hint).
         pytest.exit(
-            f"MCP command {config.mcp_server.command!r} not found on PATH",
+            f"MCP command {config.mcp_server.command!r} not found on PATH"
+            f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
+            "If you intended to use a different command, point "
+            "MCPTF_CONFIG_FILE at a config.yaml that defines "
+            "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
+            "The repo ships `config.example.yaml` you can copy and edit.",
             returncode=2,
         )
 
@@ -144,25 +157,100 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
         ) as brief_client:
             tools = await brief_client.list_tools()
     except Exception as exc:
-        pytest.exit(
+        msg = (
             f"MCP handshake with {config.mcp_server.command!r} failed: "
-            f"{exc.__class__.__name__}: {exc}",
-            returncode=2,
+            f"{exc.__class__.__name__}: {exc}"
+        )
+        # Quick-task 260507-j6i: same MCPTF_CONFIG_FILE / config.example.yaml
+        # hint as Check 1 above and tests/conftest.py:_resolve_tool_names, in
+        # the rare case Check 1's shutil.which passed but McpTestClient's
+        # belt-and-suspenders re-check raised FileNotFoundError anyway.
+        if isinstance(exc, FileNotFoundError) and str(exc).startswith(
+            "MCP server command not on PATH:"
+        ):
+            msg += (
+                f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
+                "If you intended to use a different command, point "
+                "MCPTF_CONFIG_FILE at a config.yaml that defines "
+                "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
+                "The repo ships `config.example.yaml` you can copy and edit."
+            )
+        pytest.exit(msg, returncode=2)
+
+    # Phase 08 D-14 / D-18: unknown tool names in `config.tools` -> session-start
+    # warning (NOT load-time error, NOT a hard fail). The discovered list isn't
+    # known until the MCP handshake above runs, so this check lives here.
+    discovered_names = {t.name for t in tools}
+    for unknown_name in sorted(set(config.tools) - discovered_names):
+        warnings.warn(
+            f"tools.{unknown_name!r} configured but not in discovered tool list "
+            f"(available: {sorted(discovered_names)!r}); config entry has no effect",
+            UserWarning,
+            stacklevel=2,
         )
 
-    tool_names = [t.name for t in tools]
-    if config.target.tool_name not in tool_names:
-        pytest.exit(
-            f"target tool {config.target.tool_name!r} not in MCP server tool list "
-            f"(available: {tool_names!r})",
-            returncode=2,
-        )
+    if config.target.tool_name is not None:
+        tool_names = [t.name for t in tools]
+        if config.target.tool_name not in tool_names:
+            pytest.exit(
+                f"target tool {config.target.tool_name!r} not in MCP server tool list "
+                f"(available: {tool_names!r})",
+                returncode=2,
+            )
+
+    # Phase 08 D-12: when target.tool_name is set AND that tool's config has
+    # skip=True, the explicit single-target intent wins (the run still exercises
+    # the tool). Surface the override as a warning so the operator knows the
+    # configured skip was deliberately ignored.
+    if config.target.tool_name is not None:
+        explicit_cfg = config.tools.get(config.target.tool_name)
+        if explicit_cfg is not None and explicit_cfg.skip:
+            warnings.warn(
+                f"target.tool_name={config.target.tool_name!r} explicitly set; "
+                f"overriding tools.{config.target.tool_name!r}.skip=True for this run",
+                UserWarning,
+                stacklevel=2,
+            )
 
     # All preflight checks passed; the brief MCP session has been closed by
     # AsyncExitStack on context-manager exit. The mcp_client fixture below
     # respawns its own long-lived session (D-preflight-2). Yield with no
     # value -- autouse fixtures need not yield a value.
     yield
+
+
+# ---------------------------------------------------------------------------
+# _isolated_home -- session-scoped per-run tempdir for HOME/USERPROFILE redirect
+# (Phase 06 ISOL-05; D-12 fixture shape, D-14 single source of truth, D-15 cleanup)
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture(loop_scope="session", scope="session")
+async def _isolated_home():
+    """Per-session tempdir owning the HOME/USERPROFILE redirect target.
+
+    Single source of truth for the isolation tempdir (D-14). Plan 06-03's
+    ISOL-03 verification test depends on this fixture directly to read the
+    redirected `.homelab_mcp/` subdirectory without reaching into mcp_client
+    internals (D-13). Future Phase 07/08 fixtures that need isolation
+    guarantees depend on the same fixture -- no duplicate tempdir creation.
+
+    Lifecycle owned via AsyncExitStack -- cleanup is automatic on session
+    exit (D-15). tempfile.TemporaryDirectory is a SYNC context manager, so
+    we use stack.enter_context (not enter_async_context). This is safe with
+    respect to the Phase 04.1 invariant ("no anyio cancel scope across the
+    yield") because TemporaryDirectory is stdlib sync -- it opens no anyio
+    cancel scope.
+
+    Tempdir prefix `mcp-test-fw-` per CONTEXT.md <specifics> -- orphaned
+    tempdirs (should ISOL-05 cleanup ever fail) are debuggable from
+    `dir %TEMP%` output.
+    """
+    async with AsyncExitStack() as stack:
+        tmpdir = stack.enter_context(
+            tempfile.TemporaryDirectory(prefix="mcp-test-fw-")
+        )
+        yield Path(tmpdir)
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +261,7 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_client(config: Config, _preflight):
+async def mcp_client(config: Config, _preflight, _isolated_home: Path):
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
@@ -207,6 +295,8 @@ async def mcp_client(config: Config, _preflight):
     params = StdioServerParameters(
         command=config.mcp_server.command,
         args=config.mcp_server.args,
+        # ISOL-02 / ISOL-07 -- Phase 06 (D-14: shared tempdir)
+        env=_build_isolated_env(_isolated_home),
     )
     loop = asyncio.get_running_loop()
     ready: asyncio.Future[McpTestClient] = loop.create_future()
@@ -289,14 +379,43 @@ async def judge(config: Config, _preflight) -> Judge:
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def target_tool(config: Config, mcp_client: McpTestClient, _preflight):
-    """Resolve target tool by name; raises ToolNotFoundError if absent.
+async def target_tool(
+    request: pytest.FixtureRequest,
+    mcp_client: McpTestClient,
+    _preflight,
+):
+    """Resolve target tool by name (parametrized indirectly via tests/conftest.py).
 
-    Defense in depth alongside _preflight's check (D-preflight-3). Phase 2's
-    McpTestClient.get_tool already raises ToolNotFoundError with the
-    candidate list in the message -- re-raise unchanged.
+    The pytest_generate_tests hook in tests/conftest.py populates request.param
+    with each discovered tool name. Test IDs render as test_<name>[<tool_name>]
+    uniformly -- including when config.target.tool_name is set (single-item
+    parametrize list per D-05). Indirect parametrize on a session-scoped fixture
+    creates one fixture instance per request.param value within session scope;
+    mcp_client (also session-scoped) is shared -- ONE long-lived MCP session.
     """
-    return await mcp_client.get_tool(config.target.tool_name)
+    return await mcp_client.get_tool(request.param)
+
+
+# ---------------------------------------------------------------------------
+# tool_config -- per-test ToolConfig resolution (Phase 08 D-04 / TOOLCFG-06)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tool_config(config: Config, target_tool) -> ToolConfig:
+    """Resolve `config.tools.get(target_tool.name, ToolConfig())` per test.
+
+    Default (function) scope is intentional: the fixture must reflect the
+    per-test parametrized `target_tool.name` -- a session-scoped fixture
+    would freeze on the first parameter and serve a stale entry to other
+    parametrized cases.
+
+    Tools with no `tools.<name>` entry receive a default `ToolConfig()`
+    (TOOLCFG-06: skip=False, call_arguments={}, judges=None -> all rubrics).
+    Sync fixture (no async resources) -- safe under Phase 04.1 cancel-scope
+    invariant; no anyio scope is opened across yield.
+    """
+    return config.tools.get(target_tool.name, ToolConfig())
 
 
 # ---------------------------------------------------------------------------

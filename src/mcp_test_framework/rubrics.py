@@ -12,6 +12,8 @@ emitted by `ollama_judge._build_request_body` (line 140) and referenced by
 """
 from __future__ import annotations
 
+from typing import ClassVar
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -64,6 +66,7 @@ class Rubric(BaseModel):
 
 
 class ClarityRubric(Rubric):
+    id: ClassVar[str] = "clarity"
     dimension: str = "clarity"
     dimension_criteria: str = (
         "Does the description clearly explain WHAT the tool does to an LLM "
@@ -74,6 +77,7 @@ class ClarityRubric(Rubric):
 
 
 class DisambiguationRubric(Rubric):
+    id: ClassVar[str] = "disambiguation"
     dimension: str = "disambiguation"
     dimension_criteria: str = (
         "Does the description help an LLM agent decide WHEN to call this "
@@ -84,6 +88,7 @@ class DisambiguationRubric(Rubric):
 
 
 class ParametersRubric(Rubric):
+    id: ClassVar[str] = "parameters"
     dimension: str = "parameters_self_explanatory"
     dimension_criteria: str = (
         "For each parameter in the inputSchema (provided as the SUBJECT), "
@@ -92,4 +97,28 @@ class ParametersRubric(Rubric):
         "documentation? Reward descriptions that include units, allowed "
         "values, and example shapes; penalize bare-type-only schemas and "
         "descriptions that merely restate the parameter name."
+    )
+
+
+RUBRIC_IDS: frozenset[str] = frozenset(
+    {ClarityRubric.id, DisambiguationRubric.id, ParametersRubric.id}
+)
+
+
+def resolve_rubric_id(rubric_id: str) -> type[Rubric]:
+    """Map a string rubric ID -> rubric class.
+
+    IDs are locked per TOOLCFG-04 / D-10 / CONTEXT.md <specifics>:
+    "clarity", "disambiguation", "parameters". v1.3 SEED-003 may add more
+    additively; v1.1 set is fixed.
+
+    Raises ValueError for unknown IDs with the full valid set in the message,
+    so ToolConfig.judges field-validator (D-17) emits a debuggable error at
+    config load time.
+    """
+    for cls in (ClarityRubric, DisambiguationRubric, ParametersRubric):
+        if cls.id == rubric_id:
+            return cls
+    raise ValueError(
+        f"unknown rubric id {rubric_id!r}; valid: {sorted(RUBRIC_IDS)!r}"
     )

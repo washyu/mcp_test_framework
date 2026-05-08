@@ -1,0 +1,41 @@
+MCP Server starting in stdio mode...
+INFO:homelab_mcp.resource_manager:Initializing ResourceManager
+INFO:homelab_mcp.resource_manager:ResourceManager initialized successfully
+INFO:homelab_mcp.server:Server lifespan started -- ResourceManager ready
+INFO:mcp.server.lowlevel.server:Processing request of type CallToolRequest
+INFO:mcp.server.lowlevel.server:Processing request of type ListToolsRequest
+INFO:mcp.server.lowlevel.server:Processing request of type CallToolRequest
+INFO:homelab_mcp.server:Shutting down ResourceManager...
+INFO:homelab_mcp.resource_manager:Shutting down ResourceManager
+INFO:homelab_mcp.resource_manager:ResourceManager shut down
+INFO:homelab_mcp.server:ResourceManager shutdown complete
+Driver: scanning C:\Users\washy\.homelab_mcp
+  before sha256[credential_registry.json] = 239d0ee012b71c1e5d317618b8a4d98642e6adc249c9ef7ed1ed5aa7cb617cbf
+  before sha256[known_hosts] = 3b0786b02e3e5d8278f6326edefbfd507991be0b625455ba33b623c37ae00ae9
+  before sha256[migration_state.json] = 758e3acb7b79f9a15a60838c766e3ae4801b2109a20f118945b9d5ccb4e3692d
+
+Driver: spawning homelab-mcp via McpTestClient (uvx homelab-mcp)...
+Driver: connected. Calling v1.1 tool surface...
+  call_tool(list_keyring_credentials, {})
+  call_tool(list_registered_servers, {})
+
+Driver: re-hashing real files post-run...
+  after  sha256[credential_registry.json] = 239d0ee012b71c1e5d317618b8a4d98642e6adc249c9ef7ed1ed5aa7cb617cbf
+  after  sha256[known_hosts] = 3b0786b02e3e5d8278f6326edefbfd507991be0b625455ba33b623c37ae00ae9
+  after  sha256[migration_state.json] = 758e3acb7b79f9a15a60838c766e3ae4801b2109a20f118945b9d5ccb4e3692d
+
+Driver: ISOL-03 hash equality check:
+  PASS — all 3 real files unchanged
+
+Driver: tempdirs matching 'mcp-test-fw-*' in C:\Users\washy\AppData\Local\Temp:
+  (none — clean teardown)
+
+Driver: ISOL-06 cross-platform tempdir-positive check:
+  Note: McpTestClient.__aenter__ creates its tempdir internally and
+  cleans it up on exit. The empirical signal that redirection took
+  effect is the absence of new files in REAL_HOMELAB_DIR (proved
+  above). Direct .homelab_mcp/ existence-check against the tempdir
+  path requires running the pytest fixture path; this driver is
+  the next-best signal short of that.
+
+Driver: clean exit. ISOL-03 PASSED on this host (manual verification).

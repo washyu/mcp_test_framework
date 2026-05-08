@@ -19,7 +19,18 @@ See plan-checker iter 1 BLOCKER #1 (resolved Option A) in 01-02-PLAN.md.
 
 from __future__ import annotations
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from typing import Any, Optional
+
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
+
+from mcp_test_framework.rubrics import RUBRIC_IDS, resolve_rubric_id
 
 
 class OllamaConfig(BaseModel):
@@ -63,11 +74,86 @@ class McpServerConfig(BaseModel):
 
 
 class TargetConfig(BaseModel):
-    """Target tool to run all tests against."""
+    """Target tool to run all tests against. None = discover all tools (Phase 07 D-01)."""
 
     model_config = ConfigDict(frozen=True, populate_by_name=True)
 
-    tool_name: str = Field(
-        default="list_registered_servers",
+    tool_name: Optional[str] = Field(
+        default=None,
         validation_alias=AliasChoices("TARGET_TOOL_NAME", "tool_name"),
     )
+
+    @field_validator("tool_name", mode="before")
+    @classmethod
+    def _empty_to_none(cls, v):
+        """Empty string from env -> None (Phase 07 D-02 'empty equivalent to None').
+
+        The project's custom _BareNameNestedEnvSource (config.py:91-146) reads
+        an env var as present when membership-check passes, regardless of value.
+        TARGET_TOOL_NAME='' would land as '' (not None) without this coercion.
+        See 07-RESEARCH §Pitfall 2.
+        """
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
+
+
+class ToolConfig(BaseModel):
+    """Per-tool config registry entry (TOOLCFG-01..07; Phase 08 D-01/D-04/D-05).
+
+    Keyed off tool name in `Config.tools: dict[str, ToolConfig]`. Tools with no
+    entry use defaults (TOOLCFG-06). `extra="forbid"` makes typos (e.g. `srtip:`
+    instead of `skip:`) fail at load time per TOOLCFG-05 / D-15.
+
+    `setup` and `depends_on` are reserved Optional fields (TOOLCFG-03 / D-06):
+    typed in the model so SEED-004 / v1.5+ stateful-testing can light them up
+    additively without a schema migration. They are ignored at runtime in v1.1.
+
+    NOT env-routable (D-19): no `validation_alias=AliasChoices(...)` on any
+    field. The dynamic `dict[str, ToolConfig]` shape doesn't generalize cleanly
+    through `_BareNameNestedEnvSource`, and YAML/init are sufficient for the
+    use case.
+    """
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
+
+    skip: bool = False
+    skip_reason: Optional[str] = None
+    call_arguments: dict[str, Any] = Field(default_factory=dict)
+    judges: Optional[list[str]] = None
+    setup: Optional[Any] = None  # reserved per TOOLCFG-03 / D-06; runtime no-op in v1.1
+    depends_on: Optional[list[str]] = None  # reserved per TOOLCFG-03 / D-06
+
+    @field_validator("judges", mode="after")
+    @classmethod
+    def _validate_judge_ids(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        """Each judge ID must resolve against the rubric registry (D-17 / TOOLCFG-04).
+
+        None (default) is permitted -- means "run all available rubrics" per
+        TOOLCFG-06. Empty list [] is also permitted -- means "explicit opt-out,
+        run no rubrics on this tool" (D-07: empty-vs-None semantic is meaningful).
+        """
+        if v is None:
+            return v
+        for rubric_id in v:
+            if rubric_id not in RUBRIC_IDS:
+                # Delegate to resolve_rubric_id for the canonical error message
+                # (single source per CD-03).
+                resolve_rubric_id(rubric_id)
+        return v
+
+    @model_validator(mode="after")
+    def _skip_requires_reason(self) -> "ToolConfig":
+        """skip=True MUST come with non-empty skip_reason (D-16 / TOOLCFG-07).
+
+        TOOLCFG-07 demands the reason surface in pytest output via
+        `pytest.skip(reason=...)`. An empty/whitespace-only reason defeats that
+        requirement at the source, so we raise at load time rather than letting
+        a silent skip propagate.
+        """
+        if self.skip and not (self.skip_reason and self.skip_reason.strip()):
+            raise ValueError(
+                "skip=True requires a non-empty skip_reason "
+                "(TOOLCFG-07: the reason surfaces in pytest skip output)"
+            )
+        return self

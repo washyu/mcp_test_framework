@@ -69,7 +69,9 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.mcp_server.command == "homelab-mcp"
     assert cfg.mcp_server.args == []
     assert cfg.mcp_server.timeout_seconds == 30
-    assert cfg.target.tool_name == "list_registered_servers"
+    # Phase 07 D-01: tool_name default is None (discover-all mode); explicit
+    # TARGET_TOOL_NAME restricts the run to a single tool (single-item parametrize).
+    assert cfg.target.tool_name is None
     assert cfg.judge_timeout_seconds == 120
 
 

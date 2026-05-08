@@ -1,0 +1,22 @@
+﻿=== Windows Credential Manager (cmdkey /list) at 2026-05-07T08:26:10.0294533-07:00 ===
+NOTE: filtered to lines mentioning 'homelab' or 'mcp'
+    Target: LegacyGeneric:target=shaun@192.168.10.81@homelab-mcp
+    Target: LegacyGeneric:target=root@192.168.10.20@homelab-mcp
+    User: homelab\shaun
+    Target: LegacyGeneric:target=shaun@192.168.10.84@homelab-mcp
+    Target: LegacyGeneric:target=homelab-mcp
+    Target: LegacyGeneric:target=administrator@192.168.10.177@homelab-mcp
+    Target: LegacyGeneric:target=root@192.168.10.178@homelab-mcp
+    Target: LegacyGeneric:target=truenas_admin@192.168.10.13@homelab-mcp
+    Target: LegacyGeneric:target=root@192.168.10.180@homelab-mcp
+    Target: LegacyGeneric:target=root@pam!tok@None@homelab-mcp-proxmox
+    Target: LegacyGeneric:target=admin@None@homelab-mcp
+    Target: LegacyGeneric:target=root@192.168.10.166@homelab-mcp
+    Target: LegacyGeneric:target=arm@192.168.10.171@homelab-mcp
+    Target: LegacyGeneric:target=root@192.168.10.21@homelab-mcp
+    Target: LegacyGeneric:target=homelab-mcp-proxmox
+    User: root@pam!homelab_mcp@192.168.10.20
+    Target: LegacyGeneric:target=root@pam!mcp_test@192.168.10.20@homelab-mcp-proxmox
+    User: root@pam!mcp_test@192.168.10.20
+    Target: LegacyGeneric:target=root@pam!tok@pve1.home@homelab-mcp-proxmox
+    Target: LegacyGeneric:target=root@192.168.10.1@homelab-mcp

@@ -1,0 +1,132 @@
+"""Phase 08 verification: config-init Typer subcommand surface.
+
+Unit-level tests (no live MCP server needed):
+  - --help flag listing
+  - refuse-to-overwrite without --force exits 2
+
+Live tests (require homelab-mcp + Ollama; gated behind @live_homelab marker):
+  - default mode emits scaffold to stdout
+  - --output PATH writes to file
+  - emitted scaffold round-trips through Config() validation
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from typer.testing import CliRunner
+
+from mcp_test_framework.cli import app
+
+
+def _invoke(*args: str):
+    """CliRunner construction site -- isolated for forward-compat with future
+    Typer kwargs (e.g. mix_stderr deprecation)."""
+    return CliRunner().invoke(app, list(args))
+
+
+# ===========================================================================
+# Unit-level: --help and overwrite gate (no live server needed)
+# ===========================================================================
+
+
+def test_help_lists_flags() -> None:
+    """D-21: subcommand surface includes --config, --output, --force."""
+    result = _invoke("config-init", "--help")
+    assert result.exit_code == 0, result.output
+    assert "--config" in result.output
+    assert "--output" in result.output
+    assert "--force" in result.output
+
+
+def test_refuse_overwrite_without_force(tmp_path: Path) -> None:
+    """D-23: --output to existing file w/o --force -> exit 2 + stderr message.
+
+    Fires BEFORE discovery, so this test does NOT require a live MCP server
+    (no @live_homelab marker -- the overwrite gate is a pure path check).
+    """
+    target = tmp_path / "existing.yaml"
+    target.write_text("placeholder\n", encoding="utf-8")
+    result = _invoke("config-init", "--output", str(target))
+    assert result.exit_code == 2, result.output
+    assert "refusing to overwrite" in result.output, result.output
+    assert str(target) in result.output, result.output
+    # File content unchanged
+    assert target.read_text(encoding="utf-8") == "placeholder\n"
+
+
+# ===========================================================================
+# Live: actual discovery against homelab-mcp
+# ===========================================================================
+
+
+@pytest.mark.live_homelab
+def test_default_emits_scaffold_to_stdout() -> None:
+    """D-22 / TOOLCFG-02 / TOOLCFG-04: default mode prints version: 1 + tools: scaffold."""
+    result = _invoke("config-init")
+    assert result.exit_code == 0, result.output
+    assert "version: 1" in result.output
+    assert "tools:" in result.output
+    # Locked rubric-ID order in scaffold per CONTEXT.md <specifics> + TOOLCFG-04.
+    assert "judges: [clarity, disambiguation, parameters]" in result.output
+
+
+@pytest.mark.live_homelab
+def test_output_writes_to_file(tmp_path: Path) -> None:
+    """D-23: --output PATH writes scaffold to file (no stdout echo)."""
+    target = tmp_path / "scaffold.yaml"
+    assert not target.exists()
+    result = _invoke("config-init", "--output", str(target))
+    assert result.exit_code == 0, result.output
+    assert target.exists()
+    body = target.read_text(encoding="utf-8")
+    assert "version: 1" in body
+    assert "tools:" in body
+
+
+@pytest.mark.live_homelab
+def test_overwrite_with_force_succeeds(tmp_path: Path) -> None:
+    """D-23: --force permits overwrite of existing file."""
+    target = tmp_path / "scaffold.yaml"
+    target.write_text("# old content\n", encoding="utf-8")
+    result = _invoke("config-init", "--output", str(target), "--force")
+    assert result.exit_code == 0, result.output
+    body = target.read_text(encoding="utf-8")
+    assert "version: 1" in body
+    assert body != "# old content\n"
+
+
+@pytest.mark.live_homelab
+def test_scaffold_round_trips_through_config(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """End-to-end: emitted scaffold + uncommented tool block loads into
+    Config() without ValidationError. Proves Plan 03 + Plan 01 contracts
+    compose."""
+    target = tmp_path / "scaffold.yaml"
+    result = _invoke("config-init", "--output", str(target))
+    assert result.exit_code == 0, result.output
+
+    # Uncomment the FIRST tool block (5 lines per Plan 03 Task 1 shape) by
+    # stripping the leading "  # " from each of its 5 lines.
+    lines = target.read_text(encoding="utf-8").splitlines()
+    out_lines: list[str] = []
+    uncommented = 0
+    started = False
+    for line in lines:
+        if not started and line.startswith("  # ") and uncommented == 0:
+            started = True
+        if started and uncommented < 5 and line.startswith("  # "):
+            out_lines.append("  " + line[len("  # "):])
+            uncommented += 1
+        else:
+            out_lines.append(line)
+            if uncommented >= 5:
+                started = False
+    target.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(target))
+    from mcp_test_framework.config import Config
+    cfg = Config()  # MUST NOT raise
+    assert cfg.version == 1
+    assert len(cfg.tools) >= 1

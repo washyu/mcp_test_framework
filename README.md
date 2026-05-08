@@ -83,6 +83,46 @@ Copy `.env.example` to `.env` and edit. The same vars can be set in your shell,
 in a YAML overlay pointed at by `MCPTF_CONFIG_FILE` (or `--config`), or in
 PowerShell with `$env:VAR = "..."` before invoking the CLI.
 
+## Per-tool configuration
+
+Per-tool config lives under the top-level `tools:` key in your YAML overlay; tools with no entry use safe defaults (no skip, all rubrics, empty `call_arguments`).
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `skip` | `false` | If `true`, the tool's tests are skipped via `pytest.skip(reason=skip_reason)`. Requires a non-empty `skip_reason`. |
+| `skip_reason` | `null` | Human-readable reason surfaced in pytest output and JUnit XML when `skip: true`. |
+| `call_arguments` | `{}` | Fixed `dict[str, Any]` passed to the tool's `call_tool` invocation. |
+| `judges` | `null` (all rubrics) | Optional `list[str]` of rubric IDs (`clarity`, `disambiguation`, `parameters`). `[]` means "no rubrics for this tool". |
+| `setup` | `null` | Reserved for v1.5+ stateful testing (TOOLCFG-03); runtime no-op in v1.1. |
+| `depends_on` | `null` | Reserved for v1.5+ stateful testing (TOOLCFG-03); runtime no-op in v1.1. |
+
+The `setup` and `depends_on` fields are typed in the model but have no runtime semantics in v1.1; future versions will activate them additively.
+
+Replace the placeholder tool names below with the names from your `mcp-test-framework list-tools` output.
+
+### Block A: skip-with-reason
+
+```yaml
+# config.yaml -- per-tool config overlay
+tools:
+  <safe_read_tool_a>:
+    skip: true
+    skip_reason: "Tool performs writes; we only exercise read-only tools in CI."
+```
+
+### Block B: judges subset
+
+```yaml
+# config.yaml -- per-tool config overlay
+tools:
+  <safe_read_tool_b>:
+    judges: [clarity]
+```
+
+The third per-tool knob, `call_arguments: {key: value}`, lets you pass fixed arguments to the tool's `call_tool` invocation -- useful when the tool requires non-empty input. See `config.example.yaml` for shape.
+
+For a complete real-server config, see [`config.example.yaml`](config.example.yaml).
+
 ## Sample green run
 
 ```text
@@ -124,6 +164,49 @@ working as designed -- the judge is flagging a real description-quality gap.
 Tighten the upstream tool description, retune the rubric threshold, or accept
 the verdict per your project's tolerance.
 
+## Isolation guarantee
+
+Test runs do not mutate `~/.homelab_mcp/` real-state files. The framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session temporary directory, so the server reads/writes its state inside the tempdir and never touches your real-state files.
+
+```bash
+uv run pytest tests/test_isolation.py -v
+```
+
+The test in `tests/test_isolation.py` computes sha256 hashes of `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, and `~/.homelab_mcp/migration_state.json` before and after a full session and asserts byte-identical equality. Test runs also route the OS keyring through a null backend, so credentials are not read or written.
+
+## CI integration
+
+Run the suite in CI with `--junit-xml=` and ingest the result with a JUnit-aware action. The snippet below runs the default unit slice (live markers excluded by `pyproject.toml`'s `addopts`).
+
+```yaml
+# .github/workflows/test.yml -- GitHub Actions starter.
+# On Jenkins / GitLab CI / CircleCI, translate the `runs-on` / `uses` /
+# `with` keys to the equivalent runner + action concepts. The CLI invocation
+# (`uv run mcp-test-framework run --junit-xml=results.xml`) is portable.
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+      - run: uv sync
+      # Default addopts in pyproject.toml excludes live_homelab + live_ollama markers.
+      - run: uv run mcp-test-framework run --junit-xml=results.xml
+      - name: Publish test report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: pytest
+          path: results.xml
+          reporter: java-junit
+```
+
+The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operators who need SHA-pinning are graduating beyond this starter. The default `addopts` in `pyproject.toml` excludes the `live_homelab` and `live_ollama` markers -- to exercise live tests in CI, add a separate job that opts in to those markers explicitly.
+
 ## Troubleshooting (Windows)
 
 - If a Ctrl+C leaves a `homelab-mcp.exe` process behind:
@@ -144,3 +227,5 @@ the verdict per your project's tolerance.
 - [`docs/mcp_test_framework_mvp_spec.md`](docs/mcp_test_framework_mvp_spec.md) -- authoritative design spec
 - [`docs/EXTENDING.md`](docs/EXTENDING.md) -- add a new rubric, swap the judge backend
 - [`.planning/PROJECT.md`](.planning/PROJECT.md) -- project mission, constraints, key decisions
+- [`docs/EXTENDING.md#add-a-new-mcp-tool-target`](docs/EXTENDING.md#add-a-new-mcp-tool-target) -- add a new MCP tool target via per-tool config (no code changes)
+- [`config.example.yaml`](config.example.yaml) -- complete real-server per-tool config reference

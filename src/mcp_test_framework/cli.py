@@ -89,6 +89,32 @@ def _load_config(path: Path | None) -> Config:
     return Config()
 
 
+def _build_pytest_args(
+    junit_xml: Path | None,
+    pytest_args: list[str] | None,
+) -> list[str]:
+    """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
+    `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
+    ``pytest.main(...)``.
+
+    D-01a precedence: the explicit flag is inserted BEFORE the passthrough
+    forwarded args so a later passthrough ``--junitxml=...`` (after ``--``)
+    wins under pytest's last-occurrence argparse rule. The helper does NOT
+    de-duplicate or validate paths -- pytest's own argument handling is the
+    single source of truth.
+
+    L-03 invariant: this helper builds the argv list only; the call site in
+    ``run`` keeps the bare ``raise typer.Exit(code=pytest.main(...))`` shape
+    with NO try/except wrap (Phase 5 D-cli-flags-3).
+    """
+    forwarded = list(pytest_args or [])
+    args: list[str] = ["tests"]
+    if junit_xml is not None:
+        args.append(f"--junitxml={junit_xml}")
+    args.extend(forwarded)
+    return args
+
+
 @app.command(
     context_settings={
         "allow_extra_args": True,
@@ -100,6 +126,17 @@ def run(
         None,
         "--config",
         help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+    ),
+    junit_xml: Path | None = typer.Option(
+        None,
+        "--junit-xml",
+        help=(
+            "Write JUnit XML to PATH. Translates internally to pytest's "
+            "`--junitxml=PATH` (note pytest's no-dash spelling). If a "
+            "passthrough `--junitxml=...` is also supplied after `--`, the "
+            "passthrough wins via pytest's last-occurrence argparse rule "
+            "(D-01a)."
+        ),
     ),
     pytest_args: list[str] | None = typer.Argument(
         None,
@@ -115,6 +152,11 @@ def run(
     SIGINT handling + Phase 04.1's AsyncExitStack-owned `mcp_client`
     fixture cover OPS-03 for this path.
 
+    Phase 09 OUTPUT-01: `--junit-xml=PATH` translates to pytest's `--junitxml=PATH`
+    via `_build_pytest_args` (D-01b spelling difference; D-01a passthrough-wins
+    precedence). The helper is extracted (CD-06 option 3) so the translation is
+    unit-testable without spawning pytest.
+
     The `addopts = "-m 'not live_homelab and not live_ollama'"` contract
     from pyproject.toml stays in effect -- `run` MUST NOT pass an explicit
     `-m` flag (D-markers-3 / Phase 4 contract).
@@ -127,8 +169,7 @@ def run(
     import pytest  # function-local: pytest is dev-only, not a runtime dep
 
     _load_config(config)  # raises typer.Exit(2) on bad path; ValidationError propagates
-    forwarded = list(pytest_args or [])
-    raise typer.Exit(code=pytest.main(["tests", *forwarded]))
+    raise typer.Exit(code=pytest.main(_build_pytest_args(junit_xml, pytest_args)))
 
 
 @app.command("list-tools")
@@ -173,6 +214,97 @@ def list_tools(
         typer.echo(_format_tools_json(tools), nl=False)
     else:
         typer.echo(_format_tools_text(tools))
+
+
+@app.command("config-init")
+def config_init(
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help=(
+            "Write scaffold to this file instead of stdout. "
+            "Refuses to overwrite without --force."
+        ),
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Permit overwrite of an existing --output file.",
+    ),
+) -> None:
+    """Emit a starter YAML config scaffold for the connected MCP server (Phase 08 D-21).
+
+    Discovers tools via the same isolation-aware seam used by `run` and
+    `list-tools` (`McpTestClient.__aenter__` -- D-24), then emits a YAML
+    document containing `version: 1` and a `tools:` block with one
+    commented entry per discovered tool. The scaffold is a no-op
+    passthrough by default -- uncomment and edit individual fields to
+    opt a tool into skip / judges / args (Phase 08 D-22, CD-06).
+
+    Output:
+      - default: stdout
+      - --output PATH: write to file (refuses to overwrite without --force)
+
+    Exit codes (preserves CLI symmetry with `run` / `list-tools`):
+      - 0: success
+      - 2: --config path not found, refusing-to-overwrite, or discovery failure
+      - 130: SIGINT during discovery
+    """
+    # Refuse-to-overwrite check happens BEFORE discovery so a stale --output
+    # path doesn't cost the operator a subprocess spawn.
+    if output is not None and output.exists() and not force:
+        typer.echo(
+            f"error: refusing to overwrite existing file: {output} (use --force)",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    cfg = _load_config(config)
+
+    try:
+        with asyncio.Runner() as runner:
+            tools = runner.run(_list_tools_async(cfg))
+    except KeyboardInterrupt:
+        # Mirror `list-tools`: typer.Exit(code=130) so SIGINT is surfaced
+        # uniformly across POSIX/Windows console-script wrappers.
+        raise typer.Exit(code=130)
+    except FileNotFoundError as exc:
+        # Quick-task 260507-j6i: enrich the cryptic "MCP server command not on
+        # PATH" with a hint pointing users at MCPTF_CONFIG_FILE / config.example.yaml.
+        # Keep in sync with src/mcp_test_framework/fixtures.py:_preflight (lines
+        # 117-123) and tests/conftest.py:_resolve_tool_names (lines 113-119) --
+        # THIRD copy of the same string. CONTEXT.md <Shared Patterns> "MCP
+        # discovery hint string" flags this as a three-copy hazard;
+        # consolidating to a constant is out of scope for this plan.
+        msg = (
+            f"MCP discovery via {cfg.mcp_server.command!r} failed: "
+            f"{exc.__class__.__name__}: {exc}"
+        )
+        if str(exc).startswith("MCP server command not on PATH:"):
+            msg += (
+                f"\n\nHint: {cfg.mcp_server.command!r} was not found on PATH. "
+                "If you intended to use a different command, point "
+                "MCPTF_CONFIG_FILE at a config.yaml that defines "
+                "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
+                "The repo ships `config.example.yaml` you can copy and edit."
+            )
+        typer.echo(msg, err=True)
+        raise typer.Exit(code=2)
+
+    scaffold = _format_tools_yaml_scaffold(tools)
+
+    if output is None:
+        typer.echo(scaffold, nl=False)
+    else:
+        # Path.write_text overwrites unconditionally -- the refuse-to-overwrite
+        # gate above already enforced the --force contract.
+        output.write_text(scaffold, encoding="utf-8")
 
 
 @app.command()
@@ -249,6 +381,61 @@ def _format_tools_json(tools: list[Tool]) -> str:
         for t in sorted_tools
     ]
     return json.dumps(payload, indent=2) + "\n"
+
+
+def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
+    """Hand-format a YAML scaffold matching Phase 08 D-22 / CD-06.
+
+    Returns a multi-line string ending with a single newline. Tools are sorted
+    alphabetically by name (mirrors _format_tools_text / _format_tools_json
+    convention -- D-list-4 from Phase 05).
+
+    Each tool block is commented out by default so `mcp-test-framework
+    config-init > config.yaml` produces a working passthrough config (no
+    behavior change). The user uncomments + edits individual fields to opt
+    a tool into skip / judges / args.
+
+    The reserved `setup:` / `depends_on:` fields (TOOLCFG-03 / D-06) are
+    intentionally OMITTED from the scaffold per CD-06 -- they are dormant
+    in v1.1 and surfacing them risks users assuming they work.
+
+    Rubric IDs in the commented `judges:` line are LOCKED per
+    CONTEXT.md <specifics> + TOOLCFG-04: clarity, disambiguation, parameters.
+    """
+    sorted_tools = sorted(tools, key=lambda t: t.name)
+
+    header = (
+        "# mcp-test-framework v1.1 starter config -- generated by "
+        "`mcp-test-framework config-init`.\n"
+        "# Edit and copy to config.yaml; set MCPTF_CONFIG_FILE=./config.yaml.\n"
+        "# See the README \"Per-tool configuration\" section for field semantics.\n"
+        "\n"
+        "# Phase 08 schema version. Only `1` is accepted by this release.\n"
+        "version: 1\n"
+        "\n"
+        "# Per-tool config registry (TOOLCFG-01..07). Keys MUST match tool\n"
+        "# names returned by `mcp-test-framework list-tools`. All entries\n"
+        "# below are commented out by default -- this scaffold is a passthrough.\n"
+        "# Uncomment and edit individual fields to opt a tool into skip /\n"
+        "# judges / args.\n"
+        "tools:\n"
+    )
+
+    if not sorted_tools:
+        return header + "  {}\n"
+
+    blocks: list[str] = []
+    for tool in sorted_tools:
+        block = (
+            f"  # {tool.name}:\n"
+            f"  #   skip: false\n"
+            f"  #   skip_reason: \"\"\n"
+            f"  #   call_arguments: {{}}\n"
+            f"  #   judges: [clarity, disambiguation, parameters]\n"
+        )
+        blocks.append(block)
+
+    return header + "\n".join(blocks) + "\n"
 
 
 if __name__ == "__main__":  # pragma: no cover
