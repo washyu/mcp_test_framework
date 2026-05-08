@@ -29,6 +29,12 @@ mcp-test-framework = "mcp_test_framework.cli:app"
 dev = [
     "pytest>=9.0",
     "pytest-asyncio>=1.3",
+    # Surfaces hung tests with a per-test deadline + traceback rather than an
+    # infinite wait. Opt-in per run: `uv run pytest --timeout=60` (or set
+    # `timeout = 60` under [tool.pytest.ini_options] for a project-wide
+    # default). Phase 04.1 fixture-cancel-scope hangs and Ollama
+    # /api/chat stalls (260507-n0g follow-up) are the motivating cases.
+    "pytest-timeout>=2.4",
     "ruff>=0.8",
 ]
 
