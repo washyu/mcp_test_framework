@@ -114,6 +114,41 @@ override in your `tests/conftest.py` shadows the framework's session-scoped
 route to your implementation. Do not commit real API keys -- load secrets
 from your environment or a secret manager inside `__init__`.
 
+## Add a new MCP tool target
+
+The per-tool config registry (`tools.<tool_name>:` blocks in your config YAML)
+is the lightest-weight way to extend coverage: zero code changes. The schema is
+`ToolConfig` (`src/mcp_test_framework/models.py`); see
+[Per-tool configuration](../README.md#per-tool-configuration) in the README for
+the field reference. This section walks the workflow.
+
+**Where to drop the recipe:** `config.yaml` (or whichever YAML overlay your `MCPTF_CONFIG_FILE` / `--config` points at). No edits to `tests/conftest.py` or framework source are required.
+
+1. **Discover.** Run `uv run mcp-test-framework list-tools` to see every tool the connected server advertises.
+2. **Decide.** For each tool, decide whether to `skip`, restrict the `judges` subset, or pre-fill `call_arguments`. Tools you say nothing about run with all rubrics and an empty argument map (TOOLCFG-06 safe defaults).
+3. **Add a `tools.<tool_name>:` block** under the top-level `tools:` key in your config YAML. See [Per-tool configuration](../README.md#per-tool-configuration) for the field reference; the worked example below uses the skip-with-reason pattern.
+4. **Verify.** Re-run `uv run mcp-test-framework run`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
+
+Replace the placeholder tool name below with one from your `mcp-test-framework list-tools` output.
+
+```yaml
+# config.yaml -- per-tool config overlay
+tools:
+  <your_destructive_tool>:
+    skip: true
+    skip_reason: "Tool performs writes against real hosts; opted out for CI."
+```
+
+For the judges-subset pattern (`judges: [clarity]`), see [Block B in the README](../README.md#block-b-judges-subset).
+
+At test-collection time, the `tool_config` fixture
+(`src/mcp_test_framework/fixtures.py`) resolves
+`config.tools.get(target_tool.name, ToolConfig())` for the active tool. Tools
+without an entry receive a default `ToolConfig()` (no skip, no fixed
+arguments, all rubrics). Typos in field names are caught at config load by
+`extra="forbid"`, so a misspelled `srtip:` does not silently disable the safety
+of an explicit `skip: true`.
+
 ## Further reading
 
 - [`README.md`](../README.md) -- back to setup and usage
