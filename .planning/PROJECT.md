@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A pytest-based Python framework for testing MCP (Model Context Protocol) servers. It connects to one MCP server over stdio, runs deterministic schema/output checks against a target tool, and uses a local Ollama-hosted LLM as a judge for description quality. v1.0 ships a CLI (`mcp-test-framework run|list-tools|version`) that drives `homelab-mcp`'s `list_keyring_credentials` (default; switchable to `list_registered_servers`) end-to-end against a live Ollama judge. The integration contract is proven; v2 generalization can now build on these seams.
+A pytest-based Python framework for testing MCP (Model Context Protocol) servers. It connects to one MCP server over stdio, discovers and exercises every tool the server advertises (modulo a configurable skip-list), runs deterministic schema/output checks per tool, and uses a local Ollama-hosted LLM as a judge for description quality. v1.0 proved the integration contract on a single tool; v1.1 generalized to N-tools-per-run with per-session host-state isolation, declarative per-tool config, and JUnit XML output for CI ingestion. The CLI (`mcp-test-framework run|list-tools|config-init|version`) drives `homelab-mcp` end-to-end against a live Ollama judge.
 
 ## Core Value
 
@@ -10,26 +10,17 @@ A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema �
 
 ## Current State
 
-**Shipped:** v1.0 MVP (2026-05-06)
+**Shipped:** v1.1 Multi-Tool + Isolation + JUnit (2026-05-08)
 
-- 7 phases, 22 plans, 29/29 requirements satisfied (audit passed)
-- ~3,562 LOC Python under `src/mcp_test_framework/` + `tests/`
-- Live green: `uv run mcp-test-framework run` → `67 passed, exit 0` against live `homelab-mcp` (via `uvx`) + Ollama `qwen3.6:latest` at `127.0.0.1:11434`
-- Tested target: `homelab-mcp` / `list_keyring_credentials` (config-only switch from the original `list_registered_servers`, which surfaced a real description-quality gap the framework correctly caught)
+- 13 phases shipped (v1.0 + v1.1), 39 plans, 54/54 requirements satisfied across both milestones (29 + 25; audit-clean)
+- ~5,784 LOC Python under `src/mcp_test_framework/` + `tests/`
+- v1.1 generalizations: multi-tool discovery via `pytest_generate_tests`, per-session `HOME`/`USERPROFILE` redirect + null keyring backend (sha256-verified zero state mutation), `tools.<name>` config registry with `extra="forbid"` + `version: 1`, JUnit XML emit + `_reporter.py` per-tool summary plugin
+- Live green: `uv run mcp-test-framework run` against live `homelab-mcp` (via `uvx`) + Ollama `qwen3.6:latest` at `127.0.0.1:11434`
+- Default target tools: `list_keyring_credentials` + `suggest_deployments` (per-tool config drives the rest of homelab-mcp's surface to skip-by-default)
 
-## Current Milestone: v1.1 Multi-Tool + Isolation + JUnit
+## Next Milestone: v1.2 (TBD)
 
-**Goal:** Generalize the framework from one-tool-per-run to N-tools-per-run, with per-session host-state isolation (so test runs no longer clobber the user's real `homelab-mcp` state) and JUnit XML output for CI ingestion.
-
-**Target features:**
-- Multi-tool discovery + parameterized testing (`parametrize` over the discovered tool list at collection time — no codegen)
-- Per-tool config registry: skip-list with reasons, `call_arguments`, judge selection — schema reserves `setup:` / `depends_on:` for SEED-004 (forward-compat)
-- Per-session host-state isolation (HOME/USERPROFILE override + per-session tempdir; keyring-isolation investigation as first task)
-- JUnit XML output for CI dashboards
-- Pytest-native skip reporting (each skipped tool surfaces with reason string)
-- Validated config schema (`extra="forbid"` + `version: 1` field; clear errors on typos)
-
-**Anti-scope (explicitly deferred):** xdist parallelism (→ v1.2), OpenAI-compat backend (→ v1.2), warm-up stage (→ v1.2), dynamic rubrics (→ v1.3), agent-realism fuzz (→ v1.3), agentic judge (→ v1.4+), stateful tool testing (→ v1.5+).
+To be scoped via `/gsd-new-milestone`. Indicative shape from Long-term Vision: performance + portability — pytest-xdist parallelism (SEED-002, gated by v1.1's per-worker isolation), warm-up stage, OpenAI-compatible judge backend (SEED-005). Not committed until `/gsd-new-milestone` runs.
 
 ## Long-term Vision
 
@@ -105,35 +96,43 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 - ✓ SIGINT clean teardown with exit code 130 (WR-05 fix; UAT test 8 verified live) — v1.0 (OPS-03)
 - ✓ README + `docs/EXTENDING.md` + `.env.example` + `config.example.yaml` — v1.0 (DOCS-01, DOCS-02)
 - ✓ Judge Protocol seam (`judge_protocol.Judge`) shipped — v1.0 (zero-cost JUDGE-01 enabler)
+- ✓ Per-session host-state isolation: `HOME`/`USERPROFILE` redirect to per-session tempdir, env-passthrough allowlist, `PYTHON_KEYRING_BACKEND=null` — v1.1 (ISOL-01..07)
+- ✓ Multi-tool discovery + parameterized testing via `pytest_generate_tests` — v1.1 (MULTI-01..04)
+- ✓ Per-tool config registry: `tools.<name>` blocks with `skip` / `call_arguments` / `judges` / forward-compat `setup:` `depends_on:` reservations — v1.1 (TOOLCFG-01..07)
+- ✓ JUnit XML output (`--junit-xml=PATH`) + per-tool reporting via `_reporter.py` plugin — v1.1 (OUTPUT-01..03)
+- ✓ v1.1 documentation: README sections (Per-tool config, Isolation guarantee, CI integration) + EXTENDING.md walkthroughs (add a tool target, env passthrough allowlist) — v1.1 (DOC-04..07)
 
 ### Active
 
-(Defining for v1.1 — requirements being scoped via `/gsd-new-milestone v1.1`.)
+(Defining for v1.2 — requirements will be scoped via `/gsd-new-milestone`.)
 
 ### Out of Scope
 
-- Multiple MCP servers in one run — generalization deferred until single-server contract is proven (✓ proven in v1.0)
-- Multiple tool targets in one run — same reason; framework seams should make this easy to add later
+- Multiple MCP servers in one run — generalization deferred until single-server contract is proven (✓ proven in v1.0; multi-tool-per-server proven in v1.1)
+- ~~Multiple tool targets in one run~~ — **shipped in v1.1** (MULTI-01..04: discovery + parameterized testing)
+- ~~JSON / JUnit output formats~~ — **shipped in v1.1** (OUTPUT-01..03)
+- ~~Pluggable judge backends (OpenAI-compatible, etc.)~~ — Ollama-only for v1.0/v1.1; SEED-005 plants the OpenAI-compat backend for v1.2
 - HTTP and SSE MCP transports — stdio is sufficient to validate the contract (✓ validated)
 - LLM as test input generator — explicit Phase 2 ("Plant Seed" below); judge-only for MVP
 - Best-of-N judge consensus — single-shot at `score >= 4` proved adequate; revisit only if flaky in practice
-- Stateful or destructive tool testing — read-only tools only
+- Stateful or destructive tool testing — read-only tools only (SEED-004 plants this for v1.5+)
 - Performance, load, or security testing — not the integration contract being validated
-- JSON / JUnit output formats — pytest default terminal output is enough
 - Web UI or dashboard — out of scope; CLI-only
-- Pluggable judge backends (OpenAI-compatible, etc.) — Ollama-only for v1.0; `Judge` Protocol seam shipped to make swap trivial
-- Reading or importing `homelab-mcp` source — black-box subprocess under test (mechanically enforced)
+- Reading or importing `homelab-mcp` source — black-box subprocess under test (mechanically enforced via `ruff TID251` + `sys.modules` guard)
 
 ## Context
 
-- **v1.0 shipped.** Solo project, local CLI; green CI = green local invocation. No GitHub Actions yet.
-- **First customer + reusable framework.** `homelab-mcp` validated the contract. v2 work generalizes (multi-tool, multi-server, transports).
+- **v1.0 + v1.1 shipped.** Solo project, local CLI; green CI = green local invocation. No GitHub Actions yet (CI snippet documented in README for downstream users).
+- **First customer + reusable framework.** `homelab-mcp` validated the integration contract (v1.0) and the multi-tool surface (v1.1). v1.2+ work targets performance/portability and broader judge backends.
 - **Authoritative spec preserved at** `docs/mcp_test_framework_mvp_spec.md`.
-- **Black-box rule held throughout.** Framework never imports `homelab-mcp`; lint + runtime guards both ship.
+- **Black-box rule held throughout v1.0 + v1.1.** Framework never imports `homelab-mcp`; lint (`ruff TID251`) + runtime guard (`sys.modules`) + banned-imports test all ship.
 - **Ollama judge dependency** lives at `127.0.0.1:11434` (homelab); `qwen3.6:latest` pulled.
-- **Known follow-ups** (tracked in audit, not v1.0 blockers):
-  - Upstream `homelab-mcp` `list_registered_servers` description fix (v2 territory)
-  - Cross-platform automated SIGINT UAT scaffolding (v2 territory)
+- **v1.1 close state** (audit-clean, 25/25 reqs Complete) carries forward:
+  - 5 dormant SEEDs (SEED-001..005) tracking deferred features for v1.2+
+  - 2 docs-polish nits in EXTENDING.md (line-range citation, "five entries" framing) — see STATE.md `## Deferred Items`
+- **v1.0 follow-ups still tracked** (not blockers):
+  - Upstream `homelab-mcp` `list_registered_servers` description fix
+  - Cross-platform automated SIGINT UAT scaffolding
   - Open-source pre-flight scrub (homelab IP from README, homelab-specific captures from `.planning/`) — only triggers if/when the repo goes public
 
 ## Constraints
@@ -161,6 +160,13 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 | Phase 04.1 owner-task + anyio.Event fixture rewrite | Fix `RuntimeError: Attempted to exit cancel scope in a different task` at session-scoped teardown | ✓ Good — `pytest tests/` exits 0; CLI SIGINT path inherits same lifecycle |
 | Phase 5 default target switched to `list_keyring_credentials` | Framework correctly caught a real description-quality gap on `list_registered_servers`; config-only swap preserves rubric integrity | ✓ Good — proved framework signal; upstream fix tracked for v2 |
 | WR-05: explicit SIGINT handler returning exit code 130 | Code review found Typer/Click swallowing the signal; observed UAT confirmed clean teardown + exit 130 | ✓ Good — supersedes the OPS-03 PARTIAL PASS override |
+| Phase 06 ISOL-04 SHIP (`PYTHON_KEYRING_BACKEND=null`) | homelab-mcp PyPI README v1.7.0 confirmed OS keyring is the sole credential store — gating decision triggered SHIP not DEFER | ✓ Good — empirical sha256 verification on Windows 11 dev host: 3/3 hashes byte-identical pre/post run |
+| Phase 06 D-09 sha256 verification (not mtimes) | mtimes are insufficient — touch-without-content-change still updates mtime; sha256 catches genuine writes | ✓ Good — strengthening kept ROADMAP/code in sync after Phase 11 W-5 fix |
+| WR-04 Branch B: `USERNAME` only in `_PASSTHROUGH_ALLOWLIST` (POSIX `USER` excluded) | v1.1's tool surface needs Windows-only auth context; adding POSIX `USER` would broaden the allowlist without a justifying use case. Documented as Branch B in EXTENDING.md | ✓ Good — keeps allowlist minimal; reversible if a v1.2 tool needs POSIX `USER` |
+| Phase 07 — `pytest_generate_tests` + indirect parametrize over discovered tools (no codegen) | Live discovery from server keeps test list always-accurate; indirect parametrize fits pytest-asyncio's strict-mode fixture model | ✓ Good — `<test>[<tool>]` IDs flow naturally to terminal + JUnit |
+| Phase 08 — `extra="forbid"` + `version: 1` on `tools.<name>` config blocks | Typos must surface as Pydantic errors at config load, not silent test omissions | ✓ Good — forward-compat `setup:`/`depends_on:` reservations don't break the strict shape |
+| Phase 09 — `_reporter.py` as a pytest plugin (not CLI post-processor) | Plugin model uses live `terminalreporter` events; post-processor would re-parse pytest output. Plugin keeps the contract testable in-process | ✓ Good — 29 unit tests + 3 live tests pin OUTPUT-01..03 |
+| Phase 11 — gap-closure phase as last v1.1 phase | Milestone audit (W-1, W-3, W-4, W-5, W-6) surfaced paper-only drift before archive — closing in-milestone keeps audit-clean state | ✓ Good — 25/25 requirements Complete at archive |
 
 ## Plant Seed: LLM-Generated Test Cases (Post-MVP)
 
@@ -184,4 +190,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 — Phase 11 complete (v1.1 audit gap closure: W-1, W-3, W-4, W-5, W-6 closed); v1.1 milestone audit-clean and ready for archive*
+*Last updated: 2026-05-08 after v1.1 milestone close — multi-tool discovery, per-session host-state isolation, per-tool config registry, JUnit XML output, v1.1 documentation, and audit gap closure all shipped (54/54 requirements satisfied across v1.0+v1.1).*

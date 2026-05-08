@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
-status: milestone_complete
+status: completed
 stopped_at: Phase 10 context gathered
-last_updated: "2026-05-08T08:19:47.986Z"
-last_activity: 2026-05-08 -- Phase 11 execution started
+last_updated: "2026-05-08T17:15:09.956Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 6
   completed_phases: 6
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 17
   percent: 100
 ---
 
@@ -90,6 +90,13 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 | open-source-prep | Scrub homelab IP from README (05-SECURITY.md AR-05-12) | Open — only triggers if/when repo goes public | v1.0 close (2026-05-07) |
 | open-source-prep | Scrub homelab-specific captures from `.planning/` (05-SECURITY.md AR-05-15) | Open — only triggers if/when repo goes public | v1.0 close (2026-05-07) |
 | process-hygiene | Backfill 04.1-VERIFICATION.md (UAT.md status:complete is current evidence of record) | Open — optional | v1.0 close (2026-05-07) |
+| seed | SEED-001 — Replace rubric-style judge with full agent tool-use loop | dormant | v1.1 close (2026-05-08) |
+| seed | SEED-002 — Tool-level parallelism via pytest-xdist with read/write resource markers | dormant | v1.1 close (2026-05-08) |
+| seed | SEED-003 — Dynamic judging protocol — rubrics as data, not code | dormant | v1.1 close (2026-05-08) |
+| seed | SEED-004 — Stateful tool testing with resource setup/teardown | dormant | v1.1 close (2026-05-08) |
+| seed | SEED-005 — OpenAI-compatible judge backend as the unifier (local-first / hosted-opt-in) | dormant | v1.1 close (2026-05-08) |
+| docs-polish | EXTENDING.md WR-01: line-range citation `_isolation.py:33-36` should be `36-39` (11-REVIEW.md) | Open — optional, v1.2 docs polish | v1.1 close (2026-05-08) |
+| docs-polish | EXTENDING.md IN-01: "five entries" framing for `_PASSTHROUGH_ALLOWLIST` (4-tuple + separate `_MCP_PREFIX`) (11-REVIEW.md) | Open — optional, v1.2 docs polish | v1.1 close (2026-05-08) |
 
 ## Session Continuity
 
