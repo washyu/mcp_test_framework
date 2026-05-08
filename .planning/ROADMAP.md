@@ -23,7 +23,7 @@
 ### 🚧 v1.1 — Multi-Tool + Isolation + JUnit
 
 - [x] **Phase 06: Per-session host-state isolation** — Spawn MCP subprocess in a per-session tempdir so test runs no longer mutate the user's real `~/.homelab_mcp/` state; gated by a keyring-touch investigation (completed 2026-05-07)
-- [ ] **Phase 07: Multi-tool discovery & parameterized testing** — Generalize from one-tool-per-run to N-tools-per-run via `pytest.mark.parametrize` over discovered tools (no codegen)
+- [x] **Phase 07: Multi-tool discovery & parameterized testing** — Generalize from one-tool-per-run to N-tools-per-run via `pytest.mark.parametrize` over discovered tools (no codegen) (completed 2026-05-07)
 - [x] **Phase 08: Per-tool config registry** — `tools.<name>` config block with skip / call_arguments / judges; reserve `setup:` / `depends_on:` for SEED-004 forward-compat; `extra="forbid"` + `version: 1`
  (completed 2026-05-07)
 - [x] **Phase 09: JUnit XML output & per-tool reporting** — `--junit-xml=<path>` passthrough; per-tool granularity in test IDs and summary line
@@ -38,7 +38,7 @@
 **Depends on**: Nothing (first v1.1 phase; v1.0 is shipped)
 **Requirements**: ISOL-01, ISOL-02, ISOL-03, ISOL-04, ISOL-05, ISOL-06, ISOL-07
 **Success Criteria** (what must be TRUE):
-  1. After a full `uv run mcp-test-framework run` invocation, the mtimes of `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, and `~/.homelab_mcp/migration_state.json` are unchanged from before the run (verified by a dedicated test).
+  1. After a full `uv run mcp-test-framework run` invocation, the sha256 hashes of `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, and `~/.homelab_mcp/migration_state.json` are unchanged from before the run (verified by a dedicated test).
   2. The spawned MCP subprocess's `os.path.expanduser('~')` resolves to a per-session tempdir on both Windows (`USERPROFILE`) and POSIX (`HOME`); the tempdir is auto-cleaned on session exit.
   3. The first task of the phase (ISOL-01) produces a recorded answer to "does `list_keyring_credentials` / `list_registered_servers` touch the OS keyring?" — that answer either turns on `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` (ISOL-04) or documents the deferral with explicit triggers.
   4. The env-var passthrough allowlist (`PATH`, `SYSTEMROOT`, `LANG`, `USERNAME`, `MCP_*`) is documented in code comments and EXTENDING.md so future contributors don't widen it accidentally.
@@ -144,7 +144,7 @@ Plans:
 | 04.1. McpTestClient teardown fix | v1.0 | 1/1 | Complete | 2026-05-06 |
 | 05. CLI, README & Acceptance | v1.0 | 5/5 | Complete | 2026-05-06 |
 | 06. Per-session host-state isolation | v1.1 | 3/3 | Complete | 2026-05-07 |
-| 07. Multi-tool discovery & parameterized testing | v1.1 | 0/1 | Planned | — |
+| 07. Multi-tool discovery & parameterized testing | v1.1 | 1/1 | Complete | 2026-05-07 |
 | 08. Per-tool config registry | v1.1 | 4/4 | Complete    | 2026-05-07 |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete   | 2026-05-08 |
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete   | 2026-05-08 |
