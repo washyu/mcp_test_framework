@@ -24,7 +24,8 @@
 
 - [x] **Phase 06: Per-session host-state isolation** — Spawn MCP subprocess in a per-session tempdir so test runs no longer mutate the user's real `~/.homelab_mcp/` state; gated by a keyring-touch investigation (completed 2026-05-07)
 - [ ] **Phase 07: Multi-tool discovery & parameterized testing** — Generalize from one-tool-per-run to N-tools-per-run via `pytest.mark.parametrize` over discovered tools (no codegen)
-- [x] **Phase 08: Per-tool config registry** — `tools.<name>` config block with skip / call_arguments / judges; reserve `setup:` / `depends_on:` for SEED-004 forward-compat; `extra="forbid"` + `version: 1` (completed 2026-05-07)
+- [x] **Phase 08: Per-tool config registry** — `tools.<name>` config block with skip / call_arguments / judges; reserve `setup:` / `depends_on:` for SEED-004 forward-compat; `extra="forbid"` + `version: 1`
+ (completed 2026-05-07)
 - [ ] **Phase 09: JUnit XML output & per-tool reporting** — `--junit-xml=<path>` passthrough; per-tool granularity in test IDs and summary line
 - [ ] **Phase 10: v1.1 documentation** — README + `docs/EXTENDING.md` updates: per-tool config, isolation guarantee, JUnit usage, adding new tool targets
 
@@ -87,7 +88,12 @@ Plans:
   1. `uv run mcp-test-framework run --junit-xml=results.xml` produces a standard JUnit XML file at `results.xml` consumable by GitHub Actions / Jenkins / generic CI dashboards.
   2. Each test case in the JUnit XML carries a `[<tool_name>]` suffix in its name, so CI dashboards can filter and trend per-tool failure rates over time.
   3. The terminal output of `mcp-test-framework run` includes a per-tool result section showing `<tool_name>: PASS|FAIL|SKIP — <reason>` for every discovered tool — readable at a glance without scrolling pytest detail.
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — `--junit-xml=PATH` Typer flag + `_build_pytest_args` helper on `cli.py:run` (OUTPUT-01)
+- [ ] 09-02-PLAN.md — `_reporter.py` pytest plugin (per-tool aggregation + terminal summary) + `tests/conftest.py` registration (OUTPUT-03)
+- [ ] 09-03-PLAN.md — `tests/test_reporter.py` unit + live verification of XML well-formedness, `[<tool>]` IDs, and per-tool summary always-on (OUTPUT-01/02/03 verification)
 
 ### Phase 10: v1.1 documentation
 **Goal**: A new contributor or CI engineer can adopt v1.1's new capabilities (per-tool config, isolation, JUnit, adding new tool targets) using only the README and `docs/EXTENDING.md` — no source-reading required.
@@ -114,5 +120,5 @@ Plans:
 | 06. Per-session host-state isolation | v1.1 | 3/3 | Complete | 2026-05-07 |
 | 07. Multi-tool discovery & parameterized testing | v1.1 | 0/1 | Planned | — |
 | 08. Per-tool config registry | v1.1 | 4/4 | Complete    | 2026-05-07 |
-| 09. JUnit XML output & per-tool reporting | v1.1 | 0/? | Not started | — |
+| 09. JUnit XML output & per-tool reporting | v1.1 | 0/3 | Planned | — |
 | 10. v1.1 documentation | v1.1 | 0/? | Not started | — |
