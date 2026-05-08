@@ -29,6 +29,7 @@
 - [x] **Phase 09: JUnit XML output & per-tool reporting** — `--junit-xml=<path>` passthrough; per-tool granularity in test IDs and summary line
  (completed 2026-05-08)
 - [x] **Phase 10: v1.1 documentation** — README + `docs/EXTENDING.md` updates: per-tool config, isolation guarantee, JUnit usage, adding new tool targets (completed 2026-05-08)
+- [ ] **Phase 11: v1.1 cleanup & verification hygiene** — Close paper-only gaps from v1.1 milestone audit: backfill 09-VERIFICATION.md, EXTENDING.md env-allowlist section, REQUIREMENTS.md/ROADMAP.md traceability drift fixes (gap closure)
 
 ## Phase Details
 
@@ -111,7 +112,21 @@ Plans:
 - [x] 10-01-PLAN.md -- README new sections: Per-tool configuration, Isolation guarantee, CI integration + Further reading update + snippet-correctness regression tests (DOC-04, DOC-05, DOC-06)
 - [x] 10-02-PLAN.md -- docs/EXTENDING.md new section: Add a new MCP tool target walkthrough + Further reading back-link to README schema (DOC-07)
 
-## Progress
+### Phase 11: v1.1 cleanup & verification hygiene
+**Goal**: Close all paper-only gaps surfaced by the v1.1 milestone audit so the milestone artifacts are internally consistent before archiving — every phase has a VERIFICATION.md, every traceability table reflects actual completion, every cross-reference in code is documented in the docs it points at.
+**Depends on**: Phases 06–10 (closes gaps from those phases)
+**Type**: gap closure (no new requirements; cleans up existing artifacts)
+**Audit reference**: `.planning/v1.1-MILESTONE-AUDIT.md` (W-1, W-3, W-4, W-5, W-6)
+**Success Criteria** (what must be TRUE):
+  1. `09-VERIFICATION.md` exists at `.planning/phases/09-junit-xml-output-per-tool-reporting/`, cites the 09-0N-SUMMARY trio + `tests/test_reporter.py` regression evidence + the 3 deferred live subprocess tests, and follows the same frontmatter shape as 06/07/08/10 VERIFICATION.md (W-1).
+  2. `docs/EXTENDING.md` contains a section that absorbs the `_isolation.py:33-36` env-passthrough-allowlist warning so contributors don't widen the allowlist accidentally; closes the EXTENDING.md half of Phase 06 SC-4 (W-3).
+  3. `REQUIREMENTS.md` `## Traceability` table shows "Complete" for every v1.1 REQ-ID (no stale "Pending" rows for ISOL-03, ISOL-06, DOC-04..07); body checkboxes for DOC-04..07 are `[x]`; coverage summary at top reflects 25/25 complete (W-4).
+  4. `ROADMAP.md` Phase 06 SC-1 wording uses "sha256" (not "mtimes") to match the D-09 strengthening that actually shipped (W-5).
+  5. `ROADMAP.md` Phase 07 checkbox is `[x]` and Progress table row says "Complete 2026-05-07" (drift fix, found during plan-milestone-gaps).
+  6. WR-04 disposition decided: either POSIX `USER` is added to `_PASSTHROUGH_ALLOWLIST` in `_isolation.py` with a corresponding test, or a one-paragraph rationale is recorded explaining why `USERNAME` alone is sufficient (W-6).
+**Plans:** TBD (drafted by /gsd-plan-phase)
+
+
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -127,3 +142,4 @@ Plans:
 | 08. Per-tool config registry | v1.1 | 4/4 | Complete    | 2026-05-07 |
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete   | 2026-05-08 |
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete   | 2026-05-08 |
+| 11. v1.1 cleanup & verification hygiene | v1.1 | 0/0 | Planned | — |
