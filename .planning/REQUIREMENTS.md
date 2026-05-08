@@ -38,9 +38,9 @@ REQ-IDs continue numbering from v1.0 (archived at `.planning/milestones/v1.0-REQ
 
 ### OUTPUT — Output formats and reporting
 
-- [ ] **OUTPUT-01**: CLI accepts `--junit-xml=<path>` argument; passthrough to pytest; produces standard JUnit XML at the given path.
-- [ ] **OUTPUT-02**: JUnit output records per-tool granularity (test names include `[<tool_name>]`) so CI dashboards can filter and trend per-tool failure rates over time.
-- [ ] **OUTPUT-03**: Per-run summary (terminal output) includes a concise per-tool result section: `<tool_name>: PASS|FAIL|SKIP — <reason if skip>`. Helps CI engineers triage failures without reading the full pytest output.
+- [x] **OUTPUT-01**: CLI accepts `--junit-xml=<path>` argument; passthrough to pytest; produces standard JUnit XML at the given path.
+- [x] **OUTPUT-02**: JUnit output records per-tool granularity (test names include `[<tool_name>]`) so CI dashboards can filter and trend per-tool failure rates over time.
+- [x] **OUTPUT-03**: Per-run summary (terminal output) includes a concise per-tool result section: `<tool_name>: PASS|FAIL|SKIP — <reason if skip>`. Helps CI engineers triage failures without reading the full pytest output.
 
 ### DOC — Documentation updates for v1.1
 
@@ -104,9 +104,9 @@ Every v1.1 requirement maps 1:1 to exactly one phase. Coverage: 25/25 (100%).
 | TOOLCFG-05 | Phase 08 | Complete |
 | TOOLCFG-06 | Phase 08 | Complete |
 | TOOLCFG-07 | Phase 08 | Complete |
-| OUTPUT-01 | Phase 09 | Pending |
-| OUTPUT-02 | Phase 09 | Pending |
-| OUTPUT-03 | Phase 09 | Pending |
+| OUTPUT-01 | Phase 09 | Complete |
+| OUTPUT-02 | Phase 09 | Complete |
+| OUTPUT-03 | Phase 09 | Complete |
 | DOC-04 | Phase 10 | Pending |
 | DOC-05 | Phase 10 | Pending |
 | DOC-06 | Phase 10 | Pending |

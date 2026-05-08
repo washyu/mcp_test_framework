@@ -4,14 +4,14 @@ milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
 status: executing
 stopped_at: Phase 08 context gathered
-last_updated: "2026-05-08T04:21:53.347Z"
-last_activity: 2026-05-08 -- Phase 09 execution started
+last_updated: "2026-05-08T04:45:58.188Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 ## Current Position
 
 Phase: 09 (junit-xml-output-per-tool-reporting) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 09
-Last activity: 2026-05-08 -- Phase 09 execution started
+Plan: 3 of 3
+Status: Ready to execute
+Last activity: 2026-05-08
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Last activity: 2026-05-08 -- Phase 09 execution started
 | Phase 06 P02 | 4min | 3 tasks | 3 files |
 | Phase 06 P03 | 5min | 2 tasks | 9 files |
 | Phase 07 P01 | 6min | 3 tasks | 5 files (1 renamed) |
+| Phase 09 P03 | 11min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 07-01]: TargetConfig.tool_name widened to Optional[str] (default None = discover-all); empty-string-to-None field_validator added; _preflight membership check made conditional on tool_name is not None
 - [Phase 07-01]: pytest_generate_tests + indirect parametrize hook added in tests/conftest.py; reuses McpTestClient.__aenter__ for the third spawn site (Phase 06 D-16 isolation inheritance); module-level _DISCOVERED_TOOL_NAMES cache (CD-01); CD-05 short-circuit when TARGET_TOOL_NAME is set
 - [Phase 07-01]: tests/test_homelab_list_registered_servers.py renamed -> tests/test_mcp_tool_contract.py via git mv (88% similarity); TEST-08/09/10 take target_tool fixture and use target_tool.name
+- [Phase ?]: Phase 09-03: 29 unit tests + 3 live tests pin OUTPUT-01..03 contracts (live tests deferred in sandbox env due to 120s pytest-timeout on inner subprocess)
+- [Phase ?]: Phase 09-03: SUFFIX contract assertions require BOTH '[' in name AND name.endswith(']') -- weaker forms admit test_x[a]extra violations
+- [Phase ?]: Phase 09-03: row-line filter (two-space indent + group-header exclusion) for terminalreporter table assertions; joined-output substring search would match the grouping-header word 'alphabetical'
 
 ### Blockers/Concerns
 
@@ -89,6 +93,6 @@ Items acknowledged at v1.0 close and carried into v2 scope:
 
 ## Session Continuity
 
-Last session: 2026-05-07T21:12:09.282Z
+Last session: 2026-05-08T04:45:58.180Z
 Stopped at: Phase 08 context gathered
-Resume file: .planning/phases/08-per-tool-config-registry/08-CONTEXT.md
+Resume file: None
