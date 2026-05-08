@@ -89,6 +89,32 @@ def _load_config(path: Path | None) -> Config:
     return Config()
 
 
+def _build_pytest_args(
+    junit_xml: Path | None,
+    pytest_args: list[str] | None,
+) -> list[str]:
+    """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
+    `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
+    ``pytest.main(...)``.
+
+    D-01a precedence: the explicit flag is inserted BEFORE the passthrough
+    forwarded args so a later passthrough ``--junitxml=...`` (after ``--``)
+    wins under pytest's last-occurrence argparse rule. The helper does NOT
+    de-duplicate or validate paths -- pytest's own argument handling is the
+    single source of truth.
+
+    L-03 invariant: this helper builds the argv list only; the call site in
+    ``run`` keeps the bare ``raise typer.Exit(code=pytest.main(...))`` shape
+    with NO try/except wrap (Phase 5 D-cli-flags-3).
+    """
+    forwarded = list(pytest_args or [])
+    args: list[str] = ["tests"]
+    if junit_xml is not None:
+        args.append(f"--junitxml={junit_xml}")
+    args.extend(forwarded)
+    return args
+
+
 @app.command(
     context_settings={
         "allow_extra_args": True,
@@ -100,6 +126,17 @@ def run(
         None,
         "--config",
         help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+    ),
+    junit_xml: Path | None = typer.Option(
+        None,
+        "--junit-xml",
+        help=(
+            "Write JUnit XML to PATH. Translates internally to pytest's "
+            "`--junitxml=PATH` (note pytest's no-dash spelling). If a "
+            "passthrough `--junitxml=...` is also supplied after `--`, the "
+            "passthrough wins via pytest's last-occurrence argparse rule "
+            "(D-01a)."
+        ),
     ),
     pytest_args: list[str] | None = typer.Argument(
         None,
@@ -115,6 +152,11 @@ def run(
     SIGINT handling + Phase 04.1's AsyncExitStack-owned `mcp_client`
     fixture cover OPS-03 for this path.
 
+    Phase 09 OUTPUT-01: `--junit-xml=PATH` translates to pytest's `--junitxml=PATH`
+    via `_build_pytest_args` (D-01b spelling difference; D-01a passthrough-wins
+    precedence). The helper is extracted (CD-06 option 3) so the translation is
+    unit-testable without spawning pytest.
+
     The `addopts = "-m 'not live_homelab and not live_ollama'"` contract
     from pyproject.toml stays in effect -- `run` MUST NOT pass an explicit
     `-m` flag (D-markers-3 / Phase 4 contract).
@@ -127,8 +169,7 @@ def run(
     import pytest  # function-local: pytest is dev-only, not a runtime dep
 
     _load_config(config)  # raises typer.Exit(2) on bad path; ValidationError propagates
-    forwarded = list(pytest_args or [])
-    raise typer.Exit(code=pytest.main(["tests", *forwarded]))
+    raise typer.Exit(code=pytest.main(_build_pytest_args(junit_xml, pytest_args)))
 
 
 @app.command("list-tools")
