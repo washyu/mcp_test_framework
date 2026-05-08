@@ -164,6 +164,49 @@ working as designed -- the judge is flagging a real description-quality gap.
 Tighten the upstream tool description, retune the rubric threshold, or accept
 the verdict per your project's tolerance.
 
+## Isolation guarantee
+
+Test runs do not mutate `~/.homelab_mcp/` real-state files. The framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session temporary directory, so the server reads/writes its state inside the tempdir and never touches your real-state files.
+
+```bash
+uv run pytest tests/test_isolation.py -v
+```
+
+The test in `tests/test_isolation.py` computes sha256 hashes of `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, and `~/.homelab_mcp/migration_state.json` before and after a full session and asserts byte-identical equality. Test runs also route the OS keyring through a null backend, so credentials are not read or written.
+
+## CI integration
+
+Run the suite in CI with `--junit-xml=` and ingest the result with a JUnit-aware action. The snippet below runs the default unit slice (live markers excluded by `pyproject.toml`'s `addopts`).
+
+```yaml
+# .github/workflows/test.yml -- GitHub Actions starter.
+# On Jenkins / GitLab CI / CircleCI, translate the `runs-on` / `uses` /
+# `with` keys to the equivalent runner + action concepts. The CLI invocation
+# (`uv run mcp-test-framework run --junit-xml=results.xml`) is portable.
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+      - run: uv sync
+      # Default addopts in pyproject.toml excludes live_homelab + live_ollama markers.
+      - run: uv run mcp-test-framework run --junit-xml=results.xml
+      - name: Publish test report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: pytest
+          path: results.xml
+          reporter: java-junit
+```
+
+The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operators who need SHA-pinning are graduating beyond this starter. The default `addopts` in `pyproject.toml` excludes the `live_homelab` and `live_ollama` markers -- to exercise live tests in CI, add a separate job that opts in to those markers explicitly.
+
 ## Troubleshooting (Windows)
 
 - If a Ctrl+C leaves a `homelab-mcp.exe` process behind:
