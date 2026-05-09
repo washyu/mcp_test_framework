@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: Operator-First Design
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-05-09T09:02:14.304Z"
-last_activity: 2026-05-09 -- Phase 12 planning complete
+last_updated: "2026-05-09T09:04:59.689Z"
+last_activity: 2026-05-09 -- Phase 12 execution started
 progress:
   total_phases: 5
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** v1.2 ROADMAP created — Phase 12 (doc-and-persona-foundation) is the entry point.
+**Current focus:** Phase 12 — doc-persona-foundation
 
 ## Current Position
 
-Phase: 12 (planned, not started)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-09 -- Phase 12 planning complete
+Phase: 12 (doc-persona-foundation) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 12
+Last activity: 2026-05-09 -- Phase 12 execution started
 
 ## Performance Metrics
 
