@@ -3,7 +3,7 @@
 Operator-facing error messages in `mcp-test-framework` follow four rules.
 This guide is the citation target for every rewritten error site (PERSONA-03)
 and the canonical source for the SAFE-03 / SAFE-06 reference messages that
-Phase 13 will implement verbatim.
+downstream config-safety work will implement verbatim.
 
 ## Rules
 
@@ -40,8 +40,8 @@ Phase 13 will implement verbatim.
 
 ## Reference messages (locked for downstream phases)
 
-The following messages are LOCKED in this style guide. Phase 13 implements
-them verbatim — copy exactly, do not reword.
+The following messages are LOCKED in this style guide. Downstream
+implementations copy them verbatim — copy exactly, do not reword.
 
 ### SAFE-03 — no config found, framework refuses to run
 
