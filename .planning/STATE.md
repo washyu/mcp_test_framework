@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Operator-First Design
 status: planning
-last_updated: "2026-05-09T02:18:43.205Z"
+last_updated: "2026-05-09T03:00:00.000Z"
 last_activity: 2026-05-09
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,58 +17,47 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
+See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 11 — v1-1-cleanup-verification-hygiene
+**Current focus:** v1.2 ROADMAP created — Phase 12 (doc-and-persona-foundation) is the entry point.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 12 (planned, not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-09 — Milestone v1.2 started
+Status: Roadmap complete; awaiting `/gsd-plan-phase 12`
+Last activity: 2026-05-09 — v1.2 ROADMAP created via `/gsd-new-milestone` → roadmapper. 5 phases (12–16) defined; 31/31 requirements mapped.
 
 ## Performance Metrics
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Phases planned | 5 | 06, 07, 08, 09, 10 |
+| Phases planned | 5 | 12, 13, 14, 15, 16 |
 | Phases complete | 0 | |
-| Requirements scoped | 25 | All v1.1 reqs mapped 1:1 to phases (no orphans) |
+| Requirements scoped | 31 | All v1.2 reqs mapped 1:1 to phases (no orphans) |
 | Requirements complete | 0 | |
-| Phase 06 P01 | 7min | 3 tasks | 15 files |
-| Phase 06 P02 | 4min | 3 tasks | 3 files |
-| Phase 06 P03 | 5min | 2 tasks | 9 files |
-| Phase 07 P01 | 6min | 3 tasks | 5 files (1 renamed) |
-| Phase 09 P03 | 11min | 2 tasks | 1 files |
+| v1.1 closing metrics (reference) | 6 phases / 17 plans / 25 reqs | shipped 2026-05-08 |
 
 ## Accumulated Context
 
 ### Decisions
 
-Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 close).
+Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 + v1.1 close).
 
-**v1.1 roadmapping decisions (2026-05-07):**
+**v1.2 roadmapping decisions (2026-05-09):**
 
-- **Phase 06 first.** Isolation is a current usability bug AND a prerequisite for safely scaling the multi-tool surface in Phase 07. Without isolation, more spawns = more bleed-through.
-- **ISOL-01 (keyring investigation) is the gating first task** of Phase 06. Its outcome determines whether ISOL-04 (`PYTHON_KEYRING_BACKEND=null`) ships in v1.1 or is deferred with documented triggers.
-- **5 phases under "coarse" granularity.** Justified because each phase is genuinely separable (isolation precedes multi-tool; config registry is its own concern; JUnit is reporting; docs close out across all four). Merging would couple unrelated work; splitting would fragment.
-- **Forward-compat reservations honored.** TOOLCFG-03 reserves `setup:` / `depends_on:` for SEED-004 (v1.5+). TOOLCFG-04 uses string IDs for judges — keeps SEED-003 (v1.3 dynamic rubrics) additive, not breaking.
-- **No v1.2/v1.3/v1.4/v1.5 work in v1.1.** xdist (SEED-002), OpenAI-compat backend (SEED-005), dynamic rubrics (SEED-003), agentic judge (SEED-001), stateful testing (SEED-004) are all deferred per Long-term Vision.
-- [Phase ?]: Phase 06-01: SHIP ISOL-04 (PyPI README documents OS keyring as sole credential store; Plan 06-02 must add PYTHON_KEYRING_BACKEND=keyring.backends.null.Null to _build_isolated_env)
-- [Phase ?]: Phase 06-02: ISOL-04 SHIPped — PYTHON_KEYRING_BACKEND=keyring.backends.null.Null injected; CLI __aenter__ path also isolated (D-16/D-17), Phase 04.1 anyio invariant preserved
-- [Phase ?]: Phase 06-03: ISOL-03/ISOL-06 verified — empirical PASS on Windows 11 (3/3 sha256 hashes byte-identical, 0 tempdir orphans); ISOL-06 POSIX-arm verification deferred to a future non-Windows dev run
-- [Phase 07-01]: TargetConfig.tool_name widened to Optional[str] (default None = discover-all); empty-string-to-None field_validator added; _preflight membership check made conditional on tool_name is not None
-- [Phase 07-01]: pytest_generate_tests + indirect parametrize hook added in tests/conftest.py; reuses McpTestClient.__aenter__ for the third spawn site (Phase 06 D-16 isolation inheritance); module-level _DISCOVERED_TOOL_NAMES cache (CD-01); CD-05 short-circuit when TARGET_TOOL_NAME is set
-- [Phase 07-01]: tests/test_homelab_list_registered_servers.py renamed -> tests/test_mcp_tool_contract.py via git mv (88% similarity); TEST-08/09/10 take target_tool fixture and use target_tool.name
-- [Phase ?]: Phase 09-03: 29 unit tests + 3 live tests pin OUTPUT-01..03 contracts (live tests deferred in sandbox env due to 120s pytest-timeout on inner subprocess)
-- [Phase ?]: Phase 09-03: SUFFIX contract assertions require BOTH '[' in name AND name.endswith(']') -- weaker forms admit test_x[a]extra violations
-- [Phase ?]: Phase 09-03: row-line filter (two-space indent + group-header exclusion) for terminalreporter table assertions; joined-output substring search would match the grouping-header word 'alphabetical'
+- **Phase 12 (CLEAN + PERSONA merged) lands first.** SEED-009 says "FIRST in v1.2" for doc cleanup — foundational hygiene that other phases benefit from (clean docs not churned twice). SEED-007 says "Surface FIRST during milestone framing — cheap to land but expensive to retrofit." Both are doc-heavy and small; merging avoids the overhead of two near-trivial phases. The merged phase still passes the "complete capability" test: an operator browsing a clean repo with a runnable scaffold and persona-correct docs is a coherent verifiable outcome.
+- **Phase 13 (SAFE) is the semantic core.** Riskiest single chunk because of the schema v1→v2 migration + opt-in inversion + dropping `.env`. Lands after Phase 12 so the missing-config error and the v1→v2 migration error can both reference the now-complete `config-init` scaffold from CLEAN-05.
+- **Phase 14 (RUNNER) before Phase 15 (SURFACE) — explicit user decision locked at scoping.** SEED-011: "Decide BEFORE SEED-010 folder split." The runner contract drives what the folder split needs to support; reversing the order would make the folder split speculative.
+- **Phase 16 (UX) lands last.** SEED-008: "Land AFTER SEED-006 (semantics) and SEED-009 (doc cleanup), since this is the UX layer over the new semantics." UX-03 explicitly subsumes v1.1's `_reporter.py`, which RUNNER-01 may obsolete entirely — sequencing UX after RUNNER lets the reporter rebuild rather than be ported.
+- **5 phases for 31 reqs.** Comparable density to v1.1 (6 phases / 25 reqs). Phase 12 is intentionally larger (9 reqs) because CLEAN+PERSONA is mostly mechanical doc work; Phase 13 (7 reqs) is the heaviest single technical chunk (schema migration). No phase is a "feature half" — each delivers a coherent operator-perceivable capability.
+- **Granularity = standard.** v1.1's "coarse" justification (each phase genuinely separable) holds here too; calibrated 5 phases without padding or compression.
+- **No v1.3+ work in v1.2.** xdist (SEED-002), OpenAI-compat backend (SEED-005), warm-up stage all deferred to v1.3 per scoping decision. v1.2 = operator-first foundations; v1.3 = performance + portability.
 
 ### Blockers/Concerns
 
-None at roadmap stage. Open question Q2 from `260506-qxs/FINDINGS.md` (does `list_keyring_credentials` touch the OS keyring?) is intentionally surfaced as ISOL-01 — it's a planned investigation, not a roadmap blocker.
+None at roadmap stage. Open design questions captured in REQUIREMENTS.md (e.g., RUNNER-01's subprocess-vs-`pytest.main` choice, RUNNER-03's `--raw` flag name) are deferred to plan-phase decisions, not roadmap blockers.
 
 ### Quick Tasks Completed
 
@@ -81,25 +70,31 @@ None at roadmap stage. Open question Q2 from `260506-qxs/FINDINGS.md` (does `lis
 
 ## Deferred Items
 
-Items acknowledged at v1.0 close and carried into v2 scope:
+Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | upstream-fix | `homelab-mcp` `list_registered_servers` description rewrite (would let TEST-06 pass against the original target tool) | Open | v1.0 close (2026-05-07) |
 | testing-scaffold | Automated cross-platform SIGINT UAT (Get-Process / pgrep + programmatic SIGINT helper) | Open | v1.0 close (2026-05-07) |
-| open-source-prep | Scrub homelab IP from README (05-SECURITY.md AR-05-12) | Open — only triggers if/when repo goes public | v1.0 close (2026-05-07) |
+| open-source-prep | Scrub homelab IP from README (05-SECURITY.md AR-05-12) | Partially absorbed into v1.2 Phase 12 (CLEAN-02..04) | v1.0 close (2026-05-07) |
 | open-source-prep | Scrub homelab-specific captures from `.planning/` (05-SECURITY.md AR-05-15) | Open — only triggers if/when repo goes public | v1.0 close (2026-05-07) |
 | process-hygiene | Backfill 04.1-VERIFICATION.md (UAT.md status:complete is current evidence of record) | Open — optional | v1.0 close (2026-05-07) |
 | seed | SEED-001 — Replace rubric-style judge with full agent tool-use loop | dormant | v1.1 close (2026-05-08) |
-| seed | SEED-002 — Tool-level parallelism via pytest-xdist with read/write resource markers | dormant | v1.1 close (2026-05-08) |
+| seed | SEED-002 — Tool-level parallelism via pytest-xdist with read/write resource markers | dormant — v1.3 cohort | v1.1 close (2026-05-08) |
 | seed | SEED-003 — Dynamic judging protocol — rubrics as data, not code | dormant | v1.1 close (2026-05-08) |
 | seed | SEED-004 — Stateful tool testing with resource setup/teardown | dormant | v1.1 close (2026-05-08) |
-| seed | SEED-005 — OpenAI-compatible judge backend as the unifier (local-first / hosted-opt-in) | dormant | v1.1 close (2026-05-08) |
-| docs-polish | EXTENDING.md WR-01: line-range citation `_isolation.py:33-36` should be `36-39` (11-REVIEW.md) | Open — optional, v1.2 docs polish | v1.1 close (2026-05-08) |
-| docs-polish | EXTENDING.md IN-01: "five entries" framing for `_PASSTHROUGH_ALLOWLIST` (4-tuple + separate `_MCP_PREFIX`) (11-REVIEW.md) | Open — optional, v1.2 docs polish | v1.1 close (2026-05-08) |
+| seed | SEED-005 — OpenAI-compatible judge backend as the unifier (local-first / hosted-opt-in) | dormant — v1.3 cohort | v1.1 close (2026-05-08) |
+| seed | SEED-006 — Config loading safety + opt-in tool selection | activated → Phase 13 | 2026-05-09 (v1.2 framing) |
+| seed | SEED-007 — Vibe-coded MCP user persona reframe | activated → Phase 12 | 2026-05-09 (v1.2 framing) |
+| seed | SEED-008 — Reporter UX overhaul — pre-run digest + --explain flag | activated → Phase 16 | 2026-05-09 (v1.2 framing) |
+| seed | SEED-009 — Doc & example cleanup phase (v1.2) | activated → Phase 12 | 2026-05-09 (v1.2 framing) |
+| seed | SEED-010 — Separate operator-facing tests from framework self-tests | activated → Phase 15 | 2026-05-09 (v1.2 framing) |
+| seed | SEED-011 — Hybrid runner with domain-language UI | activated → Phase 14 | 2026-05-09 (v1.2 framing) |
+| docs-polish | EXTENDING.md WR-01: line-range citation `_isolation.py:33-36` should be `36-39` (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
+| docs-polish | EXTENDING.md IN-01: "five entries" framing for `_PASSTHROUGH_ALLOWLIST` (4-tuple + separate `_MCP_PREFIX`) (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
 
 ## Session Continuity
 
-Last session: 2026-05-08T05:37:36.292Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-v1-1-documentation/10-CONTEXT.md
+Last session: 2026-05-09T03:00:00.000Z
+Stopped at: v1.2 ROADMAP created; awaiting plan-phase
+Resume next: `/gsd-plan-phase 12`

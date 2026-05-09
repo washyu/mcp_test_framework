@@ -13,6 +13,8 @@ REQ-IDs continue numbering from v1.1 (archived at `.planning/milestones/v1.1-REQ
 - No automated planning-artifact regression guard — manual hygiene only.
 - Hybrid runner (SEED-011) decided BEFORE folder split (SEED-010) — runner contract drives split.
 
+**Counts:** 31 requirements across 6 categories — CLEAN (6), PERSONA (3), SAFE (7), RUNNER (6), SURFACE (4), UX (5).
+
 ---
 
 ## v1.2 Requirements
@@ -99,12 +101,44 @@ Note: v1.2 scoping moved the SEED-002 / SEED-005 / warm-up cohort from "v1.2 (vi
 
 ---
 
-## Traceability (filled by roadmap)
+## Traceability
+
+**Coverage:** 31 / 31 v1.2 requirements mapped to phases. No orphans, no duplicates.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| (Populated when ROADMAP.md is created) | | |
+| CLEAN-01 | Phase 12 | Pending |
+| CLEAN-02 | Phase 12 | Pending |
+| CLEAN-03 | Phase 12 | Pending |
+| CLEAN-04 | Phase 12 | Pending |
+| CLEAN-05 | Phase 12 | Pending |
+| CLEAN-06 | Phase 12 | Pending |
+| PERSONA-01 | Phase 12 | Pending |
+| PERSONA-02 | Phase 12 | Pending |
+| PERSONA-03 | Phase 12 | Pending |
+| SAFE-01 | Phase 13 | Pending |
+| SAFE-02 | Phase 13 | Pending |
+| SAFE-03 | Phase 13 | Pending |
+| SAFE-04 | Phase 13 | Pending |
+| SAFE-05 | Phase 13 | Pending |
+| SAFE-06 | Phase 13 | Pending |
+| SAFE-07 | Phase 13 | Pending |
+| RUNNER-01 | Phase 14 | Pending |
+| RUNNER-02 | Phase 14 | Pending |
+| RUNNER-03 | Phase 14 | Pending |
+| RUNNER-04 | Phase 14 | Pending |
+| RUNNER-05 | Phase 14 | Pending |
+| RUNNER-06 | Phase 14 | Pending |
+| SURFACE-01 | Phase 15 | Pending |
+| SURFACE-02 | Phase 15 | Pending |
+| SURFACE-03 | Phase 15 | Pending |
+| SURFACE-04 | Phase 15 | Pending |
+| UX-01 | Phase 16 | Pending |
+| UX-02 | Phase 16 | Pending |
+| UX-03 | Phase 16 | Pending |
+| UX-04 | Phase 16 | Pending |
+| UX-05 | Phase 16 | Pending |
 
 ---
 
-*Last updated: 2026-05-08 — v1.2 Operator-First Design requirements defined via `/gsd-new-milestone`. 28 requirements across 6 categories.*
+*Last updated: 2026-05-09 — v1.2 Operator-First Design ROADMAP created via `/gsd-new-milestone` → roadmapper. 31 requirements across 6 categories, mapped 1:1 to Phases 12–16.*
