@@ -22,6 +22,7 @@ import pytest  # noqa: E402
 
 from mcp_test_framework.config import Config  # noqa: E402
 from mcp_test_framework.mcp_client import McpTestClient  # noqa: E402
+from mcp_test_framework.models import ToolConfig  # noqa: E402
 
 
 def pytest_configure(config) -> None:
@@ -89,8 +90,12 @@ def _resolve_tool_names(config: Config) -> list[str]:
 
     - If config.target.tool_name is set (truthy after empty-string-to-None
       validator coercion in models.py): single-item list, NO collection-time
-      spawn (CD-05 short-circuit).
-    - Otherwise: discovered list, cached module-level for this pytest invocation.
+      spawn (CD-05 short-circuit). Bypasses the skip filter so D-12's
+      _preflight override warning (fixtures.py:200-213) still fires.
+    - Otherwise: discovered list, cached module-level for this pytest
+      invocation, **filtered by config.tools[name].skip** (v1.1.1 hotfix
+      260508-p0b -- skip:true tools are absent from collection rather than
+      runtime-SKIPPED 10x each).
     """
     global _DISCOVERED_TOOL_NAMES
     explicit = config.target.tool_name
@@ -121,7 +126,16 @@ def _resolve_tool_names(config: Config) -> list[str]:
                     "The repo ships `config.example.yaml` you can copy and edit."
                 )
             pytest.exit(msg, returncode=2)
-    return _DISCOVERED_TOOL_NAMES
+    # v1.1.1 hotfix (260508-p0b): filter parametrize input by
+    # config.tools[name].skip so skip:true tools are absent from collection
+    # rather than runtime-SKIPPED 10x each. Tools with no `tools.<name>` entry
+    # use ToolConfig() defaults (skip=False) and pass through unchanged. The
+    # explicit-target short-circuit above still bypasses this filter (D-12 /
+    # fixtures.py:_preflight warning path preserved).
+    return [
+        name for name in _DISCOVERED_TOOL_NAMES
+        if not config.tools.get(name, ToolConfig()).skip
+    ]
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
