@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: Multi-Tool + Isolation + JUnit
 status: completed
 stopped_at: Phase 10 context gathered
-last_updated: "2026-05-08T17:15:09.956Z"
+last_updated: "2026-05-09T01:30:00.000Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 Phase: 11
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-05-08
+Last activity: 2026-05-08 - Completed quick task 260508-p0b: v1.1.1 skip-filter hotfix
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ None at roadmap stage. Open question Q2 from `260506-qxs/FINDINGS.md` (does `lis
 | 260506-qxs | Diagnostic spike — homelab-mcp host-state surface (recon for v1.1 isolation) | 2026-05-07 | 23cc6e1 | [260506-qxs-diagnostic-spike-identify-what-user-visi](./quick/260506-qxs-diagnostic-spike-identify-what-user-visi/) |
 | 260507-j6i | Enrich `MCP server command not on PATH` error with MCPTF_CONFIG_FILE / config.example.yaml hint | 2026-05-07 | bfc1e65 | [260507-j6i-enrich-mcp-server-not-on-path-error-with](./quick/260507-j6i-enrich-mcp-server-not-on-path-error-with/) |
 | 260507-n0g | Safe-by-default tool skips in `config.example.yaml` (55 new skip entries; only `list_keyring_credentials` + `suggest_deployments` enabled) | 2026-05-07 | 0d8337b | [260507-n0g-safe-by-default-tool-skips](./quick/260507-n0g-safe-by-default-tool-skips/) |
+| 260508-p0b | v1.1.1 hotfix: filter `tools.<name>.skip:true` at parametrize time so skipped tools are absent from collection (not runtime-SKIPPED 10x each); 691 → 133 collected under config.example.yaml | 2026-05-08 | 509daee | [260508-p0b-fix-v1-1-skip-doesnt-filter-parametrize-](./quick/260508-p0b-fix-v1-1-skip-doesnt-filter-parametrize-/) |
 
 ## Deferred Items
 

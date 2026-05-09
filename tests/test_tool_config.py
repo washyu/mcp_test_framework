@@ -32,6 +32,8 @@ from pydantic import ValidationError
 from mcp_test_framework.config import Config
 from mcp_test_framework.models import ToolConfig
 
+import tests.conftest as _conftest_module  # for _DISCOVERED_TOOL_NAMES + _resolve_tool_names
+
 # ===========================================================================
 # Schema tests -- sync, load-time, no live services
 # ===========================================================================
@@ -155,6 +157,53 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     assert foo.skip_reason == "demonstration"
     assert foo.call_arguments == {"query": "ping"}
     assert foo.judges == ["clarity"]
+
+
+# ===========================================================================
+# v1.1.1 hotfix (260508-p0b) regression tests -- parametrize-time skip filter
+# ===========================================================================
+
+
+def test_resolve_tool_names_filters_out_skip_true_tools() -> None:
+    """v1.1.1-SKIP-FILTER: tools.<name>.skip:true removes the tool from
+    the parametrize input list (not just runtime-skips its 10 tests).
+
+    Sets the module cache directly so the async _discover_tools path is
+    not exercised -- keeps the test sync and offline.
+    """
+    config = Config(
+        tools={
+            "a": ToolConfig(),
+            "b": ToolConfig(skip=True, skip_reason="testing the filter"),
+            "c": ToolConfig(),
+        }
+    )
+    _conftest_module._DISCOVERED_TOOL_NAMES = ["a", "b", "c"]
+    try:
+        names = _conftest_module._resolve_tool_names(config)
+        assert names == ["a", "c"], (
+            f"expected skip:true tool 'b' filtered out; got {names!r}"
+        )
+    finally:
+        _conftest_module._DISCOVERED_TOOL_NAMES = None
+
+
+def test_resolve_tool_names_explicit_target_overrides_skip_true() -> None:
+    """v1.1.1-EXPLICIT-OVERRIDE: target.tool_name=X short-circuits before
+    the new filter, so an explicit single-target run still includes a
+    skip:true tool. Preserves the D-12 _preflight warning path
+    (fixtures.py:200-213).
+    """
+    config = Config(
+        tools={"b": ToolConfig(skip=True, skip_reason="testing override")},
+        target={"tool_name": "b"},
+    )
+    # Deliberately do NOT touch _DISCOVERED_TOOL_NAMES -- the explicit-target
+    # branch must return before the cache is consulted.
+    names = _conftest_module._resolve_tool_names(config)
+    assert names == ["b"], (
+        f"explicit target.tool_name='b' should win over skip:true; got {names!r}"
+    )
 
 
 # ===========================================================================
