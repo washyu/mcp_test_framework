@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Multi-Tool + Isolation + JUnit
-status: completed
-stopped_at: Phase 10 context gathered
-last_updated: "2026-05-09T01:30:00.000Z"
-last_activity: 2026-05-08
+milestone: v1.2
+milestone_name: Operator-First Design
+status: planning
+last_updated: "2026-05-09T02:18:43.205Z"
+last_activity: 2026-05-09
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-07 after v1.0 milestone)
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-08 - Completed quick task 260508-p0b: v1.1.1 skip-filter hotfix
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-09 — Milestone v1.2 started
 
 ## Performance Metrics
 

@@ -18,9 +18,26 @@ A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema �
 - Live green: `uv run mcp-test-framework run` against live `homelab-mcp` (via `uvx`) + Ollama `qwen3.6:latest` at `127.0.0.1:11434`
 - Default target tools: `list_keyring_credentials` + `suggest_deployments` (per-tool config drives the rest of homelab-mcp's surface to skip-by-default)
 
-## Next Milestone: v1.2 (TBD)
+## Current Milestone: v1.2 Operator-First Design
 
-To be scoped via `/gsd-new-milestone`. Indicative shape from Long-term Vision: performance + portability — pytest-xdist parallelism (SEED-002, gated by v1.1's per-worker isolation), warm-up stage, OpenAI-compatible judge backend (SEED-005). Not committed until `/gsd-new-milestone` runs.
+**Goal:** Reshape the framework around an operator who didn't write the MCP server they're testing — make config safe by default, output legible, examples generic, and the test surface operator-vs-framework-split.
+
+**Target features:**
+
+- Doc & example cleanup (strip 18 planning-artifact IDs, generic `config.example.yaml`, new `examples/homelab-mcp.yaml`, self-contained `config-init` scaffold) — SEED-009
+- Vibe-coded persona reframe ("black-box" as user-facing feature, not test-discipline rule) — SEED-007
+- Config safety + opt-in tool selection (`tools:` as allowlist, auto-discover cwd/config.yaml, fail-loud, fix `MCPTF_CONFIG_FILE` typo silent-drop, drop `.env` + env-overlay entirely, schema `version: 2` migration) — SEED-006
+- Operator vs framework test surface split (`tests/contract/` vs `tests/framework/`) — SEED-010
+- Hybrid runner with domain UI (wrap `pytest.main()`, render MCP-domain UI from JUnit XML) — SEED-011
+- Reporter UX overhaul (pre-run digest + `--explain` flag, scales at N=70) — SEED-008
+
+**Pre-committed v1.3 cohort (deferred):** SEED-002 (xdist parallelism), SEED-005 (OpenAI-compat backend), warm-up stage — "performance + portability" ships separately.
+
+**Key decisions locked at scoping:**
+- Drop `.env` + env-overlay entirely. Config sources = YAML + CLI flags only. Env vars become CI-secret passthrough only (e.g., API keys), not a config source. Real-world repro 2026-05-08: explicit `--config PATH` silently overridden by `.env`.
+- Bump config schema `version: 1 → 2` with loud migration error. Configs that relied on implicit-discovery (no `tools:` block → run everything) break with a clear message; `mcp-test-framework config-init` is the recovery action.
+- No automated planning-artifact regression guard. Manual hygiene during v1.2 cleanup; rely on review after.
+- Hybrid runner (SEED-011) decided BEFORE folder split (SEED-010) — runner contract drives the split.
 
 ## Long-term Vision
 
@@ -104,7 +121,7 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 
 ### Active
 
-(Defining for v1.2 — requirements will be scoped via `/gsd-new-milestone`.)
+(Defining for v1.2 Operator-First Design — requirements being scoped via `/gsd-new-milestone` 2026-05-08; will populate after REQUIREMENTS.md is written.)
 
 ### Out of Scope
 
@@ -190,4 +207,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after v1.1 milestone close — multi-tool discovery, per-session host-state isolation, per-tool config registry, JUnit XML output, v1.1 documentation, and audit gap closure all shipped (54/54 requirements satisfied across v1.0+v1.1).*
+*Last updated: 2026-05-08 — v1.2 Operator-First Design scoping started via `/gsd-new-milestone`; six cohorts (SEED-006..009 + new SEED-010/011) frame the milestone. v1.1 milestone close summary preserved above (54/54 requirements satisfied across v1.0+v1.1).*
