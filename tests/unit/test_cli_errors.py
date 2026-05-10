@@ -203,7 +203,13 @@ def test_config_init_mcp_spawn_failure(
 def test_cli_errors_static_call_sites_no_banned_tokens() -> None:
     """AST scan: every _emit_operator_error call's literal args are operator-tone."""
     import ast
-    src = Path("src/mcp_test_framework/cli.py").read_text(encoding="utf-8")
+    # Walk up from this test file to the repo root (same pattern as
+    # test_doc_scrub._repo_root) so the test passes regardless of the
+    # cwd pytest is invoked from.
+    repo_root = Path(__file__).resolve().parents[2]
+    src = (repo_root / "src" / "mcp_test_framework" / "cli.py").read_text(
+        encoding="utf-8"
+    )
     tree = ast.parse(src)
     for node in ast.walk(tree):
         if (isinstance(node, ast.Call)
