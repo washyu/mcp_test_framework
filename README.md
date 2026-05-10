@@ -94,7 +94,9 @@ PowerShell with `$env:VAR = "..."` before invoking the CLI.
 
 ## Per-tool configuration
 
-Per-tool config lives under the top-level `tools:` key in your YAML overlay; tools with no entry use safe defaults (no skip, all rubrics, empty `call_arguments`).
+Per-tool config lives under the top-level `tools:` key in your YAML overlay. Under this release's schema, a tool with **no entry runs by default** (no skip, all rubrics, empty `call_arguments`).
+
+> **Heads-up on opt-in scaffolds.** The schema this release ships is opt-out: omitting a tool means it runs. The `config-init` scaffold takes the opposite stance and emits `skip: true` for every discovered tool, so a freshly-generated config is opt-in by construction. Operators are expected to review each entry and remove the skip line for tools they want to exercise. A future release is likely to invert the schema default to opt-in everywhere; until then, expect this asymmetry between "manual config" and "scaffolded config".
 
 | Field | Default | Purpose |
 |-------|---------|---------|
