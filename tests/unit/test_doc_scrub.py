@@ -152,3 +152,70 @@ def test_extending_step2_mentions_uvx_pipx_bootstrap_flags() -> None:
         "EXTENDING --command mention is not in a config-init context; the "
         "subsection must show the flags as part of the bootstrap recipe."
     )
+
+
+@pytest.mark.parametrize("path", [README, EXTENDING])
+def test_doc_invocations_consistently_pair_with_config(path: Path) -> None:
+    """Plan 12-09 (UAT gap 3, Option C): every operator-facing
+    `mcp-test-framework run|list-tools|config-init` invocation in fenced code
+    blocks must pair with `--config`, OR carry an explicit exemption flag
+    (`--help`, `--command` for the bootstrap form per Plan 12-08).
+
+    Documented exemptions:
+    - `--config` : explicit config flag (canonical pairing)
+    - `--help`   : help mode, no config needed
+    - `--command`: bootstrap form per Plan 12-08; --config logically
+                   unavailable because the config file doesn't exist yet
+    - README "Sample green run" pytest-output style lines are output, not
+      invocations — heuristically excluded by the prefix list below.
+
+    `mcp-test-framework version` is naturally excluded (the regex matches
+    only run|list-tools|config-init, not version).
+
+    The runtime contract being protected: per CONTEXT.md (locked decision),
+    the framework does NOT auto-discover a `config.yaml` in the cwd. Docs
+    that omit --config from bare invocations actively teach a broken mental
+    model. SEED-006 owns the v1.2 redesign that may flip this; until then,
+    the docs and the runtime must agree.
+    """
+    text = path.read_text(encoding="utf-8")
+    in_block = False
+    offending: list[tuple[int, str]] = []
+    for i, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_block = not in_block
+            continue
+        if not in_block:
+            continue
+        m = re.search(r"mcp-test-framework (run|list-tools|config-init)\b", line)
+        if not m:
+            continue
+        # Documented exemptions: --config, --help, --command (bootstrap)
+        if "--config" in line or "--help" in line or "--command" in line:
+            continue
+        # README-only exemption: pytest-output style lines (Sample green run)
+        if any(
+            line.lstrip().startswith(prefix)
+            for prefix in (
+                "platform ",
+                "rootdir:",
+                "configfile:",
+                "plugins:",
+                "asyncio:",
+                "collected ",
+                "tests\\",
+                "tests/",
+                "=====",
+            )
+        ):
+            continue
+        offending.append((i, line.rstrip()))
+    assert not offending, (
+        f"{path.name}: bare `mcp-test-framework <cmd>` invocations without "
+        f"`--config`, `--help`, or `--command`:\n"
+        + "\n".join(f"  line {i}: {ln}" for i, ln in offending)
+        + "\n\nPair each with `--config config.yaml` (Option C of UAT gap 3), "
+        "or use `--command` for the documented bootstrap form (Plan 12-08), "
+        "or document the exception in surrounding prose."
+    )

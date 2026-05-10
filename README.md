@@ -41,9 +41,9 @@ uv sync
 ### Run the test suite
 
 ```bash
-uv run mcp-test-framework run
+uv run mcp-test-framework run --config config.yaml
 uv run mcp-test-framework run --config ./config.yaml
-uv run mcp-test-framework run -- -x --lf -k schema
+uv run mcp-test-framework run --config config.yaml -- -x --lf -k schema
 ```
 
 `run` invokes pytest against the `tests/` directory and exits with pytest's exit
@@ -56,8 +56,8 @@ markers as documented in the spec.
 ### List MCP server tools
 
 ```bash
-uv run mcp-test-framework list-tools
-uv run mcp-test-framework list-tools --json
+uv run mcp-test-framework list-tools --config config.yaml
+uv run mcp-test-framework list-tools --config config.yaml --json
 ```
 
 Default output is indented blocks (tool name on one line, the full wrapped
@@ -90,7 +90,9 @@ Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
 Configure the framework via `config.yaml` — generate a starter with
 `mcp-test-framework config-init -o config.yaml` and pass it via
 `--config config.yaml`. Env vars are reserved for CI-secret passthrough only
-(see `.env.example`); they no longer override config values.
+(see `.env.example`); they no longer override config values. The framework
+does not auto-discover a `config.yaml` in the current directory; the path
+must be explicit (via `--config` or the `MCPTF_CONFIG_FILE` env var).
 
 ## Per-tool configuration
 
@@ -190,7 +192,7 @@ Run the suite in CI with `--junit-xml=` and ingest the result with a JUnit-aware
 # .github/workflows/test.yml -- GitHub Actions starter.
 # On Jenkins / GitLab CI / CircleCI, translate the `runs-on` / `uses` /
 # `with` keys to the equivalent runner + action concepts. The CLI invocation
-# (`uv run mcp-test-framework run --junit-xml=results.xml`) is portable.
+# (`uv run mcp-test-framework run --config config.yaml --junit-xml=results.xml`) is portable.
 name: tests
 on: [push, pull_request]
 jobs:
@@ -203,7 +205,7 @@ jobs:
           python-version: "3.14"
       - run: uv sync
       # Default addopts in pyproject.toml excludes live_homelab + live_ollama markers.
-      - run: uv run mcp-test-framework run --junit-xml=results.xml
+      - run: uv run mcp-test-framework run --config config.yaml --junit-xml=results.xml
       - name: Publish test report
         if: always()
         uses: dorny/test-reporter@v2

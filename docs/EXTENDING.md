@@ -19,8 +19,9 @@ feature of the persona, not a test-discipline rule you must obey.
 
 ### Step 1 — discover the surface
 
-Run `mcp-test-framework list-tools` against your server's launch command.
-You will see one block per tool, for example:
+Run `mcp-test-framework list-tools --config config.yaml` against your server's
+launch command (if you don't have a `config.yaml` yet, see Step 2 below for the
+bootstrap recipe). You will see one block per tool, for example:
 
 ```text
 list_keyring_credentials(service: str)
@@ -29,16 +30,17 @@ list_keyring_credentials(service: str)
 
 The parameter signature comes from the tool's declared `inputSchema`. Add
 `--full` to see the full description and per-parameter descriptions:
-`mcp-test-framework list-tools --full --name keyring`. The `--name PATTERN`
+`mcp-test-framework list-tools --config config.yaml --full --name keyring`. The `--name PATTERN`
 flag substring-matches case-insensitively, useful at large surfaces (~70+
 tools).
 
 ### Step 2 — scaffold a config
 
-Run `mcp-test-framework config-init -o config.yaml`. The framework will
-launch the server, list its tools, and write a self-contained config file
-with every discovered tool listed as `skip: true` and a hint to remove the
-skip from the ones you want to test. No tool will run until you opt in.
+Run `mcp-test-framework config-init --command uvx --arg homelab-mcp -o config.yaml`.
+The framework will launch the server, list its tools, and write a
+self-contained config file with every discovered tool listed as `skip: true`
+and a hint to remove the skip from the ones you want to test. No tool will
+run until you opt in.
 
 #### Servers installed via `uvx` or `pipx`
 
@@ -208,10 +210,10 @@ the field reference. This section walks the workflow.
 
 **Where to drop the recipe:** `config.yaml` (or whichever YAML overlay your `MCPTF_CONFIG_FILE` / `--config` points at). No edits to `tests/conftest.py` or framework source are required.
 
-1. **Discover.** Run `uv run mcp-test-framework list-tools` to see every tool the connected server advertises.
+1. **Discover.** Run `uv run mcp-test-framework list-tools --config config.yaml` to see every tool the connected server advertises.
 2. **Decide.** For each tool, decide whether to `skip`, restrict the `judges` subset, or pre-fill `call_arguments`. Tools you say nothing about run with all rubrics and an empty argument map (the safe defaults).
 3. **Add a `tools.<tool_name>:` block** under the top-level `tools:` key in your config YAML. See [Per-tool configuration](../README.md#per-tool-configuration) for the field reference; the worked example below uses the skip-with-reason pattern.
-4. **Verify.** Re-run `uv run mcp-test-framework run`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
+4. **Verify.** Re-run `uv run mcp-test-framework run --config config.yaml`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
 
 Replace the placeholder tool name below with one from your `mcp-test-framework list-tools` output.
 
