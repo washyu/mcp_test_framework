@@ -117,3 +117,38 @@ def test_readme_persona_section_has_no_marketing_words() -> None:
     section = m.group(1)
     for word in ("powerful", "seamless", "empowers", "leverage", "cutting-edge"):
         assert word.lower() not in section.lower(), f"marketing word in persona section: {word!r}"
+
+
+def test_extending_step2_mentions_uvx_pipx_bootstrap_flags() -> None:
+    """Plan 12-08: EXTENDING Step 2 must show the uvx/pipx config-init bootstrap.
+
+    Operators following the canonical walkthrough will only discover the
+    `--command`/`--arg` flags exist if they're documented inside Step 2 of the
+    'Testing an MCP server you didn't write' walkthrough. Without this
+    subsection the only way to find the bootstrap recipe is reading the
+    `--help` output -- which an operator on a fresh checkout with a
+    not-on-PATH default would only consult AFTER hitting the launch failure
+    they're trying to avoid.
+    """
+    text = EXTENDING.read_text(encoding="utf-8")
+    assert "--command" in text, (
+        "EXTENDING Step 2 still doesn't show the uvx/pipx bootstrap recipe -- "
+        "operators following the canonical walkthrough won't discover the "
+        "flags exist."
+    )
+    assert "--arg" in text, (
+        "EXTENDING mentions --command but not --arg; both are needed to "
+        "describe the typical uvx/pipx invocation."
+    )
+    assert "uvx" in text or "pipx" in text, (
+        "EXTENDING --command/--arg mention must name at least one of "
+        "uvx / pipx so operators recognize the use case."
+    )
+    # Sanity: the --command mention must sit near a `config-init` invocation,
+    # not in some unrelated context.
+    idx = text.index("--command")
+    window = text[max(0, idx - 200) : idx + 200]
+    assert "config-init" in window, (
+        "EXTENDING --command mention is not in a config-init context; the "
+        "subsection must show the flags as part of the bootstrap recipe."
+    )

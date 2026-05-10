@@ -40,6 +40,31 @@ launch the server, list its tools, and write a self-contained config file
 with every discovered tool listed as `skip: true` and a hint to remove the
 skip from the ones you want to test. No tool will run until you opt in.
 
+#### Servers installed via `uvx` or `pipx`
+
+If your server isn't on `PATH` directly — for example, you launch it with
+`uvx homelab-mcp` or `pipx run my-mcp-server` — pass the launcher as
+`--command` and the package (plus any args) as repeated `--arg` flags:
+
+```bash
+mcp-test-framework config-init --command uvx --arg homelab-mcp -o config.yaml
+```
+
+These flags override `mcp_server.command` / `mcp_server.args` for this one
+invocation, so the framework can launch the server, list its tools, and
+write the scaffold even on a fresh checkout with no pre-existing
+`config.yaml`. After the scaffold lands, edit the generated `mcp_server`
+block to record the same `command` / `args` values, so subsequent
+`mcp-test-framework run --config config.yaml` invocations work without the
+flags.
+
+If the launch still fails (the launcher itself isn't on `PATH`, or the
+package name is wrong), `config-init` will write a fallback scaffold
+shell to `--output` containing the four top-level blocks and an empty
+`tools:` mapping, alongside an operator-tone error on stderr. Edit the
+`mcp_server.command` / `mcp_server.args` lines and re-run `config-init` to
+populate the tool list.
+
 ### Step 3 — opt in tool-by-tool
 
 Open `config.yaml` and, for each tool you want the framework to call,
