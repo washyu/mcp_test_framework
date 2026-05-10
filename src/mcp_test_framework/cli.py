@@ -175,14 +175,37 @@ def _emit_operator_error_for_validation(
     )
 
 
-def _load_config(path: Path | None) -> Config:
-    """Shared config loader for `run`, `list-tools`, and `config-init`.
+def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | None:
+    """Resolve the YAML config path and load Config().
 
-    If `path` is provided, sets MCPTF_CONFIG_FILE so Config()'s
-    settings_customise_sources picks up the YAML overlay. ValidationError
-    is caught and re-emitted as an operator-tone error per
+    Precedence (Phase 13 D-01):
+        --config PATH > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
+
+    The resolved path is passed to Config() as a `yaml_file` kwarg
+    (Phase 13 D-03); settings_customise_sources reads it from
+    init_settings.init_kwargs -- not from os.environ. ValidationError
+    is mapped through _emit_operator_error_for_validation per
     docs/ERROR-STYLE.md (PERSONA-03).
+
+    Args:
+        path: Value of --config (None when the operator did not pass it).
+        allow_missing: When True (used by `config-init` and `list-tools`),
+            the "nothing found" branch returns None instead of raising
+            SAFE-03. This is the bootstrap path: SAFE-03's recovery
+            command (`config-init -o config.yaml`) must itself run from
+            an unconfigured directory. An explicit-but-broken --config
+            or MCPTF_CONFIG_FILE STILL raises (typo, not bootstrap).
+            Defaults to False; only `run` keeps the SAFE-03 surface.
+
+    Returns:
+        A Config instance, or None when allow_missing=True and no config
+        source was reachable. The caller is responsible for constructing
+        a default Config() in the None case.
     """
+    resolved: Path | None = None
+    source_label: str = ""  # "--config" / "MCPTF_CONFIG_FILE" / "./config.yaml"
+
+    # Branch 1: --config wins.
     if path is not None:
         if not path.is_file():
             _emit_operator_error(
@@ -196,19 +219,58 @@ def _load_config(path: Path | None) -> Config:
                     "to generate a starter config"
                 ),
             )
-        os.environ["MCPTF_CONFIG_FILE"] = str(path)
-        try:
-            return Config()
-        except ValidationError as exc:
-            os.environ.pop("MCPTF_CONFIG_FILE", None)
-            _emit_operator_error_for_validation(exc, source=str(path))
-        except Exception:
-            os.environ.pop("MCPTF_CONFIG_FILE", None)
-            raise
+        resolved = path
+        source_label = str(path)
+    else:
+        # Branch 2: MCPTF_CONFIG_FILE.
+        env_path_str = os.environ.get("MCPTF_CONFIG_FILE")
+        if env_path_str:
+            env_path = Path(env_path_str)
+            if not env_path.is_file():
+                _emit_operator_error(
+                    summary=f"config file not found via MCPTF_CONFIG_FILE: {env_path}",
+                    detail=[
+                        "the path in MCPTF_CONFIG_FILE does not exist or is not a file.",
+                    ],
+                    next_step=(
+                        "check the path or unset MCPTF_CONFIG_FILE and run "
+                        "`mcp-test-framework config-init -o config.yaml` "
+                        "to generate a starter config"
+                    ),
+                )
+            resolved = env_path
+            source_label = str(env_path)
+        else:
+            # Branch 3: ./config.yaml autodiscovery.
+            cwd_config = Path.cwd() / "config.yaml"
+            if cwd_config.is_file():
+                resolved = cwd_config
+                source_label = str(cwd_config)
+
+    # Branch 4: nothing found.
+    if resolved is None:
+        if allow_missing:
+            # Bootstrap path: config-init / list-tools may run from an
+            # unconfigured directory. Caller constructs a default Config().
+            return None
+        _emit_operator_error(
+            summary="no config file found: ./config.yaml",
+            detail=[
+                "the framework refuses to run without a config file because it would",
+                "otherwise call every tool the server advertises -- including any",
+                "destructive ones. you must explicitly opt in to which tools run.",
+            ],
+            next_step=(
+                "run `mcp-test-framework config-init -o config.yaml` to generate "
+                "a starter config, then edit it to enable the tools you want to test"
+            ),
+        )
+
+    # Load with the resolved path as an explicit kwarg.
     try:
-        return Config()
+        return Config(yaml_file=str(resolved))
     except ValidationError as exc:
-        _emit_operator_error_for_validation(exc, source="(default sources)")
+        _emit_operator_error_for_validation(exc, source=source_label)
 
 
 def _build_pytest_args(
@@ -336,8 +398,16 @@ def list_tools(
     __aexit__ runs in the same task that did __aenter__,
     stdio_client._terminate_process_tree kills the subprocess, exit code
     130 with no message printed (D-teardown-3).
+
+    From a directory with no config (no --config, no MCPTF_CONFIG_FILE, no
+    ./config.yaml), `list-tools` uses framework defaults rather than failing
+    loud. SAFE-03 fail-loud applies to `run` only -- `list-tools` is
+    deliberately bootstrap-friendly so an operator can probe a server
+    before opting tools in.
     """
-    cfg = _load_config(config)
+    cfg = _load_config(config, allow_missing=True)
+    if cfg is None:
+        cfg = Config()
     try:
         with asyncio.Runner() as runner:
             tools = runner.run(_list_tools_async(cfg))
@@ -426,7 +496,7 @@ def config_init(
 
     Discovers tools via the same isolation-aware seam used by `run` and
     `list-tools` (`McpTestClient.__aenter__`), then emits a YAML
-    document containing `version: 1` and a `tools:` block with one
+    document containing `version: 2` and a `tools:` block with one
     commented entry per discovered tool. The scaffold is a no-op
     passthrough by default -- uncomment and edit individual fields to
     opt a tool into skip / judges / args.
@@ -455,7 +525,9 @@ def config_init(
             next_step="add `--force` to overwrite, or pick a different `--output` path",
         )
 
-    cfg = _load_config(config)
+    cfg = _load_config(config, allow_missing=True)
+    if cfg is None:
+        cfg = Config()
 
     # Apply --command / --arg overrides via Pydantic v2 model_copy on the
     # frozen Config / McpServerConfig instances. Re-instantiating Config(...)
@@ -736,7 +808,7 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
     Output shape (locked in docs/ERROR-STYLE.md / CLEAN-05 acceptance):
     - Top-level `ollama:`, `mcp_server:`, `judge_timeout_seconds:`, `version:`,
       `tools:` blocks all populated.
-    - `version: 1` literal (this release's accepted version).
+    - `version: 2` literal (this release's accepted version).
     - Every discovered tool emitted as `<name>: { skip: true, skip_reason: ... }`
       with the name passed through `_yaml_key` for defensive YAML quoting.
     - No `target:` block (the field is leaving in a future schema bump).
@@ -768,8 +840,8 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
         "# Outer budget cap on each judge HTTP call.\n"
         "judge_timeout_seconds: 120\n"
         "\n"
-        "# Schema version. This release accepts version 1.\n"
-        "version: 1\n"
+        "# Schema version. This release accepts version 2.\n"
+        "version: 2\n"
         "\n"
         "# Per-tool registry. Every tool the connected server advertises is\n"
         "# listed below as `skip: true` -- the framework will not call any\n"
