@@ -1,8 +1,9 @@
 ---
-status: diagnosed
+status: resolved
+resolved_by: 12-08-SUMMARY.md
 trigger: "config-init fails with 'MCP server command not found: homelab-mcp' when operator's MCP server is uvx-installed (not on PATH)"
 created: 2026-05-09T00:00:00Z
-updated: 2026-05-09T00:00:00Z
+updated: 2026-05-09T06:30:00Z
 ---
 
 ## Current Focus
