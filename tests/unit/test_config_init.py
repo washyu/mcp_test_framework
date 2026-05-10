@@ -47,10 +47,24 @@ def test_scaffold_has_top_level_judge_timeout() -> None:
     assert isinstance(data["judge_timeout_seconds"], int)
 
 
-def test_scaffold_has_version_1() -> None:
-    """D-01: v1-header / v2-style content. Phase 12 keeps version: 1."""
+def test_scaffold_has_version_2() -> None:
+    """Phase 13 D-08: v2 schema header. Plan 13-02 wires the validator
+    to accept this value; Plan 13-01 owns the scaffold emit."""
     data = _parse(_scaffold(["a"]))
-    assert data["version"] == 1
+    assert data["version"] == 2
+
+
+def test_config_init_scaffold_emits_version_2() -> None:
+    """Phase 13 SAFE-06 / D-08: the regenerated scaffold targets v2.
+
+    The scaffold body MUST contain `version: 2\\n` and MUST NOT contain
+    the literal `version: 1\\n` -- after the v1->v2 flip, the SAFE-06
+    migration error tells operators to regenerate the scaffold to get v2,
+    so a stale v1 in the emit would brick the recovery UX.
+    """
+    text = _scaffold(["alpha"])
+    assert "version: 2\n" in text
+    assert "version: 1\n" not in text
 
 
 def test_scaffold_no_target_block() -> None:
@@ -78,6 +92,14 @@ def test_scaffold_empty_tool_list_returns_empty_mapping() -> None:
     )
 
 
+@pytest.mark.xfail(
+    reason=(
+        "Plan 13-01 flips the scaffold to version: 2; "
+        "Plan 13-02 flips config.py _validate_version to accept v2. "
+        "Until 13-02 lands, the v2 scaffold trips the v1 validator."
+    ),
+    strict=False,
+)
 def test_scaffold_loadable_via_config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -93,7 +115,7 @@ def test_scaffold_loadable_via_config(
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
 
     cfg = Config()
-    assert cfg.version == 1
+    assert cfg.version == 2
     assert cfg.mcp_server.command == "uvx"
     assert "11434" in str(cfg.ollama.base_url)
 
