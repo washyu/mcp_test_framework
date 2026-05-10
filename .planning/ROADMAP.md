@@ -37,7 +37,7 @@
 
 - [x] **Phase 12: Doc & persona foundation** — Strip planning-artifact IDs, genericize `config.example.yaml`, complete the `config-init` scaffold, and add the "Testing an MCP server you didn't write" reframe across README and EXTENDING. Foundational hygiene + persona positioning land first so downstream phases operate on clean docs and copy.
  (completed 2026-05-10)
-- [ ] **Phase 13: Config safety & opt-in tool selection** — Invert `tools:` from skip-list to allowlist, auto-discover `./config.yaml`, fail loud on missing config, drop `.env` and the env-overlay entirely, bump schema `version: 1 → 2` with a loud migration error pointing at `config-init`.
+- [x] **Phase 13: Config safety & opt-in tool selection** — Invert `tools:` from skip-list to allowlist, auto-discover `./config.yaml`, fail loud on missing config, drop `.env` and the env-overlay entirely, bump schema `version: 1 → 2` with a loud migration error pointing at `config-init`. (completed 2026-05-10)
 - [ ] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch.
 - [ ] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`.
 - [ ] **Phase 16: Reporter UX overhaul** — Pre-run digest (server / discovered / running / skipping / judges / test-plan totals), `--explain` flag for per-tool skip reasons, post-run aggregation, and verbosity ladder (`-q` / default / `--explain` / `--debug`). Output designed for N=70 readability.
@@ -73,12 +73,12 @@
   4. An operator who typos `MCPTF_CONFIG_FILE=/path/that/does/not/exist` sees an error and exit code 2 — identical behavior to `--config /path/that/does/not/exist`. Neither route silently drops to defaults.
   5. An operator loading a `version: 1` v1.1-era config sees a loud migration error naming the opt-out → opt-in semantic change and pointing at `config-init` to regenerate; a `docs/MIGRATION-v1-to-v2.md` walks them through porting `call_arguments` / `judges` / `skip_reason` for tools they want to keep.
   6. An operator who has a `.env` file in their working directory sees no behavioral difference from when it is absent — `.env` and env-overlay no longer override config; only YAML and CLI flags shape the run.
-**Plans:** 3/5 plans executed
+**Plans:** 5/5 plans complete
   - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
   - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
   - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
-  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
-  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+  - [x] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [x] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
 
 
 ### Phase 14: Hybrid runner with domain UI
@@ -95,8 +95,8 @@
   - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
   - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
   - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
-  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
-  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+  - [x] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [x] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
 
 
 ### Phase 15: Operator vs framework test surface split
@@ -110,8 +110,8 @@
   4. The black-box rule remains mechanically enforced: `tests/framework/test_banned_imports.py` continues to fail the maintainer suite if `homelab-mcp` is imported anywhere in `src/`. The enforcement does not depend on which test surface the operator selected.
 **Plans:** 5 plans
   - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
-  - [ ] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
-  - [ ] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
+  - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
+  - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
   - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
   - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
 
@@ -127,9 +127,9 @@
   4. An operator running `-q` / `--quiet` sees neither the digest nor the per-tool rows — only the final summary line. v1.1's quiet-mode parity is preserved.
   5. The digest's discovered/running/skipping counts agree with what the runner actually executes; an operator's manual config inspection cannot find a tool that the digest claims to skip but that actually runs (or vice versa).
 **Plans:** 5 plans
-  - [ ] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
-  - [ ] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
-  - [ ] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
+  - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
+  - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
+  - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
   - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
   - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
 
@@ -152,7 +152,7 @@
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete | 2026-05-08 |
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
-| 13. Config safety & opt-in tool selection | v1.2 | 3/5 | In Progress|  |
+| 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete   | 2026-05-10 |
 | 14. Hybrid runner with domain UI | v1.2 | 0/0 | Not started | - |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |
