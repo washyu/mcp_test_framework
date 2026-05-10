@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import typing
 import shutil
 import tempfile
 import warnings
@@ -59,7 +60,7 @@ def _pytest_exit_operator_tone(
     next_step: str,
     *,
     returncode: int = 2,
-) -> None:
+) -> typing.NoReturn:
     """Render an operator-tone message and call pytest.exit.
 
     Mirrors cli._emit_operator_error's format (docs/ERROR-STYLE.md):
