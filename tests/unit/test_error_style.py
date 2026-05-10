@@ -71,6 +71,21 @@ def test_error_style_safe_04_body_matches_cli_wiring() -> None:
     assert "check the path or unset MCPTF_CONFIG_FILE and run" in cli_text
 
 
+def test_error_style_safe_06_body_matches_cli_wiring() -> None:
+    """Phase 13 D-08: cli.py's version-mismatch branch must echo the LOCKED
+    SAFE-06 body. This test reads cli.py source and pins the verbatim
+    substrings so the wording cannot drift away from docs/ERROR-STYLE.md."""
+    cli_text = (
+        _repo_root() / "src" / "mcp_test_framework" / "cli.py"
+    ).read_text("utf-8")
+    # These substrings come from docs/ERROR-STYLE.md:57-73 verbatim.
+    assert "schema version 2 (opt-in" in cli_text
+    assert "your config is version 1 (opt-out)" in cli_text
+    assert "in v1 a tool with no entry runs by default, in v2 it skips" in cli_text
+    assert "docs/MIGRATION-v1-to-v2.md" in cli_text
+    assert "config-init -o config.yaml.new" in cli_text
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 

@@ -338,6 +338,58 @@ def test_run_still_fails_loud_in_empty_dir(
     assert "no config file found: ./config.yaml" in result.stderr
 
 
+def test_safe_06_v1_config_emits_locked_migration_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-06: loading a v1 config exits 2 with the LOCKED
+    ERROR-STYLE message body (docs/ERROR-STYLE.md:57-73)."""
+    cfg = tmp_path / "old.yaml"
+    cfg.write_text(
+        "version: 1\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["run", "--config", str(cfg)])
+    assert result.exit_code == 2
+    assert "config file uses an older format:" in result.stderr
+    assert "schema version 2 (opt-in" in result.stderr
+    assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
+    assert "config-init -o config.yaml.new" in result.stderr
+
+
+def test_safe_06_v1_config_via_env_var_emits_locked_migration_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-06 (revision iteration 1): the source-label
+    substitution must work via the MCPTF_CONFIG_FILE entry path, not
+    only via --config. The LOCKED message echoes <path> back to the
+    operator; pin both paths so the env-var route cannot regress
+    silently."""
+    cfg = tmp_path / "old.yaml"
+    cfg.write_text(
+        "version: 1\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg))
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 2
+    assert "config file uses an older format:" in result.stderr
+    # Source-label substitution: the env-var path must appear verbatim.
+    assert str(cfg) in result.stderr
+    assert "schema version 2 (opt-in" in result.stderr
+    assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
+    assert "config-init -o config.yaml.new" in result.stderr
+
+
 def test_cli_errors_static_call_sites_no_banned_tokens() -> None:
     """AST scan: every _emit_operator_error call's literal args are operator-tone."""
     import ast
