@@ -212,14 +212,14 @@ def test_json_full_orthogonal(
     ):
         monkeypatch.delenv(var, raising=False)
 
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     res_json = runner.invoke(cli_mod.app, ["list-tools", "--config", str(cfg_path), "--json"])
     res_json_full = runner.invoke(
         cli_mod.app, ["list-tools", "--config", str(cfg_path), "--json", "--full"]
     )
 
-    assert res_json.exit_code == 0, res_json.stderr
-    assert res_json_full.exit_code == 0, res_json_full.stderr
+    assert res_json.exit_code == 0, res_json.output
+    assert res_json_full.exit_code == 0, res_json_full.output
     # Output must be byte-identical (D-07: --full is verbosity for the
     # human-readable path; --json is already full).
     assert res_json.stdout == res_json_full.stdout

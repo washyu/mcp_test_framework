@@ -309,20 +309,36 @@ def list_tools(
         "--json",
         help="Emit tools as a JSON array of full MCP tool records.",
     ),
+    full: bool = typer.Option(
+        False,
+        "--full",
+        help="Include full description and per-parameter descriptions (ignored under --json).",
+    ),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        help="Substring filter on tool name (case-insensitive).",
+    ),
 ) -> None:
-    """List all tools exposed by the configured MCP server (CLI-02).
+    """List tools exposed by the configured MCP server (CLI-02 / PERSONA-02).
 
-    Connects via stdio (no pytest, no Ollama). Default output is indented
-    blocks: name on its own line, full wrapped description indented beneath
-    (D-list-1, D-list-3). `--json` emits a JSON array of full MCP tool
-    records (D-list-2). Output sorted alphabetically by name (D-list-4).
+    Default render (per tool):
+        <name>(<param>: <type>, *, <kw>: <type> = <default>)
+          <one-line truncated description>
+
+    --full adds the wrapped full description + per-parameter descriptions
+    (still human-readable, not raw JSON; use --json for machine output).
+    --name PATTERN narrows to tools whose name contains PATTERN
+    (case-insensitive substring match). --name composes with --full
+    and --json. --json output is unchanged from v1.1 except for the
+    --name filter applied before serialization. Passing --full alongside
+    --json is a no-op (JSON output is already complete).
 
     Body uses asyncio.Runner + AsyncExitStack-owned McpTestClient
     (D-teardown-1). KeyboardInterrupt propagates through the runner,
     __aexit__ runs in the same task that did __aenter__,
     stdio_client._terminate_process_tree kills the subprocess, exit code
-    130 with no message printed (D-teardown-3). This is the SAME pattern
-    Phase 04.1 hardened for the test path -- reused at the CLI surface.
+    130 with no message printed (D-teardown-3).
     """
     cfg = _load_config(config)
     try:
@@ -354,10 +370,18 @@ def list_tools(
             detail=[f"the launch attempt raised: {exc.__class__.__name__}: {exc}"],
             next_step="verify the launch command runs cleanly in your shell",
         )
+
     if as_json:
-        typer.echo(_format_tools_json(tools), nl=False)
+        # JSON path: --name filter applied; --full is ignored (D-07 orthogonality).
+        # Output is byte-identical to v1.1 except for the optional name filter.
+        if name is not None:
+            needle = name.lower()
+            filtered = [t for t in tools if needle in t.name.lower()]
+        else:
+            filtered = tools
+        typer.echo(_format_tools_json(filtered), nl=False)
     else:
-        typer.echo(_format_tools_text(tools))
+        typer.echo(_format_tools_text(tools, full=full, name_filter=name))
 
 
 @app.command("config-init")
@@ -489,27 +513,121 @@ async def _list_tools_async(cfg: Config) -> list[Tool]:
         return await client.list_tools()
 
 
-def _format_tools_text(tools: list[Tool]) -> str:
-    """Indented-block text format: name on its own line, full wrapped description beneath.
+def _format_param_signature(tool: Tool) -> str:
+    """Render `(name: type, name: type, *, kw: type = default)` for a Tool.
 
-    Width comes from shutil.get_terminal_size with an 80-col fallback
-    (D-list-3 / Discretion). Stdlib textwrap.fill handles wrapping --
-    no `rich` dependency.
+    Required params (per inputSchema.required) come first in the order they
+    appear in the `required` list; optional params follow `*,` as kwargs
+    sorted alphabetically with their defaults inlined. JSON Schema scalar
+    types are mapped to short Python labels; unknown / union types fall
+    back to "Any".
+
+    Returns "()" for tools with no inputSchema or no properties.
+    """
+    schema = tool.inputSchema or {}
+    props: dict = (schema.get("properties") or {}) if isinstance(schema, dict) else {}
+    required: list[str] = list(schema.get("required") or []) if isinstance(schema, dict) else []
+    if not props:
+        return "()"
+
+    type_map = {
+        "string": "str",
+        "integer": "int",
+        "boolean": "bool",
+        "number": "float",
+        "array": "list",
+        "object": "dict",
+    }
+
+    def _pytype(jtype: object) -> str:
+        if isinstance(jtype, str):
+            return type_map.get(jtype, "Any")
+        return "Any"
+
+    req_parts: list[str] = []
+    for name in required:
+        if name in props:
+            req_parts.append(f"{name}: {_pytype(props[name].get('type'))}")
+
+    kw_parts: list[str] = []
+    for name in sorted(p for p in props if p not in required):
+        prop = props[name] or {}
+        ptype = _pytype(prop.get("type"))
+        if "default" in prop:
+            kw_parts.append(f"{name}: {ptype} = {prop['default']!r}")
+        else:
+            kw_parts.append(f"{name}: {ptype} = ...")
+
+    if not kw_parts:
+        return f"({', '.join(req_parts)})"
+    if not req_parts:
+        return f"(*, {', '.join(kw_parts)})"
+    return f"({', '.join(req_parts)}, *, {', '.join(kw_parts)})"
+
+
+def _format_tools_text(
+    tools: list[Tool],
+    *,
+    full: bool = False,
+    name_filter: str | None = None,
+) -> str:
+    """Human-readable render: name + signature + description per tool.
+
+    Default (D-05): name(signature) + 1-line truncated description.
+    --full (D-06): name(signature) + wrapped full description +
+                   per-parameter descriptions from inputSchema.
+    --name PATTERN (D-08): substring filter applied post-sort, pre-render.
+
+    Sort: alphabetical by name (D-09 / preserves D-list-4 contract).
+    Width: shutil.get_terminal_size with 80-col fallback.
     """
     width = max(40, shutil.get_terminal_size((80, 20)).columns)
     sorted_tools = sorted(tools, key=lambda t: t.name)
+
+    if name_filter:
+        needle = name_filter.lower()
+        sorted_tools = [t for t in sorted_tools if needle in t.name.lower()]
+
     if not sorted_tools:
+        if name_filter:
+            return (
+                f"(no tools matched filter {name_filter!r}; "
+                f"server has {len(tools)} tools total)"
+            )
         return "(no tools registered on the server)"
+
     blocks: list[str] = []
     for t in sorted_tools:
+        sig = _format_param_signature(t)
         desc = t.description or "(no description)"
-        wrapped = textwrap.fill(
-            desc,
-            width=max(20, width - 2),
-            initial_indent="  ",
-            subsequent_indent="  ",
-        )
-        blocks.append(f"{t.name}\n{wrapped}")
+        if full:
+            wrapped = textwrap.fill(
+                desc,
+                width=max(20, width - 2),
+                initial_indent="  ",
+                subsequent_indent="  ",
+            )
+            block_lines: list[str] = [f"{t.name}{sig}", wrapped]
+            schema = t.inputSchema or {}
+            props = schema.get("properties") or {} if isinstance(schema, dict) else {}
+            if props:
+                block_lines.append("")
+                block_lines.append("  parameters:")
+                for name in sorted(props):
+                    pdesc = (props[name] or {}).get("description") or "(no description)"
+                    pdesc_wrapped = textwrap.fill(
+                        pdesc,
+                        width=max(20, width - 8),
+                        initial_indent="      ",
+                        subsequent_indent="      ",
+                    )
+                    block_lines.append(f"    - {name}:")
+                    block_lines.append(pdesc_wrapped)
+            blocks.append("\n".join(block_lines))
+        else:
+            short = textwrap.shorten(desc, width=max(20, width - 4), placeholder="...")
+            blocks.append(f"{t.name}{sig}\n  {short}")
+
     return "\n\n".join(blocks)
 
 
