@@ -238,6 +238,109 @@ def test_config_init_fallback_scaffold_no_banned_tokens(
     )
 
 
+def test_safe_03_no_config_found_fails_loud_with_locked_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-03: cwd has no config.yaml, no env var, no --config."""
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 2
+    # Verbatim SAFE-03 lead and SAFE-03 detail (docs/ERROR-STYLE.md:46-55).
+    assert "no config file found: ./config.yaml" in result.stderr
+    assert "the framework refuses to run without a config file" in result.stderr
+    assert "destructive ones. you must explicitly opt in" in result.stderr
+    assert "config-init -o config.yaml" in result.stderr
+
+
+def test_safe_04_mcptf_config_file_typo_exits_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-04: typo'd MCPTF_CONFIG_FILE mirrors --config typo."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(tmp_path / "missing.yaml"))
+    runner = _runner()
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 2
+    assert "MCPTF_CONFIG_FILE" in result.stderr
+    assert "does not exist" in result.stderr
+
+
+@pytest.mark.xfail(
+    reason="depends on Plan 13-02: Config(yaml_file=...) wiring + version=2 validator",
+    strict=False,
+)
+def test_safe_02_cwd_autodiscovery_picks_up_local_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-02: ./config.yaml is auto-discovered when no flag/env."""
+    # Write a minimal v2 config (Plan 13-02 will accept this).
+    (tmp_path / "config.yaml").write_text(
+        "version: 2\n"
+        "ollama:\n  base_url: http://127.0.0.1:11434\n  model: qwen3.6:latest\n"
+        "mcp_server:\n  command: /bin/true\n  args: []\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    # We assert resolver discovery via the loader directly (no pytest spawn).
+    from mcp_test_framework.cli import _load_config
+    cfg = _load_config(None)  # Plan 13-02 makes version=2 valid.
+    assert cfg is not None
+
+
+def test_config_init_works_in_empty_dir_with_command_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 (revision): SAFE-03 recovery command must run from
+    an unconfigured directory. Without the allow_missing bypass, the
+    operator-recommended `config-init -o config.yaml` would itself
+    fail SAFE-03 -- self-bricking the recovery UX."""
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / "out.yaml"
+    runner = CliRunner(mix_stderr=False)
+    # The critical assertion: SAFE-03 did NOT fire. If it had, exit
+    # would be 2 AND stderr would name "no config file found".
+    result = runner.invoke(
+        app,
+        ["config-init", "--command", "nonexistent-binary-xyz", "-o", str(out)],
+    )
+    assert "no config file found: ./config.yaml" not in (result.stderr or "")
+
+
+def test_list_tools_works_in_empty_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 (revision): list-tools must not SAFE-03 in an empty dir.
+    Same rationale as test_config_init_works_in_empty_dir_with_command_override:
+    bootstrap-friendly commands return defaults; only `run` fails loud."""
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["list-tools"])
+    # SAFE-03 did NOT fire. Downstream MCP handshake may fail (default
+    # mcp_server.command may not be on PATH), which is acceptable --
+    # what we are pinning is the resolver bypass.
+    assert "no config file found: ./config.yaml" not in (result.stderr or "")
+
+
+def test_run_still_fails_loud_in_empty_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 (revision): regression test pinning that `run` keeps
+    SAFE-03 fail-loud even after the allow_missing bypass is added
+    to config-init and list-tools."""
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 2
+    assert "no config file found: ./config.yaml" in result.stderr
+
+
 def test_cli_errors_static_call_sites_no_banned_tokens() -> None:
     """AST scan: every _emit_operator_error call's literal args are operator-tone."""
     import ast

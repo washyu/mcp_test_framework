@@ -41,6 +41,36 @@ def test_error_style_contains_safe_06_message() -> None:
     assert "docs/MIGRATION-v1-to-v2.md" in text
 
 
+def test_error_style_safe_03_body_matches_cli_wiring() -> None:
+    """Phase 13 SAFE-03: cli.py's no-config branch must echo the LOCKED
+    SAFE-03 body verbatim. Pins the source text so the wording cannot
+    drift away from docs/ERROR-STYLE.md:46-55."""
+    cli_text = (
+        _repo_root() / "src" / "mcp_test_framework" / "cli.py"
+    ).read_text("utf-8")
+    # Substrings copied verbatim from docs/ERROR-STYLE.md:46-55.
+    assert "no config file found: ./config.yaml" in cli_text
+    assert "the framework refuses to run without a config file because it would" in cli_text
+    assert "otherwise call every tool the server advertises -- including any" in cli_text
+    assert "destructive ones. you must explicitly opt in to which tools run." in cli_text
+    assert "run `mcp-test-framework config-init -o config.yaml` to generate" in cli_text
+    assert "a starter config, then edit it to enable the tools you want to test" in cli_text
+
+
+def test_error_style_safe_04_body_matches_cli_wiring() -> None:
+    """Phase 13 SAFE-04 (env-var branch): cli.py's MCPTF_CONFIG_FILE-typo
+    branch lead and detail must match the locked shape verbatim. The
+    SAFE-04 surface is not pre-locked in ERROR-STYLE.md (it's the
+    parallel-of-SAFE-04-as-defined-for-the-flag-typo), so we pin the
+    wording the plan committed to."""
+    cli_text = (
+        _repo_root() / "src" / "mcp_test_framework" / "cli.py"
+    ).read_text("utf-8")
+    assert "config file not found via MCPTF_CONFIG_FILE:" in cli_text
+    assert "the path in MCPTF_CONFIG_FILE does not exist or is not a file." in cli_text
+    assert "check the path or unset MCPTF_CONFIG_FILE and run" in cli_text
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 
