@@ -82,3 +82,55 @@ def test_dotenv_example_line_count_reasonable() -> None:
     text = DOTENV.read_text(encoding="utf-8")
     lines = text.splitlines()
     assert 10 <= len(lines) <= 25, f"unexpected line count: {len(lines)}"
+
+
+def test_readme_does_not_imperatively_cp_dotenv_example() -> None:
+    """README quickstart must not teach `cp .env.example .env` as setup.
+
+    The .env.example v1.2 file framings itself as CI-secret passthrough only;
+    a quickstart `cp` instruction contradicts that mental model.
+    """
+    readme = _repo_root() / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    assert "cp .env.example .env" not in text, (
+        "README quickstart still teaches operators to copy .env.example as "
+        "part of setup, which contradicts .env.example's own CI-secret-"
+        "passthrough framing."
+    )
+
+
+def test_extending_mentions_dotenv_example_with_ci_secret_framing() -> None:
+    """docs/EXTENDING.md must mention .env.example exactly once with CI-secret framing."""
+    extending = _repo_root() / "docs" / "EXTENDING.md"
+    text = extending.read_text(encoding="utf-8")
+    needle = ".env.example"
+    occurrences = text.count(needle)
+    assert occurrences == 1, (
+        f"EXTENDING.md must mention .env.example exactly once "
+        f"(found {occurrences})."
+    )
+    idx = text.index(needle)
+    start = max(0, idx - 100)
+    end = min(len(text), idx + len(needle) + 100)
+    window = text[start:end]
+    framings = ("CI secret", "CI secrets", "secret passthrough", "CI-secret")
+    assert any(f in window for f in framings), (
+        "EXTENDING.md mentions .env.example but without the CI-secret "
+        "framing the file itself uses."
+    )
+
+
+def test_readme_mentions_dotenv_example_at_most_once() -> None:
+    """README must not reference .env.example more than once.
+
+    The file's narrow CI-secret-passthrough purpose can't survive multiple
+    framings in the same doc.
+    """
+    readme = _repo_root() / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    occurrences = text.count(".env.example")
+    assert occurrences <= 1, (
+        f"README still references .env.example multiple times "
+        f"(found {occurrences}) — the file's narrow purpose can't survive "
+        f"multiple framings."
+    )
