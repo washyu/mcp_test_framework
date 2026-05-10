@@ -188,6 +188,7 @@ def test_config_init_command_arg_flags_override_defaults(
     from mcp_test_framework.cli import app
 
     _clear_spec_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
     out = tmp_path / "out.yaml"
     res = CliRunner().invoke(
         app,
@@ -225,6 +226,7 @@ def test_config_init_fallback_scaffold_written_on_launch_failure(
     from mcp_test_framework.cli import app
 
     _clear_spec_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
     out = tmp_path / "out.yaml"
     res = CliRunner().invoke(
         app,
@@ -273,6 +275,7 @@ def test_config_init_fallback_scaffold_header_documents_defaults_limitation(
     from mcp_test_framework.cli import app
 
     _clear_spec_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
     out = tmp_path / "out.yaml"
     res = CliRunner().invoke(
         app,
@@ -333,6 +336,7 @@ def test_config_init_success_path_unchanged_when_command_resolvable(
     from mcp_test_framework.cli import app
 
     _clear_spec_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
 
     async def _fake_list_tools_async(cfg):  # type: ignore[no-untyped-def]
         return [_StubTool("alpha"), _StubTool("beta")]

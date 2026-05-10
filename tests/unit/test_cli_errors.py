@@ -243,6 +243,7 @@ def test_config_init_fallback_scaffold_no_banned_tokens(
         "JUDGE_TIMEOUT_SECONDS", "TARGET_TOOL_NAME", "MCPTF_CONFIG_FILE",
     ):
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.chdir(tmp_path)
     out = tmp_path / "out.yaml"
     res = _runner().invoke(
         app,
