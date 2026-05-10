@@ -6,6 +6,16 @@ The MVP targets the `homelab-mcp` server over stdio and validates one tool
 (`list_keyring_credentials` by default) end-to-end through schema validation, an
 Ollama-backed description-quality judge, and output conformance checks.
 
+## Testing an MCP server you didn't write
+
+The framework treats your MCP server as a black box — you don't need to read
+its source. `mcp-test-framework list-tools` shows you the tools the server
+exposes and their parameter shapes; `mcp-test-framework config-init` scaffolds
+a config file populated with the actual tools you have. Designed for operators
+testing servers they didn't author.
+
+The full walkthrough lives in [`docs/EXTENDING.md`](docs/EXTENDING.md#testing-an-mcp-server-you-didnt-write).
+
 ## Prerequisites
 
 - Python 3.14
