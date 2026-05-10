@@ -18,9 +18,6 @@ collected test is under tests/unit/).
 """
 from __future__ import annotations
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Task 1: allowlist filter in tests/conftest.py:_resolve_tool_names
 # ---------------------------------------------------------------------------
@@ -94,8 +91,8 @@ def test_safe_01_empty_tools_means_zero_selection() -> None:
 def test_safe_01_reporter_constants_locked() -> None:
     """Phase 13 D-12: the two reason strings cannot drift silently."""
     from mcp_test_framework._reporter import (
-        _REASON_NOT_SELECTED,
         _REASON_EXPLICIT_DEFAULT,
+        _REASON_NOT_SELECTED,
     )
     assert _REASON_NOT_SELECTED == "not selected in config"
     assert _REASON_EXPLICIT_DEFAULT == "explicit skip in config"
@@ -103,11 +100,11 @@ def test_safe_01_reporter_constants_locked() -> None:
 
 def test_safe_01_compose_state_a_for_unlisted_tool() -> None:
     """Phase 13 D-12 state (a): unlisted discovered tool -> not selected."""
-    from mcp_test_framework._reporter import (
-        _compose_unparametrized_skips,
-        _PER_TOOL,
-    )
     from mcp_test_framework import _reporter as _rep
+    from mcp_test_framework._reporter import (
+        _PER_TOOL,
+        _compose_unparametrized_skips,
+    )
     _rep._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b"]
     _PER_TOOL.clear()  # parametrize ran nothing.
     class _Cfg:
@@ -124,12 +121,12 @@ def test_safe_01_compose_state_a_for_unlisted_tool() -> None:
 
 def test_safe_01_compose_state_c_with_curated_reason() -> None:
     """Phase 13 D-12 state (c) with non-empty skip_reason -> echoed."""
+    from mcp_test_framework import _reporter as _rep
     from mcp_test_framework._reporter import (
-        _compose_unparametrized_skips,
         _PER_TOOL,
+        _compose_unparametrized_skips,
     )
     from mcp_test_framework.models import ToolConfig
-    from mcp_test_framework import _reporter as _rep
     _rep._DISCOVERED_TOOL_NAMES = ["dangerous_tool"]
     _PER_TOOL.clear()
 
@@ -152,13 +149,13 @@ def test_safe_01_compose_state_c_default_when_skip_reason_empty() -> None:
     validator would reject; we construct via model_construct() to bypass
     the validator and simulate that edge.
     """
+    from mcp_test_framework import _reporter as _rep
     from mcp_test_framework._reporter import (
-        _compose_unparametrized_skips,
         _PER_TOOL,
         _REASON_EXPLICIT_DEFAULT,
+        _compose_unparametrized_skips,
     )
     from mcp_test_framework.models import ToolConfig
-    from mcp_test_framework import _reporter as _rep
     _rep._DISCOVERED_TOOL_NAMES = ["x"]
     _PER_TOOL.clear()
     tcfg = ToolConfig.model_construct(skip=True, skip_reason="   ")
@@ -180,11 +177,11 @@ def test_safe_01_compose_no_op_when_discovery_never_ran() -> None:
     stays None. The composition step must be a no-op in that case so the
     terminal-summary path doesn't crash.
     """
-    from mcp_test_framework._reporter import (
-        _compose_unparametrized_skips,
-        _PER_TOOL,
-    )
     from mcp_test_framework import _reporter as _rep
+    from mcp_test_framework._reporter import (
+        _PER_TOOL,
+        _compose_unparametrized_skips,
+    )
     _rep._DISCOVERED_TOOL_NAMES = None
     _PER_TOOL.clear()
 
