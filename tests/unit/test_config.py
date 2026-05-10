@@ -69,9 +69,9 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.mcp_server.command == "homelab-mcp"
     assert cfg.mcp_server.args == []
     assert cfg.mcp_server.timeout_seconds == 30
-    # Phase 07 D-01: tool_name default is None (discover-all mode); explicit
-    # TARGET_TOOL_NAME restricts the run to a single tool (single-item parametrize).
-    assert cfg.target.tool_name is None
+    # Phase 13 D-11: `target` field removed; single-tool focus now lives
+    # in `--config focus-<tool>.yaml` (Phase 12 D-03).
+    assert not hasattr(cfg, "target")
     assert cfg.judge_timeout_seconds == 120
 
 
@@ -373,4 +373,26 @@ def test_no_cwd_config_yaml_auto_discovery_and_no_fail_loud(
         "has been changed (the DEFERRED bullet from UAT gap 2 / "
         "project_genericize_example_config), update this expectation in "
         "the same commit."
+    )
+
+
+def test_phase_13_d_11_target_block_in_yaml_rejected(tmp_path: Path) -> None:
+    """Phase 13 D-11: v2 has no `target:` field. A leftover v1 `target:`
+    block triggers extra=forbid at load time (defense-in-depth alongside
+    the SAFE-06 version refusal)."""
+    yaml_path = tmp_path / "leftover.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "target:\n  tool_name: list_registered_servers\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError) as exc_info:
+        Config(yaml_file=str(yaml_path))
+    assert any(
+        e.get("loc", ()) == ("target",) and e.get("type") == "extra_forbidden"
+        for e in exc_info.value.errors()
     )

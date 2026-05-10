@@ -73,31 +73,6 @@ class McpServerConfig(BaseModel):
     )
 
 
-class TargetConfig(BaseModel):
-    """Target tool to run all tests against. None = discover all tools (Phase 07 D-01)."""
-
-    model_config = ConfigDict(frozen=True, populate_by_name=True)
-
-    tool_name: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("TARGET_TOOL_NAME", "tool_name"),
-    )
-
-    @field_validator("tool_name", mode="before")
-    @classmethod
-    def _empty_to_none(cls, v):
-        """Empty string from env -> None (Phase 07 D-02 'empty equivalent to None').
-
-        The project's custom _BareNameNestedEnvSource (config.py:91-146) reads
-        an env var as present when membership-check passes, regardless of value.
-        TARGET_TOOL_NAME='' would land as '' (not None) without this coercion.
-        See 07-RESEARCH §Pitfall 2.
-        """
-        if isinstance(v, str) and v.strip() == "":
-            return None
-        return v
-
-
 class ToolConfig(BaseModel):
     """Per-tool config registry entry (TOOLCFG-01..07; Phase 08 D-01/D-04/D-05).
 

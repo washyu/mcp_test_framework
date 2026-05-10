@@ -32,7 +32,6 @@ from pydantic_settings import (
 from mcp_test_framework.models import (
     McpServerConfig,
     OllamaConfig,
-    TargetConfig,
     ToolConfig,
 )
 
@@ -47,8 +46,6 @@ class Config(BaseSettings):
 
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     mcp_server: McpServerConfig = Field(default_factory=McpServerConfig)
-    # Plan 13-04 will remove the `target` field and the TargetConfig import.
-    target: TargetConfig = Field(default_factory=TargetConfig)
 
     judge_timeout_seconds: int = 120
 
