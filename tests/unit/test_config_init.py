@@ -73,7 +73,9 @@ def test_scaffold_empty_tool_list_returns_empty_mapping() -> None:
     text = _scaffold([])
     assert "tools:\n  {}\n" in text or "tools: {}\n" in text
     data = yaml.safe_load(text)
-    assert data["tools"] in (None, {})
+    assert data["tools"] == {}, (
+        f"empty scaffold must yield an empty mapping, got {data['tools']!r}"
+    )
 
 
 def test_scaffold_loadable_via_config(
