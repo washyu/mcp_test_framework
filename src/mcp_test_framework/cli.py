@@ -402,19 +402,42 @@ def config_init(
         "--force",
         help="Permit overwrite of an existing --output file.",
     ),
+    command: str | None = typer.Option(
+        None,
+        "--command",
+        help=(
+            "Override mcp_server.command for this invocation. "
+            "Useful when your server is launched via uvx or pipx and the "
+            "default command is not on PATH "
+            "(e.g. `--command uvx --arg your-mcp-package`)."
+        ),
+    ),
+    arg: list[str] | None = typer.Option(
+        None,
+        "--arg",
+        help=(
+            "Append an argument to mcp_server.args. Repeat for each arg "
+            "(e.g. `--arg first --arg second`). Combine with --command "
+            "to bootstrap config-init without a pre-existing config.yaml."
+        ),
+    ),
 ) -> None:
-    """Emit a starter YAML config scaffold for the connected MCP server (Phase 08 D-21).
+    """Emit a starter YAML config scaffold for the connected MCP server.
 
     Discovers tools via the same isolation-aware seam used by `run` and
-    `list-tools` (`McpTestClient.__aenter__` -- D-24), then emits a YAML
+    `list-tools` (`McpTestClient.__aenter__`), then emits a YAML
     document containing `version: 1` and a `tools:` block with one
     commented entry per discovered tool. The scaffold is a no-op
     passthrough by default -- uncomment and edit individual fields to
-    opt a tool into skip / judges / args (Phase 08 D-22, CD-06).
+    opt a tool into skip / judges / args.
 
     Output:
       - default: stdout
       - --output PATH: write to file (refuses to overwrite without --force)
+
+    Override flags (bootstrap a fresh checkout without a pre-existing config.yaml):
+      - --command CMD: override mcp_server.command for this invocation only
+      - --arg ARG: append to mcp_server.args; repeat for each arg
 
     Exit codes (preserves CLI symmetry with `run` / `list-tools`):
       - 0: success
@@ -434,6 +457,21 @@ def config_init(
 
     cfg = _load_config(config)
 
+    # Apply --command / --arg overrides via Pydantic v2 model_copy on the
+    # frozen Config / McpServerConfig instances. Re-instantiating Config(...)
+    # would re-trigger settings_customise_sources and lose the operator's
+    # intent; model_copy(update=...) returns a new frozen instance with only
+    # the named fields replaced.
+    if command is not None or arg is not None:
+        overrides: dict[str, object] = {}
+        if command is not None:
+            overrides["command"] = command
+        if arg is not None:
+            overrides["args"] = list(arg)
+        cfg = cfg.model_copy(
+            update={"mcp_server": cfg.mcp_server.model_copy(update=overrides)}
+        )
+
     try:
         with asyncio.Runner() as runner:
             tools = runner.run(_list_tools_async(cfg))
@@ -442,6 +480,33 @@ def config_init(
         # uniformly across POSIX/Windows console-script wrappers.
         raise typer.Exit(code=130)
     except FileNotFoundError as exc:
+        # Fallback scaffold: if --output was given, write a runnable shell
+        # so the operator's recovery path is "edit and re-run", not
+        # "hand-write a config from scratch". stdout mode skips this --
+        # the operator can't edit stdout.
+        if output is not None:
+            fallback_body = _format_tools_yaml_scaffold([])
+            # The mcp_server block in the scaffold below shows the framework
+            # DEFAULT values, NOT whatever --command/--arg the operator may
+            # have just passed -- propagating overrides into the scaffold is
+            # a deferred follow-up. The header acknowledges this so an
+            # operator who used `--command pipx --arg my-server` and got the
+            # fallback isn't confused why they see uvx / your-mcp-server-package
+            # in the file below.
+            header = (
+                "# mcp-test-framework starter config -- TOOL DISCOVERY FAILED.\n"
+                "# The framework could not launch your MCP server, so the\n"
+                "# `tools:` block below is empty. Fill in `mcp_server.command`\n"
+                "# (and any required `mcp_server.args`) so the launch command\n"
+                "# resolves on PATH, then re-run `mcp-test-framework config-init`\n"
+                "# to populate the tool list.\n"
+                "#\n"
+                "# Note: the `mcp_server` block below shows the framework\n"
+                "# default values. If you intended `--command X --arg Y`,\n"
+                "# edit those lines to substitute your values before re-running.\n"
+                "\n"
+            )
+            output.write_text(header + fallback_body, encoding="utf-8")
         if str(exc).startswith("MCP server command not on PATH:"):
             _emit_operator_error(
                 summary=f"MCP server command not found: {cfg.mcp_server.command!r}",
