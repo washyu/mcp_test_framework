@@ -496,7 +496,7 @@ def config_init(
 
     Discovers tools via the same isolation-aware seam used by `run` and
     `list-tools` (`McpTestClient.__aenter__`), then emits a YAML
-    document containing `version: 1` and a `tools:` block with one
+    document containing `version: 2` and a `tools:` block with one
     commented entry per discovered tool. The scaffold is a no-op
     passthrough by default -- uncomment and edit individual fields to
     opt a tool into skip / judges / args.
@@ -808,7 +808,7 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
     Output shape (locked in docs/ERROR-STYLE.md / CLEAN-05 acceptance):
     - Top-level `ollama:`, `mcp_server:`, `judge_timeout_seconds:`, `version:`,
       `tools:` blocks all populated.
-    - `version: 1` literal (this release's accepted version).
+    - `version: 2` literal (this release's accepted version).
     - Every discovered tool emitted as `<name>: { skip: true, skip_reason: ... }`
       with the name passed through `_yaml_key` for defensive YAML quoting.
     - No `target:` block (the field is leaving in a future schema bump).
@@ -840,8 +840,8 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
         "# Outer budget cap on each judge HTTP call.\n"
         "judge_timeout_seconds: 120\n"
         "\n"
-        "# Schema version. This release accepts version 1.\n"
-        "version: 1\n"
+        "# Schema version. This release accepts version 2.\n"
+        "version: 2\n"
         "\n"
         "# Per-tool registry. Every tool the connected server advertises is\n"
         "# listed below as `skip: true` -- the framework will not call any\n"
