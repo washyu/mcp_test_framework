@@ -200,6 +200,44 @@ def test_config_init_mcp_spawn_failure(
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 
+def test_config_init_help_text_no_banned_tokens() -> None:
+    """The new --command/--arg help strings must not leak banned tokens."""
+    res = _runner().invoke(app, ["config-init", "--help"])
+    assert res.exit_code == 0, (res.exit_code, res.stderr, res.stdout)
+    assert not BANNED_RE.search(res.stdout), (
+        f"banned tokens in config-init --help: {res.stdout!r}"
+    )
+
+
+def test_config_init_fallback_scaffold_no_banned_tokens(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The fallback scaffold's header comment must not leak banned tokens."""
+    for var in (
+        "OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_TIMEOUT_SECONDS",
+        "MCP_SERVER_COMMAND", "MCP_SERVER_ARGS", "MCP_SERVER_TIMEOUT_SECONDS",
+        "JUDGE_TIMEOUT_SECONDS", "TARGET_TOOL_NAME", "MCPTF_CONFIG_FILE",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    out = tmp_path / "out.yaml"
+    res = _runner().invoke(
+        app,
+        [
+            "config-init",
+            "--command",
+            "nonexistent-binary-xyz",
+            "-o",
+            str(out),
+        ],
+    )
+    assert res.exit_code == 2
+    assert out.exists(), "fallback scaffold not written"
+    text = out.read_text(encoding="utf-8")
+    assert not BANNED_RE.search(text), (
+        f"banned tokens in fallback scaffold: {text!r}"
+    )
+
+
 def test_cli_errors_static_call_sites_no_banned_tokens() -> None:
     """AST scan: every _emit_operator_error call's literal args are operator-tone."""
     import ast
