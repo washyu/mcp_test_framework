@@ -57,6 +57,16 @@ server, calls each enabled tool, asks the configured Ollama judge to
 evaluate the description against the rubrics you listed, and exits 0 if
 every test passed.
 
+### CI secrets
+
+If your judge backend reads a secret from the environment (an HTTP-backed
+judge with an API key, for example), set it in `.env` rather than
+`config.yaml` — secrets do not belong in version-controlled config. The
+framework ships a `.env.example` at the repo root documenting this
+CI-secret passthrough convention; copy it to `.env` ONLY if you have such
+a secret to set. Env vars do not override `config.yaml` values, and the
+example file is not part of normal local setup.
+
 You never read your server's source. You configured the framework against
 the surface the server itself declares.
 

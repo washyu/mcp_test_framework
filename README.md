@@ -22,14 +22,13 @@ The full walkthrough lives in [`docs/EXTENDING.md`](docs/EXTENDING.md#testing-an
 - [`uv`](https://docs.astral.sh/uv/) (project, venv, and lockfile manager)
 - [Ollama](https://ollama.com/) running at the configured base URL with the configured
   model (defaults: `http://127.0.0.1:11434`, model `qwen3.6:latest`)
-- `homelab-mcp` runnable via `uvx` (the `.env.example` default) or installed on `PATH`
+- `homelab-mcp` runnable via `uvx`, or installed on `PATH`
 
 ## Setup
 
 ```bash
 git clone <repo-url>
 cd mvp_test_framework
-cp .env.example .env   # edit if your Ollama / MCP server differs
 uv sync
 ```
 
@@ -82,15 +81,16 @@ Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama server base URL. |
 | `OLLAMA_MODEL` | `qwen3.6:latest` | Ollama model name used by the judge. |
 | `OLLAMA_TIMEOUT_SECONDS` | `120` | Per-request HTTP timeout for Ollama calls. |
-| `MCP_SERVER_COMMAND` | `homelab-mcp` | MCP server launcher binary. `.env.example` ships `uvx` for zero-install. |
-| `MCP_SERVER_ARGS` | `[]` (JSON list) | Args passed to the launcher. `.env.example` ships `["homelab-mcp"]` to pair with `uvx`. |
+| `MCP_SERVER_COMMAND` | `homelab-mcp` | MCP server launcher binary. |
+| `MCP_SERVER_ARGS` | `[]` (JSON list) | Args passed to the launcher (JSON list). |
 | `MCP_SERVER_TIMEOUT_SECONDS` | `30` | Per-SDK-call timeout for stdio operations. |
 | `JUDGE_TIMEOUT_SECONDS` | `120` | Outer-budget cap on judge calls. |
 | `MCPTF_CONFIG_FILE` | unset | Optional path to a YAML config overlay (sits below env in precedence). |
 
-Copy `.env.example` to `.env` and edit. The same vars can be set in your shell,
-in a YAML overlay pointed at by `MCPTF_CONFIG_FILE` (or `--config`), or in
-PowerShell with `$env:VAR = "..."` before invoking the CLI.
+Configure the framework via `config.yaml` — generate a starter with
+`mcp-test-framework config-init -o config.yaml` and pass it via
+`--config config.yaml`. Env vars are reserved for CI-secret passthrough only
+(see `.env.example`); they no longer override config values.
 
 ## Per-tool configuration
 
@@ -227,8 +227,9 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
   `pyproject.toml`: re-run `uv sync` to regenerate the script shim under
   `.venv/Scripts/`.
 - If `homelab-mcp` is not on `PATH` and you see `[WinError 2]`: confirm
-  `MCP_SERVER_COMMAND` and `MCP_SERVER_ARGS` in your `.env` (the default uses
-  `uvx homelab-mcp` -- which requires `uvx` from `uv` to be available).
+  `mcp_server.command` and `mcp_server.args` in your `config.yaml` (e.g.
+  `command: uvx, args: [homelab-mcp]` — which requires `uvx` from `uv` to
+  be available).
 
 ## Further reading
 
