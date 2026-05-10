@@ -23,9 +23,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import typing
 import shutil
 import tempfile
+import typing
 import warnings
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -265,29 +265,6 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
             stacklevel=2,
         )
 
-    if config.target.tool_name is not None:
-        tool_names = [t.name for t in tools]
-        if config.target.tool_name not in tool_names:
-            pytest.exit(
-                f"target tool {config.target.tool_name!r} not in MCP server tool list "
-                f"(available: {tool_names!r})",
-                returncode=2,
-            )
-
-    # Phase 08 D-12: when target.tool_name is set AND that tool's config has
-    # skip=True, the explicit single-target intent wins (the run still exercises
-    # the tool). Surface the override as a warning so the operator knows the
-    # configured skip was deliberately ignored.
-    if config.target.tool_name is not None:
-        explicit_cfg = config.tools.get(config.target.tool_name)
-        if explicit_cfg is not None and explicit_cfg.skip:
-            warnings.warn(
-                f"target.tool_name={config.target.tool_name!r} explicitly set; "
-                f"overriding tools.{config.target.tool_name!r}.skip=True for this run",
-                UserWarning,
-                stacklevel=2,
-            )
-
     # All preflight checks passed; the brief MCP session has been closed by
     # AsyncExitStack on context-manager exit. The mcp_client fixture below
     # respawns its own long-lived session (D-preflight-2). Yield with no
@@ -464,8 +441,8 @@ async def target_tool(
 
     The pytest_generate_tests hook in tests/conftest.py populates request.param
     with each discovered tool name. Test IDs render as test_<name>[<tool_name>]
-    uniformly -- including when config.target.tool_name is set (single-item
-    parametrize list per D-05). Indirect parametrize on a session-scoped fixture
+    uniformly across the allowlist's selected tools (Phase 13 SAFE-01).
+    Indirect parametrize on a session-scoped fixture
     creates one fixture instance per request.param value within session scope;
     mcp_client (also session-scoped) is shared -- ONE long-lived MCP session.
     """

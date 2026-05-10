@@ -100,13 +100,9 @@ def _resolve_tool_names(config: Config) -> list[str]:
     This site never calls pytest.skip() -- filtering at parametrize
     time avoids the v1.1.1 runtime-SKIP explosion (260508-p0b).
 
-    Single-tool focus continues to live in the explicit-target
-    short-circuit below (config.target.tool_name); Plan 13-04 of
-    Phase 13 removes that field and the short-circuit together.
+    Single-tool focus is handled via `--config focus-<tool>.yaml`
+    (Phase 12 D-03) -- there is no in-process target field anymore.
     """
-    explicit = config.target.tool_name
-    if explicit:
-        return [explicit]
     if _rep._DISCOVERED_TOOL_NAMES is None:
         try:
             _rep._DISCOVERED_TOOL_NAMES = asyncio.run(_discover_tools(config))

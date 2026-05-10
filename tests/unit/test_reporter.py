@@ -29,9 +29,6 @@ def test_safe_01_allowlist_includes_listed_unskipped() -> None:
     from tests.conftest import _resolve_tool_names
 
     class _FakeConfig:
-        class _Tgt:
-            tool_name = None
-        target = _Tgt()
         tools = {"tool_a": ToolConfig(), "tool_b": ToolConfig()}
         mcp_server = None  # not reached because _DISCOVERED_TOOL_NAMES is primed
 
@@ -49,9 +46,6 @@ def test_safe_01_allowlist_excludes_unlisted_and_skipped() -> None:
     from tests.conftest import _resolve_tool_names
 
     class _FakeConfig:
-        class _Tgt:
-            tool_name = None
-        target = _Tgt()
         tools = {
             "tool_a": ToolConfig(skip=True, skip_reason="dangerous"),
             # tool_b is unlisted -> state (a) -> excluded
@@ -70,9 +64,6 @@ def test_safe_01_empty_tools_means_zero_selection() -> None:
     from tests.conftest import _resolve_tool_names
 
     class _FakeConfig:
-        class _Tgt:
-            tool_name = None
-        target = _Tgt()
         tools = {}
 
     from mcp_test_framework import _reporter as _rep
