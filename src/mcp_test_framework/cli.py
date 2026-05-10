@@ -334,6 +334,25 @@ def list_tools(
         # typer.Exit(code=130) makes the SIGINT contract explicit and
         # uniform across POSIX and Windows console-script wrappers.
         raise typer.Exit(code=130)
+    except FileNotFoundError as exc:
+        if str(exc).startswith("MCP server command not on PATH:"):
+            _emit_operator_error(
+                summary=f"MCP server command not found: {cfg.mcp_server.command!r}",
+                detail=[
+                    f"the framework tried to launch the server with "
+                    f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`",
+                    "and the command is not on PATH.",
+                ],
+                next_step=(
+                    "update `mcp_server.command` / `mcp_server.args` in your "
+                    "config.yaml so the launch command resolves on PATH"
+                ),
+            )
+        _emit_operator_error(
+            summary="MCP server failed to start",
+            detail=[f"the launch attempt raised: {exc.__class__.__name__}: {exc}"],
+            next_step="verify the launch command runs cleanly in your shell",
+        )
     if as_json:
         typer.echo(_format_tools_json(tools), nl=False)
     else:
@@ -383,11 +402,13 @@ def config_init(
     # Refuse-to-overwrite check happens BEFORE discovery so a stale --output
     # path doesn't cost the operator a subprocess spawn.
     if output is not None and output.exists() and not force:
-        typer.echo(
-            f"error: refusing to overwrite existing file: {output} (use --force)",
-            err=True,
+        _emit_operator_error(
+            summary=f"refusing to overwrite existing file: {output}",
+            detail=[
+                "the framework does not overwrite an existing scaffold without --force.",
+            ],
+            next_step="add `--force` to overwrite, or pick a different `--output` path",
         )
-        raise typer.Exit(code=2)
 
     cfg = _load_config(config)
 
@@ -399,27 +420,33 @@ def config_init(
         # uniformly across POSIX/Windows console-script wrappers.
         raise typer.Exit(code=130)
     except FileNotFoundError as exc:
-        # Quick-task 260507-j6i: enrich the cryptic "MCP server command not on
-        # PATH" with a hint pointing users at MCPTF_CONFIG_FILE / config.example.yaml.
-        # Keep in sync with src/mcp_test_framework/fixtures.py:_preflight (lines
-        # 117-123) and tests/conftest.py:_resolve_tool_names (lines 113-119) --
-        # THIRD copy of the same string. CONTEXT.md <Shared Patterns> "MCP
-        # discovery hint string" flags this as a three-copy hazard;
-        # consolidating to a constant is out of scope for this plan.
-        msg = (
-            f"MCP discovery via {cfg.mcp_server.command!r} failed: "
-            f"{exc.__class__.__name__}: {exc}"
-        )
         if str(exc).startswith("MCP server command not on PATH:"):
-            msg += (
-                f"\n\nHint: {cfg.mcp_server.command!r} was not found on PATH. "
-                "If you intended to use a different command, point "
-                "MCPTF_CONFIG_FILE at a config.yaml that defines "
-                "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
-                "The repo ships `config.example.yaml` you can copy and edit."
+            _emit_operator_error(
+                summary=f"MCP server command not found: {cfg.mcp_server.command!r}",
+                detail=[
+                    f"the framework tried to launch the server with "
+                    f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`",
+                    "and the command is not on PATH.",
+                    "",
+                    "if your server is installed via `uvx` or `pipx`, set "
+                    "`mcp_server.command` and `mcp_server.args` in your config.yaml "
+                    "(e.g. `command: uvx, args: [your-server-package]`).",
+                ],
+                next_step=(
+                    "verify the launch command works in your shell, then update "
+                    "`mcp_server.command` / `mcp_server.args` in your config.yaml"
+                ),
             )
-        typer.echo(msg, err=True)
-        raise typer.Exit(code=2)
+        _emit_operator_error(
+            summary="MCP server failed to start",
+            detail=[
+                f"the launch attempt raised: {exc.__class__.__name__}: {exc}",
+                "",
+                "check that the command in your config.yaml is runnable and any "
+                "required dependencies are installed.",
+            ],
+            next_step="verify the launch command runs cleanly in your shell",
+        )
 
     scaffold = _format_tools_yaml_scaffold(tools)
 
