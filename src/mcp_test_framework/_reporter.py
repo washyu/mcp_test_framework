@@ -56,6 +56,14 @@ _PER_TOOL: dict[str, dict] = {}
 
 _SKIP_REASON_CAP: int = 3
 
+# Phase 13 revision iteration 1: the discovered-tools cache lives HERE
+# (production code), not in tests/conftest.py. tests/conftest.py WRITES
+# this attribute during pytest_generate_tests; _compose_unparametrized_skips
+# READS it at pytest_terminal_summary time. Single-direction dependency:
+# production exports state, tests read. Pre-empts Phase 15's `tests/contract/`
+# vs `tests/framework/` split.
+_DISCOVERED_TOOL_NAMES: "list[str] | None" = None
+
 
 def _extract_tool_name(nodeid: str) -> str | None:
     """Return tool name from ``<file>::<test>[<tool>]`` nodeid, or None.

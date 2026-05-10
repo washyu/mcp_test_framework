@@ -16,13 +16,12 @@ pytest_plugins = ["mcp_test_framework.fixtures", "mcp_test_framework._reporter"]
 
 import asyncio  # noqa: E402
 import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
-from typing import Optional  # noqa: E402
 
 import pytest  # noqa: E402
 
+from mcp_test_framework import _reporter as _rep  # noqa: E402
 from mcp_test_framework.config import Config  # noqa: E402
 from mcp_test_framework.mcp_client import McpTestClient  # noqa: E402
-from mcp_test_framework.models import ToolConfig  # noqa: E402
 
 
 def pytest_configure(config) -> None:
@@ -63,10 +62,13 @@ def pytest_configure(config) -> None:
 # isolation contract for free; ISOL-03 hash-equality test in tests/test_isolation.py
 # remains the regression guard.
 #
-# Cache (CD-01: module-level dict over StashKey for simplicity).
+# Cache lives on the _reporter module (Phase 13 revision iteration 1):
+#   - tests/conftest.py is the WRITER of _reporter._DISCOVERED_TOOL_NAMES
+#   - _reporter._compose_unparametrized_skips is the READER at terminal-summary
+# Single-direction dependency: production exports state, tests read. The
+# reporter never imports from tests/, pre-empting Phase 15's tests/contract
+# vs tests/framework split.
 # ---------------------------------------------------------------------------
-
-_DISCOVERED_TOOL_NAMES: Optional[list[str]] = None
 
 
 async def _discover_tools(config: Config) -> list[str]:
@@ -86,24 +88,28 @@ async def _discover_tools(config: Config) -> list[str]:
 
 
 def _resolve_tool_names(config: Config) -> list[str]:
-    """Resolve the parametrize tool-name list.
+    """Resolve the parametrize tool-name list under SAFE-01 opt-in semantics.
 
-    - If config.target.tool_name is set (truthy after empty-string-to-None
-      validator coercion in models.py): single-item list, NO collection-time
-      spawn (CD-05 short-circuit). Bypasses the skip filter so D-12's
-      _preflight override warning (fixtures.py:200-213) still fires.
-    - Otherwise: discovered list, cached module-level for this pytest
-      invocation, **filtered by config.tools[name].skip** (v1.1.1 hotfix
-      260508-p0b -- skip:true tools are absent from collection rather than
-      runtime-SKIPPED 10x each).
+    States:
+      (a) discovered but unlisted in config.tools         -> excluded
+      (b) listed with skip=False                          -> included
+      (c) listed with skip=True                           -> excluded
+
+    The reporter composes SKIP rows for states (a) and (c) at
+    terminal-summary time using Config.tools + _DISCOVERED_TOOL_NAMES.
+    This site never calls pytest.skip() -- filtering at parametrize
+    time avoids the v1.1.1 runtime-SKIP explosion (260508-p0b).
+
+    Single-tool focus continues to live in the explicit-target
+    short-circuit below (config.target.tool_name); Plan 13-04 of
+    Phase 13 removes that field and the short-circuit together.
     """
-    global _DISCOVERED_TOOL_NAMES
     explicit = config.target.tool_name
     if explicit:
         return [explicit]
-    if _DISCOVERED_TOOL_NAMES is None:
+    if _rep._DISCOVERED_TOOL_NAMES is None:
         try:
-            _DISCOVERED_TOOL_NAMES = asyncio.run(_discover_tools(config))
+            _rep._DISCOVERED_TOOL_NAMES = asyncio.run(_discover_tools(config))
         except Exception as exc:  # noqa: BLE001 -- mirrors _preflight failure-mode parity
             # Match _preflight failure shape (fixtures.py:149-154) for exit-code parity.
             # See 07-RESEARCH §Pitfall 5.
@@ -126,15 +132,20 @@ def _resolve_tool_names(config: Config) -> list[str]:
                     "The repo ships `config.example.yaml` you can copy and edit."
                 )
             pytest.exit(msg, returncode=2)
-    # v1.1.1 hotfix (260508-p0b): filter parametrize input by
-    # config.tools[name].skip so skip:true tools are absent from collection
-    # rather than runtime-SKIPPED 10x each. Tools with no `tools.<name>` entry
-    # use ToolConfig() defaults (skip=False) and pass through unchanged. The
-    # explicit-target short-circuit above still bypasses this filter (D-12 /
-    # fixtures.py:_preflight warning path preserved).
+    # Phase 13 D-13 / SAFE-01: opt-in allowlist semantics. Three states:
+    #   (a) unlisted          -> excluded here; reporter renders
+    #                            "not selected in config" at terminal summary.
+    #   (b) listed + skip=False -> included in parametrize (this branch).
+    #   (c) listed + skip=True  -> excluded here; reporter renders
+    #                            tool_cfg.skip_reason or "explicit skip in config".
+    # Both (a) and (c) drop out of pytest collection -- the v1.1.1 hotfix
+    # invariant (no 560 runtime-SKIPPED rows). The reporter composes the
+    # SKIP rows from Config.tools + _reporter._DISCOVERED_TOOL_NAMES at
+    # terminal-summary time. Revision iteration 1: state lives in
+    # production (_reporter), not the test tree.
     return [
-        name for name in _DISCOVERED_TOOL_NAMES
-        if not config.tools.get(name, ToolConfig()).skip
+        name for name in _rep._DISCOVERED_TOOL_NAMES
+        if name in config.tools and not config.tools[name].skip
     ]
 
 
