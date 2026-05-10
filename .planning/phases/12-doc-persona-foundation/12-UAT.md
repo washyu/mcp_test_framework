@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 12-doc-persona-foundation
 source:
   - 12-01-SUMMARY.md
@@ -8,8 +8,11 @@ source:
   - 12-04-SUMMARY.md
   - 12-05-SUMMARY.md
   - 12-06-SUMMARY.md
+  - 12-07-SUMMARY.md
+  - 12-08-SUMMARY.md
+  - 12-09-SUMMARY.md
 started: 2026-05-10T04:19:28Z
-updated: 2026-05-10T04:30:00Z
+updated: 2026-05-10T06:30:00Z
 ---
 
 ## Current Test
@@ -84,7 +87,8 @@ skipped: 0
 ## Gaps
 
 - truth: ".env.example is visible/discoverable to the operator opening the workspace"
-  status: failed
+  status: resolved
+  resolved_by: 12-07-SUMMARY.md
   reason: "User reported: i don't see the .env.example file in the file browser for this workspace"
   severity: minor
   test: 5
@@ -104,7 +108,8 @@ skipped: 0
   note: "File exists at repo root (807 bytes, ungitignored); failure is discoverability/visibility, not the file itself. Doc-only fix is in Phase 12 scope."
 
 - truth: "An operator with a uvx-installed MCP server can run `mcp-test-framework config-init` against their server out of the box and get a populated scaffold"
-  status: failed
+  status: resolved
+  resolved_by: 12-08-SUMMARY.md
   reason: "User reported: config-init failed with `MCP server command not found: 'homelab-mcp'`. The default `mcp_server.command: homelab-mcp` requires the server to be on PATH, but uvx-installed servers are launched via `uvx homelab-mcp`. Operator must hand-write a minimal config.yaml (mcp_server.command: uvx, args: [homelab-mcp]) BEFORE config-init can discover tools — circular onboarding."
   severity: major
   test: 7
@@ -125,7 +130,9 @@ skipped: 0
   note: "Recommended package: PRIMARY + SECONDARY + DOC-ONLY. Side benefit: the operator-tone error helper (PERSONA-03) rendered correctly with an actionable recovery hint — positive evidence in disguise."
 
 - truth: "Framework auto-discovers a `config.yaml` at the cwd / repo root without requiring an explicit `--config` flag or `MCPTF_CONFIG_FILE` env var"
-  status: failed
+  status: resolved
+  resolved_by: 12-09-SUMMARY.md
+  resolution_note: "Closed via Option C (doc-only). The `--config` requirement is now consistent across README and EXTENDING; tests lock the no-cwd-auto-discovery contract with a SEED-006 forward pointer. Option A (cwd auto-discovery in code) is intentionally deferred to v1.2 redesign — it would reopen the locked CONTEXT.md decision and is out of phase 12 scope."
   reason: "User created config.yaml at repo root with mcp_server.command/args set, then ran `uv run mcp-test-framework list-tools` (no --config flag). Same `MCP server command not found: 'homelab-mcp'` error fired — proving the framework still loaded defaults instead of the on-disk config.yaml. Adding `--config config.yaml` made it work."
   severity: major
   test: 8
