@@ -18,16 +18,24 @@ BANNED_RE = re.compile(
 )
 
 
+def _pytest_exit_exc():
+    """Return the exception class pytest.exit raises (private API; tolerate either path)."""
+    try:
+        from _pytest.outcomes import Exit  # type: ignore[import-untyped]
+        return Exit
+    except ImportError:  # pragma: no cover -- defensive
+        return BaseException
+
+
 def test_pytest_exit_helper_format() -> None:
     """Helper renders summary + blank + detail + blank + next: line."""
     from mcp_test_framework.fixtures import _pytest_exit_operator_tone
-    with pytest.raises(SystemExit) as ei:
+    with pytest.raises(_pytest_exit_exc()) as ei:
         _pytest_exit_operator_tone(
             summary="thing broke",
             detail=["line one", "line two"],
             next_step="run something",
         )
-    # pytest.exit raises pytest.exceptions.Exit (a SystemExit subclass)
     val = ei.value
     text = str(getattr(val, "msg", None) or val)
     assert "thing broke" in text
@@ -39,7 +47,7 @@ def test_pytest_exit_helper_format() -> None:
 
 def test_pytest_exit_helper_custom_returncode() -> None:
     from mcp_test_framework.fixtures import _pytest_exit_operator_tone
-    with pytest.raises(SystemExit) as ei:
+    with pytest.raises(_pytest_exit_exc()) as ei:
         _pytest_exit_operator_tone(
             summary="x", detail=["y"], next_step="z", returncode=130
         )
