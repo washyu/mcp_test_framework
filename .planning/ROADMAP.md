@@ -35,7 +35,7 @@
 
 ### 🚧 v1.2 — Operator-First Design
 
-- [ ] **Phase 12: Doc & persona foundation** — Strip planning-artifact IDs, genericize `config.example.yaml`, complete the `config-init` scaffold, and add the "Testing an MCP server you didn't write" reframe across README and EXTENDING. Foundational hygiene + persona positioning land first so downstream phases operate on clean docs and copy.
+- [x] **Phase 12: Doc & persona foundation** — Strip planning-artifact IDs, genericize `config.example.yaml`, complete the `config-init` scaffold, and add the "Testing an MCP server you didn't write" reframe across README and EXTENDING. Foundational hygiene + persona positioning land first so downstream phases operate on clean docs and copy. (completed 2026-05-10)
 - [ ] **Phase 13: Config safety & opt-in tool selection** — Invert `tools:` from skip-list to allowlist, auto-discover `./config.yaml`, fail loud on missing config, drop `.env` and the env-overlay entirely, bump schema `version: 1 → 2` with a loud migration error pointing at `config-init`.
 - [ ] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch.
 - [ ] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`.
@@ -46,13 +46,13 @@
 ### Phase 12: Doc & persona foundation
 **Goal**: An operator browsing the repo for the first time sees generic, vibe-coded-MCP-friendly docs and a `config-init`-generated config that runs without an `.env` file. Planning provenance (phase numbers, plan IDs, internal spec IDs) does not leak into user-facing surfaces.
 **Depends on**: Nothing (first v1.2 phase; v1.1 is shipped)
-**Plans:** 4/6 plans executed
+**Plans:** 6/6 plans complete
   - [x] 12-01-PLAN.md — docs/ERROR-STYLE.md style guide + examples/README.md + Wave-0 banned-token tests (PERSONA-03 setup; wave 1)
   - [x] 12-02-PLAN.md — .env.example reframed for CI-secret passthrough (CLEAN-06 + CLEAN-01; wave 1)
   - [x] 12-03-PLAN.md — git mv config.example.yaml -> examples/homelab-mcp.yaml; rewrite config.example.yaml as 3-pattern placeholder template (CLEAN-02 + CLEAN-03; wave 2, depends on 12-01)
   - [x] 12-04-PLAN.md — cli.py: _emit_operator_error helper + rewrite four PERSONA-03 error sites + rewrite _format_tools_yaml_scaffold for self-contained scaffold (CLEAN-05 + CLEAN-01 + PERSONA-03; wave 2, depends on 12-01)
-  - [ ] 12-05-PLAN.md — list-tools UX: _format_param_signature + --full + --name flags (PERSONA-02; wave 3, depends on 12-04)
-  - [ ] 12-06-PLAN.md — README + docs/EXTENDING.md scrub + PERSONA-01 framing/walkthrough sections + Wave-0 cross-file banned-token guard (CLEAN-01 + CLEAN-04 + PERSONA-01; wave 3, depends on 12-03)
+  - [x] 12-05-PLAN.md — list-tools UX: _format_param_signature + --full + --name flags (PERSONA-02; wave 3, depends on 12-04)
+  - [x] 12-06-PLAN.md — README + docs/EXTENDING.md scrub + PERSONA-01 framing/walkthrough sections + Wave-0 cross-file banned-token guard (CLEAN-01 + CLEAN-04 + PERSONA-01; wave 3, depends on 12-03)
 **Requirements**: CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04, CLEAN-05, CLEAN-06, PERSONA-01, PERSONA-02, PERSONA-03
 **Success Criteria** (what must be TRUE):
   1. An operator who runs `mcp-test-framework config-init -o config.yaml` against any MCP server gets a complete, self-contained config file (top-level `ollama:`, `mcp_server:`, `target:`, `judge_timeout_seconds:`, `tools:` all populated) that loads and runs with no `.env` file present.
@@ -126,7 +126,7 @@
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete | 2026-05-08 |
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete | 2026-05-08 |
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
-| 12. Doc & persona foundation | v1.2 | 4/6 | In Progress|  |
+| 12. Doc & persona foundation | v1.2 | 6/6 | Complete   | 2026-05-10 |
 | 13. Config safety & opt-in tool selection | v1.2 | 0/0 | Not started | - |
 | 14. Hybrid runner with domain UI | v1.2 | 0/0 | Not started | - |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
