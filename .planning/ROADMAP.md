@@ -46,11 +46,11 @@
 ### Phase 12: Doc & persona foundation
 **Goal**: An operator browsing the repo for the first time sees generic, vibe-coded-MCP-friendly docs and a `config-init`-generated config that runs without an `.env` file. Planning provenance (phase numbers, plan IDs, internal spec IDs) does not leak into user-facing surfaces.
 **Depends on**: Nothing (first v1.2 phase; v1.1 is shipped)
-**Plans:** 2/6 plans executed
+**Plans:** 4/6 plans executed
   - [x] 12-01-PLAN.md — docs/ERROR-STYLE.md style guide + examples/README.md + Wave-0 banned-token tests (PERSONA-03 setup; wave 1)
   - [x] 12-02-PLAN.md — .env.example reframed for CI-secret passthrough (CLEAN-06 + CLEAN-01; wave 1)
-  - [ ] 12-03-PLAN.md — git mv config.example.yaml -> examples/homelab-mcp.yaml; rewrite config.example.yaml as 3-pattern placeholder template (CLEAN-02 + CLEAN-03; wave 2, depends on 12-01)
-  - [ ] 12-04-PLAN.md — cli.py: _emit_operator_error helper + rewrite four PERSONA-03 error sites + rewrite _format_tools_yaml_scaffold for self-contained scaffold (CLEAN-05 + CLEAN-01 + PERSONA-03; wave 2, depends on 12-01)
+  - [x] 12-03-PLAN.md — git mv config.example.yaml -> examples/homelab-mcp.yaml; rewrite config.example.yaml as 3-pattern placeholder template (CLEAN-02 + CLEAN-03; wave 2, depends on 12-01)
+  - [x] 12-04-PLAN.md — cli.py: _emit_operator_error helper + rewrite four PERSONA-03 error sites + rewrite _format_tools_yaml_scaffold for self-contained scaffold (CLEAN-05 + CLEAN-01 + PERSONA-03; wave 2, depends on 12-01)
   - [ ] 12-05-PLAN.md — list-tools UX: _format_param_signature + --full + --name flags (PERSONA-02; wave 3, depends on 12-04)
   - [ ] 12-06-PLAN.md — README + docs/EXTENDING.md scrub + PERSONA-01 framing/walkthrough sections + Wave-0 cross-file banned-token guard (CLEAN-01 + CLEAN-04 + PERSONA-01; wave 3, depends on 12-03)
 **Requirements**: CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04, CLEAN-05, CLEAN-06, PERSONA-01, PERSONA-02, PERSONA-03
@@ -126,7 +126,7 @@
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete | 2026-05-08 |
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete | 2026-05-08 |
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
-| 12. Doc & persona foundation | v1.2 | 2/6 | In Progress|  |
+| 12. Doc & persona foundation | v1.2 | 4/6 | In Progress|  |
 | 13. Config safety & opt-in tool selection | v1.2 | 0/0 | Not started | - |
 | 14. Hybrid runner with domain UI | v1.2 | 0/0 | Not started | - |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
