@@ -56,6 +56,20 @@ _PER_TOOL: dict[str, dict] = {}
 
 _SKIP_REASON_CAP: int = 3
 
+# Phase 13 D-12 / SAFE-01: two distinct skip-reason strings for opt-in
+# tool selection. Module-level constants so they cannot drift silently;
+# tests/unit/test_reporter.py pins both verbatim.
+_REASON_NOT_SELECTED = "not selected in config"        # state (a): unlisted
+_REASON_EXPLICIT_DEFAULT = "explicit skip in config"   # state (c): default
+
+# Phase 13 revision iteration 1: the discovered-tools cache lives HERE
+# (production code), not in tests/conftest.py. tests/conftest.py WRITES
+# this attribute during pytest_generate_tests; _compose_unparametrized_skips
+# READS it at pytest_terminal_summary time. Single-direction dependency:
+# production exports state, tests read. Pre-empts Phase 15's `tests/contract/`
+# vs `tests/framework/` split.
+_DISCOVERED_TOOL_NAMES: "list[str] | None" = None
+
 
 def _extract_tool_name(nodeid: str) -> str | None:
     """Return tool name from ``<file>::<test>[<tool>]`` nodeid, or None.
@@ -153,6 +167,42 @@ def _format_skip_reasons(reasons: list[str]) -> str:
     return f"{head}; ... ({len(reasons) - _SKIP_REASON_CAP} more)"
 
 
+def _compose_unparametrized_skips(config) -> dict[str, str]:
+    """Phase 13 D-12/D-13: return {tool_name: reason} for every discovered
+    tool that did NOT parametrize -- i.e., tools that dropped out of
+    collection via tests/conftest.py:_resolve_tool_names' allowlist filter.
+
+    State (c) wins over state (a) when a tool is listed-with-skip:true:
+    we emit the operator's `skip_reason` if non-empty, else the default
+    `_REASON_EXPLICIT_DEFAULT`. State (a) (unlisted): `_REASON_NOT_SELECTED`.
+
+    Returns {} when discovery never ran (e.g., a pure-unit-test pytest
+    session that never hit pytest_generate_tests for `target_tool`).
+
+    Read from this module's own state, not from tests/conftest.py. tests/
+    conftest.py is the WRITER of _DISCOVERED_TOOL_NAMES on this module;
+    _reporter is the READER. Pre-empts Phase 15's `tests/contract/` split.
+    """
+    discovered = _DISCOVERED_TOOL_NAMES
+    if not discovered:
+        return {}
+
+    tools_cfg = getattr(config, "tools", {}) or {}
+    result: dict[str, str] = {}
+    for name in discovered:
+        if name in _PER_TOOL:
+            continue  # parametrized -- the standard path handles it.
+        cfg_entry = tools_cfg.get(name)
+        if cfg_entry is not None and getattr(cfg_entry, "skip", False):
+            # state (c)
+            reason = (getattr(cfg_entry, "skip_reason", "") or "").strip()
+            result[name] = reason or _REASON_EXPLICIT_DEFAULT
+        else:
+            # state (a)
+            result[name] = _REASON_NOT_SELECTED
+    return result
+
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     """Emit the per-tool summary section.
 
@@ -161,14 +211,38 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     D-04b: Suppress under ``-q`` (``config.option.verbose < 0``).
     D-02c: Emit via terminalreporter ONLY -- no print, no sys.stdout.write.
     CD-03: Group rows FAIL -> SKIP -> PASS, alphabetical within each.
+
+    Phase 13 D-12/D-13 addition: state-a/state-c SKIP rows are composed
+    from `Config.tools` + the discovered-tools cache via
+    `_compose_unparametrized_skips`. These rows render alongside the
+    `_PER_TOOL`-derived SKIP rows so the operator sees one summary line
+    per discovered tool, with the SAFE-01 reason strings distinguishing
+    "not selected in config" (state a) from "explicit skip in config"
+    (state c default) or the operator's curated skip_reason.
     """
     if terminalreporter.config.option.verbose < 0:
         return  # D-04b
-    if not _PER_TOOL:
-        return  # No tool-affined tests collected; nothing to summarize.
 
-    # Compute column width for tool-name padding so PASS/FAIL/SKIP align.
-    name_width = max(len(name) for name in _PER_TOOL)
+    # Phase 13 D-12/D-13: even with _PER_TOOL empty, we may have state-a/c
+    # skips to render (the operator's `tools: {}` run, or every tool
+    # listed with skip:true). Load the framework Config to compose them.
+    try:
+        from mcp_test_framework.config import Config as _FwConfig
+        _fw_cfg = _FwConfig()
+    except Exception:  # noqa: BLE001 -- under unit-only runs Config() may
+        # fail (SAFE-03 fail-loud, no config in cwd). The terminal-summary
+        # path is best-effort; absence of Config means we cannot compose
+        # state-a/c rows.
+        _fw_cfg = None
+    unparam_skips: dict[str, str] = (
+        _compose_unparametrized_skips(_fw_cfg) if _fw_cfg is not None else {}
+    )
+    if not _PER_TOOL and not unparam_skips:
+        return  # Nothing to summarize.
+
+    # Phase 13: column width accounts for state-a/c additions.
+    all_names = list(_PER_TOOL.keys()) + list(unparam_skips.keys())
+    name_width = max((len(n) for n in all_names), default=0)
 
     fails = sorted(t for t, v in _PER_TOOL.items() if v["verdict"] == "FAIL")
     skips = sorted(t for t, v in _PER_TOOL.items() if v["verdict"] == "SKIP")
@@ -183,10 +257,17 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
         terminalreporter.write_line("failures:")
         for tool in fails:
             terminalreporter.write_line(f"  {tool.ljust(name_width)}  FAIL")
-    if skips:
+
+    # Phase 13: union the _PER_TOOL SKIP set with the state-a/c set so
+    # operators see one row per discovered-but-unrun tool.
+    all_skips = sorted(set(skips) | set(unparam_skips.keys()))
+    if all_skips:
         terminalreporter.write_line("skipped:")
-        for tool in skips:
-            reasons_text = _format_skip_reasons(_PER_TOOL[tool]["reasons"])
+        for tool in all_skips:
+            if tool in _PER_TOOL and _PER_TOOL[tool]["verdict"] == "SKIP":
+                reasons_text = _format_skip_reasons(_PER_TOOL[tool]["reasons"])
+            else:
+                reasons_text = unparam_skips[tool]
             if reasons_text:
                 # Em-dash (U+2014) per ROADMAP Phase 09 SC-3 verbatim wording.
                 terminalreporter.write_line(
