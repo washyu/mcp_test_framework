@@ -15,11 +15,11 @@ autonomous: true
 requirements: [SAFE-01]
 must_haves:
   truths:
-    - "The class TargetConfig no longer exists in src/mcp_test_framework/models.py."
-    - "The Config model has no `target` field; constructing Config(target={...}) raises (extra=forbid)."
-    - "The fixtures.py preflight does not reference config.target.tool_name; the override-warning block at lines 268-289 of the v1.1 file is gone."
-    - "tests/conftest.py:_resolve_tool_names has no `if explicit: return [explicit]` short-circuit; it directly returns the allowlist filter from Plan 13-03."
-    - "A v2 YAML containing a top-level `target:` block is rejected at load time with an extra-forbid error (no silent ignore)."
+    - "D-11: The class TargetConfig no longer exists in src/mcp_test_framework/models.py."
+    - "D-11: The Config model has no `target` field; constructing Config(target={...}) raises (extra=forbid)."
+    - "D-14: The fixtures.py preflight does not reference config.target.tool_name; the override-warning block at lines 268-289 of the v1.1 file is gone."
+    - "D-14: tests/conftest.py:_resolve_tool_names has no `if explicit: return [explicit]` short-circuit; it directly returns the allowlist filter from Plan 13-03."
+    - "D-11: A v2 YAML containing a top-level `target:` block is rejected at load time with an extra-forbid error (no silent ignore)."
   artifacts:
     - path: "src/mcp_test_framework/models.py"
       provides: "Slimmer model module with TargetConfig fully removed"
@@ -184,7 +184,7 @@ Output: Four source files lose ~50 lines of dead/dual-mechanism code; one test f
        ```
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_config.py -v -k "target or d_11 or safe_06" 2>&amp;1 | tail -25</automated>
+    <automated>uv run pytest tests/unit/test_config.py -v -k "target or d_11 or safe_06" --tb=short</automated>
   </verify>
   <acceptance_criteria>
     - `grep -n "class TargetConfig" src/mcp_test_framework/models.py` returns ZERO matches.
@@ -292,12 +292,12 @@ Output: Four source files lose ~50 lines of dead/dual-mechanism code; one test f
        The `_resolve_tool_names(config)` function no longer reads `config.target`, so the simplified fakes still pass.
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_reporter.py tests/unit/test_config.py -v 2>&amp;1 | tail -25 &amp;&amp; uv run ruff check src/mcp_test_framework/fixtures.py tests/conftest.py 2>&amp;1 | tail -10</automated>
+    <automated>uv run pytest tests/unit/test_reporter.py tests/unit/test_config.py -v --tb=short ; uv run ruff check src/mcp_test_framework/fixtures.py tests/conftest.py</automated>
   </verify>
   <acceptance_criteria>
-    - `grep -n "config.target\|target.tool_name" src/mcp_test_framework/fixtures.py` returns ZERO matches.
-    - `grep -n "config.target\|target.tool_name" tests/conftest.py` returns ZERO matches.
-    - `grep -rn "config.target\|target\\.tool_name" src/` returns ZERO matches.
+    - `grep -nE "config\.target\.tool_name|config\.target\b" src/mcp_test_framework/fixtures.py` returns ZERO matches (deliberately tightened beyond `target` alone so the surviving `target_tool` fixture name does NOT trip this gate).
+    - `grep -nE "config\.target\.tool_name|config\.target\b" tests/conftest.py` returns ZERO matches.
+    - `grep -rnE "config\.target\.tool_name|config\.target\b" src/` returns ZERO matches (tightened: excludes the unrelated `target_tool` fixture).
     - `grep -n "overriding tools" src/mcp_test_framework/fixtures.py` returns ZERO matches.
     - `grep -n "explicit = config.target" tests/conftest.py` returns ZERO matches.
     - `grep -n "if explicit:" tests/conftest.py` returns ZERO matches.
@@ -333,7 +333,7 @@ No `high` severity threats. Net security improvement: the override path was a fo
 </threat_model>
 
 <verification>
-1. `grep -rn "TargetConfig\|target.tool_name\|config.target" src/ tests/` returns only the historical references in test scaffolds that were updated, and ZERO references in production code.
+1. `grep -rnE "TargetConfig|config\.target\.tool_name|config\.target\b" src/ tests/` returns ZERO matches in production code (`src/`); only updated historical references survive under `tests/`. (Regex tightened to exclude the surviving `target_tool` fixture name.)
 2. The Plan 13-03 allowlist tests (`test_safe_01_*`) still pass with simplified `_FakeConfig` scaffolds.
 3. The Plan 13-02 SAFE-06 + SAFE-05 tests still pass.
 4. The new `test_phase_13_d_11_target_block_in_yaml_rejected` test passes — `extra="forbid"` catches a stray `target:` block.

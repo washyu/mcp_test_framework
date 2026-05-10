@@ -12,11 +12,11 @@ autonomous: true
 requirements: [SAFE-01]
 must_haves:
   truths:
-    - "An operator who lists exactly two tools in `tools:` with skip:false sees those two parametrized; every other discovered tool drops out of pytest collection (not runtime-SKIPPED)."
-    - "An operator who lists a tool with skip:true sees the tool absent from parametrize; the reporter renders a SKIP row whose reason is the operator's `skip_reason` if non-empty, else `\"explicit skip in config\"`."
-    - "An operator whose discovered tools include names absent from `tools:` sees those tools rendered with reason `\"not selected in config\"` in the per-tool summary."
-    - "An empty `tools: {}` (or absent) means zero tools are selected; every discovered tool renders as state (a) with reason `\"not selected in config\"`."
-    - "The two reporter reason strings (`not selected in config` and `explicit skip in config`) are module-level constants in _reporter.py so they cannot drift silently."
+    - "D-12: An operator who lists exactly two tools in `tools:` with skip:false sees those two parametrized; every other discovered tool drops out of pytest collection (not runtime-SKIPPED)."
+    - "D-12: An operator who lists a tool with skip:true sees the tool absent from parametrize; the reporter renders a SKIP row whose reason is the operator's `skip_reason` if non-empty, else `\"explicit skip in config\"`."
+    - "D-12: An operator whose discovered tools include names absent from `tools:` sees those tools rendered with reason `\"not selected in config\"` in the per-tool summary."
+    - "D-13: An empty `tools: {}` (or absent) means zero tools are selected; every discovered tool renders as state (a) with reason `\"not selected in config\"`."
+    - "D-12: The two reporter reason strings (`not selected in config` and `explicit skip in config`) are module-level constants in _reporter.py so they cannot drift silently."
   artifacts:
     - path: "tests/conftest.py"
       provides: "Allowlist filter at _resolve_tool_names — `name in config.tools and not config.tools[name].skip`"
@@ -66,8 +66,10 @@ Output: A `tests/conftest.py` whose filter is `name in config.tools and not conf
 <interfaces>
 Key interfaces in scope:
 
-From `tests/conftest.py` (current state; the load-bearing v1.1.1 filter is at the END of `_resolve_tool_names`):
+From `tests/conftest.py` (current state; the load-bearing v1.1.1 filter is at the END of `_resolve_tool_names`). NOTE: this revision moves `_DISCOVERED_TOOL_NAMES` OUT of `tests/conftest.py` and INTO `src/mcp_test_framework/_reporter.py` (revision iteration 1):
 ```python
+# Pre-revision state shown for context; this plan deletes the local
+# declaration and reads/writes via `_reporter._DISCOVERED_TOOL_NAMES`.
 _DISCOVERED_TOOL_NAMES: Optional[list[str]] = None
 
 def _resolve_tool_names(config: Config) -> list[str]:
@@ -83,19 +85,31 @@ def _resolve_tool_names(config: Config) -> list[str]:
         name for name in _DISCOVERED_TOOL_NAMES
         if not config.tools.get(name, ToolConfig()).skip
     ]
-    # PHASE 13 TARGET (allowlist):
-    # return [
-    #     name for name in _DISCOVERED_TOOL_NAMES
-    #     if name in config.tools and not config.tools[name].skip
-    # ]
+```
+
+**Phase 13 post-revision target shape for `tests/conftest.py`:**
+```python
+from mcp_test_framework import _reporter as _rep
+
+def _resolve_tool_names(config: Config) -> list[str]:
+    explicit = config.target.tool_name
+    if explicit:
+        return [explicit]                      # Plan 13-04 removes this short-circuit
+    if _rep._DISCOVERED_TOOL_NAMES is None:
+        _rep._DISCOVERED_TOOL_NAMES = asyncio.run(_discover_tools(config))
+    # Phase 13 D-13 / SAFE-01 allowlist (set in Task 1 below):
+    return [
+        name for name in _rep._DISCOVERED_TOOL_NAMES
+        if name in config.tools and not config.tools[name].skip
+    ]
 ```
 
 From `src/mcp_test_framework/_reporter.py`:
 - `_PER_TOOL: dict[str, dict] = {}` — per-tool aggregation populated by `pytest_runtest_logreport`.
 - `pytest_terminal_summary(terminalreporter, exitstatus, config) -> None` — already iterates `_PER_TOOL`. Phase 13 adds a pre-step: synthesize SKIP entries for tools that did not parametrize (state-a) and for listed-skipped tools (state-c).
 
-From `tests/conftest.py` (module-level state the reporter can read):
-- `_DISCOVERED_TOOL_NAMES: list[str] | None` — populated during collection; reporter reads this at terminal-summary time.
+From `src/mcp_test_framework/_reporter.py` (module-level state that tests/conftest.py writes and _reporter.py reads — POST-revision iteration 1):
+- `_DISCOVERED_TOOL_NAMES: list[str] | None` — declared in `_reporter.py`, written by `tests/conftest.py:_resolve_tool_names`, read by `_reporter._compose_unparametrized_skips`. Single-direction dependency.
 
 Two reason-string constants (NEW — module-level in `_reporter.py`):
 ```python
@@ -113,6 +127,8 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
 - **(NOT D-14 in this plan):** Plan 13-04 owns the `target.tool_name` override deletion. This plan leaves the `explicit` short-circuit at `tests/conftest.py:101-103` in place to remain parallel-safe with Plan 13-02.
 
 **13-PATTERNS.md correction (load-bearing):** The CONTEXT.md "Files affected" line for the three-state allowlist runtime lists `fixtures.py:262, 282-286, 482-494` — VERIFIED OFF BY FILE. The actual three-state filter lives in `tests/conftest.py:88-138` (`_resolve_tool_names`). `fixtures.py:259-266` is the unknown-tool warning loop (survives); `fixtures.py:482-494` is `tool_config` (survives with a docstring update only). This plan touches `tests/conftest.py` and `_reporter.py`, NOT `fixtures.py`. (Plan 13-04 touches `fixtures.py` for the override deletion.)
+
+**Revision iteration 1 fix — import direction inversion:** The pre-revision plan had `_DISCOVERED_TOOL_NAMES` living in `tests/conftest.py` and `_reporter.py` doing a lazy `from tests import conftest` to read it. That coupling reverses the natural dependency (production reading from test tree) and pre-empts Phase 15's `tests/contract/` vs `tests/framework/` split. This revision moves `_DISCOVERED_TOOL_NAMES` (and its setter) into `mcp_test_framework._reporter` so the dependency runs one way only: production exports state, tests read it.
 </truths>
 
 <tasks>
@@ -153,7 +169,7 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
        ]
        ```
 
-       NEW (paste exactly):
+       NEW (paste exactly — note `_rep._DISCOVERED_TOOL_NAMES` to read from the production module post-revision-1):
        ```python
        # Phase 13 D-13 / SAFE-01: opt-in allowlist semantics. Three states:
        #   (a) unlisted          -> excluded here; reporter renders
@@ -163,15 +179,18 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
        #                            tool_cfg.skip_reason or "explicit skip in config".
        # Both (a) and (c) drop out of pytest collection -- the v1.1.1 hotfix
        # invariant (no 560 runtime-SKIPPED rows). The reporter composes the
-       # SKIP rows from Config.tools + _DISCOVERED_TOOL_NAMES at terminal-
-       # summary time (see _reporter.py).
+       # SKIP rows from Config.tools + _reporter._DISCOVERED_TOOL_NAMES at
+       # terminal-summary time. Revision iteration 1: state lives in
+       # production (_reporter), not the test tree.
        return [
-           name for name in _DISCOVERED_TOOL_NAMES
+           name for name in _rep._DISCOVERED_TOOL_NAMES
            if name in config.tools and not config.tools[name].skip
        ]
        ```
 
        Critical: the imported `ToolConfig` symbol at the top of `tests/conftest.py` may become unused after this change. If ruff reports `F401`, remove the `from mcp_test_framework.models import ToolConfig` import (line 25). If it is still used elsewhere in the file, keep it.
+
+       Also REQUIRED (revision iteration 1): add `from mcp_test_framework import _reporter as _rep` to the imports at the top of `tests/conftest.py`, and DELETE the local declaration `_DISCOVERED_TOOL_NAMES: Optional[list[str]] = None` from `tests/conftest.py` (that state lives in `_reporter.py` now). Update the body of `_resolve_tool_names` to read `_rep._DISCOVERED_TOOL_NAMES` and write `_rep._DISCOVERED_TOOL_NAMES = ...` instead of using a local `global` declaration. The `global _DISCOVERED_TOOL_NAMES` statement is also deleted.
 
     2. **Update the function docstring at lines 88-99** to remove the v1.1.1 hotfix prose and describe the new opt-in semantics:
 
@@ -210,12 +229,12 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
             tools = {"tool_a": ToolConfig(), "tool_b": ToolConfig()}
             mcp_server = None  # not reached because _DISCOVERED_TOOL_NAMES is primed
 
-        import tests.conftest as cf
-        cf._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b", "tool_c"]
+        from mcp_test_framework import _reporter as _rep
+        _rep._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b", "tool_c"]
         try:
             assert _resolve_tool_names(_FakeConfig()) == ["tool_a", "tool_b"]
         finally:
-            cf._DISCOVERED_TOOL_NAMES = None
+            _rep._DISCOVERED_TOOL_NAMES = None
 
     def test_safe_01_allowlist_excludes_unlisted_and_skipped() -> None:
         """Phase 13 SAFE-01 states (a) and (c): unlisted + skipped both excluded."""
@@ -231,12 +250,12 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
                 # tool_b is unlisted -> state (a) -> excluded
             }
 
-        import tests.conftest as cf
-        cf._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b"]
+        from mcp_test_framework import _reporter as _rep
+        _rep._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b"]
         try:
             assert _resolve_tool_names(_FakeConfig()) == []
         finally:
-            cf._DISCOVERED_TOOL_NAMES = None
+            _rep._DISCOVERED_TOOL_NAMES = None
 
     def test_safe_01_empty_tools_means_zero_selection() -> None:
         """Phase 13 D-13: tools: {} -> every discovered tool drops out."""
@@ -248,19 +267,22 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
             target = _Tgt()
             tools = {}
 
-        import tests.conftest as cf
-        cf._DISCOVERED_TOOL_NAMES = ["x", "y", "z"]
+        from mcp_test_framework import _reporter as _rep
+        _rep._DISCOVERED_TOOL_NAMES = ["x", "y", "z"]
         try:
             assert _resolve_tool_names(_FakeConfig()) == []
         finally:
-            cf._DISCOVERED_TOOL_NAMES = None
+            _rep._DISCOVERED_TOOL_NAMES = None
     ```
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_reporter.py -v -k "safe_01 or allowlist or empty_tools" 2>&amp;1 | tail -20</automated>
+    <automated>uv run pytest tests/unit/test_reporter.py -v -k "safe_01 or allowlist or empty_tools" --tb=short</automated>
   </verify>
   <acceptance_criteria>
     - `grep -n "name in config.tools and not" tests/conftest.py` returns one match (the new filter).
+    - `grep -n "_DISCOVERED_TOOL_NAMES" tests/conftest.py` returns matches ONLY in the form `_rep._DISCOVERED_TOOL_NAMES` (reading/writing via the _reporter module); a bare local `_DISCOVERED_TOOL_NAMES = None` declaration MUST NOT remain.
+    - `grep -n "from mcp_test_framework import _reporter" tests/conftest.py` returns one match.
+    - `grep -n "_DISCOVERED_TOOL_NAMES" src/mcp_test_framework/_reporter.py` returns at least one match (the module-level declaration).
     - `grep -n "config.tools.get(name, ToolConfig()).skip" tests/conftest.py` returns ZERO matches (the v1.1.1 line is gone).
     - `grep -n "SAFE-01" tests/conftest.py` returns at least one match (the new docstring/comment block).
     - `uv run pytest tests/unit/test_reporter.py::test_safe_01_allowlist_includes_listed_unskipped tests/unit/test_reporter.py::test_safe_01_allowlist_excludes_unlisted_and_skipped tests/unit/test_reporter.py::test_safe_01_empty_tools_means_zero_selection -x` exits 0.
@@ -302,6 +324,13 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
        # tests/unit/test_reporter.py pins both verbatim.
        _REASON_NOT_SELECTED = "not selected in config"        # state (a): unlisted
        _REASON_EXPLICIT_DEFAULT = "explicit skip in config"   # state (c): default
+
+       # Phase 13 revision iteration 1: the discovered-tools cache lives
+       # HERE (production code), not in tests/conftest.py. tests/conftest.py
+       # writes to this attribute; _compose_unparametrized_skips reads it.
+       # Single-direction dependency: production exports state, tests read.
+       # Pre-empts Phase 15's tests/contract/ vs tests/framework/ split.
+       _DISCOVERED_TOOL_NAMES: "list[str] | None" = None
        ```
 
     2. **Add a helper function** above `pytest_terminal_summary` (currently line 156):
@@ -319,15 +348,13 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
            Returns {} when discovery never ran (e.g., a pure-unit-test pytest
            session that never hit pytest_generate_tests for `target_tool`).
            """
-           # Read the cached discovered list from the conftest module. Lazy
-           # import to keep _reporter.py free of test-tree dependencies at
-           # module-import time (it can be imported by `mcp-test-framework run`
-           # before pytest's conftest chain has loaded).
-           try:
-               from tests import conftest as _cf  # type: ignore[import-untyped]
-           except Exception:  # noqa: BLE001 -- best-effort under unit-only runs
-               return {}
-           discovered = getattr(_cf, "_DISCOVERED_TOOL_NAMES", None)
+           # Phase 13 revision iteration 1: read from this module's own
+           # state, not from tests/conftest.py. This inverts the previous
+           # reverse-import (`from tests import conftest`) so production
+           # code never depends on the test tree. tests/conftest.py is the
+           # WRITER of _DISCOVERED_TOOL_NAMES on this module; _reporter is
+           # the READER. Pre-empts Phase 15's `tests/contract/` split.
+           discovered = _DISCOVERED_TOOL_NAMES
            if not discovered:
                return {}
 
@@ -348,7 +375,7 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
        ```
 
        Notes:
-       - The `from tests import conftest` import is intentionally lazy. The reporter ships under `src/`; importing `tests.conftest` from module scope would couple production code to the test tree. Under `mcp-test-framework run` (which uses pytest discovery against `tests/`), `tests.conftest` IS importable because `pytest_plugins` has already loaded it; under non-pytest invocations the `except` returns an empty dict.
+       - `_DISCOVERED_TOOL_NAMES` lives at module scope in `_reporter.py` (revision iteration 1). `tests/conftest.py` WRITES it during collection; `_compose_unparametrized_skips` READS it at terminal-summary time. The reporter never imports from `tests/` — single-direction dependency, production code stays decoupled from the test tree (pre-empts Phase 15 SURFACE-01 split).
        - Pass `config` as a Pydantic Config (or anything quacking `.tools`). pytest passes the Config object as the third arg to `pytest_terminal_summary` — actually it passes the pytest `Config`, NOT our framework `Config`. So at the call site we need to load our framework `Config()` directly via the same import path the conftest uses. See call-site edit below.
 
     3. **Wire the composition into `pytest_terminal_summary`**. After the existing early returns (lines 165-168 — the verbose<0 check and the `if not _PER_TOOL: return` check) WAIT — that early return must change. Phase 13 may have ZERO parametrized tools (state (a)-only run, D-13 empty `tools: {}` case) and we still want to print the SKIP rows. Replace the early return logic:
@@ -424,7 +451,7 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
 
        Place this name_width computation BEFORE the `fails`/`skips`/`passes` partitioning lines (currently lines 173-175) so all subsequent renders use it.
 
-    4. **Add a regression test** to `tests/unit/test_reporter.py` (or new `tests/unit/test_reporter_safe_01.py` — choose what's cleaner):
+    4. **Add a regression test** to `tests/unit/test_reporter.py` (or new `tests/unit/test_reporter_safe_01.py` — choose what is cleaner).
 
        ```python
        def test_safe_01_reporter_constants_locked() -> None:
@@ -442,15 +469,15 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
                _compose_unparametrized_skips,
                _PER_TOOL,
            )
-           import tests.conftest as cf
-           cf._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b"]
+           from mcp_test_framework import _reporter as _rep
+           _rep._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b"]
            _PER_TOOL.clear()  # parametrize ran nothing.
            class _Cfg:
                tools: dict = {}
            try:
                out = _compose_unparametrized_skips(_Cfg())
            finally:
-               cf._DISCOVERED_TOOL_NAMES = None
+               _rep._DISCOVERED_TOOL_NAMES = None
            assert out == {"tool_a": "not selected in config",
                           "tool_b": "not selected in config"}
 
@@ -458,15 +485,15 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
            """Phase 13 D-12 state (c) with non-empty skip_reason -> echoed."""
            from mcp_test_framework._reporter import _compose_unparametrized_skips, _PER_TOOL
            from mcp_test_framework.models import ToolConfig
-           import tests.conftest as cf
-           cf._DISCOVERED_TOOL_NAMES = ["dangerous_tool"]
+           from mcp_test_framework import _reporter as _rep
+           _rep._DISCOVERED_TOOL_NAMES = ["dangerous_tool"]
            _PER_TOOL.clear()
            class _Cfg:
                tools = {"dangerous_tool": ToolConfig(skip=True, skip_reason="hits prod")}
            try:
                out = _compose_unparametrized_skips(_Cfg())
            finally:
-               cf._DISCOVERED_TOOL_NAMES = None
+               _rep._DISCOVERED_TOOL_NAMES = None
            assert out == {"dangerous_tool": "hits prod"}
 
        def test_safe_01_compose_state_c_default_when_skip_reason_empty() -> None:
@@ -482,8 +509,8 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
                _REASON_EXPLICIT_DEFAULT,
            )
            from mcp_test_framework.models import ToolConfig
-           import tests.conftest as cf
-           cf._DISCOVERED_TOOL_NAMES = ["x"]
+           from mcp_test_framework import _reporter as _rep
+           _rep._DISCOVERED_TOOL_NAMES = ["x"]
            _PER_TOOL.clear()
            # Bypass validator to simulate a whitespace-stripped-to-empty edge.
            tcfg = ToolConfig.model_construct(skip=True, skip_reason="   ")
@@ -492,18 +519,18 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
            try:
                out = _compose_unparametrized_skips(_Cfg())
            finally:
-               cf._DISCOVERED_TOOL_NAMES = None
+               _rep._DISCOVERED_TOOL_NAMES = None
            assert out == {"x": _REASON_EXPLICIT_DEFAULT}
        ```
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_reporter.py -v -k "safe_01 or compose" 2>&amp;1 | tail -25</automated>
+    <automated>uv run pytest tests/unit/test_reporter.py -v -k "safe_01 or compose" --tb=short</automated>
   </verify>
   <acceptance_criteria>
     - `grep -n "_REASON_NOT_SELECTED = \"not selected in config\"" src/mcp_test_framework/_reporter.py` returns one match.
     - `grep -n "_REASON_EXPLICIT_DEFAULT = \"explicit skip in config\"" src/mcp_test_framework/_reporter.py` returns one match.
     - `grep -n "_compose_unparametrized_skips" src/mcp_test_framework/_reporter.py` returns at least two matches (definition + call site in `pytest_terminal_summary`).
-    - `grep -n "from tests import conftest" src/mcp_test_framework/_reporter.py` returns one match (the lazy import inside `_compose_unparametrized_skips`).
+    - `grep -n "from tests import conftest" src/mcp_test_framework/_reporter.py` returns ZERO matches (revision iteration 1: the reverse-import is gone; state lives in `_reporter._DISCOVERED_TOOL_NAMES` and is read directly without re-importing the test tree).
     - `grep -n "from mcp_test_framework.config import Config" src/mcp_test_framework/_reporter.py` returns one match (inside `pytest_terminal_summary`).
     - `uv run pytest tests/unit/test_reporter.py::test_safe_01_reporter_constants_locked tests/unit/test_reporter.py::test_safe_01_compose_state_a_for_unlisted_tool tests/unit/test_reporter.py::test_safe_01_compose_state_c_with_curated_reason tests/unit/test_reporter.py::test_safe_01_compose_state_c_default_when_skip_reason_empty -x` exits 0.
     - All existing tests in `tests/unit/test_reporter.py` still pass: `uv run pytest tests/unit/test_reporter.py -v` exits 0.
@@ -531,8 +558,7 @@ _REASON_EXPLICIT_DEFAULT = "explicit skip in config"  # SAFE-01 state (c) fallba
 | T-13-03-01 | Tampering / privilege | The allowlist semantics ARE the mitigation against the v1 "destructive defaults" bug class | mitigate | Plan delivers the inversion. Regression tests `test_safe_01_*` and the v1.1.1 "no runtime SKIP explosion" invariant are the guards. Operator cannot accidentally call a destructive tool by forgetting to skip it; they must explicitly opt it in. |
 | T-13-03-02 | Information disclosure | `skip_reason` strings render verbatim in terminal output | accept | Operator-supplied; ERROR-STYLE.md does NOT govern these (they are operator notes, not framework messages). The `_format_skip_reasons` already renders VERBATIM (D-05a). No new disclosure. |
 | T-13-03-03 | Terminal injection via skip_reason | A malicious YAML editor injecting ANSI escape sequences into `skip_reason` | accept | Same operator-trust boundary as Plan 13-01: the operator authored the YAML themselves. pydantic-settings' `yaml.safe_load` does not interpret escape sequences; the string reaches the terminal as-is. The terminal trust boundary is the operator's own concern. No code-side mitigation; documented as accepted. |
-| T-13-03-04 | Race / fixture-ordering | The lazy `from tests import conftest` import inside `_compose_unparametrized_skips` could race against pytest's plugin-loading order | mitigate | The lazy import happens at `pytest_terminal_summary` time, AFTER all collection and execution. `_DISCOVERED_TOOL_NAMES` is populated during collection and is read-only at terminal-summary time. The except-clause handles the non-pytest invocation path. No mitigation gap. |
-| T-13-03-05 | Reporter coupling to tests/ tree | Production code (`src/mcp_test_framework/_reporter.py`) imports from `tests.conftest` | accept | Documented design choice (lazy import + best-effort except). Phase 15 (operator vs framework test surface split) may restructure this — the `_reporter.py` import will follow whatever new conftest layout SURFACE-01 lands. No mitigation needed in Phase 13. |
+| T-13-03-04 | Race / fixture-ordering | `tests/conftest.py` writes `_reporter._DISCOVERED_TOOL_NAMES` during collection; `_compose_unparametrized_skips` reads it at terminal-summary time | mitigate | The write happens during `pytest_generate_tests` (collection phase); the read happens at `pytest_terminal_summary` (post-execution). pytest guarantees collection completes before terminal summary, so no race. The composition function returns `{}` when the cache is `None` (pure-unit-test runs). |
 
 No `high` severity threats; this plan is the central security mitigation for v1.2 (SAFE-01 = the SEED-006 destructive-default fix).
 </threat_model>

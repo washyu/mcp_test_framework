@@ -13,13 +13,14 @@ autonomous: true
 requirements: [SAFE-05, SAFE-06]
 must_haves:
   truths:
-    - "Setting OLLAMA_BASE_URL / MCP_SERVER_COMMAND / TARGET_TOOL_NAME / JUDGE_TIMEOUT_SECONDS in os.environ has ZERO effect on Config() values; only YAML and init kwargs shape the model."
-    - "A .env file in cwd has ZERO effect on Config() values."
-    - "Loading a config containing `version: 1` raises a typer.Exit(2) error whose body matches docs/ERROR-STYLE.md SAFE-06 verbatim — names `version: 2`, names opt-in/opt-out, points at `config-init -o config.yaml.new`, references docs/MIGRATION-v1-to-v2.md."
-    - "Loading a config containing `version: 2` succeeds (no validator rejection)."
-    - "Config(yaml_file=<path>) reads its YAML from that path via settings_customise_sources reading init_settings.init_kwargs."
-    - "`from dotenv import dotenv_values` no longer appears in src/mcp_test_framework/config.py."
-    - "_BareNameNestedEnvSource class no longer exists in src/mcp_test_framework/config.py."
+    - "D-05: Setting OLLAMA_BASE_URL / MCP_SERVER_COMMAND / TARGET_TOOL_NAME / JUDGE_TIMEOUT_SECONDS in os.environ has ZERO effect on Config() values; only YAML and init kwargs shape the model."
+    - "D-07: A .env file in cwd has ZERO effect on Config() values."
+    - "D-08: Loading a config containing `version: 1` raises a typer.Exit(2) error whose body matches docs/ERROR-STYLE.md SAFE-06 verbatim — names `version: 2`, names opt-in/opt-out, points at `config-init -o config.yaml.new`, references docs/MIGRATION-v1-to-v2.md."
+    - "D-06: The SAFE-06 source-label substitution works via BOTH the --config and MCPTF_CONFIG_FILE entry paths (the LOCKED message echoes <path>; both paths are pinned by regression tests)."
+    - "D-08: Loading a config containing `version: 2` succeeds (no validator rejection)."
+    - "D-06: Config(yaml_file=<path>) reads its YAML from that path via settings_customise_sources reading init_settings.init_kwargs."
+    - "D-05: `from dotenv import dotenv_values` no longer appears in src/mcp_test_framework/config.py."
+    - "D-05: _BareNameNestedEnvSource class no longer exists in src/mcp_test_framework/config.py."
   artifacts:
     - path: "src/mcp_test_framework/config.py"
       provides: "Env-overlay-free Config with v2 validator and YAML-only source pipeline"
@@ -29,8 +30,8 @@ must_haves:
   key_links:
     - from: "src/mcp_test_framework/config.py:Config.settings_customise_sources"
       to: "src/mcp_test_framework/cli.py:_load_config"
-      via: "init_settings.init_kwargs.get('yaml_file')"
-      pattern: "init_settings.init_kwargs"
+      via: "init_settings.init_kwargs.pop('yaml_file', None) — pop (not get) so extra=forbid does not reject"
+      pattern: "init_settings.init_kwargs.pop"
     - from: "src/mcp_test_framework/config.py:_validate_version"
       to: "docs/ERROR-STYLE.md SAFE-06 reference message"
       via: "cli.py:_emit_operator_error_for_validation summary/detail rewrite"
@@ -269,7 +270,14 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
        version: int = 2
        ```
 
-    6. **`settings_customise_sources`** (lines 194-217): replace with:
+    6. **`settings_customise_sources`** (lines 194-217): replace with the body below. This shape is DETERMINISTIC — probed against pydantic-settings 2.14 (the project's pinned line) before this revision and confirmed:
+
+       **Probe results recorded by the planner (revision iteration 1):**
+       - `hasattr(InitSettingsSource, 'init_kwargs')` returned `False` at the CLASS level, but on an INSTANCE inside the hook `init_settings.init_kwargs` exists as a public dict (`InitSettingsSource.__init__` sets it; signature: `(self, settings_cls, init_kwargs: dict[str, Any], nested_model_default_partial_update=None)`).
+       - `Config.model_config.get('extra')` returned `'forbid'`.
+       - Constructing `Probe(yaml_file='hello.yaml', foo=5)` with `extra='forbid'` raised `ExtraForbidden` for the `yaml_file` field UNLESS `yaml_file` was popped from `init_settings.init_kwargs` inside `settings_customise_sources` first. Popping is the only shape that loads cleanly under `extra='forbid'`.
+
+       **Locked instruction: pop `yaml_file` from `init_settings.init_kwargs` so it never reaches the model validator.**
 
        ```python
        @classmethod
@@ -277,8 +285,8 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
            cls,
            settings_cls: type[BaseSettings],
            init_settings: PydanticBaseSettingsSource,
-           env_settings: PydanticBaseSettingsSource,
-           dotenv_settings: PydanticBaseSettingsSource,
+           env_settings: PydanticBaseSettingsSource,  # noqa: ARG004
+           dotenv_settings: PydanticBaseSettingsSource,  # noqa: ARG004
            file_secret_settings: PydanticBaseSettingsSource,
        ) -> tuple[PydanticBaseSettingsSource, ...]:
            """Phase 13 D-05: collapse the source pipeline to
@@ -287,12 +295,15 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
            but intentionally dropped from the returned tuple.
 
            The resolver in cli.py:_load_config passes the resolved YAML
-           path as `Config(yaml_file=str(path))`; we read that kwarg from
-           init_settings.init_kwargs (D-03) and hand it to
-           YamlConfigSettingsSource.
+           path as `Config(yaml_file=str(path))`. We pop `yaml_file` from
+           init_settings.init_kwargs BEFORE the YAML source is constructed
+           so it does not reach the model validator (Config has
+           `extra="forbid"` and no `yaml_file` field, so leaving it in
+           the init_kwargs would raise `ExtraForbidden`).
            """
+           # Locked pop pattern (D-03, revision iteration 1 probe-verified).
+           yaml_file = init_settings.init_kwargs.pop("yaml_file", None)
            sources: list[PydanticBaseSettingsSource] = [init_settings]
-           yaml_file = init_settings.init_kwargs.get("yaml_file")
            if yaml_file and Path(yaml_file).is_file():
                sources.append(
                    YamlConfigSettingsSource(settings_cls, yaml_file=str(yaml_file))
@@ -302,8 +313,15 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
        ```
 
        Notes:
-       - The `env_settings` and `dotenv_settings` parameters are required by the pydantic-settings signature; we accept them and ignore them. The `# noqa: ARG004` annotation may be needed if ruff complains; do not refactor the signature.
-       - We do NOT strip `yaml_file` from `init_settings.init_kwargs` — leaving it in is harmless because `Config` doesn't define a `yaml_file` field, and `extra="forbid"` is enforced on the YAML-merged data, not on init kwargs (pydantic-settings discards unknown init kwargs by default in this idiom; if a TypeError appears, add `yaml_file` to the `Config` class as a `ClassVar[None]` or pop the key inside `settings_customise_sources` before YamlConfigSettingsSource consumes init_settings. Use whichever pydantic-settings 2.14 accepts — verify with `uv run python -c "from mcp_test_framework.config import Config; print(Config(yaml_file='nonexistent').version)"` returning `2`).
+       - The `env_settings` and `dotenv_settings` parameters are required by the pydantic-settings signature; we accept them and ignore them. The `# noqa: ARG004` annotations are required by ruff; do not refactor the signature.
+       - The pop is `.pop("yaml_file", None)` — `None` default so it works when `Config()` is called with no kwargs (used by tests that want pure-default Config; the truthiness check below handles None).
+       - DO NOT replace the pop with a `ClassVar[Path | None] = None` declaration on Config — that approach failed the probe (the kwarg still reaches the model validator and trips `extra="forbid"`). The pop is the only deterministic shape under pydantic-settings 2.14.
+
+       **Required executor acceptance gate (locked by this revision):**
+       ```bash
+       uv run python -c "from mcp_test_framework.config import Config; Config(yaml_file='/nonexistent')"
+       ```
+       MUST exit 0 (no `ExtraForbidden` raised; the pop neutralized the extra field; YamlConfigSettingsSource skipped the nonexistent path; defaults applied; version defaults to 2 per the change in step 5).
 
     7. **Update existing tests in tests/unit/test_config.py:** locate every test that relies on env-overlay or `.env` setting Config values (search for `monkeypatch.setenv`, `OLLAMA_BASE_URL=`, etc.). For each:
        - If it asserts "env var overrides default": INVERT the assertion to "env var has no effect; default wins". Add a comment `# Phase 13 D-05: env-overlay dropped; this test pins the negation.`
@@ -389,7 +407,7 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
     9. **Flip the Plan-13-01 xfail test:** in `tests/unit/test_cli_errors.py`, the `test_safe_02_cwd_autodiscovery_picks_up_local_config` test (added by Plan 13-01 as `xfail`) — remove the xfail marker. It should now pass.
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_config.py tests/unit/test_cli_errors.py -v -k "safe_05 or safe_06 or safe_02" 2>&amp;1 | tail -40</automated>
+    <automated>uv run pytest tests/unit/test_config.py tests/unit/test_cli_errors.py -v -k "safe_05 or safe_06 or safe_02" --tb=short</automated>
   </verify>
   <acceptance_criteria>
     - `grep -n "_BareNameNestedEnvSource" src/mcp_test_framework/config.py` returns ZERO matches.
@@ -399,7 +417,7 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
     - `grep -n "env_file" src/mcp_test_framework/config.py` returns ZERO matches.
     - `grep -nE "if v != 2" src/mcp_test_framework/config.py` returns one match (the validator).
     - `grep -nE "version: int = 2" src/mcp_test_framework/config.py` returns one match.
-    - `grep -n "init_settings.init_kwargs" src/mcp_test_framework/config.py` returns at least one match in `settings_customise_sources`.
+    - `grep -n "init_settings.init_kwargs.pop" src/mcp_test_framework/config.py` returns one match in `settings_customise_sources` (the locked POP shape; .get(...) was the pre-revision-1 shape and would re-introduce the ExtraForbidden bug).
     - `grep -nE "env_settings|dotenv_settings" src/mcp_test_framework/config.py` returns matches ONLY in `settings_customise_sources`'s parameter list (where pydantic-settings forces us to accept them). The returned tuple does NOT contain them.
     - `uv run pytest tests/unit/test_config.py::test_safe_05_env_var_does_not_override_yaml tests/unit/test_config.py::test_safe_05_dotenv_file_in_cwd_has_no_effect tests/unit/test_config.py::test_safe_06_version_1_rejected tests/unit/test_config.py::test_safe_06_version_2_accepted -x` exits 0.
     - `uv run pytest tests/unit/test_cli_errors.py::test_safe_02_cwd_autodiscovery_picks_up_local_config -x` exits 0 (xfail removed; test now passes for real).
@@ -501,10 +519,38 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
         assert "schema version 2 (opt-in" in result.stderr
         assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
         assert "config-init -o config.yaml.new" in result.stderr
+
+    def test_safe_06_v1_config_via_env_var_emits_locked_migration_message(
+        tmp_path, monkeypatch
+    ) -> None:
+        """Phase 13 SAFE-06 (revision iteration 1): the source-label
+        substitution must work via the MCPTF_CONFIG_FILE entry path, not
+        only via --config. The LOCKED message echoes <path> back to the
+        operator; pin both paths so the env-var route cannot regress
+        silently."""
+        cfg = tmp_path / "old.yaml"
+        cfg.write_text(
+            "version: 1\n"
+            "ollama:\n  base_url: http://x:11434\n  model: m\n"
+            "mcp_server:\n  command: /bin/true\n"
+            "tools: {}\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg))
+        monkeypatch.chdir(tmp_path)
+        runner = CliRunner(mix_stderr=False)
+        result = runner.invoke(app, ["run"])
+        assert result.exit_code == 2
+        assert "config file uses an older format:" in result.stderr
+        # Source-label substitution: the env-var path must appear verbatim.
+        assert str(cfg) in result.stderr
+        assert "schema version 2 (opt-in" in result.stderr
+        assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
+        assert "config-init -o config.yaml.new" in result.stderr
     ```
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_error_style.py tests/unit/test_cli_errors.py -v -k "safe_06 or error_style" 2>&amp;1 | tail -25</automated>
+    <automated>uv run pytest tests/unit/test_error_style.py tests/unit/test_cli_errors.py -v -k "safe_06 or error_style" --tb=short</automated>
   </verify>
   <acceptance_criteria>
     - `grep -n "schema version 2 (opt-in" src/mcp_test_framework/cli.py` returns one match.
@@ -513,7 +559,7 @@ next: run `mcp-test-framework config-init -o config.yaml.new` to see
     - `grep -n "config file uses an older format:" src/mcp_test_framework/cli.py` returns one match.
     - `grep -n "config-init -o config.yaml.new" src/mcp_test_framework/cli.py` returns at least one match (the next_step line).
     - The OLD substring `"config file uses an unsupported schema version"` from cli.py:132 is GONE: `grep -n "unsupported schema version" src/mcp_test_framework/cli.py` returns ZERO matches.
-    - `uv run pytest tests/unit/test_error_style.py::test_error_style_safe_06_body_matches_cli_wiring tests/unit/test_cli_errors.py::test_safe_06_v1_config_emits_locked_migration_message -x` exits 0.
+    - `uv run pytest tests/unit/test_error_style.py::test_error_style_safe_06_body_matches_cli_wiring tests/unit/test_cli_errors.py::test_safe_06_v1_config_emits_locked_migration_message tests/unit/test_cli_errors.py::test_safe_06_v1_config_via_env_var_emits_locked_migration_message -x` exits 0.
     - Manual: with a v1 YAML and `--config v1.yaml`, stderr contains the literal verbatim block from ERROR-STYLE.md:57-73 (modulo the `<path>` substitution).
   </acceptance_criteria>
   <done>

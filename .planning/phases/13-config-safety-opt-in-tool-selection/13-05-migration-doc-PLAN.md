@@ -12,13 +12,13 @@ autonomous: true
 requirements: [SAFE-07]
 must_haves:
   truths:
-    - "The file docs/MIGRATION-v1-to-v2.md exists at repo root + docs/."
-    - "The doc explains v2's opt-in default in plain English and contrasts it with v1's opt-out default."
-    - "The doc contains a step-by-step port walkthrough: rerun `config-init`, port `call_arguments` / `judges` / `skip_reason` per tool, drop `target:` block, drop `.env` overlay reliance."
-    - "The doc includes a before-vs-after YAML diff for at least one example tool."
-    - "The doc references `mcp-test-framework config-init -o config.yaml.new` (the exact command the SAFE-06 error message recommends)."
-    - "A regression test in tests/unit/test_migration_doc.py asserts the doc exists and pins the load-bearing substrings."
-    - "pyproject.toml direct dependencies do NOT include `python-dotenv` (verified absent — the import was the actual cleanup, completed in Plan 13-02)."
+    - "D-10: The file docs/MIGRATION-v1-to-v2.md exists at repo root + docs/."
+    - "D-10: The doc explains v2's opt-in default in plain English and contrasts it with v1's opt-out default."
+    - "D-09: The doc contains a step-by-step port walkthrough: rerun `config-init`, port `call_arguments` / `judges` / `skip_reason` per tool, drop `target:` block, drop `.env` overlay reliance."
+    - "D-10: The doc includes a before-vs-after YAML diff for at least one example tool."
+    - "D-09: The doc references `mcp-test-framework config-init -o config.yaml.new` (the exact command the SAFE-06 error message recommends)."
+    - "D-10: A regression test in tests/unit/test_migration_doc.py asserts the doc exists and pins the load-bearing substrings."
+    - "D-05: pyproject.toml direct dependencies do NOT include `python-dotenv` (verified absent — the import was the actual cleanup, completed in Plan 13-02)."
   artifacts:
     - path: "docs/MIGRATION-v1-to-v2.md"
       provides: "SAFE-07 standalone diff-driven migration walkthrough"
@@ -273,7 +273,7 @@ Output: `docs/MIGRATION-v1-to-v2.md` (≤100 lines, plain markdown, no external 
     Note: The banned-pattern test deliberately mirrors the ERROR-STYLE.md "banned strings (manual review checklist)" section at `docs/ERROR-STYLE.md:75-86`. The migration doc is operator-facing and must not leak `SAFE-01`, `Phase 13`, etc. — write the doc body without those tokens.
   </action>
   <verify>
-    <automated>uv run pytest tests/unit/test_migration_doc.py -v 2>&amp;1 | tail -25</automated>
+    <automated>uv run pytest tests/unit/test_migration_doc.py -v --tb=short</automated>
   </verify>
   <acceptance_criteria>
     - `test -f docs/MIGRATION-v1-to-v2.md` exits 0 (POSIX) or `Test-Path docs/MIGRATION-v1-to-v2.md` returns True (PowerShell).
@@ -331,10 +331,12 @@ Output: `docs/MIGRATION-v1-to-v2.md` (≤100 lines, plain markdown, no external 
 
     2. **Verify no `import dotenv` site remains anywhere in `src/`.** Run `grep -rn "import dotenv\|from dotenv" src/`. Expected: ZERO matches. (Plan 13-02 deleted the one site at `config.py:35`; this is the audit.) If any other site is found, that's a Plan 13-02 gap — surface it and patch it in this plan: delete the import line. If the use is non-trivial (the call is using dotenv_values for something other than env-overlay), STOP and surface a question to the orchestrator — do not silently keep an undocumented dep.
 
-    3. **Optional belt-and-suspenders:** Add a one-line check to `tests/unit/test_banned_imports.py` (if and only if the file exists) asserting that `src/` contains zero `import dotenv` sites. Mirror whatever the existing banned-imports patterns look like in that file. (If the existing file is purely about banning `homelab_mcp` imports, skip this step — adding a second banned import is out of scope for SAFE-07.)
+    3. **Step removed (revision iteration 1).** The pre-revision plan suggested an "optional belt-and-suspenders" addition to `tests/unit/test_banned_imports.py`. That file exists but is scoped to ruff TID251 / `homelab_mcp` banned imports (a ruff-rule smoke test, not a generic banned-imports surface); adding a `dotenv` check would dilute its purpose. The grep gates in steps 1-2 plus the regression behavior tests in Plan 13-02 already pin the absence of `import dotenv` and the absence of any direct `python-dotenv` declaration. No additional test is needed.
   </action>
   <verify>
-    <automated>grep -rn "import dotenv\|from dotenv\|python-dotenv" /c/Users/washy/projects/mvp_test_framework/src/ /c/Users/washy/projects/mvp_test_framework/pyproject.toml 2>&amp;1 ; echo "exit=$?"</automated>
+    <automated>uv run python -c "import re, pathlib; root = pathlib.Path('.'); hits = []; \
+  [hits.append(str(f)) for f in list((root/'src').rglob('*.py')) + [root/'pyproject.toml'] if f.is_file() and re.search(r'import dotenv|from dotenv|python-dotenv', f.read_text(encoding='utf-8'))]; \
+  print('hits:', hits); assert hits == [], f'dotenv references must be zero, got {hits}'"</automated>
   </verify>
   <acceptance_criteria>
     - `grep -nE "dotenv|python-dotenv" pyproject.toml` returns ZERO matches (no comment mentions either; no dependency lines).
