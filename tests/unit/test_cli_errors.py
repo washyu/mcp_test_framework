@@ -105,7 +105,9 @@ def test_load_config_validation_error_version(tmp_path: Path) -> None:
     assert "schema version" in err or "older format" in err or "unsupported" in err
     assert "next: " in err
     assert "validation error for Config" not in err  # pydantic raw leak
-    assert "value_error" not in err  # pydantic internal jargon
+    assert "value_error" not in err  # pydantic v1 internal jargon
+    assert "Value error" not in err  # pydantic v2 internal jargon
+    assert "Assertion failed" not in err  # pydantic v2 assert-style jargon
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 

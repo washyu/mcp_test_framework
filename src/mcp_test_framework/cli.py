@@ -116,12 +116,24 @@ def _emit_operator_error_for_validation(
     err_type = primary.get("type", "")
     msg = primary.get("msg", "")
 
+    def _scrub_pydantic_jargon(raw: str) -> str:
+        # Strip pydantic v2's "Value error, " / "Assertion failed, " prefixes
+        # and the v1 "value_error" type-string. ERROR-STYLE.md rule 1 forbids
+        # leaking pydantic-internal jargon into operator-facing output.
+        cleaned = raw
+        for prefix in ("Value error, ", "Assertion failed, "):
+            if cleaned.startswith(prefix):
+                cleaned = cleaned[len(prefix):]
+                break
+        return cleaned
+
     if loc == "version" and "not supported by this build" in msg:
+        clean_msg = _scrub_pydantic_jargon(msg)
         _emit_operator_error(
             summary=f"config file uses an unsupported schema version: {source}",
             detail=[
                 "this release of mcp-test-framework accepts schema version 1.",
-                f"the file declares: {msg}.",
+                f"the file declares: {clean_msg}.",
                 "",
                 "regenerate a starter file and port your tool entries across.",
             ],
@@ -166,7 +178,8 @@ def _emit_operator_error_for_validation(
     detail_lines = [f"the following config field(s) failed validation: {field_summary}."]
     for e in errors[:3]:
         detail_lines.append(
-            f"  - {'.'.join(str(p) for p in e.get('loc', ()))}: {e.get('msg', '')}"
+            f"  - {'.'.join(str(p) for p in e.get('loc', ()))}: "
+            f"{_scrub_pydantic_jargon(e.get('msg', ''))}"
         )
     _emit_operator_error(
         summary=f"config file has invalid values: {source}",
