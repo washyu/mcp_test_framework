@@ -104,7 +104,6 @@ def _emit_operator_error_for_validation(
         -> "config file uses an older format" framing (forward-compat with SAFE-06
            reference message in docs/ERROR-STYLE.md, but Phase 12 still accepts v1
            and rejects v2+; the message names the actual mismatch).
-    - extra_forbidden on `target.tool_name` -> v1.2 deprecation hint
     - missing required field -> point at config.example.yaml
     - other validation errors -> generic detail block with the field path
 
@@ -140,21 +139,6 @@ def _emit_operator_error_for_validation(
             next_step=(
                 "run `mcp-test-framework config-init -o config.yaml.new` to see "
                 "the expected layout, then merge your tool entries into it"
-            ),
-        )
-    if err_type == "extra_forbidden" and "tool_name" in loc:
-        _emit_operator_error(
-            summary=f"config file uses a removed field: {loc}",
-            detail=[
-                "the `target.tool_name` field was removed in v1.2.",
-                "the framework now uses the `tools:` block to decide which tools run.",
-                "",
-                "remove the `target.tool_name` line (and the `target:` block if "
-                "it is now empty) from your config file.",
-            ],
-            next_step=(
-                "edit your config file or run "
-                "`mcp-test-framework config-init -o config.yaml` to regenerate"
             ),
         )
     if err_type in ("missing", "value_error.missing"):
