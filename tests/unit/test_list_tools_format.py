@@ -159,14 +159,6 @@ def test_alphabetical_sort_preserved() -> None:
 
 # --- CLI-level orthogonality (D-07) ---
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_json_full_orthogonal(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -209,7 +201,7 @@ def test_json_full_orthogonal(
         '  args: ["x"]\n'
         '  timeout_seconds: 30\n'
         'judge_timeout_seconds: 120\n'
-        'version: 1\n'
+        'version: 2\n'
         'tools: {}\n',
         encoding="utf-8",
     )

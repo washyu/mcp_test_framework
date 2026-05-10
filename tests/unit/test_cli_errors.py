@@ -82,14 +82,6 @@ def test_load_config_path_not_found(tmp_path: Path) -> None:
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_load_config_validation_error_version(tmp_path: Path) -> None:
     """version: 99 produces operator-tone schema-version error."""
     cfg = tmp_path / "config.yaml"
@@ -137,14 +129,6 @@ def test_config_init_refuse_overwrite(tmp_path: Path) -> None:
     assert not BANNED_RE.search(err)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_list_tools_mcp_spawn_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -160,7 +144,7 @@ def test_list_tools_mcp_spawn_failure(
         '  args: []\n'
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
-        'version: 1\n'
+        'version: 2\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -179,14 +163,6 @@ def test_list_tools_mcp_spawn_failure(
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_config_init_mcp_spawn_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -202,7 +178,7 @@ def test_config_init_mcp_spawn_failure(
         '  args: []\n'
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
-        'version: 1\n'
+        'version: 2\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -292,10 +268,6 @@ def test_safe_04_mcptf_config_file_typo_exits_2(
     assert "does not exist" in result.stderr
 
 
-@pytest.mark.xfail(
-    reason="depends on Plan 13-02: Config(yaml_file=...) wiring + version=2 validator",
-    strict=False,
-)
 def test_safe_02_cwd_autodiscovery_picks_up_local_config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
