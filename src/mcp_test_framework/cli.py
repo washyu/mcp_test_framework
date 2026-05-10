@@ -30,12 +30,14 @@ import json
 import os
 import shutil
 import textwrap
+import typing
 from contextlib import AsyncExitStack
 from importlib import metadata
 from pathlib import Path
 
 import typer
 from mcp.types import Tool
+from pydantic import ValidationError
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
@@ -61,32 +63,154 @@ def _main() -> None:
     return None
 
 
+def _emit_operator_error(
+    summary: str,
+    detail: list[str],
+    next_step: str,
+    *,
+    exit_code: int = 2,
+) -> typing.NoReturn:
+    """Render an operator-grade error and exit (citation: docs/ERROR-STYLE.md).
+
+    This function never returns; it raises typer.Exit internally. Callers
+    MUST NOT prefix calls with `raise`.
+
+    Format (per docs/ERROR-STYLE.md):
+        <one-line summary>
+        <blank>
+        <detail line 1>
+        <detail line 2>
+        ...
+        <blank>
+        next: <action verb> <command-or-instruction>
+
+    Operator terms only -- no spec IDs, no file:line refs, no internal jargon.
+    """
+    parts: list[str] = [summary, ""]
+    parts.extend(detail)
+    parts.extend(["", f"next: {next_step}"])
+    typer.echo("\n".join(parts), err=True)
+    raise typer.Exit(code=exit_code)
+
+
+def _emit_operator_error_for_validation(
+    exc: ValidationError, *, source: str
+) -> typing.NoReturn:
+    """Map pydantic.ValidationError -> operator-tone error per docs/ERROR-STYLE.md.
+
+    Mapping rules:
+    - version mismatch (config version N not supported by this build, expected 1)
+        -> "config file uses an older format" framing (forward-compat with SAFE-06
+           reference message in docs/ERROR-STYLE.md, but Phase 12 still accepts v1
+           and rejects v2+; the message names the actual mismatch).
+    - extra_forbidden on `target.tool_name` -> v1.2 deprecation hint
+    - missing required field -> point at config.example.yaml
+    - other validation errors -> generic detail block with the field path
+
+    Function never returns; every branch calls _emit_operator_error which raises.
+    """
+    errors = exc.errors()
+    primary = errors[0] if errors else {}
+    loc = ".".join(str(p) for p in primary.get("loc", ()))
+    err_type = primary.get("type", "")
+    msg = primary.get("msg", "")
+
+    if loc == "version" and "not supported by this build" in msg:
+        _emit_operator_error(
+            summary=f"config file uses an unsupported schema version: {source}",
+            detail=[
+                "this release of mcp-test-framework accepts schema version 1.",
+                f"the file declares: {msg}.",
+                "",
+                "regenerate a starter file and port your tool entries across.",
+            ],
+            next_step=(
+                "run `mcp-test-framework config-init -o config.yaml.new` to see "
+                "the expected layout, then merge your tool entries into it"
+            ),
+        )
+    if err_type == "extra_forbidden" and "tool_name" in loc:
+        _emit_operator_error(
+            summary=f"config file uses a removed field: {loc}",
+            detail=[
+                "the `target.tool_name` field was removed in v1.2.",
+                "the framework now uses the `tools:` block to decide which tools run.",
+                "",
+                "remove the `target.tool_name` line (and the `target:` block if "
+                "it is now empty) from your config file.",
+            ],
+            next_step=(
+                "edit your config file or run "
+                "`mcp-test-framework config-init -o config.yaml` to regenerate"
+            ),
+        )
+    if err_type in ("missing", "value_error.missing"):
+        _emit_operator_error(
+            summary=f"config file is missing a required field: {loc}",
+            detail=[
+                f"the field `{loc}` is required but was not found in {source}.",
+                "",
+                "see config.example.yaml for the expected shape, or regenerate "
+                "a starter file with config-init.",
+            ],
+            next_step=(
+                "copy the relevant block from config.example.yaml or run "
+                "`mcp-test-framework config-init -o config.yaml`"
+            ),
+        )
+    # Generic fallback -- still operator-tone, no pydantic-internal terms.
+    field_summary = ", ".join(
+        ".".join(str(p) for p in e.get("loc", ())) for e in errors
+    ) or "(unknown field)"
+    detail_lines = [f"the following config field(s) failed validation: {field_summary}."]
+    for e in errors[:3]:
+        detail_lines.append(
+            f"  - {'.'.join(str(p) for p in e.get('loc', ()))}: {e.get('msg', '')}"
+        )
+    _emit_operator_error(
+        summary=f"config file has invalid values: {source}",
+        detail=detail_lines,
+        next_step=(
+            "fix the field(s) above, or run "
+            "`mcp-test-framework config-init -o config.yaml` to regenerate"
+        ),
+    )
+
+
 def _load_config(path: Path | None) -> Config:
-    """Shared config loader for `run` and `list-tools` commands.
+    """Shared config loader for `run`, `list-tools`, and `config-init`.
 
     If `path` is provided, sets MCPTF_CONFIG_FILE so Config()'s
-    settings_customise_sources picks up the YAML overlay. Pydantic
-    ValidationError propagates uncaught -- Pydantic's own message is
-    the diagnostic (CONTEXT.md Discretion bullet 2).
-
-    Note: on success, MCPTF_CONFIG_FILE is intentionally left set in
-    os.environ so the `run` path's pytest.main() plugin chain (and
-    fixtures) can observe the same overlay. On Config() failure the
-    var is popped to avoid leaking a bad path into subsequent calls
-    in the same process (e.g., test harnesses that invoke the CLI
-    multiple times).
+    settings_customise_sources picks up the YAML overlay. ValidationError
+    is caught and re-emitted as an operator-tone error per
+    docs/ERROR-STYLE.md (PERSONA-03).
     """
     if path is not None:
         if not path.is_file():
-            typer.echo(f"error: --config path not found: {path}", err=True)
-            raise typer.Exit(code=2)
+            _emit_operator_error(
+                summary=f"config file not found: {path}",
+                detail=[
+                    "the path passed to --config does not exist or is not a file.",
+                ],
+                next_step=(
+                    "check the path or run "
+                    "`mcp-test-framework config-init -o config.yaml` "
+                    "to generate a starter config"
+                ),
+            )
         os.environ["MCPTF_CONFIG_FILE"] = str(path)
         try:
             return Config()
+        except ValidationError as exc:
+            os.environ.pop("MCPTF_CONFIG_FILE", None)
+            _emit_operator_error_for_validation(exc, source=str(path))
         except Exception:
             os.environ.pop("MCPTF_CONFIG_FILE", None)
             raise
-    return Config()
+    try:
+        return Config()
+    except ValidationError as exc:
+        _emit_operator_error_for_validation(exc, source="(default sources)")
 
 
 def _build_pytest_args(

@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from mcp_test_framework.cli import (
@@ -28,17 +29,17 @@ BANNED_RE = re.compile(
 
 
 def _runner() -> CliRunner:
-    return CliRunner(mix_stderr=False)
+    return CliRunner()
 
 
 def test_emit_operator_error_format(capsys: pytest.CaptureFixture[str]) -> None:
-    with pytest.raises(SystemExit) as ei:
+    with pytest.raises(typer.Exit) as ei:
         _emit_operator_error(
             summary="thing broke",
             detail=["line one", "line two"],
             next_step="run something to fix it",
         )
-    assert ei.value.code == 2
+    assert ei.value.exit_code == 2
     err = capsys.readouterr().err
     expected_lines = [
         "thing broke",
@@ -52,11 +53,11 @@ def test_emit_operator_error_format(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_emit_operator_error_custom_exit_code() -> None:
-    with pytest.raises(SystemExit) as ei:
+    with pytest.raises(typer.Exit) as ei:
         _emit_operator_error(
             summary="fail", detail=["x"], next_step="y", exit_code=130
         )
-    assert ei.value.code == 130
+    assert ei.value.exit_code == 130
 
 
 def test_emit_operator_error_returns_no_return_annotation() -> None:
