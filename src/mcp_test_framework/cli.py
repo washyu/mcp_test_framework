@@ -606,7 +606,7 @@ def _format_tools_text(
             )
             block_lines: list[str] = [f"{t.name}{sig}", wrapped]
             schema = t.inputSchema or {}
-            props = schema.get("properties") or {} if isinstance(schema, dict) else {}
+            props = (schema.get("properties") or {}) if isinstance(schema, dict) else {}
             if props:
                 block_lines.append("")
                 block_lines.append("  parameters:")
