@@ -50,3 +50,37 @@ def test_examples_homelab_mcp_yaml_exists() -> None:
     yaml_file = EXAMPLES_DIR / "homelab-mcp.yaml"
     assert yaml_file.is_file()
     assert yaml_file.stat().st_size > 100, "yaml looks empty/truncated"
+
+
+@pytest.mark.skipif(
+    not (EXAMPLES_DIR / "homelab-mcp.yaml").is_file(),
+    reason="examples/homelab-mcp.yaml absent; nothing to scrub.",
+)
+def test_homelab_mcp_yaml_no_banned_tokens() -> None:
+    """Operator-facing example must carry zero spec/phase/quick-task IDs."""
+    import re
+    text = (EXAMPLES_DIR / "homelab-mcp.yaml").read_text(encoding="utf-8")
+    banned = [
+        r"\bPhase \d", r"\bPlan \d-\d", r"\bTOOLCFG-\d", r"\bISOL-\d",
+        r"\bOUTPUT-\d", r"\bCD-\d", r"\bD-\d{2}",
+        r"\b\d{6}-[a-z0-9]{3}", r"\bSEED-\d", r"\bTEST-\d",
+    ]
+    for p in banned:
+        assert not re.search(p, text), (
+            f"banned pattern {p!r} in examples/homelab-mcp.yaml"
+        )
+
+
+@pytest.mark.skipif(
+    not (EXAMPLES_DIR / "homelab-mcp.yaml").is_file(),
+    reason="examples/homelab-mcp.yaml absent; nothing to inspect.",
+)
+def test_homelab_mcp_yaml_no_target_block() -> None:
+    """The deprecated `target:` block must not appear in the worked reference."""
+    import yaml
+    data = yaml.safe_load(
+        (EXAMPLES_DIR / "homelab-mcp.yaml").read_text(encoding="utf-8")
+    )
+    assert "target" not in data, (
+        "examples/homelab-mcp.yaml must not advertise the leaving target: block"
+    )

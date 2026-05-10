@@ -1,5 +1,6 @@
-# config.example.yaml -- copy to config.yaml and set MCPTF_CONFIG_FILE=./config.yaml.
-# YAML overlay sits BELOW env in precedence: CLI > env > .env > YAML > defaults.
+# Worked reference for the homelab-mcp server.
+# Copy to config.yaml at your project root, or point MCPTF_CONFIG_FILE at it.
+# Precedence: CLI > env > .env > YAML > defaults.
 
 ollama:
   base_url: http://127.0.0.1:11434
@@ -7,52 +8,33 @@ ollama:
   timeout_seconds: 120
 
 # Default invocation uses uvx for zero-install. To use a globally-installed
-# binary, set command: homelab-mcp and args: [].
+# binary instead, set command: homelab-mcp and args: [].
 mcp_server:
   command: uvx
   args: [homelab-mcp]
   timeout_seconds: 30
 
-target:
-  # Phase 07 + Phase 08 default: leave tool_name unset so the suite parametrizes
-  # over ALL discovered tools and the per-tool `tools:` block (below) controls
-  # which actually run. With the safe-by-default skip entries in `tools:`, only
-  # `list_keyring_credentials` and `suggest_deployments` exercise the live test
-  # surface; everything else SKIPS with a readable reason in pytest output.
-  #
-  # To restrict to a single tool (CD-05 short-circuit -- skips collection-time
-  # MCP spawn and runs only the named tool's tests), uncomment one of:
-  #   tool_name: list_keyring_credentials
-  #   tool_name: suggest_deployments
-  tool_name: ""
-
 judge_timeout_seconds: 120
 
-# Phase 08 schema version. Only `1` is accepted by this release.
-# Future schema changes will either default to `2+` or branch on this value.
+# Schema version. This release accepts version 1.
 version: 1
 
-# Per-tool config registry (TOOLCFG-01..07).
-# Keys MUST match tool names returned by `mcp-test-framework list-tools`.
-# Tools with no entry here use safe defaults: skip=false, call_arguments={},
-# judges=null (run all rubrics).
+# Per-tool registry. Keys MUST match tool names returned by
+# `mcp-test-framework list-tools`. Tools with no entry use safe defaults
+# (skip=false, call_arguments={}, judges=null = run all rubrics).
 #
 # Each entry below illustrates one knob:
-#   - list_registered_servers: marked skip=true with a reason
 #   - list_keyring_credentials: judge subset (clarity only) for noisy rubrics
+#   - list_registered_servers: skip with a curated operator-facing reason
 #
-# Reserved fields `setup:` and `depends_on:` (TOOLCFG-03) are intentionally
-# omitted -- they are typed in the model for SEED-004 forward-compat but
-# have no runtime semantics in v1.1.
-#
-# SAFE-BY-DEFAULT POSTURE (260507-n0g):
+# SAFE-BY-DEFAULT POSTURE:
 #   homelab-mcp's tool surface mixes pure reads with destructive operations
 #   (delete_proxmox_vm, decommission_device, destroy_terraform_service,
 #   control_vm, remove_*, rollback_infrastructure_changes, run_ansible_playbook,
-#   ssh_execute_command, ...). Phase 07's multi-tool discovery means TEST-08
-#   calls every discovered tool. We default-skip everything except two
+#   ssh_execute_command, ...). Multi-tool discovery means the suite calls every
+#   discovered tool unless told otherwise. We default-skip everything except two
 #   confirmed-safe reads: `list_keyring_credentials` (judged with clarity-only
-#   for noisy rubric reasons) and `suggest_deployments` (read-only inventory
+#   for noisy-rubric reasons) and `suggest_deployments` (read-only inventory
 #   suggestion). Operators uncomment / opt-in per-tool after reading docs.
 tools:
   # ---- Confirmed-safe enabled tools (no skip) -----------------------------
@@ -63,7 +45,6 @@ tools:
   # suggest_deployments: enabled with no entry -> ToolConfig() defaults
   #                      (skip=False, judges=None -> all rubrics, call_arguments={}).
 
-  # ---- Pre-existing (Phase 04/05/08 v1.0 baseline) ------------------------
   list_registered_servers:
     skip: true
     skip_reason: "Description does not pass disambiguation rubric; tracked for upstream homelab-mcp doc fix."
