@@ -127,18 +127,27 @@ def _emit_operator_error_for_validation(
         return cleaned
 
     if loc == "version" and "not supported by this build" in msg:
-        clean_msg = _scrub_pydantic_jargon(msg)
+        # Phase 13 D-08: LOCKED SAFE-06 message body, copied verbatim from
+        # docs/ERROR-STYLE.md:57-73. Source-text regression at
+        # tests/unit/test_error_style.py::test_error_style_safe_06_body_matches_cli_wiring
+        # pins the substrings; do not reword.
         _emit_operator_error(
-            summary=f"config file uses an unsupported schema version: {source}",
+            summary=f"config file uses an older format: {source}",
             detail=[
-                "this release of mcp-test-framework accepts schema version 1.",
-                f"the file declares: {clean_msg}.",
+                "this release of mcp-test-framework expects schema version 2 (opt-in",
+                "tool selection); your config is version 1 (opt-out). the difference",
+                "matters: in v1 a tool with no entry runs by default, in v2 it skips",
+                "by default.",
                 "",
-                "regenerate a starter file and port your tool entries across.",
+                "your existing per-tool settings (`call_arguments`, `judges`,",
+                "`skip_reason`) port forward unchanged -- only the implicit default",
+                "flips. the migration walkthrough at docs/MIGRATION-v1-to-v2.md shows",
+                "the steps.",
             ],
             next_step=(
                 "run `mcp-test-framework config-init -o config.yaml.new` to see "
-                "the expected layout, then merge your tool entries into it"
+                "the v2 layout, port your tool entries across, then replace your "
+                "existing config"
             ),
         )
     if err_type in ("missing", "value_error.missing"):
