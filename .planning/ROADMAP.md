@@ -35,7 +35,8 @@
 
 ### 🚧 v1.2 — Operator-First Design
 
-- [x] **Phase 12: Doc & persona foundation** — Strip planning-artifact IDs, genericize `config.example.yaml`, complete the `config-init` scaffold, and add the "Testing an MCP server you didn't write" reframe across README and EXTENDING. Foundational hygiene + persona positioning land first so downstream phases operate on clean docs and copy. (completed 2026-05-10)
+- [x] **Phase 12: Doc & persona foundation** — Strip planning-artifact IDs, genericize `config.example.yaml`, complete the `config-init` scaffold, and add the "Testing an MCP server you didn't write" reframe across README and EXTENDING. Foundational hygiene + persona positioning land first so downstream phases operate on clean docs and copy.
+ (completed 2026-05-10)
 - [ ] **Phase 13: Config safety & opt-in tool selection** — Invert `tools:` from skip-list to allowlist, auto-discover `./config.yaml`, fail loud on missing config, drop `.env` and the env-overlay entirely, bump schema `version: 1 → 2` with a loud migration error pointing at `config-init`.
 - [ ] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch.
 - [ ] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`.
@@ -72,7 +73,13 @@
   4. An operator who typos `MCPTF_CONFIG_FILE=/path/that/does/not/exist` sees an error and exit code 2 — identical behavior to `--config /path/that/does/not/exist`. Neither route silently drops to defaults.
   5. An operator loading a `version: 1` v1.1-era config sees a loud migration error naming the opt-out → opt-in semantic change and pointing at `config-init` to regenerate; a `docs/MIGRATION-v1-to-v2.md` walks them through porting `call_arguments` / `judges` / `skip_reason` for tools they want to keep.
   6. An operator who has a `.env` file in their working directory sees no behavioral difference from when it is absent — `.env` and env-overlay no longer override config; only YAML and CLI flags shape the run.
-**Plans**: TBD
+**Plans:** 5 plans
+  - [ ] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
+  - [ ] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
+  - [ ] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
+  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+
 
 ### Phase 14: Hybrid runner with domain UI
 **Goal**: An operator running `mcp-test-framework run` sees output in MCP-domain language (server, tools, judges, verdicts) without pytest's collection / deselection / dot-progress framing. Pytest remains the orchestration engine internally, but its output is invisible to the operator by default.
@@ -84,7 +91,13 @@
   3. An operator running with `-q` sees only the summary line; default verbosity shows the domain UI; `--explain` adds skipped-tool detail; `--debug` adds raw pytest output and tracebacks. Each rung adds information; none re-shapes the layer below.
   4. An operator running `mcp-test-framework run --junit-xml=results.xml` still gets a standard JUnit XML at `results.xml` (v1.1 OUTPUT-01 contract preserved); the wrapper consumes its own internal tempfile so the operator-visible path is untouched.
   5. Exit codes remain stable across the wrapper boundary: 0 (all pass), 1 (test failures), 2 (config / collection / pre-flight errors), 130 (SIGINT). A CI pipeline wired to v1.1's exit-code contract continues to work without changes.
-**Plans**: TBD
+**Plans:** 5 plans
+  - [ ] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
+  - [ ] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
+  - [ ] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
+  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+
 
 ### Phase 15: Operator vs framework test surface split
 **Goal**: An operator running the framework against their MCP server sees only contract-level test results — not the framework's ~107 self-tests for parser internals, config validation, README snippet correctness, or banned imports. Maintainers retain full access to the framework self-test surface for CI.
@@ -95,7 +108,13 @@
   2. A maintainer running `uv run pytest tests/` directly continues to exercise both `tests/contract/` and `tests/framework/`; the runner's `--with-framework` (or equivalent) opt-in flag makes the same surface reachable through the operator CLI for CI use.
   3. The repo's `tests/contract/` and `tests/framework/` directory split preserves git history for every moved file (verified by `git log --follow` on at least one file from each subtree).
   4. The black-box rule remains mechanically enforced: `tests/framework/test_banned_imports.py` continues to fail the maintainer suite if `homelab-mcp` is imported anywhere in `src/`. The enforcement does not depend on which test surface the operator selected.
-**Plans**: TBD
+**Plans:** 5 plans
+  - [ ] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
+  - [ ] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
+  - [ ] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
+  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+
 
 ### Phase 16: Reporter UX overhaul
 **Goal**: An operator preparing to run the framework sees an unambiguous pre-run digest of what will and won't execute (eliminating pytest's misleading "N collected, M deselected" framing), and a post-run aggregation in the same domain language. Output stays single-screen-readable at homelab-mcp scale (~70 tools).
@@ -107,7 +126,13 @@
   3. An operator's post-run output aggregates per-tool PASS/FAIL/SKIP plus per-judge reasoning into the domain UI's tail; v1.1's separate `_reporter.py` per-tool summary section is no longer needed (subsumed or replaced).
   4. An operator running `-q` / `--quiet` sees neither the digest nor the per-tool rows — only the final summary line. v1.1's quiet-mode parity is preserved.
   5. The digest's discovered/running/skipping counts agree with what the runner actually executes; an operator's manual config inspection cannot find a tool that the digest claims to skip but that actually runs (or vice versa).
-**Plans**: TBD
+**Plans:** 5 plans
+  - [ ] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
+  - [ ] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
+  - [ ] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
+  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+
 
 ## Progress
 
@@ -127,7 +152,7 @@
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete | 2026-05-08 |
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
-| 13. Config safety & opt-in tool selection | v1.2 | 0/0 | Not started | - |
+| 13. Config safety & opt-in tool selection | v1.2 | 0/5 | Planned | - |
 | 14. Hybrid runner with domain UI | v1.2 | 0/0 | Not started | - |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |
