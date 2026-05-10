@@ -75,37 +75,50 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.judge_timeout_seconds == 120
 
 
-def test_env_overrides_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Env var beats default. Bare name routes via validation_alias."""
+def test_env_var_has_no_effect_on_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Phase 13 D-05: env-overlay dropped; this test pins the negation.
+
+    OLLAMA_BASE_URL in os.environ has ZERO effect on Config() — the model
+    default wins. (Inverted from the v1.1 test_env_overrides_default.)
+    """
     _clear_env(monkeypatch)
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://env:1")
 
     cfg = Config()
 
-    assert cfg.ollama.base_url == "http://env:1"
+    assert cfg.ollama.base_url == "http://127.0.0.1:11434"
 
 
 def test_yaml_overrides_default(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """YAML overlay (via MCPTF_CONFIG_FILE) beats defaults when env is unset."""
+    """YAML (via Config(yaml_file=...)) beats defaults when no env is set.
+
+    Phase 13 D-05/D-06: env-overlay gone, MCPTF_CONFIG_FILE is no longer a
+    Config() source. The resolver in cli.py:_load_config passes the path
+    as an explicit kwarg.
+    """
     _clear_env(monkeypatch)
     yaml_path = _write_yaml(
         tmp_path,
-        "ollama:\n  base_url: http://yaml:1\n",
+        "version: 2\n"
+        "ollama:\n  base_url: http://yaml:1\n  model: qwen3.6:latest\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
     )
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
 
-    cfg = Config()
+    cfg = Config(yaml_file=str(yaml_path))
 
     assert cfg.ollama.base_url == "http://yaml:1"
 
 
-def test_dotenv_routes_to_sub_model_fields(
+def test_dotenv_in_cwd_has_no_effect(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """`.env` bare-name lines reach sub-model fields (regression: Phase 02.1
-    follow-up — `.env`'s `MCP_SERVER_COMMAND=uvx` was previously a no-op)."""
+    """Phase 13 D-07: .env is dead-letter for the framework's config layer.
+
+    (Inverted from the v1.1 test_dotenv_routes_to_sub_model_fields.)
+    """
     _clear_env(monkeypatch)
     (tmp_path / ".env").write_text(
         'MCP_SERVER_COMMAND=uvx\nMCP_SERVER_ARGS=["homelab-mcp"]\n', encoding="utf-8"
@@ -113,55 +126,129 @@ def test_dotenv_routes_to_sub_model_fields(
 
     cfg = Config()
 
-    assert cfg.mcp_server.command == "uvx"
-    assert cfg.mcp_server.args == ["homelab-mcp"]
+    # Defaults win; .env contents are ignored.
+    assert cfg.mcp_server.command == "homelab-mcp"
+    assert cfg.mcp_server.args == []
 
 
-def test_env_overrides_dotenv_for_sub_model_fields(
+def test_yaml_beats_env_var(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """`os.environ` beats `.env` for sub-model fields (locked precedence)."""
-    _clear_env(monkeypatch)
-    (tmp_path / ".env").write_text("MCP_SERVER_COMMAND=from-dotenv\n", encoding="utf-8")
-    monkeypatch.setenv("MCP_SERVER_COMMAND", "from-env")
+    """Phase 13 D-05: env-overlay gone; YAML wins over env var.
 
-    cfg = Config()
-
-    assert cfg.mcp_server.command == "from-env"
-
-
-def test_env_overrides_yaml(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """The locked precedence inversion: env beats YAML."""
+    (Inverted from the v1.1 test_env_overrides_yaml.)
+    """
     _clear_env(monkeypatch)
     yaml_path = _write_yaml(
         tmp_path,
-        "ollama:\n  base_url: http://yaml:1\n",
+        "version: 2\n"
+        "ollama:\n  base_url: http://yaml:1\n  model: qwen3.6:latest\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
     )
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://env:1")
 
-    cfg = Config()
+    cfg = Config(yaml_file=str(yaml_path))
 
-    assert cfg.ollama.base_url == "http://env:1"
+    assert cfg.ollama.base_url == "http://yaml:1"
 
 
-def test_init_overrides_env_and_yaml(
+def test_init_overrides_yaml(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """init kwargs (CLI flag surface) beat env and YAML."""
+    """init kwargs (CLI flag surface) beat YAML."""
     _clear_env(monkeypatch)
     yaml_path = _write_yaml(
         tmp_path,
-        "ollama:\n  base_url: http://yaml:1\n",
+        "version: 2\n"
+        "ollama:\n  base_url: http://yaml:1\n  model: qwen3.6:latest\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
     )
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
-    monkeypatch.setenv("OLLAMA_BASE_URL", "http://env:1")
 
-    cfg = Config(ollama=OllamaConfig(base_url="http://init:1"))
+    cfg = Config(yaml_file=str(yaml_path), ollama=OllamaConfig(base_url="http://init:1"))
 
     assert cfg.ollama.base_url == "http://init:1"
+
+
+def test_safe_05_env_var_does_not_override_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 D-05/D-07: env-overlay is gone; YAML wins."""
+    _clear_env(monkeypatch)
+    yaml_path = tmp_path / "c.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "ollama:\n"
+        "  base_url: http://from-yaml:11434\n"
+        "  model: qwen3.6:latest\n"
+        "mcp_server:\n"
+        "  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://from-env:11434")
+    monkeypatch.setenv("MCP_SERVER_COMMAND", "/usr/bin/should-be-ignored")
+    cfg = Config(yaml_file=str(yaml_path))
+    assert cfg.ollama.base_url == "http://from-yaml:11434"
+    assert cfg.mcp_server.command == "/bin/true"
+
+
+def test_safe_05_dotenv_file_in_cwd_has_no_effect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 D-07: .env is dead-letter for the framework."""
+    _clear_env(monkeypatch)
+    (tmp_path / ".env").write_text(
+        "OLLAMA_BASE_URL=http://from-dotenv:11434\n",
+        encoding="utf-8",
+    )
+    yaml_path = tmp_path / "c.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "ollama:\n  base_url: http://from-yaml:11434\n  model: qwen3.6:latest\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    cfg = Config(yaml_file=str(yaml_path))
+    assert cfg.ollama.base_url == "http://from-yaml:11434"
+
+
+def test_safe_06_version_1_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Phase 13 D-08: v1 schemas raise so the SAFE-06 ERROR-STYLE mapper
+    can render the locked migration message."""
+    _clear_env(monkeypatch)
+    yaml_path = tmp_path / "v1.yaml"
+    yaml_path.write_text(
+        "version: 1\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError) as exc_info:
+        Config(yaml_file=str(yaml_path))
+    # Validator message phrasing must enable the mapper at
+    # cli.py:_emit_operator_error_for_validation to match.
+    assert "not supported by this build" in str(exc_info.value)
+    assert "expected 2" in str(exc_info.value)
+
+
+def test_safe_06_version_2_accepted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_env(monkeypatch)
+    yaml_path = tmp_path / "v2.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    cfg = Config(yaml_file=str(yaml_path))
+    assert cfg.version == 2
 
 
 def test_top_level_config_is_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -182,8 +269,8 @@ def test_sub_model_is_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
         cfg.ollama.model = "X"  # type: ignore[misc]
 
 
-def test_no_yaml_path_skips_yaml_overlay(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No MCPTF_CONFIG_FILE -> defaults remain in effect."""
+def test_no_yaml_path_uses_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Config() with no kwargs returns model defaults."""
     _clear_env(monkeypatch)
 
     cfg = Config()
@@ -192,31 +279,28 @@ def test_no_yaml_path_skips_yaml_overlay(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_invalid_yaml_path_skips_yaml_overlay(monkeypatch: pytest.MonkeyPatch) -> None:
-    """MCPTF_CONFIG_FILE pointing at a non-existent file does not raise (Path.is_file guard)."""
+    """Config(yaml_file=<non-existent>) does not raise — YamlSource skips
+    a non-existent file (Path.is_file guard inside settings_customise_sources)."""
     _clear_env(monkeypatch)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", "/does/not/exist.yaml")
 
-    cfg = Config()
+    cfg = Config(yaml_file="/does/not/exist.yaml")
 
     assert cfg.ollama.base_url == "http://127.0.0.1:11434"
 
 
-def test_mcp_server_timeout_seconds_env_overrides_default(
+def test_mcp_server_timeout_seconds_env_has_no_effect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """MCP_SERVER_TIMEOUT_SECONDS env var routes through _BareNameNestedEnvSource.
-
-    Phase 1 LEARNINGS lesson "EnvSettingsSource does not walk sub-model
-    validation_alias" means a missing precedence test would let the field
-    silently default-fallback with no exception trace. This is the
-    regression guard required by D-07.
-    """
+    """Phase 13 D-05: env-overlay dropped; MCP_SERVER_TIMEOUT_SECONDS in
+    os.environ has ZERO effect on Config(). (Inverted from v1.1's
+    env-overlay regression guard.)"""
     _clear_env(monkeypatch)
     monkeypatch.setenv("MCP_SERVER_TIMEOUT_SECONDS", "5")
 
     cfg = Config()
 
-    assert cfg.mcp_server.timeout_seconds == 5
+    # Model default wins; env var is ignored.
+    assert cfg.mcp_server.timeout_seconds == 30
 
 
 def test_no_cwd_config_yaml_auto_discovery_and_no_fail_loud(

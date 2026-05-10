@@ -92,18 +92,14 @@ def test_scaffold_empty_tool_list_returns_empty_mapping() -> None:
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 flips the scaffold to version: 2; "
-        "Plan 13-02 flips config.py _validate_version to accept v2. "
-        "Until 13-02 lands, the v2 scaffold trips the v1 validator."
-    ),
-    strict=False,
-)
 def test_scaffold_loadable_via_config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """CLEAN-05 acceptance: the scaffold loads via Config() with no .env present."""
+    """CLEAN-05 acceptance: the scaffold loads via Config(yaml_file=...).
+
+    Phase 13 D-06: MCPTF_CONFIG_FILE is no longer a Config() source; the
+    resolver in cli.py passes the resolved path as an explicit kwarg.
+    """
     for var in (
         "OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_TIMEOUT_SECONDS",
         "MCP_SERVER_COMMAND", "MCP_SERVER_ARGS", "MCP_SERVER_TIMEOUT_SECONDS",
@@ -112,9 +108,8 @@ def test_scaffold_loadable_via_config(
         monkeypatch.delenv(var, raising=False)
     cfg_path = tmp_path / "config.yaml"
     cfg_path.write_text(_scaffold(["alpha", "beta"]), encoding="utf-8")
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
 
-    cfg = Config()
+    cfg = Config(yaml_file=str(cfg_path))
     assert cfg.version == 2
     assert cfg.mcp_server.command == "uvx"
     assert "11434" in str(cfg.ollama.base_url)

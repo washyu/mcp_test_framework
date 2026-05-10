@@ -82,14 +82,6 @@ def test_load_config_path_not_found(tmp_path: Path) -> None:
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_load_config_validation_error_version(tmp_path: Path) -> None:
     """version: 99 produces operator-tone schema-version error."""
     cfg = tmp_path / "config.yaml"
@@ -137,14 +129,6 @@ def test_config_init_refuse_overwrite(tmp_path: Path) -> None:
     assert not BANNED_RE.search(err)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_list_tools_mcp_spawn_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -160,7 +144,7 @@ def test_list_tools_mcp_spawn_failure(
         '  args: []\n'
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
-        'version: 1\n'
+        'version: 2\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -179,14 +163,6 @@ def test_list_tools_mcp_spawn_failure(
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Plan 13-01 introduces Config(yaml_file=...) kwarg; "
-        "Plan 13-02 wires settings_customise_sources to consume it. "
-        "Until 13-02 lands, the kwarg trips extra='forbid' before YAML loads."
-    ),
-    strict=False,
-)
 def test_config_init_mcp_spawn_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -202,7 +178,7 @@ def test_config_init_mcp_spawn_failure(
         '  args: []\n'
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
-        'version: 1\n'
+        'version: 2\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -292,10 +268,6 @@ def test_safe_04_mcptf_config_file_typo_exits_2(
     assert "does not exist" in result.stderr
 
 
-@pytest.mark.xfail(
-    reason="depends on Plan 13-02: Config(yaml_file=...) wiring + version=2 validator",
-    strict=False,
-)
 def test_safe_02_cwd_autodiscovery_picks_up_local_config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -364,6 +336,58 @@ def test_run_still_fails_loud_in_empty_dir(
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 2
     assert "no config file found: ./config.yaml" in result.stderr
+
+
+def test_safe_06_v1_config_emits_locked_migration_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-06: loading a v1 config exits 2 with the LOCKED
+    ERROR-STYLE message body (docs/ERROR-STYLE.md:57-73)."""
+    cfg = tmp_path / "old.yaml"
+    cfg.write_text(
+        "version: 1\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["run", "--config", str(cfg)])
+    assert result.exit_code == 2
+    assert "config file uses an older format:" in result.stderr
+    assert "schema version 2 (opt-in" in result.stderr
+    assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
+    assert "config-init -o config.yaml.new" in result.stderr
+
+
+def test_safe_06_v1_config_via_env_var_emits_locked_migration_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 13 SAFE-06 (revision iteration 1): the source-label
+    substitution must work via the MCPTF_CONFIG_FILE entry path, not
+    only via --config. The LOCKED message echoes <path> back to the
+    operator; pin both paths so the env-var route cannot regress
+    silently."""
+    cfg = tmp_path / "old.yaml"
+    cfg.write_text(
+        "version: 1\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "mcp_server:\n  command: /bin/true\n"
+        "tools: {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg))
+    monkeypatch.chdir(tmp_path)
+    runner = _runner()
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 2
+    assert "config file uses an older format:" in result.stderr
+    # Source-label substitution: the env-var path must appear verbatim.
+    assert str(cfg) in result.stderr
+    assert "schema version 2 (opt-in" in result.stderr
+    assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
+    assert "config-init -o config.yaml.new" in result.stderr
 
 
 def test_cli_errors_static_call_sites_no_banned_tokens() -> None:

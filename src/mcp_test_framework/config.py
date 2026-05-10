@@ -1,40 +1,27 @@
 """Top-level layered configuration via pydantic-settings.
 
-Precedence (CONTEXT.md "Decisions > config precedence" -- LOCKED):
+Precedence (Phase 13 D-05):
 
-    CLI/init kwargs > env vars > .env > YAML overlay > defaults
+    CLI/init kwargs (yaml_file=PATH) > YAML overlay at PATH > defaults
 
-In ``pydantic-settings`` the leftmost source in the tuple returned by
-``settings_customise_sources`` wins (Pitfall 1 in 01-RESEARCH.md).
+The resolver in `cli.py:_load_config` (Phase 13 D-03) passes the resolved
+YAML path as an explicit `yaml_file` kwarg to `Config(...)`. The custom
+`settings_customise_sources` below reads that kwarg from `init_settings`
+and hands it to `YamlConfigSettingsSource`. `MCPTF_CONFIG_FILE`, `--config`,
+and `./config.yaml` autodiscovery are all resolved in `cli.py` BEFORE
+`Config(...)` is constructed; no env vars influence Config values directly.
 
-YAML overlay path comes ONLY from the ``MCPTF_CONFIG_FILE`` env var (CONTEXT.md
-"YAML config discovery" -- no cwd auto-discovery in MVP). Phase 5 will inject
-the ``--config PATH`` CLI flag value via ``Config(...)`` kwargs which arrive as
-``init_settings`` -- the highest-precedence source.
-
-NOTE on bare-name env routing:
-    CONTEXT.md "Env var naming convention" LOCKS bare env-var names (``OLLAMA_BASE_URL``
-    rather than ``OLLAMA__BASE_URL``). pydantic-settings' default ``EnvSettingsSource``
-    only inspects top-level fields of the settings class; it does NOT walk sub-model
-    ``validation_alias`` annotations. To honor the locked decision without setting
-    ``env_nested_delimiter``, we ship a tiny custom source (``_BareNameNestedEnvSource``)
-    that scans each sub-model's ``validation_alias`` choices against ``os.environ`` and
-    emits a nested dict like ``{"ollama": {"base_url": "..."}, ...}``. This source is
-    inserted alongside the standard env source so top-level bare names
-    (``JUDGE_TIMEOUT_SECONDS``) keep flowing through the standard path. See plan-checker
-    iter 1 BLOCKER #1 (resolved Option A) in 01-02-PLAN.md.
+`.env` is dead-letter for the framework's config layer (Phase 13 D-07).
+Sub-model `validation_alias=AliasChoices(...)` declarations on
+`OllamaConfig` etc. survive only for YAML-key matching; the env-routing
+role is gone (D-05).
 """
 
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
-from typing import Any
 
-from dotenv import dotenv_values
-from pydantic import AliasChoices, Field, field_validator
-from pydantic.fields import FieldInfo
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -50,144 +37,36 @@ from mcp_test_framework.models import (
 )
 
 
-def _alias_env_names(field: FieldInfo) -> list[str]:
-    """Return the list of bare env-var names declared on a sub-model field via
-    ``validation_alias=AliasChoices(...)``."""
-    alias = field.validation_alias
-    if isinstance(alias, AliasChoices):
-        return [str(c) for c in alias.choices if isinstance(c, str)]
-    if isinstance(alias, str):
-        return [alias]
-    return []
-
-
-def _maybe_json_decode(raw: str, annotation: Any) -> Any:
-    """For collection-typed fields, decode JSON-array/object strings (matches
-    pydantic-settings' built-in env source behavior). For other fields, return as-is.
-
-    Required so ``MCP_SERVER_ARGS=["homelab-mcp"]`` in ``.env``/``os.environ`` reaches the
-    nested ``list[str]`` field correctly. Without this, the raw string fails Pydantic
-    list validation.
-    """
-    origin_str = str(annotation)
-    is_collection = (
-        origin_str.startswith("list")
-        or origin_str.startswith("dict")
-        or origin_str.startswith("typing.List")
-        or origin_str.startswith("typing.Dict")
-        or origin_str.startswith("tuple")
-        or origin_str.startswith("set")
-    )
-    if not is_collection:
-        return raw
-    stripped = raw.strip()
-    if not stripped or stripped[0] not in "[{":
-        return raw
-    try:
-        return json.loads(stripped)
-    except json.JSONDecodeError:
-        return raw
-
-
-class _BareNameNestedEnvSource(PydanticBaseSettingsSource):
-    """Custom env source that walks sub-model ``BaseModel`` fields and reads bare env
-    names declared via ``validation_alias=AliasChoices(...)`` on each sub-field, emitting
-    a nested dict for the parent ``BaseSettings`` to merge with other sources.
-
-    Reads from BOTH ``os.environ`` and the ``.env`` file declared on the settings class
-    (via ``model_config['env_file']``). ``os.environ`` wins over ``.env`` per the
-    locked precedence (CLI > env > .env > YAML > defaults).
-
-    Only sub-fields whose annotation is a ``BaseModel`` subclass are walked; top-level
-    primitive fields are left to the standard ``EnvSettingsSource`` / ``DotEnvSettingsSource``.
-    """
-
-    def get_field_value(
-        self, field: FieldInfo, field_name: str
-    ) -> tuple[Any, str, bool]:
-        # Required override; this source does not use the per-field path. Sentinel.
-        return None, field_name, False
-
-    def _build_effective_env(self) -> dict[str, str]:
-        """Merge ``.env`` (low precedence) under ``os.environ`` (high precedence)."""
-        effective: dict[str, str] = {}
-        # 1. Load .env first (lowest of the two)
-        env_file = self.settings_cls.model_config.get("env_file")
-        if env_file:
-            for env_path in (env_file if isinstance(env_file, (list, tuple)) else [env_file]):
-                path = Path(str(env_path))
-                if path.is_file():
-                    for k, v in dotenv_values(str(path)).items():
-                        if v is not None:
-                            effective[k] = v
-        # 2. os.environ overlays (wins on conflict)
-        for k, v in os.environ.items():
-            effective[k] = v
-        return effective
-
-    def __call__(self) -> dict[str, Any]:
-        from pydantic import BaseModel  # local import to avoid leaking at module scope
-
-        env = self._build_effective_env()
-        result: dict[str, Any] = {}
-        for field_name, field in self.settings_cls.model_fields.items():
-            annotation = field.annotation
-            if not (isinstance(annotation, type) and issubclass(annotation, BaseModel)):
-                continue
-            sub_data: dict[str, Any] = {}
-            for sub_name, sub_field in annotation.model_fields.items():
-                for env_name in _alias_env_names(sub_field):
-                    if env_name in env:
-                        sub_data[sub_name] = _maybe_json_decode(
-                            env[env_name], sub_field.annotation
-                        )
-                        break
-            if sub_data:
-                result[field_name] = sub_data
-        return result
-
-
 class Config(BaseSettings):
     """Top-level configuration. Frozen for safe session-scoped sharing across async tests."""
 
-    # NOTE: nested-env delimiter intentionally NOT set -- bare env names (per CONTEXT.md
-    # lock) are routed to sub-model fields via the custom _BareNameNestedEnvSource below,
-    # which honors the validation_alias choices on each sub-model field.
-    # See plan-checker iter 1 BLOCKER #1 (resolved Option A) in 01-02-PLAN.md.
     model_config = SettingsConfigDict(
         frozen=True,
-        env_file=".env",
-        env_file_encoding="utf-8",
         extra="forbid",
     )
 
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     mcp_server: McpServerConfig = Field(default_factory=McpServerConfig)
+    # Plan 13-04 will remove the `target` field and the TargetConfig import.
     target: TargetConfig = Field(default_factory=TargetConfig)
 
-    # JUDGE_TIMEOUT_SECONDS routes here without an explicit alias because
-    # pydantic-settings uppercases top-level field names by default.
     judge_timeout_seconds: int = 120
 
-    # Phase 08 D-02 / TOOLCFG-02: top-level config schema version. Only `1` is
-    # accepted in v1.1; future schema changes either default to a higher version
-    # or branch on the loaded value. CD-01 chose an explicit field_validator
-    # over Field(ge=1, le=1) so the error message names the version explicitly.
-    version: int = 1
+    # Phase 13 D-08: v2 schema. Plan 13-02 flipped from v1.
+    version: int = 2
 
-    # Phase 08 D-01 / TOOLCFG-01: per-tool registry. Empty default = TOOLCFG-06
-    # (tools with no entry use ToolConfig() defaults). Annotation is `dict`,
-    # NOT `BaseModel`, so _BareNameNestedEnvSource (lines 91-146) skips it
-    # naturally -- D-19 honored automatically without code changes there.
+    # Phase 08 D-01 / TOOLCFG-01: per-tool registry. Plan 13-03 will flip
+    # the runtime semantics from opt-out to opt-in.
     tools: dict[str, ToolConfig] = Field(default_factory=dict)
 
     @field_validator("version", mode="after")
     @classmethod
     def _validate_version(cls, v: int) -> int:
-        """Only `1` is accepted by this build (Phase 08 D-02 / CD-01)."""
-        if v != 1:
+        """Phase 13 D-08: only `2` is accepted; v1 configs raise so cli.py's
+        operator-error mapper can render the SAFE-06 ERROR-STYLE message."""
+        if v != 2:
             raise ValueError(
-                f"config version {v} not supported by this build, expected 1"
+                f"config version {v} not supported by this build, expected 2"
             )
         return v
 
@@ -196,22 +75,28 @@ class Config(BaseSettings):
         cls,
         settings_cls: type[BaseSettings],
         init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,  # noqa: ARG003
+        dotenv_settings: PydanticBaseSettingsSource,  # noqa: ARG003
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        # Precedence: CLI/init > env > .env > YAML > default.
-        # In pydantic-settings, leftmost source wins.
-        yaml_path = os.environ.get("MCPTF_CONFIG_FILE")
-        sources: list[PydanticBaseSettingsSource] = [
-            init_settings,                           # CLI flags arrive as kwargs to Config(...)
-            _BareNameNestedEnvSource(settings_cls),  # bare env names -> sub-model fields
-            env_settings,                            # OS environment (top-level fields)
-            dotenv_settings,                         # .env file
-        ]
-        if yaml_path and Path(yaml_path).is_file():
+        """Phase 13 D-05: collapse the source pipeline to
+        init_kwargs -> YAML -> defaults. env_settings and dotenv_settings
+        are accepted as parameters (pydantic-settings calls us with them)
+        but intentionally dropped from the returned tuple.
+
+        The resolver in cli.py:_load_config passes the resolved YAML
+        path as `Config(yaml_file=str(path))`. We pop `yaml_file` from
+        init_settings.init_kwargs BEFORE the YAML source is constructed
+        so it does not reach the model validator (Config has
+        `extra="forbid"` and no `yaml_file` field, so leaving it in
+        the init_kwargs would raise `ExtraForbidden`).
+        """
+        # Locked pop pattern (D-03, revision iteration 1 probe-verified).
+        yaml_file = init_settings.init_kwargs.pop("yaml_file", None)
+        sources: list[PydanticBaseSettingsSource] = [init_settings]
+        if yaml_file and Path(yaml_file).is_file():
             sources.append(
-                YamlConfigSettingsSource(settings_cls, yaml_file=yaml_path)
+                YamlConfigSettingsSource(settings_cls, yaml_file=str(yaml_file))
             )
-        sources.append(file_secret_settings)  # docker secrets etc -- below YAML
+        sources.append(file_secret_settings)
         return tuple(sources)
