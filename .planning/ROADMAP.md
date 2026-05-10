@@ -46,7 +46,7 @@
 ### Phase 12: Doc & persona foundation
 **Goal**: An operator browsing the repo for the first time sees generic, vibe-coded-MCP-friendly docs and a `config-init`-generated config that runs without an `.env` file. Planning provenance (phase numbers, plan IDs, internal spec IDs) does not leak into user-facing surfaces.
 **Depends on**: Nothing (first v1.2 phase; v1.1 is shipped)
-**Plans:** 6/6 plans complete
+**Plans:** 9/9 plans complete
   - [x] 12-01-PLAN.md — docs/ERROR-STYLE.md style guide + examples/README.md + Wave-0 banned-token tests (PERSONA-03 setup; wave 1)
   - [x] 12-02-PLAN.md — .env.example reframed for CI-secret passthrough (CLEAN-06 + CLEAN-01; wave 1)
   - [x] 12-03-PLAN.md — git mv config.example.yaml -> examples/homelab-mcp.yaml; rewrite config.example.yaml as 3-pattern placeholder template (CLEAN-02 + CLEAN-03; wave 2, depends on 12-01)
@@ -126,7 +126,7 @@
 | 09. JUnit XML output & per-tool reporting | v1.1 | 3/3 | Complete | 2026-05-08 |
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete | 2026-05-08 |
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
-| 12. Doc & persona foundation | v1.2 | 6/6 | Complete   | 2026-05-10 |
+| 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
 | 13. Config safety & opt-in tool selection | v1.2 | 0/0 | Not started | - |
 | 14. Hybrid runner with domain UI | v1.2 | 0/0 | Not started | - |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
