@@ -1,137 +1,117 @@
 ---
 id: SEED-011
-status: dormant
+status: active
 planted: 2026-05-08
-planted_during: v1.1 milestone complete + manual UAT post-v1.1.1-hotfix-merge
-trigger_when: v1.2 milestone framing — surface during /gsd-new-milestone questioning step. Decide BEFORE committing SEED-010's folder split, since the runner choice shapes what the folder structure needs to support
+planted_during: v1.1 manual UAT exploration (formalized at v1.2 milestone framing 2026-05-08)
+trigger_when: v1.2 milestone framing (active for v1.2). Decide BEFORE SEED-010 folder split — runner contract drives the split.
 scope: Medium
+target_milestone: v1.2 (cohort with SEED-007/008/009/010)
 ---
 
-# SEED-011: Hybrid runner with domain-language UI (operator never sees pytest)
+# SEED-011: Hybrid runner with domain UI
 
 ## Why This Matters
 
-After running `mcp-test-framework run --config config.yaml -- -k mcp_tool_contract -v` and seeing the actual operator output on 2026-05-08, user surfaced the deeper question that SEED-010 only partially answers:
+Even with the folder split (SEED-010) and the pre-run digest (SEED-008), pytest framing still leaks into operator output: `=== test session starts ===`, `collected N items / M deselected`, `===== passed in Xs =====`, per-test `.` / `F` markers, framework-jargon tracebacks. An operator testing an MCP server doesn't care about pytest internals — they care about which tools passed, which failed the rubric, and why.
 
-> "should we be doing our own runner or moving the judge tests to a different folder and point pytest to use that folder for the mcp runs?"
-
-SEED-010 ("folder split") solves *what to run* but not *how to render*. Even with `tests/contract/` as the only thing the CLI sweeps, the operator still sees:
-
-- `collected/deselected` framing (pytest's mental model)
-- Fixture error stacktraces with `_pytest.outcomes.Exit`
-- `addopts` / marker syntax leaking into output
-- `[<param>]` parametrize suffixes embedded in test IDs
-- Per-test-function granularity (operator thinks in tools, pytest thinks in test functions)
-
-The output is for *test authors*, not for *MCP operators*. An operator's mental model is:
-
-```
-Testing 2 tools...
-
-✓ list_keyring_credentials  8/10  (2 judges skipped per config)
-✗ suggest_deployments       9/10  (disambiguation: scored 3, expected ≥4)
-                                   "lacks specific details to distinguish from
-                                    similar tools (e.g., calculate_latency)"
-
-Tools passed: 1/2
-Run time: 21s
-```
-
-Pytest cannot natively produce this shape. It can be coaxed close (the existing `_reporter.py` plugin already aggregates per-tool — see `tests/test_reporter.py`'s 30+ tests pinning that contract), but it always leaks pytest framing around the edges.
+Memory: `Hybrid runner with domain UI (SEED-011) — pytest framing leaks into operator output even with folder split. Wrap pytest.main() to render domain UI from JUnit XML. Decide BEFORE SEED-010 folder split. 6th operator-vs-dev pattern` (2026-05-08).
 
 ## When to Surface
 
-**Trigger:** v1.2 milestone framing — surface during `/gsd-new-milestone` questioning step.
-
-**Critical:** Decide this BEFORE committing SEED-010's folder split. The runner choice shapes what the folder structure needs to support. If we go hybrid (B below), the contract folder may not even need a `conftest.py` accessible to operators — pytest fixtures become an internal implementation detail.
-
-This seed should be presented when the new milestone scope mentions any of:
-- Reporter UX (compounds with SEED-008's pre-run digest)
-- Custom runner / runner / CLI surface
-- Operator UX / what does the operator see
-- Pytest output / pytest framing
+**Active for v1.2.** Decided BEFORE SEED-010 — the runner contract defines what "operator-facing" means, which then drives the folder split.
 
 ## Scope Estimate
 
-**Medium** — One phase if hybrid (Option B); a milestone if full custom runner (Option C). Recommended path is B.
+**Medium.** The mechanism is well-understood (subprocess pytest with `--junit-xml` to a tempfile, parse JUnit XML, render domain UI), but the design space is non-trivial:
+- What to show / hide
+- How to surface failures (full traceback? rubric reasoning? both?)
+- Quiet mode parity with `-q`
+- Pass-through to raw pytest for power users (`mcp-test-framework run --raw` or `pytest tests/contract/` directly)
+- Live progress (stream pytest output and translate, or run silent and render at end?)
 
-## Three Design Points on the Spectrum
+## Components
 
-### Option A — Folder split only (status quo + SEED-010)
+### 1. Wrap `pytest.main()` (or subprocess pytest)
 
-Operator runs `pytest tests/contract/` via the CLI. Output is pytest's, with all its conventions and leakage. Already captured in SEED-010.
+`mcp-test-framework run` no longer invokes pytest directly via `pytest.main([...])` returning the exit code. Instead it:
 
-**Cost:** Small.
-**Operator UX:** Improved (filtered noise) but still pytest-shaped.
+1. Runs pytest with `--junit-xml=<tempfile>` and pytest's own output suppressed (or piped to a hidden log file for `--debug`).
+2. Parses the JUnit XML.
+3. Renders domain UI: pre-run digest (SEED-008) + per-tool table + summary.
+4. Returns the appropriate exit code (0 / 1 / 130 / 2).
 
-### Option B — Hybrid runner (RECOMMENDED)
+### 2. Domain UI shape (initial sketch)
 
-Custom thin CLI layer wraps `pytest.main()` underneath:
+```
+========================================
+MCP Test Framework
+========================================
+MCP server:  uvx <your-mcp-command>
+Discovered:  58 tools
+Running:      2  (list_keyring_credentials, suggest_deployments)
+Skipping:    56  (use --explain to list)
+Judges:       clarity, disambiguation, parameters
 
-1. CLI invokes pytest with `--junit-xml` (already wired in v1.1) or `pytest-json-report`
-2. Pytest runs the contract tests in `tests/contract/` (per SEED-010)
-3. CLI captures pytest's exit code AND the structured output (XML/JSON)
-4. CLI renders domain UI from the structured output: per-tool aggregation, judge-failure reasoning extraction, descriptive verdicts
-5. Pytest's stdout is suppressed (`-q --no-header --no-summary`) or piped to a verbose-only sink
-6. Operator sees ONLY the domain UI
+Test plan: 20 contract cases
 
-The orchestration logic in pytest (parametrize over discovered tools, run fixtures, gate on `_preflight`, isolation, judge calls) is already correct and battle-tested through v1.0/v1.1. Rebuilding it would be expensive and risky.
+[1/2] list_keyring_credentials   ✓ PASS  (clarity 5/5)
+[2/2] suggest_deployments        ✗ FAIL  (parameters 3/5: "params field has no description")
 
-The reporter plugin in `src/mcp_test_framework/_reporter.py` already extracts per-tool aggregation logic. Extract it further so it can run as a post-processor on JUnit XML, not only as an in-process pytest hook. Then the same logic powers both the in-process summary (for framework dev) and the operator-facing CLI render (for vibe-coded persona).
+Result: 1 PASS / 1 FAIL  in 8.3s
+========================================
+```
 
-**Cost:** Medium. One phase to wire the runner, refactor reporter logic for post-processing, suppress pytest output, add domain-UI rendering. The XML emission is already wired (Phase 09 OUTPUT-01).
-**Operator UX:** Optimal — pytest is invisible. Domain language throughout.
-**Risk:** Adds one layer to maintain, but the layer is small, well-bounded, and isolates pytest's quirks behind a stable XML contract.
+### 3. Failure rendering
 
-### Option C — Full custom runner (replace pytest in operator path)
+For judge-rubric failures, surface `JudgeResult.reasoning` directly. For schema failures, surface `ValidationIssue.message`. Stack traces only on `--debug`.
 
-Build orchestration from scratch: discover tools → instantiate rubrics → call judge → call MCP → aggregate → render. No pytest in the operator path. Pytest stays for `tests/framework/` (per SEED-010).
+### 4. Pass-through escape hatch
 
-**Cost:** Large — at least a milestone of work. Re-implements parametrize, fixtures, isolation, preflight gating, async session management, judge call patterns, retry/timeout semantics. All of this is already debugged in pytest hooks; doing it again is risky.
-**Operator UX:** Optimal — same as B.
-**Risk:** Significantly more code to maintain. Likely diverges from pytest patterns over time, creating a fork the framework dev team has to maintain alongside pytest.
+`mcp-test-framework run --raw` (or `--pytest-pass-through`) bypasses the wrapper and runs pytest verbatim with all flags forwarded. Maintainers and CI debugging stay productive.
 
-### Recommendation: B (Hybrid)
+### 5. Quiet & verbose modes
 
-The framework's value prop is **MCP contract testing + Ollama judge orchestration** — not "build a pytest replacement." Keep pytest as the engine; replace its UI. This is exactly the role pytest was designed to support (it's a testing framework, not an end-user product), and the JUnit-XML emission already shipped in Phase 09 makes the post-processor a small lift.
+- `-q` / `--quiet` — final summary line only ("1 PASS / 1 FAIL").
+- (default) — domain UI as above.
+- `--explain` (from SEED-008) — adds skipped-tool detail.
+- `-v` / `--verbose` — adds per-judge breakdown per tool.
+- `--debug` — adds raw pytest output + tracebacks.
+
+### 6. JUnit XML stays available
+
+`--junit-xml=PATH` flag (existing, from v1.1 OUTPUT-01) still emits to the operator-specified path. The wrapper uses a separate tempfile internally so `--junit-xml=PATH` semantics don't change.
+
+## Sequencing Within v1.2
+
+**FIRST among the runner / split / UX trio:** SEED-011 (this seed) → SEED-010 (folder split) → SEED-008 (pre-run digest is a section of the domain UI, so its design folds into this seed's UI design). All three may land in adjacent phases or as a single phase pair.
+
+Memory rule: `Decide BEFORE SEED-010 folder split` — the runner's collection scope IS the split decision. If SEED-011 lands first, SEED-010 is a mechanical follow-on.
+
+## Tradeoffs
+
+- **Pro:** Operators see a clean MCP-domain interface; pytest becomes an implementation detail.
+- **Pro:** SEED-008 reporter UX folds naturally — the "pre-run digest" is just one section of the domain UI, not a pytest plugin contract.
+- **Con:** Two layers of output (pytest's, then ours). Errors in pytest itself (collection errors, fixture setup errors) need translation or pass-through.
+- **Con:** Live progress is harder than batch render — likely defer streaming progress to v1.3 if it complicates v1.2.
 
 ## Open Design Questions
 
-- **JUnit XML vs pytest-json-report:** XML is already emitted (Phase 09 OUTPUT-01) and is industry-standard. JSON via `pytest-json-report` is richer (carries fixture state, custom data) but adds a dep. **Lean: stick with JUnit XML for v1.2; revisit if domain UI needs richer data than XML provides.**
-- **What does `mcp-test-framework run` show by default?** Domain UI. What does `--verbose` or `--raw-pytest` show? Pass-through pytest output for debugging. **Lean: domain UI default; pytest pass-through behind an explicit flag.**
-- **Where does the per-tool reporter logic live after extraction?** Probably `src/mcp_test_framework/runner.py` (new module) or split between `_reporter.py` (in-process pytest plugin, for framework dev) and `runner.py` (XML post-processor, for operator path). The two should share a common aggregation core to avoid drift.
-- **JUnit XML still emitted to a file?** Yes — operator runs `mcp-test-framework run --junit-xml=results.xml` for CI ingestion (Phase 09 contract preserved). The hybrid runner consumes its own XML output for the domain UI.
-
-## Cumulative Pattern Reinforcement
-
-This is the **sixth** operator-vs-developer pain point in the 2026-05-08 UAT session. Pattern is now overwhelming:
-
-1. SEED-007 — black-box rule reframed as user-persona feature
-2. `feedback_scaffold_completeness.md` — `config-init` produces incomplete scaffolds
-3. SEED-009 — examples saturated with maintainer's homelab
-4. SEED-008 — pytest's "N collected, M deselected" framing buries tool counts
-5. SEED-010 — `tests/` directory layout assumes single dev/CI audience
-6. **This seed** — pytest's output framing is for test authors, not MCP operators
-
-v1.2's milestone theme is now obviously **operator-first design**. These seeds are not independent features; they're a coherent rebuild of the operator surface. Milestone framing should treat them as a unit.
-
-## How to Apply During v1.2 Planning
-
-- **Sequence: B before A.** Decide hybrid vs custom-runner BEFORE committing SEED-010's folder structure, since the runner choice shapes what the folder structure needs to support. If hybrid, `tests/contract/conftest.py` is internal-only; if custom runner, `tests/contract/` may not need pytest config at all (or even exist).
-- Compounds heavily with SEED-008 (pre-run digest) — same domain-UI surface, just at startup instead of summary. Probably one phase delivering both.
-- Compounds with SEED-007 (persona) — this seed is the technical implementation of the persona reframe at the runner layer.
+1. **Subprocess vs `pytest.main()`?** Subprocess is cleaner (full output capture), but slower (extra process). `pytest.main()` with output redirection works but couples our process to pytest's globals.
+2. **Live progress?** Tail JUnit XML during the run (not really supported), or stream stdout and parse pytest's own line markers (fragile)? Likely defer.
+3. **Color / TTY detection?** Use `rich` for the domain UI? Adds a dependency but the UX gain is significant. **Open.**
+4. **JUnit-XML schema dependency.** Pytest's JUnit dialect is stable but not contractual. Pin a parser (`junitparser`?) and unit-test the round-trip.
 
 ## Breadcrumbs
 
-- `src/mcp_test_framework/cli.py:run` (lines 118-172) — Typer command that calls `pytest.main()`. The hybrid runner wraps this.
-- `src/mcp_test_framework/cli.py:_build_pytest_args` — argv builder; the hybrid runner adds `--junit-xml=<tempfile>` and `-q --no-header --no-summary` automatically.
-- `src/mcp_test_framework/_reporter.py` — existing per-tool aggregation logic; extract aggregation core for reuse in XML post-processor.
-- `tests/test_reporter.py` — 30+ tests pinning the aggregation contract (D-03, D-05). The hybrid runner's domain UI must preserve these contracts.
-- Phase 09 (`.planning/phases/09-junit-xml-output-per-tool-reporting/`) — JUnit XML emission already wired; the runner consumes its own output.
+- `src/mcp_test_framework/cli.py:118-172` — current `run` Typer command (calls `pytest.main`)
+- `src/mcp_test_framework/_reporter.py` — current pytest plugin for per-tool summary; this seed likely OBSOLETES the plugin model in favor of post-run XML parsing
+- `tests/test_reporter.py` — existing reporter tests (re-target at the new UI renderer)
+- `pyproject.toml` — gains `junitparser` (optional) or stdlib `xml.etree.ElementTree`; possibly `rich`
+- v1.1 OUTPUT-01..03 — `--junit-xml=PATH` flag stays; wrapper uses internal tempfile
 
-## Related Memories / Seeds
+## Related Memories
 
-- SEED-010 — folder split (sequence: decide this seed first; folder split adapts to chosen runner shape)
-- SEED-008 — pre-run digest (same domain-UI surface, different lifecycle stage)
-- SEED-007 — vibe-coded persona (the why)
-- `feedback_uat_must_be_user_driven.md` — same operator-vs-developer pattern at the UAT-design level
+- `Hybrid runner with domain UI (SEED-011)` (memory entry)
+- `Operator vs framework test surface (SEED-010)` (memory entry; downstream)
+- `Pre-run tool summary (v1.2)` (memory entry; SEED-008 folds into the domain UI)
+- `Output ergonomics at scale` (memory entry; the UI must work at N=70)

@@ -6,20 +6,29 @@ The MVP targets the `homelab-mcp` server over stdio and validates one tool
 (`list_keyring_credentials` by default) end-to-end through schema validation, an
 Ollama-backed description-quality judge, and output conformance checks.
 
+## Testing an MCP server you didn't write
+
+The framework treats your MCP server as a black box — you don't need to read
+its source. `mcp-test-framework list-tools` shows you the tools the server
+exposes and their parameter shapes; `mcp-test-framework config-init` scaffolds
+a config file populated with the actual tools you have. Designed for operators
+testing servers they didn't author.
+
+The full walkthrough lives in [`docs/EXTENDING.md`](docs/EXTENDING.md#testing-an-mcp-server-you-didnt-write).
+
 ## Prerequisites
 
 - Python 3.14
 - [`uv`](https://docs.astral.sh/uv/) (project, venv, and lockfile manager)
 - [Ollama](https://ollama.com/) running at the configured base URL with the configured
   model (defaults: `http://127.0.0.1:11434`, model `qwen3.6:latest`)
-- `homelab-mcp` runnable via `uvx` (the `.env.example` default) or installed on `PATH`
+- `homelab-mcp` runnable via `uvx`, or installed on `PATH`
 
 ## Setup
 
 ```bash
 git clone <repo-url>
 cd mvp_test_framework
-cp .env.example .env   # edit if your Ollama / MCP server differs
 uv sync
 ```
 
@@ -32,9 +41,9 @@ uv sync
 ### Run the test suite
 
 ```bash
-uv run mcp-test-framework run
+uv run mcp-test-framework run --config config.yaml
 uv run mcp-test-framework run --config ./config.yaml
-uv run mcp-test-framework run -- -x --lf -k schema
+uv run mcp-test-framework run --config config.yaml -- -x --lf -k schema
 ```
 
 `run` invokes pytest against the `tests/` directory and exits with pytest's exit
@@ -47,8 +56,8 @@ markers as documented in the spec.
 ### List MCP server tools
 
 ```bash
-uv run mcp-test-framework list-tools
-uv run mcp-test-framework list-tools --json
+uv run mcp-test-framework list-tools --config config.yaml
+uv run mcp-test-framework list-tools --config config.yaml --json
 ```
 
 Default output is indented blocks (tool name on one line, the full wrapped
@@ -72,20 +81,24 @@ Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama server base URL. |
 | `OLLAMA_MODEL` | `qwen3.6:latest` | Ollama model name used by the judge. |
 | `OLLAMA_TIMEOUT_SECONDS` | `120` | Per-request HTTP timeout for Ollama calls. |
-| `MCP_SERVER_COMMAND` | `homelab-mcp` | MCP server launcher binary. `.env.example` ships `uvx` for zero-install. |
-| `MCP_SERVER_ARGS` | `[]` (JSON list) | Args passed to the launcher. `.env.example` ships `["homelab-mcp"]` to pair with `uvx`. |
+| `MCP_SERVER_COMMAND` | `homelab-mcp` | MCP server launcher binary. |
+| `MCP_SERVER_ARGS` | `[]` (JSON list) | Args passed to the launcher (JSON list). |
 | `MCP_SERVER_TIMEOUT_SECONDS` | `30` | Per-SDK-call timeout for stdio operations. |
-| `TARGET_TOOL_NAME` | `list_keyring_credentials` | Tool under test. The `.env.example` default was switched in Plan 05-05 from `list_registered_servers` (which fails the disambiguation rubric upstream). |
 | `JUDGE_TIMEOUT_SECONDS` | `120` | Outer-budget cap on judge calls. |
 | `MCPTF_CONFIG_FILE` | unset | Optional path to a YAML config overlay (sits below env in precedence). |
 
-Copy `.env.example` to `.env` and edit. The same vars can be set in your shell,
-in a YAML overlay pointed at by `MCPTF_CONFIG_FILE` (or `--config`), or in
-PowerShell with `$env:VAR = "..."` before invoking the CLI.
+Configure the framework via `config.yaml` — generate a starter with
+`mcp-test-framework config-init -o config.yaml` and pass it via
+`--config config.yaml`. Env vars are reserved for CI-secret passthrough only
+(see `.env.example`); they no longer override config values. The framework
+does not auto-discover a `config.yaml` in the current directory; the path
+must be explicit (via `--config` or the `MCPTF_CONFIG_FILE` env var).
 
 ## Per-tool configuration
 
-Per-tool config lives under the top-level `tools:` key in your YAML overlay; tools with no entry use safe defaults (no skip, all rubrics, empty `call_arguments`).
+Per-tool config lives under the top-level `tools:` key in your YAML overlay. Under this release's schema, a tool with **no entry runs by default** (no skip, all rubrics, empty `call_arguments`).
+
+> **Heads-up on opt-in scaffolds.** The schema this release ships is opt-out: omitting a tool means it runs. The `config-init` scaffold takes the opposite stance and emits `skip: true` for every discovered tool, so a freshly-generated config is opt-in by construction. Operators are expected to review each entry and remove the skip line for tools they want to exercise. A future release is likely to invert the schema default to opt-in everywhere; until then, expect this asymmetry between "manual config" and "scaffolded config".
 
 | Field | Default | Purpose |
 |-------|---------|---------|
@@ -93,8 +106,8 @@ Per-tool config lives under the top-level `tools:` key in your YAML overlay; too
 | `skip_reason` | `null` | Human-readable reason surfaced in pytest output and JUnit XML when `skip: true`. |
 | `call_arguments` | `{}` | Fixed `dict[str, Any]` passed to the tool's `call_tool` invocation. |
 | `judges` | `null` (all rubrics) | Optional `list[str]` of rubric IDs (`clarity`, `disambiguation`, `parameters`). `[]` means "no rubrics for this tool". |
-| `setup` | `null` | Reserved for v1.5+ stateful testing (TOOLCFG-03); runtime no-op in v1.1. |
-| `depends_on` | `null` | Reserved for v1.5+ stateful testing (TOOLCFG-03); runtime no-op in v1.1. |
+| `setup` | `null` | Reserved for stateful testing in a future release; no runtime effect today. |
+| `depends_on` | `null` | Reserved for stateful testing in a future release; no runtime effect today. |
 
 The `setup` and `depends_on` fields are typed in the model but have no runtime semantics in v1.1; future versions will activate them additively.
 
@@ -147,7 +160,7 @@ tests\unit\test_schema_validator.py ............                         [100%]
 ```
 
 Captured verbatim from a real local run on Windows 11 against live `homelab-mcp`
-+ Ollama, with the documented default `TARGET_TOOL_NAME=list_keyring_credentials`.
++ Ollama, against a representative tool surface from the connected server.
 The summary line says "67 passed in 22.02s" once you mentally fold over the
 deselect/warning tokens -- pytest formats the wall-clock as `... in N.NNs`.
 The 5 deselected tests are the live-marker smoke tests in `tests/smoke/` gated
@@ -155,14 +168,11 @@ behind `-m 'not live_homelab and not live_ollama'`. The single warning is
 pytest's standard `PytestAssertRewriteWarning` for `anyio` (already imported by
 the time pytest tries to instrument it) and is unrelated to test outcomes.
 
-If you switch `TARGET_TOOL_NAME` to a tool whose declared description does not
-satisfy the description-quality rubrics (e.g., the original Phase 04 default
-`list_registered_servers`, which scores 3 < 4 on the disambiguation rubric
-against `qwen3.6:latest`), expect `test_description_disambiguation` and/or
-`test_description_clarity` to fail. That is the framework's value proposition
-working as designed -- the judge is flagging a real description-quality gap.
-Tighten the upstream tool description, retune the rubric threshold, or accept
-the verdict per your project's tolerance.
+If you enable a tool whose declared description does not satisfy the
+description-quality rubrics, the test fails with the judge's reasoning
+recorded in the JUnit XML and printed in the summary. Either tweak the
+tool's description upstream, or skip the tool in your config (per the
+"Per-tool configuration" section above).
 
 ## Isolation guarantee
 
@@ -182,7 +192,7 @@ Run the suite in CI with `--junit-xml=` and ingest the result with a JUnit-aware
 # .github/workflows/test.yml -- GitHub Actions starter.
 # On Jenkins / GitLab CI / CircleCI, translate the `runs-on` / `uses` /
 # `with` keys to the equivalent runner + action concepts. The CLI invocation
-# (`uv run mcp-test-framework run --junit-xml=results.xml`) is portable.
+# (`uv run mcp-test-framework run --config config.yaml --junit-xml=results.xml`) is portable.
 name: tests
 on: [push, pull_request]
 jobs:
@@ -195,7 +205,7 @@ jobs:
           python-version: "3.14"
       - run: uv sync
       # Default addopts in pyproject.toml excludes live_homelab + live_ollama markers.
-      - run: uv run mcp-test-framework run --junit-xml=results.xml
+      - run: uv run mcp-test-framework run --config config.yaml --junit-xml=results.xml
       - name: Publish test report
         if: always()
         uses: dorny/test-reporter@v2
@@ -211,7 +221,7 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
 
 - If a Ctrl+C leaves a `homelab-mcp.exe` process behind:
   `taskkill /F /IM homelab-mcp.exe`. This was the cancel-scope teardown bug
-  fixed in Phase 04.1; it should not recur in normal operation. The CLI's
+  fixed in an earlier release; it should not recur in normal operation. The CLI's
   `list-tools` and `run` paths both unwind the MCP subprocess in the same task
   that started it (see `src/mcp_test_framework/fixtures.py` and
   `src/mcp_test_framework/cli.py`).
@@ -219,8 +229,9 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
   `pyproject.toml`: re-run `uv sync` to regenerate the script shim under
   `.venv/Scripts/`.
 - If `homelab-mcp` is not on `PATH` and you see `[WinError 2]`: confirm
-  `MCP_SERVER_COMMAND` and `MCP_SERVER_ARGS` in your `.env` (the default uses
-  `uvx homelab-mcp` -- which requires `uvx` from `uv` to be available).
+  `mcp_server.command` and `mcp_server.args` in your `config.yaml` (e.g.
+  `command: uvx, args: [homelab-mcp]` — which requires `uvx` from `uv` to
+  be available).
 
 ## Further reading
 
@@ -228,4 +239,5 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
 - [`docs/EXTENDING.md`](docs/EXTENDING.md) -- add a new rubric, swap the judge backend
 - [`.planning/PROJECT.md`](.planning/PROJECT.md) -- project mission, constraints, key decisions
 - [`docs/EXTENDING.md#add-a-new-mcp-tool-target`](docs/EXTENDING.md#add-a-new-mcp-tool-target) -- add a new MCP tool target via per-tool config (no code changes)
-- [`config.example.yaml`](config.example.yaml) -- complete real-server per-tool config reference
+- [`config.example.yaml`](config.example.yaml) — starter template with placeholder names and three pattern variations.
+- [`examples/homelab-mcp.yaml`](examples/homelab-mcp.yaml) — complete worked example for the homelab-mcp server.

@@ -28,14 +28,17 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import textwrap
+import typing
 from contextlib import AsyncExitStack
 from importlib import metadata
 from pathlib import Path
 
 import typer
 from mcp.types import Tool
+from pydantic import ValidationError
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
@@ -61,32 +64,151 @@ def _main() -> None:
     return None
 
 
+def _emit_operator_error(
+    summary: str,
+    detail: list[str],
+    next_step: str,
+    *,
+    exit_code: int = 2,
+) -> typing.NoReturn:
+    """Render an operator-grade error and exit (citation: docs/ERROR-STYLE.md).
+
+    This function never returns; it raises typer.Exit internally. Callers
+    MUST NOT prefix calls with `raise`.
+
+    Format (per docs/ERROR-STYLE.md):
+        <one-line summary>
+        <blank>
+        <detail line 1>
+        <detail line 2>
+        ...
+        <blank>
+        next: <action verb> <command-or-instruction>
+
+    Operator terms only -- no spec IDs, no file:line refs, no internal jargon.
+    """
+    parts: list[str] = [summary, ""]
+    parts.extend(detail)
+    parts.extend(["", f"next: {next_step}"])
+    typer.echo("\n".join(parts), err=True)
+    raise typer.Exit(code=exit_code)
+
+
+def _emit_operator_error_for_validation(
+    exc: ValidationError, *, source: str
+) -> typing.NoReturn:
+    """Map pydantic.ValidationError -> operator-tone error per docs/ERROR-STYLE.md.
+
+    Mapping rules:
+    - version mismatch (config version N not supported by this build, expected 1)
+        -> "config file uses an older format" framing (forward-compat with SAFE-06
+           reference message in docs/ERROR-STYLE.md, but Phase 12 still accepts v1
+           and rejects v2+; the message names the actual mismatch).
+    - missing required field -> point at config.example.yaml
+    - other validation errors -> generic detail block with the field path
+
+    Function never returns; every branch calls _emit_operator_error which raises.
+    """
+    errors = exc.errors()
+    primary = errors[0] if errors else {}
+    loc = ".".join(str(p) for p in primary.get("loc", ()))
+    err_type = primary.get("type", "")
+    msg = primary.get("msg", "")
+
+    def _scrub_pydantic_jargon(raw: str) -> str:
+        # Strip pydantic v2's "Value error, " / "Assertion failed, " prefixes
+        # and the v1 "value_error" type-string. ERROR-STYLE.md rule 1 forbids
+        # leaking pydantic-internal jargon into operator-facing output.
+        cleaned = raw
+        for prefix in ("Value error, ", "Assertion failed, "):
+            if cleaned.startswith(prefix):
+                cleaned = cleaned[len(prefix):]
+                break
+        return cleaned
+
+    if loc == "version" and "not supported by this build" in msg:
+        clean_msg = _scrub_pydantic_jargon(msg)
+        _emit_operator_error(
+            summary=f"config file uses an unsupported schema version: {source}",
+            detail=[
+                "this release of mcp-test-framework accepts schema version 1.",
+                f"the file declares: {clean_msg}.",
+                "",
+                "regenerate a starter file and port your tool entries across.",
+            ],
+            next_step=(
+                "run `mcp-test-framework config-init -o config.yaml.new` to see "
+                "the expected layout, then merge your tool entries into it"
+            ),
+        )
+    if err_type in ("missing", "value_error.missing"):
+        _emit_operator_error(
+            summary=f"config file is missing a required field: {loc}",
+            detail=[
+                f"the field `{loc}` is required but was not found in {source}.",
+                "",
+                "see config.example.yaml for the expected shape, or regenerate "
+                "a starter file with config-init.",
+            ],
+            next_step=(
+                "copy the relevant block from config.example.yaml or run "
+                "`mcp-test-framework config-init -o config.yaml`"
+            ),
+        )
+    # Generic fallback -- still operator-tone, no pydantic-internal terms.
+    field_summary = ", ".join(
+        ".".join(str(p) for p in e.get("loc", ())) for e in errors
+    ) or "(unknown field)"
+    detail_lines = [f"the following config field(s) failed validation: {field_summary}."]
+    for e in errors[:3]:
+        detail_lines.append(
+            f"  - {'.'.join(str(p) for p in e.get('loc', ()))}: "
+            f"{_scrub_pydantic_jargon(e.get('msg', ''))}"
+        )
+    _emit_operator_error(
+        summary=f"config file has invalid values: {source}",
+        detail=detail_lines,
+        next_step=(
+            "fix the field(s) above, or run "
+            "`mcp-test-framework config-init -o config.yaml` to regenerate"
+        ),
+    )
+
+
 def _load_config(path: Path | None) -> Config:
-    """Shared config loader for `run` and `list-tools` commands.
+    """Shared config loader for `run`, `list-tools`, and `config-init`.
 
     If `path` is provided, sets MCPTF_CONFIG_FILE so Config()'s
-    settings_customise_sources picks up the YAML overlay. Pydantic
-    ValidationError propagates uncaught -- Pydantic's own message is
-    the diagnostic (CONTEXT.md Discretion bullet 2).
-
-    Note: on success, MCPTF_CONFIG_FILE is intentionally left set in
-    os.environ so the `run` path's pytest.main() plugin chain (and
-    fixtures) can observe the same overlay. On Config() failure the
-    var is popped to avoid leaking a bad path into subsequent calls
-    in the same process (e.g., test harnesses that invoke the CLI
-    multiple times).
+    settings_customise_sources picks up the YAML overlay. ValidationError
+    is caught and re-emitted as an operator-tone error per
+    docs/ERROR-STYLE.md (PERSONA-03).
     """
     if path is not None:
         if not path.is_file():
-            typer.echo(f"error: --config path not found: {path}", err=True)
-            raise typer.Exit(code=2)
+            _emit_operator_error(
+                summary=f"config file not found: {path}",
+                detail=[
+                    "the path passed to --config does not exist or is not a file.",
+                ],
+                next_step=(
+                    "check the path or run "
+                    "`mcp-test-framework config-init -o config.yaml` "
+                    "to generate a starter config"
+                ),
+            )
         os.environ["MCPTF_CONFIG_FILE"] = str(path)
         try:
             return Config()
+        except ValidationError as exc:
+            os.environ.pop("MCPTF_CONFIG_FILE", None)
+            _emit_operator_error_for_validation(exc, source=str(path))
         except Exception:
             os.environ.pop("MCPTF_CONFIG_FILE", None)
             raise
-    return Config()
+    try:
+        return Config()
+    except ValidationError as exc:
+        _emit_operator_error_for_validation(exc, source="(default sources)")
 
 
 def _build_pytest_args(
@@ -184,20 +306,36 @@ def list_tools(
         "--json",
         help="Emit tools as a JSON array of full MCP tool records.",
     ),
+    full: bool = typer.Option(
+        False,
+        "--full",
+        help="Include full description and per-parameter descriptions (ignored under --json).",
+    ),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        help="Substring filter on tool name (case-insensitive).",
+    ),
 ) -> None:
-    """List all tools exposed by the configured MCP server (CLI-02).
+    """List tools exposed by the configured MCP server (CLI-02 / PERSONA-02).
 
-    Connects via stdio (no pytest, no Ollama). Default output is indented
-    blocks: name on its own line, full wrapped description indented beneath
-    (D-list-1, D-list-3). `--json` emits a JSON array of full MCP tool
-    records (D-list-2). Output sorted alphabetically by name (D-list-4).
+    Default render (per tool):
+        <name>(<param>: <type>, *, <kw>: <type> = <default>)
+          <one-line truncated description>
+
+    --full adds the wrapped full description + per-parameter descriptions
+    (still human-readable, not raw JSON; use --json for machine output).
+    --name PATTERN narrows to tools whose name contains PATTERN
+    (case-insensitive substring match). --name composes with --full
+    and --json. --json output is unchanged from v1.1 except for the
+    --name filter applied before serialization. Passing --full alongside
+    --json is a no-op (JSON output is already complete).
 
     Body uses asyncio.Runner + AsyncExitStack-owned McpTestClient
     (D-teardown-1). KeyboardInterrupt propagates through the runner,
     __aexit__ runs in the same task that did __aenter__,
     stdio_client._terminate_process_tree kills the subprocess, exit code
-    130 with no message printed (D-teardown-3). This is the SAME pattern
-    Phase 04.1 hardened for the test path -- reused at the CLI surface.
+    130 with no message printed (D-teardown-3).
     """
     cfg = _load_config(config)
     try:
@@ -210,10 +348,37 @@ def list_tools(
         # typer.Exit(code=130) makes the SIGINT contract explicit and
         # uniform across POSIX and Windows console-script wrappers.
         raise typer.Exit(code=130)
+    except FileNotFoundError as exc:
+        if str(exc).startswith("MCP server command not on PATH:"):
+            _emit_operator_error(
+                summary=f"MCP server command not found: {cfg.mcp_server.command!r}",
+                detail=[
+                    f"the framework tried to launch the server with "
+                    f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`",
+                    "and the command is not on PATH.",
+                ],
+                next_step=(
+                    "update `mcp_server.command` / `mcp_server.args` in your "
+                    "config.yaml so the launch command resolves on PATH"
+                ),
+            )
+        _emit_operator_error(
+            summary="MCP server failed to start",
+            detail=[f"the launch attempt raised: {exc.__class__.__name__}: {exc}"],
+            next_step="verify the launch command runs cleanly in your shell",
+        )
+
     if as_json:
-        typer.echo(_format_tools_json(tools), nl=False)
+        # JSON path: --name filter applied; --full is ignored (D-07 orthogonality).
+        # Output is byte-identical to v1.1 except for the optional name filter.
+        if name is not None:
+            needle = name.lower()
+            filtered = [t for t in tools if needle in t.name.lower()]
+        else:
+            filtered = tools
+        typer.echo(_format_tools_json(filtered), nl=False)
     else:
-        typer.echo(_format_tools_text(tools))
+        typer.echo(_format_tools_text(tools, full=full, name_filter=name))
 
 
 @app.command("config-init")
@@ -237,19 +402,42 @@ def config_init(
         "--force",
         help="Permit overwrite of an existing --output file.",
     ),
+    command: str | None = typer.Option(
+        None,
+        "--command",
+        help=(
+            "Override mcp_server.command for this invocation. "
+            "Useful when your server is launched via uvx or pipx and the "
+            "default command is not on PATH "
+            "(e.g. `--command uvx --arg your-mcp-package`)."
+        ),
+    ),
+    arg: list[str] | None = typer.Option(
+        None,
+        "--arg",
+        help=(
+            "Append an argument to mcp_server.args. Repeat for each arg "
+            "(e.g. `--arg first --arg second`). Combine with --command "
+            "to bootstrap config-init without a pre-existing config.yaml."
+        ),
+    ),
 ) -> None:
-    """Emit a starter YAML config scaffold for the connected MCP server (Phase 08 D-21).
+    """Emit a starter YAML config scaffold for the connected MCP server.
 
     Discovers tools via the same isolation-aware seam used by `run` and
-    `list-tools` (`McpTestClient.__aenter__` -- D-24), then emits a YAML
+    `list-tools` (`McpTestClient.__aenter__`), then emits a YAML
     document containing `version: 1` and a `tools:` block with one
     commented entry per discovered tool. The scaffold is a no-op
     passthrough by default -- uncomment and edit individual fields to
-    opt a tool into skip / judges / args (Phase 08 D-22, CD-06).
+    opt a tool into skip / judges / args.
 
     Output:
       - default: stdout
       - --output PATH: write to file (refuses to overwrite without --force)
+
+    Override flags (bootstrap a fresh checkout without a pre-existing config.yaml):
+      - --command CMD: override mcp_server.command for this invocation only
+      - --arg ARG: append to mcp_server.args; repeat for each arg
 
     Exit codes (preserves CLI symmetry with `run` / `list-tools`):
       - 0: success
@@ -259,13 +447,30 @@ def config_init(
     # Refuse-to-overwrite check happens BEFORE discovery so a stale --output
     # path doesn't cost the operator a subprocess spawn.
     if output is not None and output.exists() and not force:
-        typer.echo(
-            f"error: refusing to overwrite existing file: {output} (use --force)",
-            err=True,
+        _emit_operator_error(
+            summary=f"refusing to overwrite existing file: {output}",
+            detail=[
+                "the framework does not overwrite an existing scaffold without --force.",
+            ],
+            next_step="add `--force` to overwrite, or pick a different `--output` path",
         )
-        raise typer.Exit(code=2)
 
     cfg = _load_config(config)
+
+    # Apply --command / --arg overrides via Pydantic v2 model_copy on the
+    # frozen Config / McpServerConfig instances. Re-instantiating Config(...)
+    # would re-trigger settings_customise_sources and lose the operator's
+    # intent; model_copy(update=...) returns a new frozen instance with only
+    # the named fields replaced.
+    if command is not None or arg is not None:
+        overrides: dict[str, object] = {}
+        if command is not None:
+            overrides["command"] = command
+        if arg is not None:
+            overrides["args"] = list(arg)
+        cfg = cfg.model_copy(
+            update={"mcp_server": cfg.mcp_server.model_copy(update=overrides)}
+        )
 
     try:
         with asyncio.Runner() as runner:
@@ -275,27 +480,60 @@ def config_init(
         # uniformly across POSIX/Windows console-script wrappers.
         raise typer.Exit(code=130)
     except FileNotFoundError as exc:
-        # Quick-task 260507-j6i: enrich the cryptic "MCP server command not on
-        # PATH" with a hint pointing users at MCPTF_CONFIG_FILE / config.example.yaml.
-        # Keep in sync with src/mcp_test_framework/fixtures.py:_preflight (lines
-        # 117-123) and tests/conftest.py:_resolve_tool_names (lines 113-119) --
-        # THIRD copy of the same string. CONTEXT.md <Shared Patterns> "MCP
-        # discovery hint string" flags this as a three-copy hazard;
-        # consolidating to a constant is out of scope for this plan.
-        msg = (
-            f"MCP discovery via {cfg.mcp_server.command!r} failed: "
-            f"{exc.__class__.__name__}: {exc}"
-        )
-        if str(exc).startswith("MCP server command not on PATH:"):
-            msg += (
-                f"\n\nHint: {cfg.mcp_server.command!r} was not found on PATH. "
-                "If you intended to use a different command, point "
-                "MCPTF_CONFIG_FILE at a config.yaml that defines "
-                "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
-                "The repo ships `config.example.yaml` you can copy and edit."
+        # Fallback scaffold: if --output was given, write a runnable shell
+        # so the operator's recovery path is "edit and re-run", not
+        # "hand-write a config from scratch". stdout mode skips this --
+        # the operator can't edit stdout.
+        if output is not None:
+            fallback_body = _format_tools_yaml_scaffold([])
+            # The mcp_server block in the scaffold below shows the framework
+            # DEFAULT values, NOT whatever --command/--arg the operator may
+            # have just passed -- propagating overrides into the scaffold is
+            # a deferred follow-up. The header acknowledges this so an
+            # operator who used `--command pipx --arg my-server` and got the
+            # fallback isn't confused why they see uvx / your-mcp-server-package
+            # in the file below.
+            header = (
+                "# mcp-test-framework starter config -- TOOL DISCOVERY FAILED.\n"
+                "# The framework could not launch your MCP server, so the\n"
+                "# `tools:` block below is empty. Fill in `mcp_server.command`\n"
+                "# (and any required `mcp_server.args`) so the launch command\n"
+                "# resolves on PATH, then re-run `mcp-test-framework config-init`\n"
+                "# to populate the tool list.\n"
+                "#\n"
+                "# Note: the `mcp_server` block below shows the framework\n"
+                "# default values. If you intended `--command X --arg Y`,\n"
+                "# edit those lines to substitute your values before re-running.\n"
+                "\n"
             )
-        typer.echo(msg, err=True)
-        raise typer.Exit(code=2)
+            output.write_text(header + fallback_body, encoding="utf-8")
+        if str(exc).startswith("MCP server command not on PATH:"):
+            _emit_operator_error(
+                summary=f"MCP server command not found: {cfg.mcp_server.command!r}",
+                detail=[
+                    f"the framework tried to launch the server with "
+                    f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`",
+                    "and the command is not on PATH.",
+                    "",
+                    "if your server is installed via `uvx` or `pipx`, set "
+                    "`mcp_server.command` and `mcp_server.args` in your config.yaml "
+                    "(e.g. `command: uvx, args: [your-server-package]`).",
+                ],
+                next_step=(
+                    "verify the launch command works in your shell, then update "
+                    "`mcp_server.command` / `mcp_server.args` in your config.yaml"
+                ),
+            )
+        _emit_operator_error(
+            summary="MCP server failed to start",
+            detail=[
+                f"the launch attempt raised: {exc.__class__.__name__}: {exc}",
+                "",
+                "check that the command in your config.yaml is runnable and any "
+                "required dependencies are installed.",
+            ],
+            next_step="verify the launch command runs cleanly in your shell",
+        )
 
     scaffold = _format_tools_yaml_scaffold(tools)
 
@@ -337,27 +575,121 @@ async def _list_tools_async(cfg: Config) -> list[Tool]:
         return await client.list_tools()
 
 
-def _format_tools_text(tools: list[Tool]) -> str:
-    """Indented-block text format: name on its own line, full wrapped description beneath.
+def _format_param_signature(tool: Tool) -> str:
+    """Render `(name: type, name: type, *, kw: type = default)` for a Tool.
 
-    Width comes from shutil.get_terminal_size with an 80-col fallback
-    (D-list-3 / Discretion). Stdlib textwrap.fill handles wrapping --
-    no `rich` dependency.
+    Required params (per inputSchema.required) come first in the order they
+    appear in the `required` list; optional params follow `*,` as kwargs
+    sorted alphabetically with their defaults inlined. JSON Schema scalar
+    types are mapped to short Python labels; unknown / union types fall
+    back to "Any".
+
+    Returns "()" for tools with no inputSchema or no properties.
+    """
+    schema = tool.inputSchema or {}
+    props: dict = (schema.get("properties") or {}) if isinstance(schema, dict) else {}
+    required: list[str] = list(schema.get("required") or []) if isinstance(schema, dict) else []
+    if not props:
+        return "()"
+
+    type_map = {
+        "string": "str",
+        "integer": "int",
+        "boolean": "bool",
+        "number": "float",
+        "array": "list",
+        "object": "dict",
+    }
+
+    def _pytype(jtype: object) -> str:
+        if isinstance(jtype, str):
+            return type_map.get(jtype, "Any")
+        return "Any"
+
+    req_parts: list[str] = []
+    for name in required:
+        if name in props:
+            req_parts.append(f"{name}: {_pytype(props[name].get('type'))}")
+
+    kw_parts: list[str] = []
+    for name in sorted(p for p in props if p not in required):
+        prop = props[name] or {}
+        ptype = _pytype(prop.get("type"))
+        if "default" in prop:
+            kw_parts.append(f"{name}: {ptype} = {prop['default']!r}")
+        else:
+            kw_parts.append(f"{name}: {ptype} = ...")
+
+    if not kw_parts:
+        return f"({', '.join(req_parts)})"
+    if not req_parts:
+        return f"(*, {', '.join(kw_parts)})"
+    return f"({', '.join(req_parts)}, *, {', '.join(kw_parts)})"
+
+
+def _format_tools_text(
+    tools: list[Tool],
+    *,
+    full: bool = False,
+    name_filter: str | None = None,
+) -> str:
+    """Human-readable render: name + signature + description per tool.
+
+    Default (D-05): name(signature) + 1-line truncated description.
+    --full (D-06): name(signature) + wrapped full description +
+                   per-parameter descriptions from inputSchema.
+    --name PATTERN (D-08): substring filter applied post-sort, pre-render.
+
+    Sort: alphabetical by name (D-09 / preserves D-list-4 contract).
+    Width: shutil.get_terminal_size with 80-col fallback.
     """
     width = max(40, shutil.get_terminal_size((80, 20)).columns)
     sorted_tools = sorted(tools, key=lambda t: t.name)
+
+    if name_filter:
+        needle = name_filter.lower()
+        sorted_tools = [t for t in sorted_tools if needle in t.name.lower()]
+
     if not sorted_tools:
+        if name_filter:
+            return (
+                f"(no tools matched filter {name_filter!r}; "
+                f"server has {len(tools)} tools total)"
+            )
         return "(no tools registered on the server)"
+
     blocks: list[str] = []
     for t in sorted_tools:
+        sig = _format_param_signature(t)
         desc = t.description or "(no description)"
-        wrapped = textwrap.fill(
-            desc,
-            width=max(20, width - 2),
-            initial_indent="  ",
-            subsequent_indent="  ",
-        )
-        blocks.append(f"{t.name}\n{wrapped}")
+        if full:
+            wrapped = textwrap.fill(
+                desc,
+                width=max(20, width - 2),
+                initial_indent="  ",
+                subsequent_indent="  ",
+            )
+            block_lines: list[str] = [f"{t.name}{sig}", wrapped]
+            schema = t.inputSchema or {}
+            props = (schema.get("properties") or {}) if isinstance(schema, dict) else {}
+            if props:
+                block_lines.append("")
+                block_lines.append("  parameters:")
+                for name in sorted(props):
+                    pdesc = (props[name] or {}).get("description") or "(no description)"
+                    pdesc_wrapped = textwrap.fill(
+                        pdesc,
+                        width=max(20, width - 8),
+                        initial_indent="      ",
+                        subsequent_indent="      ",
+                    )
+                    block_lines.append(f"    - {name}:")
+                    block_lines.append(pdesc_wrapped)
+            blocks.append("\n".join(block_lines))
+        else:
+            short = textwrap.shorten(desc, width=max(20, width - 4), placeholder="...")
+            blocks.append(f"{t.name}{sig}\n  {short}")
+
     return "\n\n".join(blocks)
 
 
@@ -383,41 +715,71 @@ def _format_tools_json(tools: list[Tool]) -> str:
     return json.dumps(payload, indent=2) + "\n"
 
 
+_YAML_BARE_KEY_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _yaml_key(name: str) -> str:
+    """Return name as a YAML mapping key, JSON-quoted only if necessary.
+
+    MCP tool names per the spec match `^[A-Za-z_][A-Za-z0-9_]*$`. Names that
+    match are emitted as bare identifiers (visually clean). Anything else is
+    JSON-quoted via json.dumps (always a valid YAML 1.2 scalar).
+    """
+    if _YAML_BARE_KEY_RE.fullmatch(name):
+        return name
+    return json.dumps(name)
+
+
 def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
-    """Hand-format a YAML scaffold matching Phase 08 D-22 / CD-06.
+    """Hand-format a complete self-contained YAML scaffold (CLEAN-05).
 
-    Returns a multi-line string ending with a single newline. Tools are sorted
-    alphabetically by name (mirrors _format_tools_text / _format_tools_json
-    convention -- D-list-4 from Phase 05).
+    Output shape (locked in docs/ERROR-STYLE.md / CLEAN-05 acceptance):
+    - Top-level `ollama:`, `mcp_server:`, `judge_timeout_seconds:`, `version:`,
+      `tools:` blocks all populated.
+    - `version: 1` literal (this release's accepted version).
+    - Every discovered tool emitted as `<name>: { skip: true, skip_reason: ... }`
+      with the name passed through `_yaml_key` for defensive YAML quoting.
+    - No `target:` block (the field is leaving in a future schema bump).
+    - All string scalars JSON-quoted via `json.dumps` (avoids YAML scalar
+      ambiguity for values containing colons, hashes, or quotes).
 
-    Each tool block is commented out by default so `mcp-test-framework
-    config-init > config.yaml` produces a working passthrough config (no
-    behavior change). The user uncomments + edits individual fields to opt
-    a tool into skip / judges / args.
-
-    The reserved `setup:` / `depends_on:` fields (TOOLCFG-03 / D-06) are
-    intentionally OMITTED from the scaffold per CD-06 -- they are dormant
-    in v1.1 and surfacing them risks users assuming they work.
-
-    Rubric IDs in the commented `judges:` line are LOCKED per
-    CONTEXT.md <specifics> + TOOLCFG-04: clarity, disambiguation, parameters.
+    Tools sorted alphabetically (preserves the v1.1 D-list-4 contract).
     """
     sorted_tools = sorted(tools, key=lambda t: t.name)
+    skip_reason = "review and remove skip to enable"
 
     header = (
-        "# mcp-test-framework v1.1 starter config -- generated by "
-        "`mcp-test-framework config-init`.\n"
-        "# Edit and copy to config.yaml; set MCPTF_CONFIG_FILE=./config.yaml.\n"
-        "# See the README \"Per-tool configuration\" section for field semantics.\n"
+        "# mcp-test-framework starter config -- generated by `config-init`.\n"
+        "# Edit this file in place, or copy to a project-local path and pass --config PATH.\n"
         "\n"
-        "# Phase 08 schema version. Only `1` is accepted by this release.\n"
+        "# Ollama judge backend.\n"
+        "ollama:\n"
+        f"  base_url: {json.dumps('http://127.0.0.1:11434')}\n"
+        f"  model: {json.dumps('qwen3.6:latest')}\n"
+        "  timeout_seconds: 120\n"
+        "\n"
+        "# MCP server under test.\n"
+        "# The launch command MUST be runnable from your shell.\n"
+        "mcp_server:\n"
+        f"  command: {json.dumps('uvx')}\n"
+        f"  args: [{json.dumps('your-mcp-server-package')}]\n"
+        "  timeout_seconds: 30\n"
+        "\n"
+        "# Outer budget cap on each judge HTTP call.\n"
+        "judge_timeout_seconds: 120\n"
+        "\n"
+        "# Schema version. This release accepts version 1.\n"
         "version: 1\n"
         "\n"
-        "# Per-tool config registry (TOOLCFG-01..07). Keys MUST match tool\n"
-        "# names returned by `mcp-test-framework list-tools`. All entries\n"
-        "# below are commented out by default -- this scaffold is a passthrough.\n"
-        "# Uncomment and edit individual fields to opt a tool into skip /\n"
-        "# judges / args.\n"
+        "# Per-tool registry. Every tool the connected server advertises is\n"
+        "# listed below as `skip: true` -- the framework will not call any\n"
+        "# tool until you review and remove `skip` from the ones you want\n"
+        "# to test.\n"
+        "#\n"
+        "# Read each entry below, decide whether it is safe to call against\n"
+        "# your environment, then either:\n"
+        "#   - delete the `skip` and `skip_reason` lines to enable the tool, OR\n"
+        "#   - leave the entry as-is to keep the tool out of the test surface.\n"
         "tools:\n"
     )
 
@@ -427,11 +789,9 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
     blocks: list[str] = []
     for tool in sorted_tools:
         block = (
-            f"  # {tool.name}:\n"
-            f"  #   skip: false\n"
-            f"  #   skip_reason: \"\"\n"
-            f"  #   call_arguments: {{}}\n"
-            f"  #   judges: [clarity, disambiguation, parameters]\n"
+            f"  {_yaml_key(tool.name)}:\n"
+            f"    skip: true\n"
+            f"    skip_reason: {json.dumps(skip_reason)}\n"
         )
         blocks.append(block)
 

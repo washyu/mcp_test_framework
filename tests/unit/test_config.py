@@ -217,3 +217,76 @@ def test_mcp_server_timeout_seconds_env_overrides_default(
     cfg = Config()
 
     assert cfg.mcp_server.timeout_seconds == 5
+
+
+def test_no_cwd_config_yaml_auto_discovery_and_no_fail_loud(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """LOCKS BOTH halves of SEED-006 (CONTEXT.md decision).
+
+    Two halves are locked together because the v1.2 redesign (SEED-006)
+    couples them:
+      (1) NO cwd auto-discovery: with no MCPTF_CONFIG_FILE env var set
+          and a config.yaml present in cwd, Config() does NOT pick it up.
+      (2) NO fail-loud on missing config: Config() does NOT raise when
+          no config.yaml is discoverable; it returns model defaults.
+
+    If a future contributor flips EITHER half, this test fails with a
+    message naming WHICH half flipped, so the contributor knows which
+    SEED-006 component they triggered.
+
+    The v1.2 redesign that ENABLES cwd auto-discovery AND/OR fail-loud
+    is tracked under SEED-006 in .planning/seeds/. When that redesign
+    lands, this test should be inverted (or deleted) DELIBERATELY in
+    the same commit that amends the CONTEXT.md decision and updates
+    config.py:settings_customise_sources. Until then, this test
+    prevents drift.
+
+    Tagged `decision-lock` in plan 12-09 frontmatter — this task
+    enforces a CONTEXT.md decision rather than a numbered requirement
+    (per checker NIT #2 disposition).
+    """
+    _clear_env(monkeypatch)
+    # _isolate_cwd autouse fixture has already chdir'd to a fresh tmp dir.
+    # Write a config.yaml at cwd that, IF auto-discovered, would override
+    # mcp_server.command to a sentinel value.
+    cwd_config = Path.cwd() / "config.yaml"
+    cwd_config.write_text(
+        "mcp_server:\n"
+        "  command: sentinel-cwd-auto-discovery-canary\n",
+        encoding="utf-8",
+    )
+
+    # Half 2 first: prove Config() does not raise. If the v1.2
+    # fail-loud half lands first, this raises and the assertion error
+    # explicitly names which half flipped.
+    try:
+        cfg = Config()
+    except Exception as exc:  # noqa: BLE001 -- intentional broad catch
+        raise AssertionError(
+            "SEED-006 half (2) has flipped: Config() now raises when no "
+            "MCPTF_CONFIG_FILE is set and no auto-discovery picks up "
+            f"cwd/config.yaml. Underlying error: {type(exc).__name__}: {exc}.\n"
+            "If you intended to enable fail-loud-on-missing-config, "
+            "delete this test in the same commit that amends CONTEXT.md "
+            "and config.py:settings_customise_sources. Otherwise, you have a bug."
+        ) from exc
+
+    # Half 1: prove no cwd auto-discovery (the canary did NOT bleed in).
+    assert cfg.mcp_server.command != "sentinel-cwd-auto-discovery-canary", (
+        "SEED-006 half (1) has flipped: cwd auto-discovery is now ENABLED "
+        "(the canary value from cwd/config.yaml leaked into Config()).\n"
+        "If you intended to enable cwd auto-discovery, delete this test "
+        "in the same commit that amends CONTEXT.md and "
+        "config.py:settings_customise_sources. Otherwise, you have a bug."
+    )
+
+    # Stronger: prove the model default ('homelab-mcp') is what landed.
+    assert cfg.mcp_server.command == "homelab-mcp", (
+        f"unexpected cfg.mcp_server.command={cfg.mcp_server.command!r}; "
+        "test expected the McpServerConfig model default since cwd "
+        "auto-discovery is locked off. If McpServerConfig.command default "
+        "has been changed (the DEFERRED bullet from UAT gap 2 / "
+        "project_genericize_example_config), update this expectation in "
+        "the same commit."
+    )

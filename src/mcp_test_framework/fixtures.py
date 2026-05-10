@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import typing
 import shutil
 import tempfile
 import warnings
@@ -47,6 +48,38 @@ from mcp_test_framework.rubrics import (
     DisambiguationRubric,
     ParametersRubric,
 )
+
+# ---------------------------------------------------------------------------
+# Operator-tone helper (mirrors cli._emit_operator_error per docs/ERROR-STYLE.md)
+# ---------------------------------------------------------------------------
+
+
+def _pytest_exit_operator_tone(
+    summary: str,
+    detail: list[str],
+    next_step: str,
+    *,
+    returncode: int = 2,
+) -> typing.NoReturn:
+    """Render an operator-tone message and call pytest.exit.
+
+    Mirrors cli._emit_operator_error's format (docs/ERROR-STYLE.md):
+        <summary>
+        <blank>
+        <detail line 1>
+        ...
+        <blank>
+        next: <action verb> <command>
+
+    fixtures.py cannot import _emit_operator_error from cli.py because pytest
+    collects fixtures.py before the cli command is invoked, so this helper is
+    a parallel implementation rendering the same shape via pytest.exit.
+    """
+    parts: list[str] = [summary, ""]
+    parts.extend(detail)
+    parts.extend(["", f"next: {next_step}"])
+    pytest.exit("\n".join(parts), returncode=returncode)
+
 
 # ---------------------------------------------------------------------------
 # config -- sync, session-scoped (Pattern B)
@@ -133,19 +166,62 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
             resp = await client.get("/api/tags")
             resp.raise_for_status()
             payload = resp.json()
+    except httpx.ConnectError as exc:
+        _pytest_exit_operator_tone(
+            summary=f"Cannot reach Ollama judge at {config.ollama.base_url}",
+            detail=[
+                "the framework tried to fetch /api/tags and the connection failed:",
+                f"  {exc.__class__.__name__}: {exc}",
+                "",
+                "Ollama is the local LLM service used to score description quality.",
+                "the framework cannot run any judge-graded test without it.",
+            ],
+            next_step=(
+                "verify Ollama is running with `ollama serve`, then re-run "
+                "`mcp-test-framework run`"
+            ),
+        )
+    except httpx.TimeoutException as exc:
+        _pytest_exit_operator_tone(
+            summary=f"Ollama judge at {config.ollama.base_url} timed out",
+            detail=[
+                "the framework tried to fetch /api/tags and timed out after the "
+                "connect window:",
+                f"  {exc.__class__.__name__}: {exc}",
+                "",
+                "the service may be starting, overloaded, or blocked by a firewall.",
+            ],
+            next_step=(
+                "check that `ollama serve` is responsive, then re-run "
+                "`mcp-test-framework run`"
+            ),
+        )
     except Exception as exc:
-        pytest.exit(
-            f"Ollama at {config.ollama.base_url} not reachable: "
-            f"{exc.__class__.__name__}: {exc}",
-            returncode=2,
+        _pytest_exit_operator_tone(
+            summary=f"Ollama judge at {config.ollama.base_url} returned an error",
+            detail=[
+                "the framework tried to fetch /api/tags and got an unexpected response:",
+                f"  {exc.__class__.__name__}: {exc}",
+            ],
+            next_step=(
+                "verify `ollama serve` is healthy at the configured base URL, "
+                "then re-run `mcp-test-framework run`"
+            ),
         )
 
     available_models = [m.get("name", "") for m in (payload.get("models") or [])]
     if config.ollama.model not in available_models:
-        pytest.exit(
-            f"model {config.ollama.model!r} not in /api/tags "
-            f"(available: {available_models!r})",
-            returncode=2,
+        _pytest_exit_operator_tone(
+            summary=f"Ollama model not installed: {config.ollama.model!r}",
+            detail=[
+                f"the configured judge model {config.ollama.model!r} is not in the "
+                f"local Ollama library at {config.ollama.base_url}.",
+                f"installed models: {available_models!r}",
+            ],
+            next_step=(
+                f"run `ollama pull {config.ollama.model}` (or pick a model from the "
+                "list above and update `ollama.model` in your config.yaml)"
+            ),
         )
 
     # --- Check 3 + 4: MCP brief handshake + target tool membership ----------

@@ -1,133 +1,77 @@
 ---
 id: SEED-010
-status: dormant
+status: active
 planted: 2026-05-08
-planted_during: v1.1 milestone complete + manual UAT (post-merge of v1.1.1 hotfix)
-trigger_when: v1.2 milestone framing — surface during /gsd-new-milestone questioning step
-scope: Small
+planted_during: v1.1 manual UAT exploration (formalized at v1.2 milestone framing 2026-05-08)
+trigger_when: v1.2 milestone framing (active for v1.2)
+scope: Small-Medium
+target_milestone: v1.2 (cohort with SEED-007/008/009/011)
 ---
 
-# SEED-010: Separate operator-facing tests from framework self-tests
+# SEED-010: Operator vs framework test surface split
 
 ## Why This Matters
 
-When an operator runs `mcp-test-framework run` to test their MCP, the framework currently sweeps the entire `tests/` directory — including ~107 framework self-tests (pure unit tests of `_extract_first_json_object`, rubric internals, ToolConfig schema, README snippets, banned imports, etc.) alongside the ~20 contract tests that actually exercise the MCP.
+`tests/` currently mixes two audiences in one directory: ~107 framework self-tests (config validation, reporter contract, isolation, banned-imports, snippet correctness) plus ~20 contract tests against the SUT (`test_mcp_tool_contract.py`). When an operator runs `mcp-test-framework run`, pytest collects all 127 cases — 84 % of what they see is the framework testing itself, not their MCP server.
 
-Real-world impact (observed 2026-05-08 manual UAT):
-- Operator runs `mcp-test-framework run --config config.yaml -v` against `homelab-mcp`
-- Output mixes 107 framework self-test pass/fail lines with 20 actual MCP contract test results
-- The framework's own internals dominate the output; the signal (does my MCP pass?) is buried in the noise (does the framework's parser handle escape characters?)
-- Operator quote: "we also need to find a way to not run the unit tests if this is meant to test the mcp the unit tests muddle the results"
-
-This is a structural mistake from v1.0/v1.1 carrying through into v1.1.1. The framework was built developer-first — single `tests/` directory, single `pytest tests/` invocation, single CI surface. v1.2 needs to split the surface so operators see only operator-relevant tests.
+Memory: `Operator vs framework test surface (SEED-010) — 5th operator-vs-dev pattern in one UAT session — v1.2 theme should be "operator-first design"` (2026-05-08).
 
 ## When to Surface
 
-**Trigger:** v1.2 milestone framing — surface during `/gsd-new-milestone` questioning step
-
-This seed should be presented when the new milestone scope mentions any of:
-- Test structure / test layout / pytest layout
-- Operator UX / vibe-coded persona / `mcp-test-framework run` surface
-- CLI surface / what does `run` default to
-- Reporter cleanup (compounds with SEED-008's pre-run digest — fewer tests in scope = smaller, more readable digest)
+**Active for v1.2.** Milestone framing has already selected this seed for inclusion.
 
 ## Scope Estimate
 
-**Small** — One phase. Mechanical work: restructure `tests/` directory, update `cli.py`'s `_build_pytest_args` to point at the new contract subdirectory, add an `--include-framework` flag (or separate `pytest tests/framework/` invocation) for framework dev.
+**Small-Medium.** Mostly mechanical — `git mv` test files into the right subdirectory, update `pytest_collection_modifyitems` or pytest markers so the operator runner only collects `tests/contract/`. The non-trivial part is deciding the split rules cleanly and updating CI / docs.
 
-## Two Candidate Designs
+## Components
 
-### Design A — Directory restructure (recommended)
+### 1. Folder split
 
 ```
 tests/
-  contract/                    # operator-facing — what `mcp-test-framework run` exercises
+  contract/        # operator-facing: tests against the SUT contract
     test_mcp_tool_contract.py
-    conftest.py                # shared fixtures (mcp_client, judge, target_tool, etc.)
-  framework/                   # framework dev only — `pytest tests/framework/` for CI
+    test_*tool*.py (any future per-tool contract files)
+    conftest.py    # fixtures specific to running against a live MCP server
+  framework/       # internal: framework self-tests
     test_config.py
     test_reporter.py
-    test_tool_config.py
-    test_isolation.py
-    test_readme_snippets.py
-    test_config_init_cli.py
+    test_isolation*.py
     test_banned_imports.py
-    smoke/                     # framework smoke tests (existing tests/smoke/ moves here)
-      test_smoke_homelab_mcp.py
-      test_smoke_ollama_judge.py
-      test_mcp_client_teardown_regression.py
-    unit/                      # framework unit tests (existing tests/unit/ moves here)
-      test_config.py
-      test_mcp_client.py
-      test_ollama_judge.py
-      test_rubrics.py
-      test_schema_validator.py
+    test_readme_snippets.py
+    test_*.py      # all current framework self-tests
+    conftest.py    # framework-internal fixtures
+  conftest.py      # shared (pytest_generate_tests hook for tool discovery, etc.)
 ```
 
-CLI changes:
-- `mcp-test-framework run` defaults to `pytest tests/contract/`
-- `--include-framework` flag (or separate invocation) targets `pytest tests/framework/`
-- The `_build_pytest_args` helper changes from `["tests", *forwarded]` to `["tests/contract", *forwarded]`
+### 2. Operator runner default scope
 
-Cost: lots of file moves. Mitigation: scripted `git mv` preserves history; each move is a no-op behavior change.
+`mcp-test-framework run` collects only `tests/contract/` by default. Framework self-tests (`tests/framework/`) are dev-only and run via `uv run pytest tests/framework/` or a `--all`/`--with-framework` opt-in flag.
 
-### Design B — Pytest markers (less restructure)
+### 3. CI matrix
 
-Mark contract tests with `@pytest.mark.mcp_contract`. CLI's `run` invokes `pytest -m mcp_contract`. Framework tests are unmarked (or marked `framework_dev`).
+CI runs both `tests/contract/` (against fixtures or a stable SUT) and `tests/framework/`. Contract suite is what downstream operators care about.
 
-```python
-# tests/test_mcp_tool_contract.py
-pytestmark = [
-    pytest.mark.asyncio(loop_scope="session"),
-    pytest.mark.mcp_contract,  # NEW
-]
-```
+## Sequencing Within v1.2
 
-```python
-# pyproject.toml
-markers = [
-  "live_homelab: ...",
-  "live_ollama: ...",
-  "mcp_contract: tests that exercise an MCP server end-to-end (operator-facing)",
-  "framework_dev: tests of the framework itself (developer-facing)",  # optional
-]
-addopts = "-m 'not live_homelab and not live_ollama'"  # unchanged
-```
+**Lands AFTER SEED-011** (hybrid runner with domain UI). Runner contract drives the split — once the runner is the operator's interface, deciding what scope it collects becomes well-defined. Memory: `Decide BEFORE SEED-010 folder split.`
 
-Cost: every test file needs a top-level marker. Risk: forgetting a marker on a new test silently puts it in the wrong category.
+## Tradeoffs
 
-### Recommendation: Design A
-
-Directory structure communicates intent without operators needing to know about pytest markers. It also makes the persona reframe (SEED-007) concrete: the operator literally never has reason to look inside `tests/framework/`. Migration is mechanical (`git mv` + path updates in `_build_pytest_args` + CI workflow updates).
-
-## Cumulative Pattern Worth Naming
-
-This is the **fifth** operator-vs-developer pain point surfaced during one manual UAT session on 2026-05-08:
-
-1. `project_vibe_coded_persona.md` (SEED-007) — black-box rule reframed from test discipline to user-persona feature
-2. `feedback_scaffold_completeness.md` — `config-init` produces incomplete scaffolds because devs assume operators know to fill in defaults
-3. `project_genericize_example_config.md` (SEED-009) — `config.example.yaml` is homelab-saturated because devs wrote it from their setup
-4. `project_pre_run_tool_summary.md` (SEED-008) — pytest's "N collected, M deselected" framing serves devs, not operators
-5. **This seed** — `tests/` directory layout assumes a single dev/CI audience
-
-The pattern is loud enough that **v1.2's milestone theme should be operator-first design**, with these seeds as the implementation path. Worth surfacing during `/gsd-new-milestone` questioning before any phase planning.
-
-## How to Apply During v1.2 Planning
-
-- Sequence after SEED-009 (doc/example cleanup) — both are foundational hygiene that compounds with the bigger semantic redesigns.
-- Update CI to run both `tests/contract/` AND `tests/framework/` (CI exercises everything; operators get the narrow surface).
-- The pre-run digest in SEED-008 should display only operator-facing test counts by default; framework counts only appear when `--include-framework` is set.
+- Operators currently running `uv run pytest tests/` see fewer cases — a clearer surface but a behavior change. Hybrid runner (SEED-011) absorbs this so they don't invoke pytest directly.
+- Framework contributors run two test suites instead of one — minor friction, mitigated by `pytest tests/` continuing to collect both.
+- Contract tests can `from src.mcp_test_framework import ...` without leaking framework internals into operator-visible failures.
 
 ## Breadcrumbs
 
-- `src/mcp_test_framework/cli.py:_build_pytest_args` (lines 92-115) — the single point that hardcodes `tests` as the pytest root; change to `tests/contract`
-- `src/mcp_test_framework/cli.py:run` (lines 118-172) — Typer command that calls `_build_pytest_args`
-- `tests/conftest.py` — needs to move to `tests/contract/conftest.py` (and possibly a stub at `tests/conftest.py` for `tests/framework/` if it shares fixtures)
-- `tests/` directory structure (current state) — listed under Design A above, all leaf files move
-- `pyproject.toml` `[tool.pytest.ini_options].testpaths = ["tests"]` — may need updating to `["tests/contract", "tests/framework"]` or removed entirely if the CLI dictates the path
+- `tests/test_mcp_tool_contract.py` — the canonical operator-facing test (parametrized over discovered tools)
+- `tests/conftest.py:127-139` — `pytest_generate_tests` hook (shared)
+- `tests/test_*.py` (framework self-tests, ~107 cases)
+- `src/mcp_test_framework/cli.py` `run` command — gains scope-selection logic if SEED-011 is the runner
+- Existing GSD: `feedback_phase_scope_intent.md` — the operator-vs-dev pattern keeps recurring; this split institutionalizes the boundary
 
 ## Related Memories
 
-- `feedback_uat_must_be_user_driven.md` — same operator-vs-developer theme at the UAT-design level
-- `project_vibe_coded_persona.md` (SEED-007) — positioning that this seed implements concretely
-- `project_pre_run_tool_summary.md` (SEED-008) — compounds: smaller test surface = smaller, cleaner pre-run digest
+- `Operator vs framework test surface (SEED-010)` (memory entry)
+- `Hybrid runner with domain UI (SEED-011)` (memory entry; sequencing dependency)

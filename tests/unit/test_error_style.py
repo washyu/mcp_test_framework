@@ -1,0 +1,66 @@
+"""Wave-0 banned-token + reference-message scaffold for Phase 12 PERSONA-03.
+
+Phase 13 reads SAFE-03 and SAFE-06 reference messages from docs/ERROR-STYLE.md
+verbatim. This test guarantees they never drift.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+
+def _repo_root() -> Path:
+    p = Path(__file__).resolve()
+    for parent in p.parents:
+        if (parent / "pyproject.toml").is_file():
+            return parent
+    raise RuntimeError("repo root (pyproject.toml) not found")
+
+
+ERROR_STYLE = _repo_root() / "docs" / "ERROR-STYLE.md"
+
+
+def test_error_style_md_exists() -> None:
+    assert ERROR_STYLE.is_file(), f"missing {ERROR_STYLE}"
+
+
+def test_error_style_contains_safe_03_message() -> None:
+    text = ERROR_STYLE.read_text(encoding="utf-8")
+    assert "### SAFE-03 — no config found, framework refuses to run" in text
+    assert "no config file found: ./config.yaml" in text
+    assert "next: run `mcp-test-framework config-init -o config.yaml`" in text
+
+
+def test_error_style_contains_safe_06_message() -> None:
+    text = ERROR_STYLE.read_text(encoding="utf-8")
+    assert "### SAFE-06 — config uses an older schema version" in text
+    assert "config file uses an older format:" in text
+    assert "schema version 2 (opt-in" in text
+    assert "docs/MIGRATION-v1-to-v2.md" in text
+
+
+def test_error_style_no_banned_tokens_outside_checklist() -> None:
+    """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
+
+    The "## Banned strings" section is exempt -- it documents the patterns.
+    """
+    text = ERROR_STYLE.read_text(encoding="utf-8")
+    # Split off the Banned strings section (everything from that heading onward).
+    parts = text.split("## Banned strings", 1)
+    body = parts[0]  # everything BEFORE the banned-strings checklist
+
+    banned = [
+        (r"\bPhase \d", "Phase N reference"),
+        (r"\bPlan \d-\d", "Plan N-N reference"),
+        (r"\bTOOLCFG-\d", "TOOLCFG- spec ID"),
+        (r"\bISOL-\d", "ISOL- spec ID"),
+        (r"\bOUTPUT-\d", "OUTPUT- spec ID"),
+        (r"\d{6}-[a-z0-9]{3}", "quick-task ID"),
+    ]
+    found: list[str] = []
+    for pattern, label in banned:
+        for m in re.finditer(pattern, body):
+            found.append(f"{label}: {m.group(0)!r} at offset {m.start()}")
+    assert not found, "banned tokens in operator-facing prose:\n" + "\n".join(found)

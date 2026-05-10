@@ -11,6 +11,92 @@ The framework's built-in rubrics are session-scoped fixtures wired in
 `OllamaJudge` (`src/mcp_test_framework/ollama_judge.py`). User overrides
 follow the same shape.
 
+## Testing an MCP server you didn't write
+
+The framework is designed for operators testing MCP servers they did not
+author. The "black box" rule (no SUT imports, no SUT source reading) is a
+feature of the persona, not a test-discipline rule you must obey.
+
+### Step 1 — discover the surface
+
+Run `mcp-test-framework list-tools --config config.yaml` against your server's
+launch command (if you don't have a `config.yaml` yet, see Step 2 below for the
+bootstrap recipe). You will see one block per tool, for example:
+
+```text
+list_keyring_credentials(service: str)
+  Read the named credential from the user's OS keyring.
+```
+
+The parameter signature comes from the tool's declared `inputSchema`. Add
+`--full` to see the full description and per-parameter descriptions:
+`mcp-test-framework list-tools --config config.yaml --full --name keyring`. The `--name PATTERN`
+flag substring-matches case-insensitively, useful at large surfaces (~70+
+tools).
+
+### Step 2 — scaffold a config
+
+Run `mcp-test-framework config-init --command uvx --arg homelab-mcp -o config.yaml`.
+The framework will launch the server, list its tools, and write a
+self-contained config file with every discovered tool listed as `skip: true`
+and a hint to remove the skip from the ones you want to test. No tool will
+run until you opt in.
+
+#### Servers installed via `uvx` or `pipx`
+
+If your server isn't on `PATH` directly — for example, you launch it with
+`uvx homelab-mcp` or `pipx run my-mcp-server` — pass the launcher as
+`--command` and the package (plus any args) as repeated `--arg` flags:
+
+```bash
+mcp-test-framework config-init --command uvx --arg homelab-mcp -o config.yaml
+```
+
+These flags override `mcp_server.command` / `mcp_server.args` for this one
+invocation, so the framework can launch the server, list its tools, and
+write the scaffold even on a fresh checkout with no pre-existing
+`config.yaml`. After the scaffold lands, edit the generated `mcp_server`
+block to record the same `command` / `args` values, so subsequent
+`mcp-test-framework run --config config.yaml` invocations work without the
+flags.
+
+If the launch still fails (the launcher itself isn't on `PATH`, or the
+package name is wrong), `config-init` will write a fallback scaffold
+shell to `--output` containing the four top-level blocks and an empty
+`tools:` mapping, alongside an operator-tone error on stderr. Edit the
+`mcp_server.command` / `mcp_server.args` lines and re-run `config-init` to
+populate the tool list.
+
+### Step 3 — opt in tool-by-tool
+
+Open `config.yaml` and, for each tool you want the framework to call,
+remove the `skip: true` and `skip_reason:` lines from its entry. For tools
+that require non-empty input, add a `call_arguments:` block (see
+`config.example.yaml` for the pattern). For destructive tools you want
+the framework to know about but never call, leave `skip: true` and write
+a curated `skip_reason:` so the test summary explains why the tool sat
+out.
+
+### Step 4 — run
+
+`mcp-test-framework run --config config.yaml`. The framework spawns the
+server, calls each enabled tool, asks the configured Ollama judge to
+evaluate the description against the rubrics you listed, and exits 0 if
+every test passed.
+
+### CI secrets
+
+If your judge backend reads a secret from the environment (an HTTP-backed
+judge with an API key, for example), set it in `.env` rather than
+`config.yaml` — secrets do not belong in version-controlled config. The
+framework ships a `.env.example` at the repo root documenting this
+CI-secret passthrough convention; copy it to `.env` ONLY if you have such
+a secret to set. Env vars do not override `config.yaml` values, and the
+example file is not part of normal local setup.
+
+You never read your server's source. You configured the framework against
+the surface the server itself declares.
+
 ## Add a new description-quality rubric
 
 The `Rubric` base class (`src/mcp_test_framework/rubrics.py`) is a frozen
@@ -124,10 +210,10 @@ the field reference. This section walks the workflow.
 
 **Where to drop the recipe:** `config.yaml` (or whichever YAML overlay your `MCPTF_CONFIG_FILE` / `--config` points at). No edits to `tests/conftest.py` or framework source are required.
 
-1. **Discover.** Run `uv run mcp-test-framework list-tools` to see every tool the connected server advertises.
-2. **Decide.** For each tool, decide whether to `skip`, restrict the `judges` subset, or pre-fill `call_arguments`. Tools you say nothing about run with all rubrics and an empty argument map (TOOLCFG-06 safe defaults).
+1. **Discover.** Run `uv run mcp-test-framework list-tools --config config.yaml` to see every tool the connected server advertises.
+2. **Decide.** For each tool, decide whether to `skip`, restrict the `judges` subset, or pre-fill `call_arguments`. Tools you say nothing about run with all rubrics and an empty argument map (the safe defaults).
 3. **Add a `tools.<tool_name>:` block** under the top-level `tools:` key in your config YAML. See [Per-tool configuration](../README.md#per-tool-configuration) for the field reference; the worked example below uses the skip-with-reason pattern.
-4. **Verify.** Re-run `uv run mcp-test-framework run`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
+4. **Verify.** Re-run `uv run mcp-test-framework run --config config.yaml`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
 
 Replace the placeholder tool name below with one from your `mcp-test-framework list-tools` output.
 
@@ -177,12 +263,12 @@ become no-ops.
 
 ### Do not widen this allowlist without justification
 
-This is the warning currently living at
-`src/mcp_test_framework/_isolation.py:33-36`, copied verbatim so contributors
+This is the warning living at the top of
+`src/mcp_test_framework/_isolation.py`, copied verbatim so contributors
 see it before reading source:
 
 > DO NOT widen `_PASSTHROUGH_ALLOWLIST` without updating `EXTENDING.md`
-> (DOC-07 in Phase 10). Each new pass-through is a hole in the isolation
+> Each new pass-through is a hole in the isolation
 > guarantee and must be justified by a real subprocess need (e.g., locale
 > resolution for a non-English server) -- not "the test wouldn't run
 > otherwise" without a root cause.
@@ -212,20 +298,19 @@ subprocess on POSIX therefore sees no user identity at all.
 
 This is intentional and not a bug:
 
-- The locked v1.1 allowlist (Phase 06 D-07) names exactly `USERNAME`. The
+- The current allowlist names exactly `USERNAME`. The
   HOME redirect -- which IS the load-bearing isolation guarantee -- does
   not depend on user identity (it is driven by `HOME` / `USERPROFILE` /
   `TEMP` / `TMP` / `TMPDIR`, none of which the subprocess derives from a
   username).
-- `USERNAME` is documented in `_isolation.py:55-62` as "informational; some
+- `USERNAME` is documented in `_isolation.py` as "informational; some
   servers log it for diagnostics." It is not consulted by any v1.1 code
   path that affects test outcome, and the rubric/judge layer never sees it.
-- Widening `_PASSTHROUGH_ALLOWLIST` to include POSIX `USER` would require a
-  CONTEXT.md amendment and a code change, not just a doc edit. The
-  cross-platform-parity concern was explicitly recorded as informational in
-  `06-VERIFICATION.md` G-03 and `v1.1-MILESTONE-AUDIT.md` W-6, with the
-  agreed disposition being rationale-only (Branch B): no `USER` added to
-  `_PASSTHROUGH_ALLOWLIST`, the parity gap stays documented here.
+- Widening `_PASSTHROUGH_ALLOWLIST` to include POSIX `USER` would require
+  a code change, not just a doc edit. The cross-platform-parity concern is
+  documented as informational; the agreed disposition is rationale-only —
+  no `USER` is added to `_PASSTHROUGH_ALLOWLIST`, and the parity gap stays
+  documented in this section.
 
 If a future MCP server target genuinely needs `USER` for non-diagnostic
 reasons (e.g. a server that derives a config path from
