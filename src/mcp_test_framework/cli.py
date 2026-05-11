@@ -279,6 +279,65 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
 from mcp_test_framework._runner import _build_pytest_args  # noqa: E402
 
 
+def _discover_tools_for_run(cfg: Config) -> list[str]:
+    """One-shot MCP handshake to learn what tools the server advertises.
+
+    Phase 14 Plan 03 / D-claude bullet 5 option (a): the wrapper runs OUTSIDE
+    pytest, so the in-pytest `_DISCOVERED_TOOL_NAMES` cache (which lives in
+    _reporter and will move to _runner via Plan 05) is unreachable from this
+    process. Instead we re-discover here before launching the subprocess.
+
+    Mirrors the AsyncExitStack pattern from cli.py:list_tools (Phase 04.1
+    same-task lifecycle -- avoids the cancel-scope teardown bug).
+
+    On failure: surface via _emit_operator_error so config errors stay
+    operator-tone and exit 2. Matches list-tools failure-mode parity.
+    """
+    async def _do_discover() -> list[str]:
+        async with AsyncExitStack() as stack:
+            client = await stack.enter_async_context(
+                McpTestClient(
+                    cfg.mcp_server.command,
+                    cfg.mcp_server.args,
+                    cfg.mcp_server.timeout_seconds,
+                )
+            )
+            tools = await client.list_tools()
+            return [t.name for t in tools]
+
+    try:
+        with asyncio.Runner() as runner:
+            return runner.run(_do_discover())
+    except FileNotFoundError as exc:
+        _emit_operator_error(
+            summary="MCP server command not on PATH",
+            detail=[
+                f"could not start the MCP server: {exc}",
+                "",
+                "the runner needs to discover the server's tool list before",
+                "executing the test plan. fix the `mcp_server.command` value",
+                "in your config, or skip discovery via `--raw` (which forwards",
+                "all flags to pytest unchanged).",
+            ],
+            next_step=(
+                "check your config's mcp_server.command, or run with --raw "
+                "to bypass"
+            ),
+        )
+    except KeyboardInterrupt:
+        # Mirror list_tools: explicit typer.Exit(130) so SIGINT is uniform
+        # across POSIX/Windows console-script wrappers (D-15 / Phase 04.1).
+        raise typer.Exit(code=130)
+    except Exception as exc:  # noqa: BLE001 -- defensive catchall
+        _emit_operator_error(
+            summary="MCP server discovery failed",
+            detail=[
+                f"could not list tools from the configured MCP server: {exc}",
+            ],
+            next_step="check your config or run with --raw to bypass the wrapper",
+        )
+
+
 @app.command(
     context_settings={
         "allow_extra_args": True,
@@ -324,14 +383,14 @@ def run(
     pre-flight gate on BOTH default
     and --raw paths (SAFE-03 cannot be bypassed via --raw).
 
-    Default mode: subprocess + internal tempfile JUnit XML capture +
-    (transitional) verbatim passthrough of pytest's captured stdout/stderr.
-    Plans 02-03 replace the verbatim passthrough with parsed-XML domain UI
-    rendering; the `PLAN-03 REMOVES` marker below tags that removal target.
+    Default mode: wrapper-side MCP discovery + subprocess pytest + internal
+    tempfile JUnit XML capture + XML parse + domain UI render. Plan 14-03
+    landed the renderer; the Plan 01 transitional verbatim-stdout echo is
+    now replaced by `_runner.render_domain_ui(parsed, ctx)`.
 
     Raw mode (--raw): subprocess only, no tempfile, no capture, no domain
-    UI. Operator-supplied --junit-xml=PATH still flows through pytest via
-    `_build_pytest_args` (Phase 09 D-01a precedence preserved).
+    UI, no discovery. Operator-supplied --junit-xml=PATH still flows through
+    pytest via `_build_pytest_args` (Phase 09 D-01a precedence preserved).
 
     Exit-code mapping (Phase 14 D-15):
       - pytest 0 -> exit 0
@@ -345,13 +404,16 @@ def run(
     MUST NOT pass an explicit `-m` flag (D-markers-3 / Phase 4 contract).
     """
     from mcp_test_framework import _runner
+    import xml.etree.ElementTree as ET
 
-    _load_config(config)  # raises typer.Exit(2) on any unrecoverable error.
+    cfg = _load_config(config)  # raises typer.Exit(2) on any unrecoverable error.
+    # _load_config(path, allow_missing=False) returns a non-None Config on
+    # success or raises typer.Exit -- safe to treat cfg as Config below.
 
     if raw:
-        # D-11: raw mode -- no tempfile, no capture, no render. operator's
-        # junit_xml (if any) still flows through _build_pytest_args inside
-        # the runner so RUNNER-05 is preserved.
+        # D-11: raw mode -- no tempfile, no capture, no render, no discovery.
+        # Operator junit_xml (if any) still flows through _build_pytest_args
+        # inside the runner so RUNNER-05 is preserved.
         rc, _tmp, _stdout, _stderr = _runner.run_pytest_subprocess(
             junit_xml=junit_xml,
             pytest_args=pytest_args,
@@ -362,7 +424,12 @@ def run(
             typer.echo(warning, err=True)
         raise typer.Exit(code=mapped)
 
-    # Default mode: subprocess + tempfile + (future) render.
+    # Plan 03 RENDERER: replace Plan 01 transitional echo with discover +
+    # parse + render. Discovery runs BEFORE the subprocess so the header's
+    # Skipping count includes state-(a) unlisted tools (which won't appear
+    # in the JUnit XML at all).
+    discovered_tools = _discover_tools_for_run(cfg)
+
     rc, tmp_xml, captured_stdout, captured_stderr = _runner.run_pytest_subprocess(
         junit_xml=junit_xml,
         pytest_args=pytest_args,
@@ -375,14 +442,41 @@ def run(
         # is present, and calls _emit_operator_error (typer.Exit) otherwise.
         _runner._dispatch_default_mode_or_error(tmp_xml, rc, captured_stderr)
 
-        # PLAN-03 REMOVES: replaced by _runner.render_domain_ui(parsed).
-        # Plan 01 transitional behavior: emit the captured pytest output
-        # verbatim so `mcp-test-framework run` continues to work end-to-end
-        # while plans 02-03 build the XML parser + domain renderer.
-        if captured_stdout:
-            typer.echo(captured_stdout, nl=False)
-        if captured_stderr:
-            typer.echo(captured_stderr, err=True, nl=False)
+        # Phase 14 D-16: JUnit XML parse error -> exit 2 via operator-tone.
+        try:
+            parsed = _runner.parse_junit_xml(tmp_xml)
+        except ET.ParseError as exc:
+            _emit_operator_error(
+                summary="JUnit XML parse failed",
+                detail=[
+                    f"could not parse the test runner's results file: {exc}",
+                    "this usually means pytest crashed mid-run.",
+                ],
+                next_step=(
+                    "re-run with `--raw` to see pytest's native output, or "
+                    "check the captured stderr above"
+                ),
+            )
+
+        # Build the renderer's context.
+        server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
+        # Judges: derive from the union of every configured tool's `judges`
+        # list, de-duplicated and sorted. Phase 14 D-07 ships a MINIMAL
+        # header; per-tool judge breakdown is Phase 16.
+        judges_set: set[str] = set()
+        for tool_cfg in cfg.tools.values():
+            for judge_name in getattr(tool_cfg, "judges", []) or []:
+                judges_set.add(judge_name)
+        judges = sorted(judges_set)
+
+        ctx = _runner.RenderContext(
+            server_cmd=server_cmd,
+            discovered_tools=discovered_tools,
+            tools_config=cfg.tools,
+            judges=judges,
+            total_planned_cases=parsed.total_cases,
+        )
+        _runner.render_domain_ui(parsed, ctx)
 
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
