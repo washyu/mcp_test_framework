@@ -92,11 +92,11 @@
   4. An operator running `mcp-test-framework run --junit-xml=results.xml` still gets a standard JUnit XML at `results.xml` (v1.1 OUTPUT-01 contract preserved); the wrapper consumes its own internal tempfile so the operator-visible path is untouched.
   5. Exit codes remain stable across the wrapper boundary: 0 (all pass), 1 (test failures), 2 (config / collection / pre-flight errors), 130 (SIGINT). A CI pipeline wired to v1.1's exit-code contract continues to work without changes.
 **Plans:** 5 plans
-  - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
-  - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
-  - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
-  - [x] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
-  - [x] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+  - [ ] 14-01-PLAN.md — Subprocess wrapper + pre-flight gate + tempfile JUnit + --raw + exit-code mapping (wave 1)
+  - [ ] 14-02-PLAN.md — JUnit XML parser + ParsedRun model + XML fixtures (wave 2, depends 14-01)
+  - [ ] 14-03-PLAN.md — Domain UI renderer (header/rows/summary) + wrapper-side discovery (wave 3, depends 14-01, 14-02)
+  - [ ] 14-04-PLAN.md — Verbosity flags -q/--debug + render_summary_only + render_debug_appendix (wave 4, depends 14-01..03)
+  - [ ] 14-05-PLAN.md — Delete _reporter.py + retarget tests + conftest cleanup (wave 5, depends 14-01..04)
 
 
 ### Phase 15: Operator vs framework test surface split
