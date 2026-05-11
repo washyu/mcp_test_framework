@@ -88,7 +88,15 @@ def _pytest_exit_operator_tone(
 
 @pytest.fixture(scope="session")
 def config() -> Config:
-    """Load env + YAML config once per session (Phase 1 precedence: CLI > env > YAML > default)."""
+    """Load YAML config once per session (Phase 13 precedence: init kwarg > MCPTF_CONFIG_FILE path-pointer > YAML > defaults).
+
+    Under `mcp-test-framework run`, the CLI resolver (`cli.py:_load_config`)
+    writes the resolved YAML path to `MCPTF_CONFIG_FILE` before launching
+    pytest.main(). This bare `Config()` then picks up that path via the
+    fallback in `Config.settings_customise_sources` (Phase 13 review
+    CR-01 fix). SAFE-05 is preserved: env vars do NOT inject scalar
+    config values -- `MCPTF_CONFIG_FILE` is a path pointer only.
+    """
     return Config()
 
 
