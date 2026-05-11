@@ -325,7 +325,7 @@ def run(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+        help="Path to a YAML config (overrides MCPTF_CONFIG_FILE and ./config.yaml autodiscovery).",
     ),
     junit_xml: Path | None = typer.Option(
         None,
@@ -377,7 +377,7 @@ def list_tools(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+        help="Path to a YAML config (overrides MCPTF_CONFIG_FILE and ./config.yaml autodiscovery).",
     ),
     as_json: bool = typer.Option(
         False,
@@ -472,7 +472,7 @@ def config_init(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to a YAML config overlay (sets MCPTF_CONFIG_FILE).",
+        help="Path to a YAML config (overrides MCPTF_CONFIG_FILE and ./config.yaml autodiscovery).",
     ),
     output: Path | None = typer.Option(
         None,
