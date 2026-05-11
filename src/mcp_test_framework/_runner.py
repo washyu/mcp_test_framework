@@ -2,8 +2,8 @@
 
 Phase 14 contract (cites Phase 14 D-01..D-16 and Phase 09 OUTPUT-01):
   - D-01: pytest runs as a child subprocess via [sys.executable, '-m', 'pytest', ...];
-          pytest.main() is forbidden in the wrapper to keep the wrapper process
-          decoupled from pytest's plugin globals.
+          the in-process pytest entry point is forbidden in the wrapper to
+          keep the wrapper process decoupled from pytest's plugin globals.
   - D-02: default mode allocates an internal tempfile JUnit XML; operator
           --junit-xml=PATH is honored via a post-subprocess shutil.copy fan-out
           (NOT via a second pytest --junitxml argument, so the wrapper owns the
@@ -79,7 +79,7 @@ def _build_pytest_args(
 ) -> list[str]:
     """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
     `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
-    ``pytest`` (in v1.1 to ``pytest.main(...)``; in Phase 14 to the subprocess
+    ``pytest`` (in v1.1 to the in-process entry point; in Phase 14 to the subprocess
     argv after `[sys.executable, '-m', 'pytest']`).
 
     D-01a precedence: the explicit flag is inserted BEFORE the passthrough
