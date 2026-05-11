@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" tests="5" failures="1" skipped="1" errors="0" time="8.34">
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[alpha]" time="0.10"/>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[gamma]" time="0.05">
+      <skipped message="Skipped: not selected in config" type="pytest.skip"/>
+    </testcase>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[mango]" time="0.15"/>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[zoo]" time="0.20">
+      <failure message="parameters 3/5: 'unclear'">def test_schema_valid(...):
+E       assert False</failure>
+    </testcase>
+    <testcase classname="tests.unit.test_x" name="test_unit_no_param" time="0.01"/>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" tests="2" failures="1" skipped="0" errors="0" time="3.12">
+    <testcase classname="tests.test_mcp_tool_contract" name="test_description_quality[alpha]" time="1.20"/>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_description_quality[beta]" time="1.92">
+      <failure message="parameters 3/5: 'unclear param name'">def test_description_quality(...):
+&gt;       assert result.passed, result.reasoning
+E       AssertionError: parameters 3/5: 'unclear param name'
+E       assert False</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

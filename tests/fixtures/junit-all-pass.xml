@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" tests="3" failures="0" skipped="0" errors="0" time="2.45">
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[alpha]" time="0.80"/>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[beta]" time="0.81"/>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[gamma]" time="0.84"/>
+  </testsuite>
+</testsuites>

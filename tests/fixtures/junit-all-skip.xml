@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" tests="4" failures="0" skipped="4" errors="0" time="0.15">
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[delete_thing]" time="0.04">
+      <skipped message="Skipped: not selected in config" type="pytest.skip"/>
+    </testcase>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[reboot_host]" time="0.03">
+      <skipped message="Skipped: explicit skip in config" type="pytest.skip"/>
+    </testcase>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[wipe_disk]" time="0.04">
+      <skipped message="Skipped: hits production registry" type="pytest.skip"/>
+    </testcase>
+    <testcase classname="tests.test_mcp_tool_contract" name="test_schema_valid[stop_service]" time="0.04">
+      <skipped message="Skipped: not selected in config" type="pytest.skip"/>
+    </testcase>
+  </testsuite>
+</testsuites>
