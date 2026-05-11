@@ -46,9 +46,12 @@ uv run mcp-test-framework run --config ./config.yaml
 uv run mcp-test-framework run --config config.yaml -- -x --lf -k schema
 ```
 
-`run` invokes pytest against the `tests/` directory and exits with pytest's exit
-code (0 on green). Anything after the `--` separator is forwarded verbatim to
-`pytest.main()` -- use it to pass `-k`, `-x`, `--lf`, or any other pytest flag.
+`run` invokes pytest against `tests/contract/` (the operator-relevant SUT-contract
+surface) by default and exits with pytest's exit code (0 on green). Pass
+`--with-framework` to also collect `tests/framework/` (the framework's own
+self-tests -- config validation, runner internals, snippet checks, banned
+imports). Anything after the `--` separator is forwarded verbatim to pytest --
+use it to pass `-k`, `-x`, `--lf`, or any other pytest flag.
 The `-m 'not live_homelab and not live_ollama'` `addopts` contract from
 `pyproject.toml` stays in effect; gate live tests with environment variables or
 markers as documented in the spec.
@@ -163,7 +166,7 @@ Captured verbatim from a real local run on Windows 11 against live `homelab-mcp`
 + Ollama, against a representative tool surface from the connected server.
 The summary line says "67 passed in 22.02s" once you mentally fold over the
 deselect/warning tokens -- pytest formats the wall-clock as `... in N.NNs`.
-The 5 deselected tests are the live-marker smoke tests in `tests/smoke/` gated
+The 5 deselected tests are the live-marker smoke tests in `tests/framework/smoke/` gated
 behind `-m 'not live_homelab and not live_ollama'`. The single warning is
 pytest's standard `PytestAssertRewriteWarning` for `anyio` (already imported by
 the time pytest tries to instrument it) and is unrelated to test outcomes.
@@ -179,10 +182,10 @@ tool's description upstream, or skip the tool in your config (per the
 Test runs do not mutate `~/.homelab_mcp/` real-state files. The framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session temporary directory, so the server reads/writes its state inside the tempdir and never touches your real-state files.
 
 ```bash
-uv run pytest tests/test_isolation.py -v
+uv run pytest tests/framework/test_isolation.py -v
 ```
 
-The test in `tests/test_isolation.py` computes sha256 hashes of `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, and `~/.homelab_mcp/migration_state.json` before and after a full session and asserts byte-identical equality. Test runs also route the OS keyring through a null backend, so credentials are not read or written.
+The test in `tests/framework/test_isolation.py` computes sha256 hashes of `~/.homelab_mcp/credential_registry.json`, `~/.homelab_mcp/known_hosts`, and `~/.homelab_mcp/migration_state.json` before and after a full session and asserts byte-identical equality. Test runs also route the OS keyring through a null backend, so credentials are not read or written.
 
 ## CI integration
 
