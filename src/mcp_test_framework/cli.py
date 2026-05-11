@@ -36,6 +36,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import textwrap
 import typing
 from contextlib import AsyncExitStack
@@ -423,6 +424,32 @@ def run(
     from pyproject.toml stays in effect inside the subprocess -- `run`
     MUST NOT pass an explicit `-m` flag (D-markers-3 / Phase 4 contract).
     """
+    # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): reconfigure sys.stdout
+    # to utf-8 with errors='replace' BEFORE any rendering or any _load_config
+    # error path. On Windows the default console code page is cp1252 which
+    # cannot encode the renderer's U+2717 (✗) / U+2714 (✓) / U+2013 (–) /
+    # U+2014 (—) glyphs -- without this reconfigure _render_per_tool_rows
+    # raises UnicodeEncodeError mid-render and the operator never sees the
+    # `Result:` summary line.
+    #
+    # Guarded with hasattr() so test environments that wrap sys.stdout without
+    # implementing reconfigure() (e.g. pytest's capsys wrapper) don't crash on
+    # the missing method. errors='replace' is the deliberate trade-off: on
+    # truly hostile streams (no utf-8 capability AND no reconfigure support)
+    # the operator still sees the row with `?` in place of glyphs rather than
+    # a crash. This is the graceful-degradation contract from the plan.
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            # Some streams advertise reconfigure but reject the kwargs (e.g.,
+            # already-detached buffer). Swallow -- the renderer's print()
+            # calls will then either succeed (utf-8 console) or hit the same
+            # crash we were trying to prevent (cp1252 console), at which
+            # point the operator gets the same traceback they got pre-fix.
+            # Best-effort.
+            pass
+
     from mcp_test_framework import _runner
     import xml.etree.ElementTree as ET
 
