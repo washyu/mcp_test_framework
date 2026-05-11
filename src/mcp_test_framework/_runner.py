@@ -79,6 +79,8 @@ def _emit_operator_error(
 def _build_pytest_args(
     junit_xml: Path | None,
     pytest_args: list[str] | None,
+    *,
+    with_framework: bool = False,
 ) -> list[str]:
     """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
     `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
@@ -90,9 +92,16 @@ def _build_pytest_args(
     wins under pytest's last-occurrence argparse rule. The helper does NOT
     de-duplicate or validate paths -- pytest's own argument handling is the
     single source of truth.
+
+    Phase 15 D-03: scope is operator-default ``tests/contract`` only;
+    ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
+    ``--with-framework`` is a superset matching the pre-split
+    ``pytest tests/`` collection.
     """
     forwarded = list(pytest_args or [])
-    args: list[str] = ["tests"]
+    args: list[str] = ["tests/contract"]
+    if with_framework:
+        args.append("tests/framework")
     if junit_xml is not None:
         args.append(f"--junitxml={junit_xml}")
     args.extend(forwarded)
