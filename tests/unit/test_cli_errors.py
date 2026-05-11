@@ -65,9 +65,14 @@ def test_emit_operator_error_returns_no_return_annotation() -> None:
     are typecheck-correct."""
     import typing
     sig = typing.get_type_hints(_emit_operator_error)
-    # Some Python versions use `typing.NoReturn`, others normalise to `NoReturn`
-    assert sig.get("return") in (typing.NoReturn, type(None).__class__) or \
-           getattr(sig.get("return"), "__name__", "") == "NoReturn"
+    ret = sig.get("return")
+    # Some Python versions return `typing.NoReturn`, others normalise to a
+    # form whose `__name__` is "NoReturn"; accept both. The previous
+    # `type(None).__class__` middle branch resolved to `type`, which
+    # accidentally permitted any class-typed return annotation (e.g. `-> int`).
+    assert ret is typing.NoReturn or getattr(ret, "__name__", "") == "NoReturn", (
+        f"return annotation must be NoReturn, got {ret!r}"
+    )
 
 
 def test_load_config_path_not_found(tmp_path: Path) -> None:
