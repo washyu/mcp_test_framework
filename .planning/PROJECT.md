@@ -207,4 +207,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 — v1.2 Operator-First Design scoping started via `/gsd-new-milestone`; six cohorts (SEED-006..009 + new SEED-010/011) frame the milestone. v1.1 milestone close summary preserved above (54/54 requirements satisfied across v1.0+v1.1).*
+*Last updated: 2026-05-10 — Phase 13 (config-safety-opt-in-tool-selection) complete: SAFE-01..07 delivered. Resolver enforces `--config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud`; `tools:` flipped to opt-in allowlist; schema `version: 1 → 2` with locked migration error; `.env` + env-overlay stripped; `TargetConfig` removed (single-tool focus via `--config focus-<tool>.yaml`); `docs/MIGRATION-v1-to-v2.md` shipped. v1.2 progress: 2/5 phases done (12, 13).*
