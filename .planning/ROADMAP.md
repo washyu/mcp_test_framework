@@ -91,10 +91,10 @@
   3. An operator running with `-q` sees only the summary line; default verbosity shows the domain UI; `--explain` adds skipped-tool detail; `--debug` adds raw pytest output and tracebacks. Each rung adds information; none re-shapes the layer below.
   4. An operator running `mcp-test-framework run --junit-xml=results.xml` still gets a standard JUnit XML at `results.xml` (v1.1 OUTPUT-01 contract preserved); the wrapper consumes its own internal tempfile so the operator-visible path is untouched.
   5. Exit codes remain stable across the wrapper boundary: 0 (all pass), 1 (test failures), 2 (config / collection / pre-flight errors), 130 (SIGINT). A CI pipeline wired to v1.1's exit-code contract continues to work without changes.
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
   - [x] 14-01-PLAN.md — Subprocess wrapper + pre-flight gate + tempfile JUnit + --raw + exit-code mapping (wave 1)
   - [x] 14-02-PLAN.md — JUnit XML parser + ParsedRun model + XML fixtures (wave 2, depends 14-01)
-  - [ ] 14-03-PLAN.md — Domain UI renderer (header/rows/summary) + wrapper-side discovery (wave 3, depends 14-01, 14-02)
+  - [x] 14-03-PLAN.md — Domain UI renderer (header/rows/summary) + wrapper-side discovery (wave 3, depends 14-01, 14-02)
   - [ ] 14-04-PLAN.md — Verbosity flags -q/--debug + render_summary_only + render_debug_appendix (wave 4, depends 14-01..03)
   - [ ] 14-05-PLAN.md — Delete _reporter.py + retarget tests + conftest cleanup (wave 5, depends 14-01..04)
 
@@ -153,6 +153,6 @@
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
 | 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete    | 2026-05-11 |
-| 14. Hybrid runner with domain UI | v1.2 | 2/5 | In Progress|  |
+| 14. Hybrid runner with domain UI | v1.2 | 3/5 | In Progress|  |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |
