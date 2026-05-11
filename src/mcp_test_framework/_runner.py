@@ -27,7 +27,7 @@ keep working.
 """
 from __future__ import annotations
 
-import os  # noqa: F401  -- reserved for future env-passthrough hooks
+import os  # used by run_pytest_subprocess for child env (PYTHONIOENCODING)
 import shutil
 import subprocess
 import sys
@@ -163,7 +163,14 @@ def run_pytest_subprocess(
         # D-11: raw mode -- no internal tempfile, no capture.
         inner_args = _build_pytest_args(junit_xml, pytest_args)
         argv = [sys.executable, "-m", "pytest", *inner_args]
-        proc = subprocess.run(argv, check=False)
+        # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): force the child
+        # pytest to WRITE utf-8 bytes even on Windows (where the default code
+        # page is cp1252 and would otherwise leak bytes like 0x97 -- cp1252
+        # em-dash -- into the inherited stdout). The parent's sys.stdout has
+        # already been reconfigured to utf-8 by cli.run before reaching here,
+        # so the child inherits a utf-8-capable fd.
+        child_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+        proc = subprocess.run(argv, check=False, env=child_env)
         return (proc.returncode, None, "", "")
 
     # Default mode -- allocate an internal tempfile JUnit XML.
@@ -192,12 +199,23 @@ def run_pytest_subprocess(
         *inner_args,
         f"--junitxml={tmp}",
     ]
+    # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): two-sided encoding hygiene.
+    # - PYTHONIOENCODING in the child env forces pytest to WRITE utf-8 bytes even
+    #   on Windows (where the default code page is cp1252 and would otherwise leak
+    #   bytes like 0x97 -- cp1252 em-dash -- into the captured stdout, causing the
+    #   parent's utf-8 decoder to raise UnicodeDecodeError mid-capture).
+    # - errors="replace" on the parent decode is a belt-and-suspenders fallback so
+    #   a stray non-utf-8 byte never raises mid-capture -- it is replaced with
+    #   U+FFFD and the renderer still gets a complete string to work with.
+    child_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     proc = subprocess.run(
         argv,
         capture_output=True,
         text=True,
         check=False,
         encoding="utf-8",
+        errors="replace",
+        env=child_env,
     )
 
     # Fan-out: if operator wanted the XML at PATH, copy from the tempfile.
