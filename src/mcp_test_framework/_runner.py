@@ -480,3 +480,267 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             bucket.verdict = "PASS"
 
     return run
+
+
+# ===========================================================================
+# Phase 14 Plan 03: Domain UI renderer
+# ===========================================================================
+#
+# Consumes ParsedRun (Plan 14-02) plus a RenderContext (non-XML metadata from
+# cli.py:run) and emits the operator-facing header / per-tool rows / summary
+# line described in SEED-011 §2 and Phase 14 D-04..D-09.
+#
+# Architectural shift vs the v1.1 _reporter plugin: the state-(a)/(c) skip
+# composer is now a PURE FUNCTION (_compose_unparametrized_skips_from_config)
+# that takes discovered_tools as an argument rather than reading
+# _reporter._DISCOVERED_TOOL_NAMES off a module global. The wrapper runs
+# outside the pytest process and cannot reach the in-pytest cache; it
+# performs its own discovery call before launching the subprocess.
+#
+# Em-dash U+2014 ("—") appears verbatim in this source file -- locked at
+# Phase 09 SC-3 + _reporter.py:275 + tests/test_reporter.py:391-417.
+# ===========================================================================
+
+
+@dataclass
+class RenderContext:
+    """Non-XML data the renderer needs.
+
+    Phase 14 D-07: header inputs come from the resolved Config (server cmd,
+    judges) and a wrapper-side discovery call (discovered tool list).
+    Phase 14 D-09: total_planned_cases is the count of <testcase> elements
+    we EXPECT (typically discovered-and-allowed tools * cases per tool);
+    today this equals `parsed.total_cases` for the header's "Test plan: N
+    contract cases" line, since pytest's collected count IS the plan.
+    """
+
+    server_cmd: str
+    discovered_tools: list[str] = field(default_factory=list)
+    tools_config: dict = field(default_factory=dict)  # name -> ToolConfig
+    judges: list[str] = field(default_factory=list)
+    total_planned_cases: int = 0
+
+
+def _compose_unparametrized_skips_from_config(
+    discovered_tools: list[str],
+    tools_config: dict,
+    ran_tools: set[str],
+) -> dict[str, str]:
+    """Phase 13 D-12/D-13 + Phase 14: state-(a)/(c) SKIP rows the wrapper
+    composes outside the pytest process.
+
+    Inputs:
+      - discovered_tools: tools the MCP server advertises (from wrapper-side discovery).
+      - tools_config: Config.tools (operator allowlist).
+      - ran_tools: tools that DID parametrize and produced testcases
+        (i.e., the keys of parsed.per_tool). Excluded from this composition;
+        the standard per-tool rows path handles them.
+
+    Returns {tool_name: reason} for every discovered tool that did NOT run.
+
+    State (c): tool listed AND tools[name].skip is True
+               -> skip_reason or _REASON_EXPLICIT_DEFAULT
+    State (a): tool NOT in tools_config (or tools[name].skip is False but
+               somehow didn't run -- defensive)
+               -> _REASON_NOT_SELECTED
+
+    Architectural shift vs v1.1 _reporter._compose_unparametrized_skips:
+    this function is PURE -- discovered_tools is an argument, not a module
+    global. The wrapper rediscovers tools before launching pytest (cli.py:
+    _discover_tools_for_run) because the in-pytest cache lives in another
+    process.
+    """
+    result: dict[str, str] = {}
+    for name in discovered_tools:
+        if name in ran_tools:
+            continue
+        cfg_entry = tools_config.get(name)
+        if cfg_entry is not None and getattr(cfg_entry, "skip", False):
+            reason = (getattr(cfg_entry, "skip_reason", "") or "").strip()
+            result[name] = reason or _REASON_EXPLICIT_DEFAULT
+        else:
+            result[name] = _REASON_NOT_SELECTED
+    return result
+
+
+# ---------------------------------------------------------------------------
+# ANSI guard helpers (D-06: codes only when stdout is a TTY)
+# ---------------------------------------------------------------------------
+
+
+def _ansi_enabled(file) -> bool:
+    """Phase 14 D-06: ANSI codes only when file is a TTY. Piped output stays plain."""
+    return hasattr(file, "isatty") and file.isatty()
+
+
+def _green(s: str, file) -> str:
+    return f"\x1b[32m{s}\x1b[0m" if _ansi_enabled(file) else s
+
+
+def _red(s: str, file) -> str:
+    return f"\x1b[31m{s}\x1b[0m" if _ansi_enabled(file) else s
+
+
+def _dim(s: str, file) -> str:
+    return f"\x1b[2m{s}\x1b[0m" if _ansi_enabled(file) else s
+
+
+# ---------------------------------------------------------------------------
+# Header (SEED-011 §2 mockup -- verbatim shape for v1.2)
+# ---------------------------------------------------------------------------
+
+
+def _render_header(ctx: RenderContext, parsed: ParsedRun, file=None) -> None:
+    """SEED-011 §2 mockup -- verbatim shape for v1.2.
+
+    Lines (exact order):
+      ========================================
+      MCP Test Framework
+      ========================================
+      MCP server:  {server_cmd}
+      Discovered:  {N} tools
+      Running:     {R}  ({comma-joined names})
+      Skipping:    {S}  (use --explain to list)
+      Judges:      {comma-joined}
+      Test plan:   {C} contract cases
+
+    `file=None` defaults to sys.stdout resolved at call-time so pytest
+    `capsys` capture works (capsys replaces sys.stdout per-test; a
+    `file=sys.stdout` default would capture the pre-test stdout at function
+    definition time and bypass the fixture).
+    """
+    if file is None:
+        file = sys.stdout
+    ran = sorted(parsed.per_tool.keys())
+    discovered_n = len(ctx.discovered_tools)
+    running_n = len(ran)
+    skipping_n = max(0, discovered_n - running_n)
+    judges_text = ", ".join(ctx.judges) if ctx.judges else "(none configured)"
+    running_text = ", ".join(ran) if ran else "(none)"
+
+    print("=" * 40, file=file)
+    print("MCP Test Framework", file=file)
+    print("=" * 40, file=file)
+    print(f"MCP server:  {ctx.server_cmd}", file=file)
+    print(f"Discovered:  {discovered_n} tools", file=file)
+    print(f"Running:     {running_n:>2}  ({running_text})", file=file)
+    print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+    print(f"Judges:      {judges_text}", file=file)
+    print(f"Test plan:   {parsed.total_cases} contract cases", file=file)
+    print("", file=file)  # blank line before per-tool rows
+
+
+# ---------------------------------------------------------------------------
+# Per-tool rows (Phase 09 CD-03 ordering, D-08 reasoning, em-dash separator)
+# ---------------------------------------------------------------------------
+
+
+def _render_per_tool_rows(
+    parsed: ParsedRun,
+    unparam_skips: dict[str, str],
+    file=None,
+) -> None:
+    """Phase 09 CD-03: FAIL -> SKIP -> PASS, alphabetical within each.
+    Phase 14 D-08: FAIL row appends `failure_message` after em-dash.
+    Em-dash separator = U+2014 (literal '—'), not ASCII hyphen.
+    `file=None` -> sys.stdout at call time (capsys-friendly).
+    """
+    if file is None:
+        file = sys.stdout
+    fails = sorted(t for t, v in parsed.per_tool.items() if v.verdict == "FAIL")
+    skips_xml = {t for t, v in parsed.per_tool.items() if v.verdict == "SKIP"}
+    passes = sorted(t for t, v in parsed.per_tool.items() if v.verdict == "PASS")
+
+    # Union XML-derived SKIPs with state-(a)/(c) composer entries.
+    all_skips = sorted(skips_xml | set(unparam_skips.keys()))
+
+    all_names = list(parsed.per_tool.keys()) + list(unparam_skips.keys())
+    name_width = max((len(n) for n in all_names), default=0)
+
+    if fails:
+        print("failures:", file=file)
+        for tool in fails:
+            v = parsed.per_tool[tool]
+            tag = _red("FAIL", file)
+            if v.failure_message:
+                # U+2014 em-dash; matches Phase 09 SC-3 (locked separator).
+                print(f"  {tool.ljust(name_width)}  ✗ {tag} — {v.failure_message}", file=file)
+            else:
+                print(f"  {tool.ljust(name_width)}  ✗ {tag}", file=file)
+
+    if all_skips:
+        print("skipped:", file=file)
+        for tool in all_skips:
+            if tool in parsed.per_tool and parsed.per_tool[tool].verdict == "SKIP":
+                reasons_text = _format_skip_reasons(parsed.per_tool[tool].skip_reasons)
+            else:
+                reasons_text = unparam_skips[tool]
+            tag = _dim("SKIP", file)
+            if reasons_text:
+                print(f"  {tool.ljust(name_width)}  – {tag} — {reasons_text}", file=file)
+            else:
+                print(f"  {tool.ljust(name_width)}  – {tag}", file=file)
+
+    if passes:
+        print("passing:", file=file)
+        for tool in passes:
+            tag = _green("PASS", file)
+            print(f"  {tool.ljust(name_width)}  ✓ {tag}", file=file)
+
+
+# ---------------------------------------------------------------------------
+# Summary line
+# ---------------------------------------------------------------------------
+
+
+def _render_summary_line(
+    parsed: ParsedRun,
+    unparam_skips: dict[str, str],
+    file=None,
+) -> None:
+    """SEED-011 §2: `Result: N PASS / M FAIL  in T.Ts`.
+
+    Skip count includes state-(a)/(c) composer entries so the summary line
+    agrees with the per-tool rows (must_haves truth: 'discovered/running/
+    skipping counts agree with what the runner actually executes').
+    `file=None` -> sys.stdout at call time (capsys-friendly).
+    """
+    if file is None:
+        file = sys.stdout
+    n_pass = sum(1 for v in parsed.per_tool.values() if v.verdict == "PASS")
+    n_fail = sum(1 for v in parsed.per_tool.values() if v.verdict == "FAIL")
+    n_skip = sum(1 for v in parsed.per_tool.values() if v.verdict == "SKIP") + len(unparam_skips)
+    skip_segment = f" / {n_skip} SKIP" if n_skip else ""
+    print("", file=file)
+    print(
+        f"Result: {n_pass} PASS / {n_fail} FAIL{skip_segment}  in {parsed.total_time:.1f}s",
+        file=file,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
+
+def render_domain_ui(
+    parsed: ParsedRun,
+    ctx: RenderContext,
+    file=None,
+) -> None:
+    """Top-level renderer. Phase 14 D-04 (batch render) + D-06 (stdlib + ANSI).
+
+    Order: header -> per-tool rows -> summary line.
+    State-(a)/(c) SKIP rows merge with XML-derived SKIPs via
+    _compose_unparametrized_skips_from_config.
+    `file=None` -> sys.stdout at call time (capsys-friendly).
+    """
+    if file is None:
+        file = sys.stdout
+    ran_tools = set(parsed.per_tool.keys())
+    unparam_skips = _compose_unparametrized_skips_from_config(
+        ctx.discovered_tools, ctx.tools_config, ran_tools
+    )
+    _render_header(ctx, parsed, file=file)
+    _render_per_tool_rows(parsed, unparam_skips, file=file)
+    _render_summary_line(parsed, unparam_skips, file=file)
