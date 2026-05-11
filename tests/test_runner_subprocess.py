@@ -252,3 +252,73 @@ def test_cli_reexports_helpers_for_backward_compat() -> None:
     from mcp_test_framework.cli import _build_pytest_args, _emit_operator_error
     assert callable(_build_pytest_args)
     assert callable(_emit_operator_error)
+
+
+# ---------------------------------------------------------------------------
+# Phase 14 Plan 05: regression pins -- the deleted v1.1 reporter plugin
+# stays deleted; _runner owns the in-pytest discovery cache.
+# ---------------------------------------------------------------------------
+
+
+def test_reporter_module_no_longer_importable() -> None:
+    """Phase 14 Plan 05: the v1.1 reporter plugin module was deleted. Any
+    code path that still tries to import it (e.g., a stray
+    `from mcp_test_framework import _reporter` left over from v1.1) MUST
+    fail loud at import time.
+
+    This test prevents accidental reintroduction in future phases.
+    """
+    import importlib
+    with pytest.raises((ImportError, ModuleNotFoundError)):
+        importlib.import_module("mcp_test_framework._reporter")
+
+
+def test_runner_owns_discovery_cache() -> None:
+    """Phase 14 Plan 05: the in-pytest discovery cache `_DISCOVERED_TOOL_NAMES`
+    + setter `_set_discovered_tool_names` MUST live in `mcp_test_framework._runner`
+    (an importable module under src/) so surviving Phase 13 SAFE-01 allowlist
+    tests can patch the cache via `_runner._DISCOVERED_TOOL_NAMES = [...]`.
+
+    Regression pin: if a future phase moves this cache elsewhere (e.g., into
+    tests/conftest.py which historically was not a package), this test fails loud.
+    """
+    from mcp_test_framework import _runner as _r
+    assert hasattr(_r, "_DISCOVERED_TOOL_NAMES"), \
+        "_DISCOVERED_TOOL_NAMES missing from _runner"
+    assert hasattr(_r, "_set_discovered_tool_names"), \
+        "_set_discovered_tool_names helper missing from _runner"
+    # Patchability seam: tests must be able to assign the cache directly.
+    saved = _r._DISCOVERED_TOOL_NAMES
+    try:
+        _r._DISCOVERED_TOOL_NAMES = ["alpha", "beta"]
+        assert _r._DISCOVERED_TOOL_NAMES == ["alpha", "beta"]
+    finally:
+        _r._DISCOVERED_TOOL_NAMES = saved
+
+
+def test_plugins_list_does_not_register_reporter() -> None:
+    """Phase 14 Plan 05: conftest.py's pytest_plugins must not list the
+    deleted v1.1 plugin (the file is gone). Use a module-spec-based import
+    rather than `import tests.conftest` to keep the probe lightweight and
+    insulated from import side-effects."""
+    import importlib.util
+    from pathlib import Path
+    repo_root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "_phase14_conftest_probe", repo_root / "tests" / "conftest.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    # Note: executing conftest standalone may have side-effects; if this
+    # turns out to be brittle, fall back to a grep-based file inspection.
+    try:
+        spec.loader.exec_module(module)
+        plugins = getattr(module, "pytest_plugins", [])
+    except Exception:
+        # Fallback: parse the file text and search for the assignment.
+        text = (repo_root / "tests" / "conftest.py").read_text(encoding="utf-8")
+        assert "mcp_test_framework.fixtures" in text
+        assert "mcp_test_framework._reporter" not in text
+        return
+    assert "mcp_test_framework._reporter" not in plugins
+    assert plugins == ["mcp_test_framework.fixtures"]
