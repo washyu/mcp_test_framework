@@ -276,6 +276,13 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
         )
 
     # Load with the resolved path as an explicit kwarg.
+    # Phase 13 review CR-01/CR-02: also export MCPTF_CONFIG_FILE so the
+    # in-process pytest session spawned by `run()` -- which constructs a
+    # bare `Config()` inside fixtures + conftest + reporter -- picks up
+    # the same resolved YAML path via the env-var fallback in
+    # `Config.settings_customise_sources`. SAFE-05 is preserved: the env
+    # var is a PATH POINTER, not a scalar-value source.
+    os.environ["MCPTF_CONFIG_FILE"] = str(resolved)
     try:
         return Config(yaml_file=str(resolved))
     except ValidationError as exc:

@@ -2,14 +2,19 @@
 
 Precedence (Phase 13 D-05):
 
-    CLI/init kwargs (yaml_file=PATH) > YAML overlay at PATH > defaults
+    CLI/init kwargs (yaml_file=PATH) > MCPTF_CONFIG_FILE (path pointer)
+    > YAML overlay at the resolved PATH > defaults
 
 The resolver in `cli.py:_load_config` (Phase 13 D-03) passes the resolved
 YAML path as an explicit `yaml_file` kwarg to `Config(...)`. The custom
 `settings_customise_sources` below reads that kwarg from `init_settings`
-and hands it to `YamlConfigSettingsSource`. `MCPTF_CONFIG_FILE`, `--config`,
-and `./config.yaml` autodiscovery are all resolved in `cli.py` BEFORE
-`Config(...)` is constructed; no env vars influence Config values directly.
+and hands it to `YamlConfigSettingsSource`. `MCPTF_CONFIG_FILE` is read
+as a PATH POINTER only -- a fallback for cases where `Config()` is
+instantiated without the kwarg (notably the in-process pytest session
+launched by `pytest.main` from `cli.py:run`). It NEVER injects scalar
+values into the model (SAFE-05 preserved): it only directs the YAML
+loader to a file. `--config` and `./config.yaml` autodiscovery are
+resolved in `cli.py` BEFORE `Config(...)` is constructed.
 
 `.env` is dead-letter for the framework's config layer (Phase 13 D-07).
 Sub-model `validation_alias=AliasChoices(...)` declarations on
@@ -19,6 +24,7 @@ role is gone (D-05).
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -90,6 +96,14 @@ class Config(BaseSettings):
         """
         # Locked pop pattern (D-03, revision iteration 1 probe-verified).
         yaml_file = init_settings.init_kwargs.pop("yaml_file", None)
+        # IPC fallback (Phase 13 review CR-01/CR-02): when no explicit
+        # yaml_file kwarg is given, fall back to MCPTF_CONFIG_FILE so the
+        # in-process pytest session spawned by `cli.py:run` picks up the
+        # operator's resolved path. SAFE-05 is preserved because this env
+        # var is a PATH POINTER, not a value source -- it can only direct
+        # the YAML loader to a file, never inject scalar config values.
+        if yaml_file is None:
+            yaml_file = os.environ.get("MCPTF_CONFIG_FILE")
         sources: list[PydanticBaseSettingsSource] = [init_settings]
         if yaml_file and Path(yaml_file).is_file():
             sources.append(
