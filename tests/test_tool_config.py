@@ -207,6 +207,72 @@ def test_resolve_tool_names_explicit_target_overrides_skip_true() -> None:
 
 
 # ===========================================================================
+# Phase 14 gap-closure (Plan 14-07): patch-seam migration audit
+#
+# Plan 14-05 moved the in-pytest discovery cache from
+# `tests.conftest._DISCOVERED_TOOL_NAMES` (implicit module attribute) to
+# `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` (importable module
+# path). The audit below catches any test that still patches the old seam.
+# ===========================================================================
+
+
+def test_no_stale_conftest_module_discovered_tool_names_writes() -> None:
+    """Phase 14 gap-closure: no test should patch the dead seam
+    `_conftest_module._DISCOVERED_TOOL_NAMES = [...]`. The cache moved
+    to `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` in Plan 14-05;
+    writing to the conftest-module attribute is now a no-op (the conftest
+    consumes the cache via `from mcp_test_framework import _runner as _r;
+    _r._DISCOVERED_TOOL_NAMES`).
+
+    If this test fails, retarget the offending patch to:
+        from mcp_test_framework import _runner as _r
+        _r._DISCOVERED_TOOL_NAMES = [...]
+    See tests/unit/test_runner_migration.py for the reference pattern.
+    """
+    import re
+    from pathlib import Path
+
+    tests_dir = Path(__file__).parent
+    offenders: list[tuple[Path, int, str]] = []
+    # Match writes only (avoids matching documentation that quotes the
+    # pattern). Pattern: dotted access + optional spaces + '=' + not '='.
+    write_pattern = re.compile(r"_conftest_module\._DISCOVERED_TOOL_NAMES\s*=\s*(?!=)")
+    # Track triple-quoted-string state so docstrings/assertion messages
+    # that reference the dead-seam pattern are not flagged. This lets the
+    # audit catch real writes (Tasks 1 RED state) while ignoring its own
+    # documentation (Task 2 GREEN state).
+    triple_re = re.compile(r'"""|\'\'\'')
+    for py_file in tests_dir.rglob("*.py"):
+        try:
+            content = py_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        in_triple = False
+        for lineno, line in enumerate(content.splitlines(), start=1):
+            # Toggle triple-quote state once per delimiter on this line.
+            triple_hits = len(triple_re.findall(line))
+            line_starts_in_string = in_triple
+            if triple_hits % 2 == 1:
+                in_triple = not in_triple
+            # Skip pure comment lines.
+            stripped = line.lstrip()
+            if stripped.startswith("#"):
+                continue
+            # Skip lines that are fully inside a docstring/triple-quoted
+            # string (both started and ended inside one).
+            if line_starts_in_string and in_triple:
+                continue
+            if write_pattern.search(line):
+                offenders.append((py_file.relative_to(tests_dir), lineno, line.strip()))
+    assert offenders == [], (
+        "Found stale writes to `_conftest_module._DISCOVERED_TOOL_NAMES` "
+        "(the cache moved to `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` "
+        "in Plan 14-05). Retarget per `tests/unit/test_runner_migration.py`. "
+        f"Offenders: {offenders}"
+    )
+
+
+# ===========================================================================
 # AsyncMock-based call_arguments threading proof (TOOLCFG-01 strong proof,
 # ROADMAP success criterion #4) -- in-process, no live server needed.
 # ===========================================================================
