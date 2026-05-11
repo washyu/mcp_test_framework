@@ -79,6 +79,8 @@ def _emit_operator_error(
 def _build_pytest_args(
     junit_xml: Path | None,
     pytest_args: list[str] | None,
+    *,
+    with_framework: bool = False,
 ) -> list[str]:
     """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
     `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
@@ -90,9 +92,16 @@ def _build_pytest_args(
     wins under pytest's last-occurrence argparse rule. The helper does NOT
     de-duplicate or validate paths -- pytest's own argument handling is the
     single source of truth.
+
+    Phase 15 D-03: scope is operator-default ``tests/contract`` only;
+    ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
+    ``--with-framework`` is a superset matching the pre-split
+    ``pytest tests/`` collection.
     """
     forwarded = list(pytest_args or [])
-    args: list[str] = ["tests"]
+    args: list[str] = ["tests/contract"]
+    if with_framework:
+        args.append("tests/framework")
     if junit_xml is not None:
         args.append(f"--junitxml={junit_xml}")
     args.extend(forwarded)
@@ -127,6 +136,7 @@ def run_pytest_subprocess(
     junit_xml: Path | None,
     pytest_args: list[str] | None,
     raw: bool,
+    with_framework: bool = False,
 ) -> tuple[int, Path | None, str, str]:
     """Spawn pytest as a child process and return its result.
 
@@ -161,7 +171,7 @@ def run_pytest_subprocess(
     """
     if raw:
         # D-11: raw mode -- no internal tempfile, no capture.
-        inner_args = _build_pytest_args(junit_xml, pytest_args)
+        inner_args = _build_pytest_args(junit_xml, pytest_args, with_framework=with_framework)
         argv = [sys.executable, "-m", "pytest", *inner_args]
         # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): force the child
         # pytest to WRITE utf-8 bytes even on Windows (where the default code
@@ -191,7 +201,7 @@ def run_pytest_subprocess(
 
     # operator junit_xml is deliberately suppressed inside _build_pytest_args
     # so only the wrapper's tempfile is exposed to pytest as --junitxml.
-    inner_args = _build_pytest_args(None, pytest_args)
+    inner_args = _build_pytest_args(None, pytest_args, with_framework=with_framework)
     argv = [
         sys.executable,
         "-m",

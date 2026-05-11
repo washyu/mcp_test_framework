@@ -368,7 +368,7 @@ def run(
         help=(
             "Bypass the domain UI wrapper and stream pytest's native output. "
             "All flags forward verbatim to pytest. Equivalent to "
-            "`uv run pytest tests/` modulo the config pre-flight gate "
+            "`uv run pytest tests/contract/` modulo the config pre-flight gate "
             "(which still runs)."
         ),
     ),
@@ -389,6 +389,16 @@ def run(
             "Print only the summary line (no header, no per-tool rows). "
             "Independent of pytest's -q; pytest still runs at default "
             "verbosity internally so JUnit XML stays complete."
+        ),
+    ),
+    with_framework: bool = typer.Option(
+        False,
+        "--with-framework",
+        help=(
+            "Also collect tests/framework/ (the framework's own self-tests) "
+            "in addition to the operator-default tests/contract/. Use this for "
+            "maintainer runs and CI jobs that need the full suite. The default "
+            "(without this flag) collects only the SUT-contract surface."
         ),
     ),
     pytest_args: list[str] | None = typer.Argument(
@@ -466,6 +476,7 @@ def run(
             junit_xml=junit_xml,
             pytest_args=pytest_args,
             raw=True,
+            with_framework=with_framework,
         )
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
@@ -482,6 +493,7 @@ def run(
         junit_xml=junit_xml,
         pytest_args=pytest_args,
         raw=False,
+        with_framework=with_framework,
     )
     try:
         # D-16: if subprocess crashed before writing the tempfile, surface a

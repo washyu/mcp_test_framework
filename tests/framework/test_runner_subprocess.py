@@ -296,6 +296,49 @@ def test_runner_owns_discovery_cache() -> None:
         _r._DISCOVERED_TOOL_NAMES = saved
 
 
+# ---------------------------------------------------------------------------
+# Plan 15-02: scope-aware _build_pytest_args (SURFACE-02 / D-03)
+# ---------------------------------------------------------------------------
+
+from mcp_test_framework._runner import _build_pytest_args
+
+
+def test_build_pytest_args_default_scope_is_contract_only():
+    """With_framework=False -> single positional 'tests/contract' (D-03)."""
+    assert _build_pytest_args(None, None, with_framework=False) == ["tests/contract"]
+
+
+def test_build_pytest_args_with_framework_appends_framework_subtree():
+    """With_framework=True -> APPEND, not REPLACE (D-02)."""
+    assert _build_pytest_args(None, None, with_framework=True) == [
+        "tests/contract", "tests/framework",
+    ]
+
+
+def test_build_pytest_args_default_kwarg_omitted_is_contract_only():
+    """Calling without with_framework= behaves identically to with_framework=False."""
+    assert _build_pytest_args(None, None) == ["tests/contract"]
+
+
+def test_build_pytest_args_junitxml_inserted_after_scope_before_passthrough():
+    """Phase 09 D-01a precedence: positional scope, then --junitxml=, then forwarded args."""
+    result = _build_pytest_args(
+        Path("out.xml"), ["-k", "schema"], with_framework=False,
+    )
+    assert result == ["tests/contract", "--junitxml=out.xml", "-k", "schema"]
+
+
+def test_build_pytest_args_with_framework_keeps_junit_and_passthrough_order():
+    """Scope expansion does not reshuffle --junitxml= or forwarded args."""
+    result = _build_pytest_args(
+        Path("out.xml"), ["-k", "schema"], with_framework=True,
+    )
+    assert result == [
+        "tests/contract", "tests/framework",
+        "--junitxml=out.xml", "-k", "schema",
+    ]
+
+
 def test_plugins_list_does_not_register_reporter() -> None:
     """Phase 14 Plan 05: conftest.py's pytest_plugins must not list the
     deleted v1.1 plugin (the file is gone). Use a module-spec-based import
