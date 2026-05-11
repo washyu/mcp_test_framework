@@ -32,8 +32,6 @@ from pydantic import ValidationError
 from mcp_test_framework.config import Config
 from mcp_test_framework.models import ToolConfig
 
-import tests.conftest as _conftest_module  # for _DISCOVERED_TOOL_NAMES + _resolve_tool_names
-
 # ===========================================================================
 # Schema tests -- sync, load-time, no live services
 # ===========================================================================
@@ -161,48 +159,162 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
 
 # ===========================================================================
 # v1.1.1 hotfix (260508-p0b) regression tests -- parametrize-time skip filter
+#
+# Phase 14 gap-closure (Plan 14-07): grouped into TestV111SkipFilter so the
+# autouse `_reset_discovery_cache` fixture's blast radius is narrow -- it
+# only resets the migrated cache for these two tests, not the whole module.
+# Mirrors the reference pattern at tests/unit/test_runner_migration.py.
 # ===========================================================================
 
 
-def test_resolve_tool_names_filters_out_skip_true_tools() -> None:
-    """v1.1.1-SKIP-FILTER: tools.<name>.skip:true removes the tool from
-    the parametrize input list (not just runtime-skips its 10 tests).
+class TestV111SkipFilter:
+    """SAFE-01 v1.1.1 skip-filter regression coverage.
 
-    Sets the module cache directly so the async _discover_tools path is
-    not exercised -- keeps the test sync and offline.
+    Plan 14-05 migrated the in-pytest discovery cache from
+    `tests.conftest._DISCOVERED_TOOL_NAMES` (implicit module attribute) to
+    `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` (importable module
+    path). Tests here patch the new canonical seam. The autouse reset
+    fixture mirrors `tests/unit/test_runner_migration.py:_reset_discovery_cache`.
     """
-    config = Config(
-        tools={
-            "a": ToolConfig(),
-            "b": ToolConfig(skip=True, skip_reason="testing the filter"),
-            "c": ToolConfig(),
-        }
-    )
-    _conftest_module._DISCOVERED_TOOL_NAMES = ["a", "b", "c"]
-    try:
-        names = _conftest_module._resolve_tool_names(config)
+
+    @pytest.fixture(autouse=True)
+    def _reset_discovery_cache(self):
+        """Phase 14 gap-closure (Plan 14-07): mirror the reset fixture in
+        tests/unit/test_runner_migration.py so the v1.1.1 regression tests
+        stay independent. The discovery cache lives in
+        `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` (Plan 14-05).
+        """
+        from mcp_test_framework import _runner as _r
+        _r._DISCOVERED_TOOL_NAMES = None
+        yield
+        _r._DISCOVERED_TOOL_NAMES = None
+
+    def test_resolve_tool_names_filters_out_skip_true_tools(self) -> None:
+        """v1.1.1-SKIP-FILTER: tools.<name>.skip:true removes the tool from
+        the parametrize input list (not just runtime-skips its 10 tests).
+
+        Phase 14 gap-closure (Plan 14-07): patch path retargeted from the
+        deleted `_conftest_module._DISCOVERED_TOOL_NAMES` seam to the new
+        canonical location at `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES`
+        (Plan 14-05). Mirrors tests/unit/test_runner_migration.py.
+        """
+        from mcp_test_framework import _runner as _r
+        from tests.conftest import _resolve_tool_names
+
+        config = Config(
+            tools={
+                "a": ToolConfig(),
+                "b": ToolConfig(skip=True, skip_reason="testing the filter"),
+                "c": ToolConfig(),
+            }
+        )
+        _r._DISCOVERED_TOOL_NAMES = ["a", "b", "c"]
+        names = _resolve_tool_names(config)
         assert names == ["a", "c"], (
             f"expected skip:true tool 'b' filtered out; got {names!r}"
         )
-    finally:
-        _conftest_module._DISCOVERED_TOOL_NAMES = None
+        # Cleanup handled by the class-scoped autouse fixture.
 
-
-def test_resolve_tool_names_explicit_target_overrides_skip_true() -> None:
-    """v1.1.1-EXPLICIT-OVERRIDE: target.tool_name=X short-circuits before
-    the new filter, so an explicit single-target run still includes a
-    skip:true tool. Preserves the D-12 _preflight warning path
-    (fixtures.py:200-213).
-    """
-    config = Config(
-        tools={"b": ToolConfig(skip=True, skip_reason="testing override")},
-        target={"tool_name": "b"},
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "Phase 13 v2-schema rework dropped the `target:` block "
+            "(extra_forbidden). The v1.1.1 SAFE-01 explicit-override "
+            "semantics need a v2 equivalent before this test can be "
+            "retargeted -- tracked under Phase 13 verification follow-up "
+            "(NOT Phase 14 gap-closure scope per 14-HUMAN-UAT.md Gap 3 "
+            "diagnosis). Preserved-not-deleted so git blame survives the "
+            "Phase 13 follow-up."
+        ),
     )
-    # Deliberately do NOT touch _DISCOVERED_TOOL_NAMES -- the explicit-target
-    # branch must return before the cache is consulted.
-    names = _conftest_module._resolve_tool_names(config)
-    assert names == ["b"], (
-        f"explicit target.tool_name='b' should win over skip:true; got {names!r}"
+    def test_resolve_tool_names_explicit_target_overrides_skip_true(self) -> None:
+        """v1.1.1-EXPLICIT-OVERRIDE: target.tool_name=X short-circuits before
+        the new filter, so an explicit single-target run still includes a
+        skip:true tool. Preserves the D-12 _preflight warning path
+        (fixtures.py:200-213).
+
+        XFAIL: Phase 13 v2-schema rework removed `target:` from the Config
+        schema (extra_forbidden). This test fails at Config construction time
+        with Pydantic ValidationError, not at the assertion. Retargeting
+        belongs in the Phase 13 verification follow-up, not the Phase 14
+        gap-closure.
+        """
+        from mcp_test_framework import _runner as _r  # noqa: F401 (kept for parity with sibling test)
+        from tests.conftest import _resolve_tool_names
+
+        config = Config(
+            tools={"b": ToolConfig(skip=True, skip_reason="testing override")},
+            target={"tool_name": "b"},
+        )
+        names = _resolve_tool_names(config)
+        assert names == ["b"], (
+            f"explicit target.tool_name='b' should win over skip:true; got {names!r}"
+        )
+
+
+# ===========================================================================
+# Phase 14 gap-closure (Plan 14-07): patch-seam migration audit
+#
+# Plan 14-05 moved the in-pytest discovery cache from
+# `tests.conftest._DISCOVERED_TOOL_NAMES` (implicit module attribute) to
+# `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` (importable module
+# path). The audit below catches any test that still patches the old seam.
+# ===========================================================================
+
+
+def test_no_stale_conftest_module_discovered_tool_names_writes() -> None:
+    """Phase 14 gap-closure: no test should patch the dead seam
+    `_conftest_module._DISCOVERED_TOOL_NAMES = [...]`. The cache moved
+    to `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` in Plan 14-05;
+    writing to the conftest-module attribute is now a no-op (the conftest
+    consumes the cache via `from mcp_test_framework import _runner as _r;
+    _r._DISCOVERED_TOOL_NAMES`).
+
+    If this test fails, retarget the offending patch to:
+        from mcp_test_framework import _runner as _r
+        _r._DISCOVERED_TOOL_NAMES = [...]
+    See tests/unit/test_runner_migration.py for the reference pattern.
+    """
+    import re
+    from pathlib import Path
+
+    tests_dir = Path(__file__).parent
+    offenders: list[tuple[Path, int, str]] = []
+    # Match writes only (avoids matching documentation that quotes the
+    # pattern). Pattern: dotted access + optional spaces + '=' + not '='.
+    write_pattern = re.compile(r"_conftest_module\._DISCOVERED_TOOL_NAMES\s*=\s*(?!=)")
+    # Track triple-quoted-string state so docstrings/assertion messages
+    # that reference the dead-seam pattern are not flagged. This lets the
+    # audit catch real writes (Tasks 1 RED state) while ignoring its own
+    # documentation (Task 2 GREEN state).
+    triple_re = re.compile(r'"""|\'\'\'')
+    for py_file in tests_dir.rglob("*.py"):
+        try:
+            content = py_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        in_triple = False
+        for lineno, line in enumerate(content.splitlines(), start=1):
+            # Toggle triple-quote state once per delimiter on this line.
+            triple_hits = len(triple_re.findall(line))
+            line_starts_in_string = in_triple
+            if triple_hits % 2 == 1:
+                in_triple = not in_triple
+            # Skip pure comment lines.
+            stripped = line.lstrip()
+            if stripped.startswith("#"):
+                continue
+            # Skip lines that are fully inside a docstring/triple-quoted
+            # string (both started and ended inside one).
+            if line_starts_in_string and in_triple:
+                continue
+            if write_pattern.search(line):
+                offenders.append((py_file.relative_to(tests_dir), lineno, line.strip()))
+    assert offenders == [], (
+        "Found stale writes to `_conftest_module._DISCOVERED_TOOL_NAMES` "
+        "(the cache moved to `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` "
+        "in Plan 14-05). Retarget per `tests/unit/test_runner_migration.py`. "
+        f"Offenders: {offenders}"
     )
 
 
