@@ -33,7 +33,10 @@ import subprocess
 import sys
 import tempfile
 import typing
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 import typer
 
@@ -254,3 +257,226 @@ def _dispatch_default_mode_or_error(
             "`--config PATH` to verify config resolution"
         ),
     )
+
+
+# ===========================================================================
+# Phase 14 Plan 02: JUnit XML parser + domain model
+# ===========================================================================
+#
+# Ported from the v1.1 plugin (`_reporter.py` -- to be deleted in Plan 14-05)
+# adapted to read JUnit XML elements rather than pytest report objects.
+# Pins Phase 09 D-03 (any-fail-wins) + D-05 (skip-reason dedup+cap) + Phase 13
+# D-12 (locked skip-reason constants). Tests pin both constants verbatim in
+# tests/unit/test_runner_parser.py::test_runner_skip_reason_constants_locked.
+# ===========================================================================
+
+_SKIP_REASON_CAP: int = 3
+
+# Phase 13 D-12 / SAFE-01: two distinct skip-reason strings for opt-in
+# tool selection. Module-level constants so they cannot drift silently.
+_REASON_NOT_SELECTED = "not selected in config"        # state (a): unlisted
+_REASON_EXPLICIT_DEFAULT = "explicit skip in config"   # state (c): default
+
+
+def _extract_tool_name(nodeid_or_name: str) -> str | None:
+    """Return tool name from `[<tool>]` parametrize suffix, or None.
+
+    Ported from the v1.1 plugin's _extract_tool_name (Phase 09 D-02a). Works on
+    both pytest ``report.nodeid`` (``<file>::<test>[<tool>]``) and JUnit XML
+    ``<testcase name="test_x[<tool>]">`` -- the bracket grammar is identical.
+
+    rindex picks the LAST ``[...]`` so nested suffixes (defensive against
+    future parametrize layering) resolve to the innermost token.
+    """
+    if "[" not in nodeid_or_name or not nodeid_or_name.endswith("]"):
+        return None
+    return nodeid_or_name[nodeid_or_name.rindex("[") + 1 : -1]
+
+
+def _strip_pytest_skipped_prefix(text: str | None) -> str | None:
+    """Strip pytest's ``Skipped: `` prefix that wraps operator-supplied
+    ``pytest.skip(reason=...)`` strings in ``<skipped message="...">`` attrs.
+
+    Ported from the v1.1 plugin's ``_extract_skip_reason`` prefix-strip half
+    (Phase 09 D-05a). Returns ``None`` for ``None`` input so callers can chain
+    without adding their own None-guard.
+    """
+    if text is None:
+        return None
+    prefix = "Skipped: "
+    return text[len(prefix):] if text.startswith(prefix) else text
+
+
+def _format_skip_reasons(reasons: list[str]) -> str:
+    """Phase 09 D-05: dedup + cap at 3 + ``... (N more)``.
+
+    Ported verbatim from the v1.1 plugin's ``_format_skip_reasons``. Callers
+    are responsible for de-duplication on insertion (the parser already does
+    this); this helper only handles the join + cap rendering.
+    """
+    if not reasons:
+        return ""
+    if len(reasons) <= _SKIP_REASON_CAP:
+        return "; ".join(reasons)
+    head = "; ".join(reasons[:_SKIP_REASON_CAP])
+    return f"{head}; ... ({len(reasons) - _SKIP_REASON_CAP} more)"
+
+
+# ---------------------------------------------------------------------------
+# Domain model (consumed by the renderer in Plan 14-03)
+# ---------------------------------------------------------------------------
+#
+# Stdlib dataclasses, no pydantic -- this is an internal seam between the
+# parser and the renderer; no I/O validation is needed at this boundary.
+# ---------------------------------------------------------------------------
+
+
+Verdict = Literal["PASS", "FAIL", "SKIP"]
+
+
+@dataclass
+class ToolVerdict:
+    """Aggregated per-tool outcome.
+
+    Fields:
+      name: the parametrize-id suffix (e.g. "list_registered_servers").
+      verdict: PASS / FAIL / SKIP per Phase 09 D-03 (any-fail-wins).
+      failure_message: the <failure message="..."> attribute (D-08 surface;
+        NOT the long traceback body -- that lives in failure_body and is
+        gated to --debug in Plan 14-04).
+      failure_body: the <failure>/<error> element text. Reserved for --debug.
+      skip_reasons: de-duplicated list after the ``Skipped: `` prefix-strip.
+      case_count: total number of <testcase> elements that contributed.
+      duration: sum of <testcase time="..."> across this tool's cases.
+    """
+
+    name: str
+    verdict: Verdict
+    failure_message: str | None = None
+    failure_body: str | None = None  # XML <failure> body text; --debug only
+    skip_reasons: list[str] = field(default_factory=list)
+    case_count: int = 0
+    duration: float = 0.0
+
+
+@dataclass
+class ParsedRun:
+    """Top-level parse result.
+
+    ``per_tool`` is keyed by extracted parametrize-id (Phase 07 ``ids=names``).
+    ``total_time`` comes from ``<testsuite time="...">``.
+    ``total_cases`` / ``total_failures`` / ``total_skipped`` / ``total_errors``
+    come from ``<testsuite>`` attributes (D-08 surface for the summary line).
+    """
+
+    per_tool: dict[str, ToolVerdict] = field(default_factory=dict)
+    total_time: float = 0.0
+    total_cases: int = 0
+    total_failures: int = 0
+    total_skipped: int = 0
+    total_errors: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Parser
+# ---------------------------------------------------------------------------
+
+
+def parse_junit_xml(xml_path: Path) -> ParsedRun:
+    """Parse a pytest JUnit XML file into a ParsedRun domain model.
+
+    Phase 14 D-02/D-05/D-08/D-09. Stdlib ``xml.etree.ElementTree`` only --
+    no new runtime dependency.
+
+    Aggregation (Phase 09 D-03 any-fail-wins, ported from the v1.1 plugin):
+      1. <testcase> with <failure> or <error> child -> verdict = FAIL (sticky)
+      2. else passed (no child elements)            -> verdict = PASS unless
+                                                       FAIL already set
+      3. else <skipped> child                       -> verdict = SKIP if no
+                                                       PASS/FAIL set; record
+                                                       de-duplicated reason
+
+    Order-independence: a tool's verdict is the same regardless of XML order
+    among its <testcase> elements -- FAIL is sticky; PASS dominates SKIP.
+
+    Raises:
+        xml.etree.ElementTree.ParseError on malformed XML (caller catches and
+        surfaces via D-16 in the cli.py wrapper).
+    """
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+
+    # Locate the <testsuite> -- root may be <testsuites> wrapping it, or
+    # <testsuite> directly. Pytest's writer wraps for multi-suite output
+    # (rare) and ships <testsuite> directly for single-session (common).
+    if root.tag == "testsuites":
+        suites = list(root.iter("testsuite"))
+        if not suites:
+            return ParsedRun()
+        suite = suites[0]  # pytest emits one suite per JUnit XML.
+    elif root.tag == "testsuite":
+        suite = root
+    else:
+        return ParsedRun()  # Unknown root -- empty parse.
+
+    run = ParsedRun(
+        total_time=float(suite.get("time", "0") or "0"),
+        total_cases=int(suite.get("tests", "0") or "0"),
+        total_failures=int(suite.get("failures", "0") or "0"),
+        total_skipped=int(suite.get("skipped", "0") or "0"),
+        total_errors=int(suite.get("errors", "0") or "0"),
+    )
+
+    # Transient tracker for per-tool "has any case passed?" state. Used to
+    # demote PASS->SKIP when a tool has both kinds of cases and no FAIL.
+    # Kept off the dataclass surface so consumers (renderer) never see it.
+    _has_pass: dict[str, bool] = {}
+
+    for tc in suite.iter("testcase"):
+        name = tc.get("name", "")
+        tool = _extract_tool_name(name)
+        if tool is None:
+            continue  # D-09: testcases without [<tool>] suffix excluded.
+
+        bucket = run.per_tool.setdefault(
+            tool, ToolVerdict(name=tool, verdict="PASS")
+        )
+        bucket.case_count += 1
+        try:
+            bucket.duration += float(tc.get("time", "0") or "0")
+        except (TypeError, ValueError):
+            pass  # malformed time -- skip rather than crash.
+
+        failure = tc.find("failure")
+        error = tc.find("error")
+        skipped = tc.find("skipped")
+
+        if failure is not None or error is not None:
+            # D-03 rule 1: any failed/error -> FAIL (sticky).
+            bucket.verdict = "FAIL"
+            elem = failure if failure is not None else error
+            msg = elem.get("message")
+            if msg and bucket.failure_message is None:
+                bucket.failure_message = msg
+            body = (elem.text or "").strip()
+            if body and bucket.failure_body is None:
+                bucket.failure_body = body
+            continue
+
+        if skipped is not None:
+            # D-03 rule 3: SKIP sticks only if nothing else ever set verdict.
+            reason = _strip_pytest_skipped_prefix(skipped.get("message"))
+            if reason and reason not in bucket.skip_reasons:
+                bucket.skip_reasons.append(reason)
+            # Demote to SKIP only when no FAIL set AND no PASS case seen.
+            if bucket.verdict != "FAIL" and not _has_pass.get(tool, False):
+                bucket.verdict = "SKIP"
+            continue
+
+        # No failure / error / skipped child -> PASS case.
+        # D-03 rule 2: PASS sets verdict unless FAIL already sticky.
+        _has_pass[tool] = True
+        if bucket.verdict != "FAIL":
+            bucket.verdict = "PASS"
+
+    return run
