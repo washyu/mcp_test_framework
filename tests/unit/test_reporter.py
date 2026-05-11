@@ -180,3 +180,173 @@ def test_safe_01_compose_no_op_when_discovery_never_ran() -> None:
         tools = {"x": object()}
 
     assert _compose_unparametrized_skips(_Cfg()) == {}
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 review CR-01/CR-02 regression: IPC handoff from cli.py:_load_config
+# to the in-process pytest session's bare Config().
+#
+# These tests pin the "MCPTF_CONFIG_FILE as path-pointer fallback" channel
+# without requiring a live MCP server or pytest.main subprocess.
+# ---------------------------------------------------------------------------
+
+
+def test_cr01_bare_config_picks_up_mcptf_config_file(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Phase 13 review CR-01: a bare `Config()` (no yaml_file kwarg) must
+    read MCPTF_CONFIG_FILE and load the operator's tools block.
+
+    This is the IPC channel `cli.py:_load_config` relies on: after the
+    resolver writes the resolved YAML path to the env var, `pytest.main`
+    spawns an in-process session where `tests/conftest.py`,
+    `fixtures.config`, and `_reporter.pytest_terminal_summary` all
+    instantiate bare `Config()`. Without this channel the operator's
+    `tools:` allowlist is silently dropped to the default `{}` and every
+    discovered tool renders as state-(a) "not selected in config".
+    """
+    from mcp_test_framework.config import Config
+
+    yaml_path = tmp_path / "config.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "ollama:\n"
+        "  base_url: http://127.0.0.1:11434\n"
+        "  model: qwen3.6:latest\n"
+        "mcp_server:\n"
+        "  command: uvx\n"
+        "  args: [homelab-mcp]\n"
+        "tools:\n"
+        "  list_registered_servers:\n"
+        "    skip: false\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
+    # Chdir to a directory WITHOUT a config.yaml so autodiscovery cannot
+    # mask a broken env-var fallback.
+    monkeypatch.chdir(tmp_path / "..")
+
+    cfg = Config()  # bare -- this is what fixtures/conftest/reporter do
+    assert "list_registered_servers" in cfg.tools, (
+        "MCPTF_CONFIG_FILE path-pointer fallback failed: bare Config() did "
+        "not load the operator's tools block. CR-01/CR-02 regression."
+    )
+    assert cfg.tools["list_registered_servers"].skip is False
+    assert cfg.mcp_server.command == "uvx"
+
+
+def test_cr01_resolver_writes_mcptf_config_file_env_var(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Phase 13 review CR-01: `_load_config` must export the resolved
+    path to MCPTF_CONFIG_FILE so the pytest-session-spawned Config()
+    instances see the same source.
+
+    Exercises the full chain: --config PATH -> _load_config -> env var
+    set -> bare Config() in the same process reads it.
+    """
+    from pathlib import Path
+
+    from mcp_test_framework.cli import _load_config
+    from mcp_test_framework.config import Config
+
+    yaml_path = tmp_path / "config.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "ollama:\n"
+        "  base_url: http://127.0.0.1:11434\n"
+        "  model: qwen3.6:latest\n"
+        "mcp_server:\n"
+        "  command: uvx\n"
+        "  args: [homelab-mcp]\n"
+        "tools:\n"
+        "  alpha:\n"
+        "    skip: false\n"
+        "  beta:\n"
+        "    skip: true\n"
+        "    skip_reason: 'destructive'\n",
+        encoding="utf-8",
+    )
+    # Clear any pre-existing env var to ensure the resolver writes it.
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    resolved_cfg = _load_config(Path(str(yaml_path)))
+    assert resolved_cfg is not None
+    # Resolver's own Config() must see the tools.
+    assert set(resolved_cfg.tools.keys()) == {"alpha", "beta"}
+
+    # The env var must now be set so the pytest-session bare Config()
+    # picks up the same file. This is the state-(b) + state-(c) channel.
+    import os as _os
+    assert _os.environ.get("MCPTF_CONFIG_FILE") == str(yaml_path)
+
+    # Simulate the in-process pytest session by constructing a bare
+    # Config() (which is exactly what tests/conftest.py:pytest_generate_tests,
+    # fixtures.config, and _reporter.pytest_terminal_summary all do).
+    bare_cfg = Config()
+    assert set(bare_cfg.tools.keys()) == {"alpha", "beta"}, (
+        "bare Config() must inherit MCPTF_CONFIG_FILE from _load_config: "
+        "CR-01/CR-02 regression."
+    )
+    assert bare_cfg.tools["alpha"].skip is False
+    assert bare_cfg.tools["beta"].skip is True
+    assert bare_cfg.tools["beta"].skip_reason == "destructive"
+
+
+def test_cr02_reporter_state_c_renders_curated_skip_reason(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Phase 13 review CR-02: after the resolver sets MCPTF_CONFIG_FILE,
+    the reporter's bare `_FwConfig()` must load the operator's tools
+    block so state-(c) rows render the curated skip_reason -- not the
+    state-(a) "not selected in config" default.
+
+    Exercises `_compose_unparametrized_skips` against the SAME bare
+    Config() the reporter site uses (`from mcp_test_framework.config
+    import Config as _FwConfig; _fw_cfg = _FwConfig()`).
+    """
+    from mcp_test_framework import _reporter as _rep
+    from mcp_test_framework._reporter import (
+        _PER_TOOL,
+        _compose_unparametrized_skips,
+    )
+    from mcp_test_framework.config import Config as _FwConfig
+
+    yaml_path = tmp_path / "config.yaml"
+    yaml_path.write_text(
+        "version: 2\n"
+        "ollama:\n"
+        "  base_url: http://127.0.0.1:11434\n"
+        "  model: qwen3.6:latest\n"
+        "mcp_server:\n"
+        "  command: uvx\n"
+        "  args: [homelab-mcp]\n"
+        "tools:\n"
+        "  dangerous_tool:\n"
+        "    skip: true\n"
+        "    skip_reason: 'hits production registry'\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
+    monkeypatch.chdir(tmp_path)
+
+    _rep._DISCOVERED_TOOL_NAMES = ["dangerous_tool", "untracked_tool"]
+    _PER_TOOL.clear()
+    try:
+        # This is EXACTLY what _reporter.pytest_terminal_summary does.
+        fw_cfg = _FwConfig()
+        out = _compose_unparametrized_skips(fw_cfg)
+    finally:
+        _rep._DISCOVERED_TOOL_NAMES = None
+
+    # state-(c) -- operator's curated reason flows through.
+    assert out["dangerous_tool"] == "hits production registry", (
+        "CR-02 regression: reporter rendered state-(a) for an explicitly "
+        f"skipped tool. Got: {out['dangerous_tool']!r}"
+    )
+    # state-(a) -- unlisted tool still renders "not selected in config".
+    assert out["untracked_tool"] == "not selected in config"
