@@ -68,34 +68,11 @@ def _main() -> None:
     return None
 
 
-def _emit_operator_error(
-    summary: str,
-    detail: list[str],
-    next_step: str,
-    *,
-    exit_code: int = 2,
-) -> typing.NoReturn:
-    """Render an operator-grade error and exit (citation: docs/ERROR-STYLE.md).
-
-    This function never returns; it raises typer.Exit internally. Callers
-    MUST NOT prefix calls with `raise`.
-
-    Format (per docs/ERROR-STYLE.md):
-        <one-line summary>
-        <blank>
-        <detail line 1>
-        <detail line 2>
-        ...
-        <blank>
-        next: <action verb> <command-or-instruction>
-
-    Operator terms only -- no spec IDs, no file:line refs, no internal jargon.
-    """
-    parts: list[str] = [summary, ""]
-    parts.extend(detail)
-    parts.extend(["", f"next: {next_step}"])
-    typer.echo("\n".join(parts), err=True)
-    raise typer.Exit(code=exit_code)
+# Re-exported from _runner.py (Phase 14 D-01); cli.py keeps the public symbol
+# so existing test imports `from mcp_test_framework.cli import _emit_operator_error`
+# continue working after the helper moved out of this module to avoid the
+# cli.py <-> _runner.py circular-import that Phase 14 would otherwise create.
+from mcp_test_framework._runner import _emit_operator_error  # noqa: E402
 
 
 def _emit_operator_error_for_validation(
@@ -293,30 +270,11 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
         _emit_operator_error_for_validation(exc, source=source_label)
 
 
-def _build_pytest_args(
-    junit_xml: Path | None,
-    pytest_args: list[str] | None,
-) -> list[str]:
-    """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
-    `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
-    ``pytest.main(...)``.
-
-    D-01a precedence: the explicit flag is inserted BEFORE the passthrough
-    forwarded args so a later passthrough ``--junitxml=...`` (after ``--``)
-    wins under pytest's last-occurrence argparse rule. The helper does NOT
-    de-duplicate or validate paths -- pytest's own argument handling is the
-    single source of truth.
-
-    L-03 invariant: this helper builds the argv list only; the call site in
-    ``run`` keeps the bare ``raise typer.Exit(code=pytest.main(...))`` shape
-    with NO try/except wrap (Phase 5 D-cli-flags-3).
-    """
-    forwarded = list(pytest_args or [])
-    args: list[str] = ["tests"]
-    if junit_xml is not None:
-        args.append(f"--junitxml={junit_xml}")
-    args.extend(forwarded)
-    return args
+# Re-exported from _runner.py (Phase 14 D-01); cli.py keeps the public symbol
+# so existing test imports `from mcp_test_framework.cli import _build_pytest_args`
+# continue working. The helper builds the argv passed to the subprocess pytest
+# (Phase 14 D-01) -- in v1.1 it built argv for pytest.main().
+from mcp_test_framework._runner import _build_pytest_args  # noqa: E402
 
 
 @app.command(
