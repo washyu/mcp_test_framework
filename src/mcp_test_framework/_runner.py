@@ -744,3 +744,94 @@ def render_domain_ui(
     _render_header(ctx, parsed, file=file)
     _render_per_tool_rows(parsed, unparam_skips, file=file)
     _render_summary_line(parsed, unparam_skips, file=file)
+
+
+# ===========================================================================
+# Phase 14 Plan 04: verbosity ladder helpers (D-12 / D-13)
+# ===========================================================================
+#
+# Two orthogonal renderers extending render_domain_ui:
+#   - render_summary_only: D-12 `-q` -- prints only the summary line.
+#   - render_debug_appendix: D-13 `--debug` -- printed AFTER whatever the
+#     default/quiet rung produced. Default UI shape unchanged regardless
+#     of --debug (D-13 invariant: each rung adds info; none re-shapes
+#     the layer below).
+#
+# The `--explain` flag is DELIBERATELY ABSENT here (D-14: Phase 16 owns it).
+# ===========================================================================
+
+
+def render_summary_only(
+    parsed: ParsedRun,
+    ctx: RenderContext,
+    file=None,
+) -> None:
+    """Phase 14 D-12: `-q` / `--quiet` -- summary line only.
+
+    No header, no per-tool rows. Same summary content as render_domain_ui's
+    last line, including state-(a)/(c) SKIP count contribution so the
+    quiet-mode summary agrees with the default-mode summary.
+
+    `file=None` -> sys.stdout at call time (capsys-friendly), matching
+    the other renderers in this module.
+    """
+    if file is None:
+        file = sys.stdout
+    ran_tools = set(parsed.per_tool.keys())
+    unparam_skips = _compose_unparametrized_skips_from_config(
+        ctx.discovered_tools, ctx.tools_config, ran_tools
+    )
+    _render_summary_line(parsed, unparam_skips, file=file)
+
+
+def render_debug_appendix(
+    captured_stdout: str,
+    captured_stderr: str,
+    parsed: ParsedRun,
+    file=None,
+) -> None:
+    """Phase 14 D-13: `--debug` -- appended AFTER the domain UI.
+
+    Order (only printed if non-empty):
+      --- raw pytest output ---
+      {captured_stdout verbatim}
+      --- captured stderr ---
+      {captured_stderr verbatim}     (only if non-empty)
+      --- failure tracebacks ---     (only if any tool has failure_body)
+      {tool_name}:
+        {failure_body indented by 2 spaces}
+
+    Default UI must be UNCHANGED whether --debug is passed or not (D-13
+    invariant: each rung adds info; none re-shapes the layer below).
+
+    The `--- raw pytest output ---` separator string is grep-able
+    regression-pin material; do not reword.
+    """
+    if file is None:
+        file = sys.stdout
+    print("", file=file)
+    print("--- raw pytest output ---", file=file)
+    if captured_stdout:
+        # Print verbatim -- no transformation. The operator asked for raw.
+        print(captured_stdout.rstrip("\n"), file=file)
+    else:
+        print("(no stdout captured)", file=file)
+
+    if captured_stderr:
+        print("", file=file)
+        print("--- captured stderr ---", file=file)
+        print(captured_stderr.rstrip("\n"), file=file)
+
+    failures_with_bodies = [
+        (name, v.failure_body)
+        for name, v in parsed.per_tool.items()
+        if v.verdict == "FAIL" and v.failure_body
+    ]
+    if failures_with_bodies:
+        print("", file=file)
+        print("--- failure tracebacks ---", file=file)
+        for name, body in sorted(failures_with_bodies):
+            print(f"{name}:", file=file)
+            for line in body.splitlines():
+                print(f"  {line}", file=file)
+            print("", file=file)
