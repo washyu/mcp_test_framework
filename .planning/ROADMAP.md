@@ -112,8 +112,8 @@
   - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
   - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
   - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
-  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
-  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+  - [x] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
+  - [x] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
 
 
 ### Phase 16: Reporter UX overhaul
@@ -152,7 +152,7 @@
 | 10. v1.1 documentation | v1.1 | 2/2 | Complete | 2026-05-08 |
 | 11. v1.1 cleanup & verification hygiene | v1.1 | 4/4 | Complete | 2026-05-08 |
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
-| 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete   | 2026-05-10 |
+| 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete    | 2026-05-11 |
 | 14. Hybrid runner with domain UI | v1.2 | 0/0 | Not started | - |
 | 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |

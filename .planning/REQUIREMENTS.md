@@ -36,13 +36,13 @@ REQ-IDs continue numbering from v1.1 (archived at `.planning/milestones/v1.1-REQ
 
 ### SAFE — Config safety + opt-in tool selection
 
-- [ ] **SAFE-01**: `tools:` becomes an opt-in allowlist. Three states: (a) tool unlisted → auto-skip with reason `"not selected in config"`; (b) tool listed with `skip: false` (default) → runs; (c) tool listed with `skip: true` + non-empty `skip_reason` → skip with curated reason. The "master config + focus toggle" workflow is preserved by state (c).
-- [ ] **SAFE-02**: When `--config` and `MCPTF_CONFIG_FILE` are both unset, framework auto-discovers `./config.yaml` in the current working directory. `--config PATH` continues to override.
-- [ ] **SAFE-03**: When no config is found anywhere (no `--config`, no `MCPTF_CONFIG_FILE`, no `./config.yaml`), framework fails loud with exit code 2 and a message naming `mcp-test-framework config-init -o config.yaml` as the recovery action. Framework refuses to run with destructive defaults.
-- [ ] **SAFE-04**: `MCPTF_CONFIG_FILE` set to a non-existent path errors with exit code 2 — mirroring the `--config` CLI behavior. No silent drop. Both routes treat "where is the YAML" identically.
-- [ ] **SAFE-05**: Drop `.env` loading and env-var overlay entirely from the config layer. Config sources reduce to: defaults → YAML → CLI flags. Env vars become a passthrough mechanism for CI secrets (e.g., API keys handled by individual subsystems), not a config source.
-- [ ] **SAFE-06**: Config schema bumps to `version: 2`. Loading a `version: 1` config produces a loud migration error naming the exact `config-init` command to regenerate. Error message explains the opt-out → opt-in semantic change.
-- [ ] **SAFE-07**: Migration documentation (`docs/MIGRATION-v1-to-v2.md` or equivalent) walks an existing operator through: regenerate config via `config-init`, port over `call_arguments` / `judges` / `skip_reason` for tools they want to keep, drop `.env` files.
+- [x] **SAFE-01**: `tools:` becomes an opt-in allowlist. Three states: (a) tool unlisted → auto-skip with reason `"not selected in config"`; (b) tool listed with `skip: false` (default) → runs; (c) tool listed with `skip: true` + non-empty `skip_reason` → skip with curated reason. The "master config + focus toggle" workflow is preserved by state (c).
+- [x] **SAFE-02**: When `--config` and `MCPTF_CONFIG_FILE` are both unset, framework auto-discovers `./config.yaml` in the current working directory. `--config PATH` continues to override.
+- [x] **SAFE-03**: When no config is found anywhere (no `--config`, no `MCPTF_CONFIG_FILE`, no `./config.yaml`), framework fails loud with exit code 2 and a message naming `mcp-test-framework config-init -o config.yaml` as the recovery action. Framework refuses to run with destructive defaults.
+- [x] **SAFE-04**: `MCPTF_CONFIG_FILE` set to a non-existent path errors with exit code 2 — mirroring the `--config` CLI behavior. No silent drop. Both routes treat "where is the YAML" identically.
+- [x] **SAFE-05**: Drop `.env` loading and env-var overlay entirely from the config layer. Config sources reduce to: defaults → YAML → CLI flags. Env vars become a passthrough mechanism for CI secrets (e.g., API keys handled by individual subsystems), not a config source.
+- [x] **SAFE-06**: Config schema bumps to `version: 2`. Loading a `version: 1` config produces a loud migration error naming the exact `config-init` command to regenerate. Error message explains the opt-out → opt-in semantic change.
+- [x] **SAFE-07**: Migration documentation (`docs/MIGRATION-v1-to-v2.md` or equivalent) walks an existing operator through: regenerate config via `config-init`, port over `call_arguments` / `judges` / `skip_reason` for tools they want to keep, drop `.env` files.
 
 ### RUNNER — Hybrid runner with domain UI
 
@@ -116,13 +116,13 @@ Note: v1.2 scoping moved the SEED-002 / SEED-005 / warm-up cohort from "v1.2 (vi
 | PERSONA-01 | Phase 12 | Pending |
 | PERSONA-02 | Phase 12 | Pending |
 | PERSONA-03 | Phase 12 | Pending |
-| SAFE-01 | Phase 13 | Pending |
-| SAFE-02 | Phase 13 | Pending |
-| SAFE-03 | Phase 13 | Pending |
-| SAFE-04 | Phase 13 | Pending |
-| SAFE-05 | Phase 13 | Pending |
-| SAFE-06 | Phase 13 | Pending |
-| SAFE-07 | Phase 13 | Pending |
+| SAFE-01 | Phase 13 | Complete |
+| SAFE-02 | Phase 13 | Complete |
+| SAFE-03 | Phase 13 | Complete |
+| SAFE-04 | Phase 13 | Complete |
+| SAFE-05 | Phase 13 | Complete |
+| SAFE-06 | Phase 13 | Complete |
+| SAFE-07 | Phase 13 | Complete |
 | RUNNER-01 | Phase 14 | Pending |
 | RUNNER-02 | Phase 14 | Pending |
 | RUNNER-03 | Phase 14 | Pending |
