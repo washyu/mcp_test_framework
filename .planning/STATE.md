@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Operator-First Design
-status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-05-11T19:21:20.973Z"
-last_activity: 2026-05-11 -- Phase 14 execution started
+status: between-phases
+stopped_at: Phase 14 complete + Phase 13 UAT closed; ready for Phase 15
+last_updated: "2026-05-11T20:00:00Z"
+last_activity: 2026-05-11 -- Phase 13 UAT complete (2/2 pass); all phases 12-14 verified
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 21
-  completed_plans: 19
-  percent: 90
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 14 — hybrid-runner-with-domain-ui
+**Current focus:** Between phases — Phase 15 (operator vs framework test surface split) is next
 
 ## Current Position
 
-Phase: 14 (hybrid-runner-with-domain-ui) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 14
-Last activity: 2026-05-11 -- Phase 14 execution started
+Phase: — (between phases; Phase 14 complete, Phase 15 not started)
+Plan: —
+Status: All planned plans in v1.2 phases 12-14 complete and human-verified
+Last activity: 2026-05-11 -- Phase 13 UAT complete (2/2 pass); SAFE-01 opt-in semantics + v1→v2 migration walkthrough both confirmed by operator
 
 ## Performance Metrics
 
