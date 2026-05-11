@@ -18,10 +18,15 @@ command (PowerShell): `$env:MCPTF_CONFIG_FILE = "$PWD\config-v2-worktree.yaml"; 
 command (bash):       `MCPTF_CONFIG_FILE="$(pwd)/config-v2-worktree.yaml" uv run pytest tests/test_runner_live_smoke.py -m live_homelab --no-header`
 expected: All 3 live smoke tests pass — domain header strings present, `--junit-xml=PATH` populated, `--raw` emits pytest framing.
 why_human: `tests/test_runner_live_smoke.py` spawns a real `uv run mcp-test-framework run` subprocess against a reachable MCP server + Ollama. Marker `live_homelab` is skipped by default; the verifier agent could not exercise it.
-result: issue
+result: pass
 reported: |
-  1 failed, 2 passed in 80.31s. `test_live_run_emits_domain_header_and_summary` failed.
-  Captured subprocess stdout ends mid-render with `UnicodeEncodeError: 'charmap' codec can't encode character '✗' in position 43: character maps to <undefined>` — Windows PowerShell's default cp1252 console encoding cannot encode `✗` (the failure glyph used in per-tool rows). The renderer prints the header + partial failure rows, then crashes; the `Result:` summary line never appears. `test_live_run_raw_keeps_pytest_framing` and `test_live_run_junit_xml_target_populated` both passed — `--raw` and `--junit-xml` paths are unaffected because they don't emit Unicode glyphs.
+  Initial run (pre 14-06): 1 failed, 2 passed in 80.31s. `test_live_run_emits_domain_header_and_summary` failed
+  with `UnicodeEncodeError: 'charmap' codec can't encode character '✗'` on Windows PowerShell's default cp1252
+  console — see GAP 1 (resolved by 14-06).
+post_fix_rerun: |
+  2026-05-11 (post 14-06 merge): 3/3 passed in 81.40s. `test_live_run_emits_domain_header_and_summary` now
+  renders the full domain UI (header + per-tool rows + `Result:` summary line) without crashing on cp1252.
+  Two-sided Unicode hygiene fix verified end-to-end on the original failing surface.
 severity: blocker
 platform: Windows (PowerShell, default cp1252 console code page)
 
@@ -69,8 +74,8 @@ notes: |
 ## Summary
 
 total: 3
-passed: 2
-issues: 1
+passed: 3
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -90,7 +95,8 @@ gaps_deferred: 1
     try/except for hostile streams); (b) `_runner.run_pytest_subprocess` sets
     `PYTHONIOENCODING=utf-8` in the child env and adds `errors='replace'` on the parent decoder.
     Pinned by 4 new regression tests in `tests/unit/test_runner_encoding.py` (all pass).
-    Pending Windows live UAT re-run with `tests/test_runner_live_smoke.py -m live_homelab`.
+    Windows live UAT re-run confirmed: `tests/test_runner_live_smoke.py -m live_homelab` 3/3 pass post-fix
+    (was 1 fail/2 pass pre-fix).
   reason: |
     User reported: 1 failed, 2 passed in test_runner_live_smoke. The failing test's subprocess stdout shows
     `UnicodeEncodeError: 'charmap' codec can't encode character '✗' in position 43: character maps to <undefined>`.
