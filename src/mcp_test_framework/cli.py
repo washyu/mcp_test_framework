@@ -283,9 +283,10 @@ def _discover_tools_for_run(cfg: Config) -> list[str]:
     """One-shot MCP handshake to learn what tools the server advertises.
 
     Phase 14 Plan 03 / D-claude bullet 5 option (a): the wrapper runs OUTSIDE
-    pytest, so the in-pytest `_DISCOVERED_TOOL_NAMES` cache (which lives in
-    _reporter and will move to _runner via Plan 05) is unreachable from this
-    process. Instead we re-discover here before launching the subprocess.
+    pytest, so the in-pytest `_DISCOVERED_TOOL_NAMES` cache (now hosted on
+    `mcp_test_framework._runner` after Plan 05's plugin removal) is unreachable
+    from this process. Instead we re-discover here before launching the
+    subprocess.
 
     Mirrors the AsyncExitStack pattern from cli.py:list_tools (Phase 04.1
     same-task lifecycle -- avoids the cancel-scope teardown bug).

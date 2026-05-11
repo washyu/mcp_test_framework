@@ -5,21 +5,24 @@ session-scoped fixtures (mcp_client, judge, target_tool, config, _preflight,
 and three rubric fixtures) via `pytest_plugins` registration of
 `mcp_test_framework.fixtures` -- the load-bearing one-line seam adopters add
 to their own conftest to inherit the framework's fixture set (D-layout-1).
-Phase 9 ships the per-tool summary reporter (OUTPUT-03) as a sibling
-plugin (``mcp_test_framework._reporter``) registered alongside ``fixtures``
-in the same ``pytest_plugins`` seam.
+Phase 14: per-tool reporting moved OUT of an in-pytest plugin and INTO the
+wrapper (src/mcp_test_framework/_runner.py). The _DISCOVERED_TOOL_NAMES
+cache (imported from `mcp_test_framework._runner`) is used ONLY by
+pytest_generate_tests for parametrize-time filtering (Phase 13 SAFE-01
+allowlist); the wrapper has its own discovery in cli.py for header counts
+and state-(a) SKIP rows.
 """
 
 from __future__ import annotations
 
-pytest_plugins = ["mcp_test_framework.fixtures", "mcp_test_framework._reporter"]
+pytest_plugins = ["mcp_test_framework.fixtures"]
 
 import asyncio  # noqa: E402
 import sys  # noqa: E402 -- pytest_plugins must be a top-level statement
 
 import pytest  # noqa: E402
 
-from mcp_test_framework import _reporter as _rep  # noqa: E402
+from mcp_test_framework import _runner as _r  # noqa: E402 -- live module attribute, not a snapshot
 from mcp_test_framework.config import Config  # noqa: E402
 from mcp_test_framework.mcp_client import McpTestClient  # noqa: E402
 
@@ -62,12 +65,7 @@ def pytest_configure(config) -> None:
 # isolation contract for free; ISOL-03 hash-equality test in tests/test_isolation.py
 # remains the regression guard.
 #
-# Cache lives on the _reporter module (Phase 13 revision iteration 1):
-#   - tests/conftest.py is the WRITER of _reporter._DISCOVERED_TOOL_NAMES
-#   - _reporter._compose_unparametrized_skips is the READER at terminal-summary
-# Single-direction dependency: production exports state, tests read. The
-# reporter never imports from tests/, pre-empting Phase 15's tests/contract
-# vs tests/framework split.
+# Cache lives in src/mcp_test_framework/_runner.py after the v1.1 plugin removal in Phase 14 Plan 05.
 # ---------------------------------------------------------------------------
 
 
@@ -95,17 +93,17 @@ def _resolve_tool_names(config: Config) -> list[str]:
       (b) listed with skip=False                          -> included
       (c) listed with skip=True                           -> excluded
 
-    The reporter composes SKIP rows for states (a) and (c) at
-    terminal-summary time using Config.tools + _DISCOVERED_TOOL_NAMES.
+    The wrapper (cli.py) composes SKIP rows for states (a) and (c) at
+    render time using Config.tools + its own wrapper-side discovery.
     This site never calls pytest.skip() -- filtering at parametrize
     time avoids the v1.1.1 runtime-SKIP explosion (260508-p0b).
 
     Single-tool focus is handled via `--config focus-<tool>.yaml`
     (Phase 12 D-03) -- there is no in-process target field anymore.
     """
-    if _rep._DISCOVERED_TOOL_NAMES is None:
+    if _r._DISCOVERED_TOOL_NAMES is None:
         try:
-            _rep._DISCOVERED_TOOL_NAMES = asyncio.run(_discover_tools(config))
+            _r._set_discovered_tool_names(asyncio.run(_discover_tools(config)))
         except Exception as exc:  # noqa: BLE001 -- mirrors _preflight failure-mode parity
             # Match _preflight failure shape (fixtures.py:149-154) for exit-code parity.
             # See 07-RESEARCH §Pitfall 5.
@@ -129,18 +127,18 @@ def _resolve_tool_names(config: Config) -> list[str]:
                 )
             pytest.exit(msg, returncode=2)
     # Phase 13 D-13 / SAFE-01: opt-in allowlist semantics. Three states:
-    #   (a) unlisted          -> excluded here; reporter renders
-    #                            "not selected in config" at terminal summary.
+    #   (a) unlisted          -> excluded here; wrapper renders
+    #                            "not selected in config" at render time.
     #   (b) listed + skip=False -> included in parametrize (this branch).
-    #   (c) listed + skip=True  -> excluded here; reporter renders
+    #   (c) listed + skip=True  -> excluded here; wrapper renders
     #                            tool_cfg.skip_reason or "explicit skip in config".
     # Both (a) and (c) drop out of pytest collection -- the v1.1.1 hotfix
-    # invariant (no 560 runtime-SKIPPED rows). The reporter composes the
-    # SKIP rows from Config.tools + _reporter._DISCOVERED_TOOL_NAMES at
-    # terminal-summary time. Revision iteration 1: state lives in
-    # production (_reporter), not the test tree.
+    # invariant (no 560 runtime-SKIPPED rows). The wrapper composes the
+    # SKIP rows from Config.tools + its own wrapper-side discovery at
+    # render time. Phase 14: state lives in production code (_runner module),
+    # not the test tree.
     return [
-        name for name in _rep._DISCOVERED_TOOL_NAMES
+        name for name in _r._DISCOVERED_TOOL_NAMES
         if name in config.tools and not config.tools[name].skip
     ]
 
