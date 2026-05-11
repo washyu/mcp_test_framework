@@ -37,8 +37,10 @@
 
 - [x] **Phase 12: Doc & persona foundation** — Strip planning-artifact IDs, genericize `config.example.yaml`, complete the `config-init` scaffold, and add the "Testing an MCP server you didn't write" reframe across README and EXTENDING. Foundational hygiene + persona positioning land first so downstream phases operate on clean docs and copy.
  (completed 2026-05-10)
-- [x] **Phase 13: Config safety & opt-in tool selection** — Invert `tools:` from skip-list to allowlist, auto-discover `./config.yaml`, fail loud on missing config, drop `.env` and the env-overlay entirely, bump schema `version: 1 → 2` with a loud migration error pointing at `config-init`. (completed 2026-05-10)
-- [x] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch. (completed 2026-05-11)
+- [x] **Phase 13: Config safety & opt-in tool selection** — Invert `tools:` from skip-list to allowlist, auto-discover `./config.yaml`, fail loud on missing config, drop `.env` and the env-overlay entirely, bump schema `version: 1 → 2` with a loud migration error pointing at `config-init`.
+ (completed 2026-05-10)
+- [x] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch.
+ (completed 2026-05-11)
 - [ ] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`.
 - [ ] **Phase 16: Reporter UX overhaul** — Pre-run digest (server / discovered / running / skipping / judges / test-plan totals), `--explain` flag for per-tool skip reasons, post-run aggregation, and verbosity ladder (`-q` / default / `--explain` / `--debug`). Output designed for N=70 readability.
 
@@ -108,12 +110,11 @@
   2. A maintainer running `uv run pytest tests/` directly continues to exercise both `tests/contract/` and `tests/framework/`; the runner's `--with-framework` (or equivalent) opt-in flag makes the same surface reachable through the operator CLI for CI use.
   3. The repo's `tests/contract/` and `tests/framework/` directory split preserves git history for every moved file (verified by `git log --follow` on at least one file from each subtree).
   4. The black-box rule remains mechanically enforced: `tests/framework/test_banned_imports.py` continues to fail the maintainer suite if `homelab-mcp` is imported anywhere in `src/`. The enforcement does not depend on which test surface the operator selected.
-**Plans:** 5 plans
-  - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
-  - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
-  - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
-  - [x] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
-  - [x] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+**Plans:** 4 plans
+  - [ ] 15-01-PLAN.md — `git mv` tests/ into tests/contract/ + tests/framework/; hoist test_banned_imports.py to SURFACE-04 literal path (SURFACE-01, SURFACE-03, SURFACE-04; wave 1)
+  - [ ] 15-02-PLAN.md — Flip `_build_pytest_args` default to `tests/contract`; add `--with-framework` Typer flag plumbed through `run_pytest_subprocess`; update D-12 help text anchor (SURFACE-02; wave 2, depends 15-01)
+  - [ ] 15-03-PLAN.md — Refresh README.md "Run the test suite" + "Isolation guarantee" sections + docs/mcp_test_framework_mvp_spec.md Module Layout + Test Cases section to reflect post-split paths (SURFACE-02; wave 2, depends 15-01)
+  - [ ] 15-04-PLAN.md — Run 7 verification recipes (operator default scope, --with-framework, maintainer backward compat, git history preservation, SURFACE-04 enforcement) + human checkpoint (SURFACE-01..04; wave 3, depends 15-01..03)
 
 
 ### Phase 16: Reporter UX overhaul
@@ -154,5 +155,5 @@
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
 | 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete    | 2026-05-11 |
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete   | 2026-05-11 |
-| 15. Operator vs framework test surface split | v1.2 | 0/0 | Not started | - |
+| 15. Operator vs framework test surface split | v1.2 | 0/4 | Planned | - |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |
