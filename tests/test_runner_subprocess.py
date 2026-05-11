@@ -180,11 +180,11 @@ def test_run_help_lists_junit_xml() -> None:
     assert "--junit-xml" in result.output
 
 
-def test_run_help_does_not_list_debug() -> None:
-    """Plan 04 adds --debug; Plan 01 must not expose it."""
+def test_run_help_lists_debug() -> None:
+    """Plan 04: --debug is now exposed (D-13 verbosity ladder)."""
     result = _invoke("run", "--help")
     assert result.exit_code == 0, result.output
-    assert "--debug" not in result.output
+    assert "--debug" in result.output
 
 
 def test_run_default_calls_load_config_before_subprocess(monkeypatch, tmp_path) -> None:
