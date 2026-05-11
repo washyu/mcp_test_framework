@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Operator-First Design
-status: between-phases
-stopped_at: Phase 14 complete + Phase 13 UAT closed; ready for Phase 15
-last_updated: "2026-05-11T20:00:00Z"
-last_activity: 2026-05-11 -- Phase 13 UAT complete (2/2 pass); all phases 12-14 verified
+status: verifying
+stopped_at: Phase 15 context gathered
+last_updated: "2026-05-11T20:16:03.880Z"
+last_activity: 2026-05-11 -- Phase 13 UAT complete (2/2 pass); SAFE-01 opt-in semantics + v1→v2 migration walkthrough both confirmed by operator
 progress:
   total_phases: 5
   completed_phases: 3
@@ -96,6 +96,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-11T02:07:44.570Z
-Stopped at: Phase 14 context gathered
+Last session: 2026-05-11T20:16:03.872Z
+Stopped at: Phase 15 context gathered
 Resume next: `/gsd-plan-phase 12`
