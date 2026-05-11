@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: Operator-First Design
 status: executing
 stopped_at: Phase 15 context gathered
-last_updated: "2026-05-11T21:18:50.184Z"
-last_activity: 2026-05-11 -- Phase 15 planning complete
+last_updated: "2026-05-11T21:24:48.659Z"
+last_activity: 2026-05-11 -- Phase 15 execution started
 progress:
   total_phases: 5
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Between phases — Phase 15 (operator vs framework test surface split) is next
+**Current focus:** Phase 15 — operator-vs-framework-test-surface-split
 
 ## Current Position
 
-Phase: — (between phases; Phase 14 complete, Phase 15 not started)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-11 -- Phase 15 planning complete
+Phase: 15 (operator-vs-framework-test-surface-split) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 15
+Last activity: 2026-05-11 -- Phase 15 execution started
 
 ## Performance Metrics
 
