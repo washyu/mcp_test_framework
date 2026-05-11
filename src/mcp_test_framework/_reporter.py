@@ -229,10 +229,11 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     try:
         from mcp_test_framework.config import Config as _FwConfig
         _fw_cfg = _FwConfig()
-    except Exception:  # noqa: BLE001 -- under unit-only runs Config() may
-        # fail (SAFE-03 fail-loud, no config in cwd). The terminal-summary
-        # path is best-effort; absence of Config means we cannot compose
-        # state-a/c rows.
+    except Exception:  # noqa: BLE001 -- defensive: terminal-summary path
+        # must not crash if Config() ever raises. Bare Config() succeeds
+        # with defaults today (SAFE-03 fail-loud lives in cli.py:_load_config,
+        # not Config.__init__), so this guard is belt-and-suspenders against
+        # future regressions or downstream Config() changes.
         _fw_cfg = None
     unparam_skips: dict[str, str] = (
         _compose_unparametrized_skips(_fw_cfg) if _fw_cfg is not None else {}
