@@ -6,9 +6,13 @@ Implements the CLI from docs/mcp_test_framework_mvp_spec.md §CLI:
     list-tools [--config PATH] [--json]    -- D-list-1..4 / D-teardown-1..3
     version                                -- CLI-03
 
-Per Phase 5 CONTEXT.md decisions:
-- `_load_config(path)` helper sets MCPTF_CONFIG_FILE env var if --config given,
-  then instantiates Config() (Pydantic ValidationError propagates).
+Per Phase 5 CONTEXT.md decisions (revised in Phase 13 D-01/D-03):
+- `_load_config(path)` helper resolves the YAML path
+  (--config > MCPTF_CONFIG_FILE > ./config.yaml) and passes it as a
+  `yaml_file` kwarg to Config(). It also writes the resolved path to
+  MCPTF_CONFIG_FILE so the in-process pytest session's bare Config()
+  picks up the same source. ValidationError is mapped to typer.Exit via
+  `_emit_operator_error_for_validation` -- it does NOT propagate.
 - `run` (Plan 02) forwards everything after `--` to pytest.main(["tests", *forwarded]).
   D-cli-flags-3: NO try/except wrap -- pytest's own SIGINT + Phase 04.1's
   AsyncExitStack-owned mcp_client fixture cover OPS-03 for the run path.
@@ -368,7 +372,7 @@ def run(
     """
     import pytest  # function-local: pytest is dev-only, not a runtime dep
 
-    _load_config(config)  # raises typer.Exit(2) on bad path; ValidationError propagates
+    _load_config(config)  # raises typer.Exit(2) on any unrecoverable error
     raise typer.Exit(code=pytest.main(_build_pytest_args(junit_xml, pytest_args)))
 
 
