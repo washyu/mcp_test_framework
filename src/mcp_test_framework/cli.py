@@ -13,9 +13,11 @@ Per Phase 5 CONTEXT.md decisions (revised in Phase 13 D-01/D-03):
   MCPTF_CONFIG_FILE so the in-process pytest session's bare Config()
   picks up the same source. ValidationError is mapped to typer.Exit via
   `_emit_operator_error_for_validation` -- it does NOT propagate.
-- `run` (Plan 02) forwards everything after `--` to pytest.main(["tests", *forwarded]).
-  D-cli-flags-3: NO try/except wrap -- pytest's own SIGINT + Phase 04.1's
-  AsyncExitStack-owned mcp_client fixture cover OPS-03 for the run path.
+- `run` (Phase 14 D-01) invokes pytest as a child subprocess via the
+  Phase 14 runner module. _load_config is the pre-flight gate on BOTH
+  default and --raw paths (D-03/D-11). pytest's own SIGINT handling +
+  Phase 04.1's AsyncExitStack-owned mcp_client fixture cover OPS-03 for
+  the run path; the wrapper does not catch KeyboardInterrupt.
 - `list-tools` (Plan 03) body uses asyncio.Runner + AsyncExitStack-owned
   McpTestClient (Phase 04.1 same-task lifecycle -- avoids the cancel-scope
   teardown bug; Pitfall 1 mitigation reused).
@@ -273,7 +275,7 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
 # Re-exported from _runner.py (Phase 14 D-01); cli.py keeps the public symbol
 # so existing test imports `from mcp_test_framework.cli import _build_pytest_args`
 # continue working. The helper builds the argv passed to the subprocess pytest
-# (Phase 14 D-01) -- in v1.1 it built argv for pytest.main().
+# (Phase 14 D-01) -- in v1.1 it built argv for the in-process pytest entry point.
 from mcp_test_framework._runner import _build_pytest_args  # noqa: E402
 
 
@@ -293,45 +295,105 @@ def run(
         None,
         "--junit-xml",
         help=(
-            "Write JUnit XML to PATH. Translates internally to pytest's "
-            "`--junitxml=PATH` (note pytest's no-dash spelling). If a "
-            "passthrough `--junitxml=...` is also supplied after `--`, the "
-            "passthrough wins via pytest's last-occurrence argparse rule "
-            "(D-01a)."
+            "Write JUnit XML to PATH (Phase 09 OUTPUT-01 contract). Translates "
+            "to pytest's --junitxml=PATH. In default mode the wrapper consumes "
+            "its own internal tempfile for the domain UI; this flag's path is "
+            "populated independently via a post-subprocess copy."
+        ),
+    ),
+    raw: bool = typer.Option(
+        False,
+        "--raw",
+        help=(
+            "Bypass the domain UI wrapper and stream pytest's native output. "
+            "All flags forward verbatim to pytest. Equivalent to "
+            "`uv run pytest tests/` modulo the config pre-flight gate "
+            "(which still runs)."
         ),
     ),
     pytest_args: list[str] | None = typer.Argument(
         None,
-        help="Args after `--` are forwarded to pytest.main([\"tests\", *args]).",
+        help="Args after `--` are forwarded to pytest.",
     ),
 ) -> None:
-    """Run the test suite (CLI-01).
+    """Run the test suite (CLI-01) wrapped around a subprocess pytest.
 
-    Loads Config() at the CLI level so config errors surface as a clean
-    diagnostic BEFORE pytest's plugin chain produces an opaque
-    INTERNALERROR (D-discretion bullet 4). Then delegates entirely to
-    pytest.main() -- D-cli-flags-3: NO try/except wrap. pytest's own
-    SIGINT handling + Phase 04.1's AsyncExitStack-owned `mcp_client`
-    fixture cover OPS-03 for this path.
+    Phase 14 D-01/D-02/D-03/D-11/D-15: pytest runs as a child subprocess
+    via the Phase 14 runner module -- the in-process pytest entry
+    point is no longer used in the wrapper. `_load_config` is the
+    pre-flight gate on BOTH default
+    and --raw paths (SAFE-03 cannot be bypassed via --raw).
 
-    Phase 09 OUTPUT-01: `--junit-xml=PATH` translates to pytest's `--junitxml=PATH`
-    via `_build_pytest_args` (D-01b spelling difference; D-01a passthrough-wins
-    precedence). The helper is extracted (CD-06 option 3) so the translation is
-    unit-testable without spawning pytest.
+    Default mode: subprocess + internal tempfile JUnit XML capture +
+    (transitional) verbatim passthrough of pytest's captured stdout/stderr.
+    Plans 02-03 replace the verbatim passthrough with parsed-XML domain UI
+    rendering; the `PLAN-03 REMOVES` marker below tags that removal target.
+
+    Raw mode (--raw): subprocess only, no tempfile, no capture, no domain
+    UI. Operator-supplied --junit-xml=PATH still flows through pytest via
+    `_build_pytest_args` (Phase 09 D-01a precedence preserved).
+
+    Exit-code mapping (Phase 14 D-15):
+      - pytest 0 -> exit 0
+      - pytest 1 -> exit 1 (test failures)
+      - pytest 2 -> exit 2 (collection/usage error)
+      - pytest 5 -> exit 0 with "no tests collected" warning on stderr
+      - SIGINT propagates naturally to exit 130 (KeyboardInterrupt not caught)
 
     The `addopts = "-m 'not live_homelab and not live_ollama'"` contract
-    from pyproject.toml stays in effect -- `run` MUST NOT pass an explicit
-    `-m` flag (D-markers-3 / Phase 4 contract).
-
-    `import pytest` is function-local: pytest is in `[dependency-groups] dev`
-    only, not `[project.dependencies]`. Module-scope import would break
-    `version` and `list-tools` for users installing the wheel without dev
-    extras.
+    from pyproject.toml stays in effect inside the subprocess -- `run`
+    MUST NOT pass an explicit `-m` flag (D-markers-3 / Phase 4 contract).
     """
-    import pytest  # function-local: pytest is dev-only, not a runtime dep
+    from mcp_test_framework import _runner
 
-    _load_config(config)  # raises typer.Exit(2) on any unrecoverable error
-    raise typer.Exit(code=pytest.main(_build_pytest_args(junit_xml, pytest_args)))
+    _load_config(config)  # raises typer.Exit(2) on any unrecoverable error.
+
+    if raw:
+        # D-11: raw mode -- no tempfile, no capture, no render. operator's
+        # junit_xml (if any) still flows through _build_pytest_args inside
+        # the runner so RUNNER-05 is preserved.
+        rc, _tmp, _stdout, _stderr = _runner.run_pytest_subprocess(
+            junit_xml=junit_xml,
+            pytest_args=pytest_args,
+            raw=True,
+        )
+        mapped, warning = _runner._map_exit_code(rc)
+        if warning is not None:
+            typer.echo(warning, err=True)
+        raise typer.Exit(code=mapped)
+
+    # Default mode: subprocess + tempfile + (future) render.
+    rc, tmp_xml, captured_stdout, captured_stderr = _runner.run_pytest_subprocess(
+        junit_xml=junit_xml,
+        pytest_args=pytest_args,
+        raw=False,
+    )
+    try:
+        # D-16: if subprocess crashed before writing the tempfile, surface a
+        # domain-shaped error pointing at --raw for raw pytest output.
+        # _dispatch_default_mode_or_error returns silently when the tempfile
+        # is present, and calls _emit_operator_error (typer.Exit) otherwise.
+        _runner._dispatch_default_mode_or_error(tmp_xml, rc, captured_stderr)
+
+        # PLAN-03 REMOVES: replaced by _runner.render_domain_ui(parsed).
+        # Plan 01 transitional behavior: emit the captured pytest output
+        # verbatim so `mcp-test-framework run` continues to work end-to-end
+        # while plans 02-03 build the XML parser + domain renderer.
+        if captured_stdout:
+            typer.echo(captured_stdout, nl=False)
+        if captured_stderr:
+            typer.echo(captured_stderr, err=True, nl=False)
+
+        mapped, warning = _runner._map_exit_code(rc)
+        if warning is not None:
+            typer.echo(warning, err=True)
+        raise typer.Exit(code=mapped)
+    finally:
+        if tmp_xml is not None and tmp_xml.exists():
+            try:
+                tmp_xml.unlink()
+            except OSError:
+                pass  # tempfile cleanup is best-effort.
 
 
 @app.command("list-tools")
