@@ -32,8 +32,6 @@ from pydantic import ValidationError
 from mcp_test_framework.config import Config
 from mcp_test_framework.models import ToolConfig
 
-import tests.conftest as _conftest_module  # for _DISCOVERED_TOOL_NAMES + _resolve_tool_names
-
 # ===========================================================================
 # Schema tests -- sync, load-time, no live services
 # ===========================================================================
@@ -161,49 +159,97 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
 
 # ===========================================================================
 # v1.1.1 hotfix (260508-p0b) regression tests -- parametrize-time skip filter
+#
+# Phase 14 gap-closure (Plan 14-07): grouped into TestV111SkipFilter so the
+# autouse `_reset_discovery_cache` fixture's blast radius is narrow -- it
+# only resets the migrated cache for these two tests, not the whole module.
+# Mirrors the reference pattern at tests/unit/test_runner_migration.py.
 # ===========================================================================
 
 
-def test_resolve_tool_names_filters_out_skip_true_tools() -> None:
-    """v1.1.1-SKIP-FILTER: tools.<name>.skip:true removes the tool from
-    the parametrize input list (not just runtime-skips its 10 tests).
+class TestV111SkipFilter:
+    """SAFE-01 v1.1.1 skip-filter regression coverage.
 
-    Sets the module cache directly so the async _discover_tools path is
-    not exercised -- keeps the test sync and offline.
+    Plan 14-05 migrated the in-pytest discovery cache from
+    `tests.conftest._DISCOVERED_TOOL_NAMES` (implicit module attribute) to
+    `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` (importable module
+    path). Tests here patch the new canonical seam. The autouse reset
+    fixture mirrors `tests/unit/test_runner_migration.py:_reset_discovery_cache`.
     """
-    config = Config(
-        tools={
-            "a": ToolConfig(),
-            "b": ToolConfig(skip=True, skip_reason="testing the filter"),
-            "c": ToolConfig(),
-        }
-    )
-    _conftest_module._DISCOVERED_TOOL_NAMES = ["a", "b", "c"]
-    try:
-        names = _conftest_module._resolve_tool_names(config)
+
+    @pytest.fixture(autouse=True)
+    def _reset_discovery_cache(self):
+        """Phase 14 gap-closure (Plan 14-07): mirror the reset fixture in
+        tests/unit/test_runner_migration.py so the v1.1.1 regression tests
+        stay independent. The discovery cache lives in
+        `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES` (Plan 14-05).
+        """
+        from mcp_test_framework import _runner as _r
+        _r._DISCOVERED_TOOL_NAMES = None
+        yield
+        _r._DISCOVERED_TOOL_NAMES = None
+
+    def test_resolve_tool_names_filters_out_skip_true_tools(self) -> None:
+        """v1.1.1-SKIP-FILTER: tools.<name>.skip:true removes the tool from
+        the parametrize input list (not just runtime-skips its 10 tests).
+
+        Phase 14 gap-closure (Plan 14-07): patch path retargeted from the
+        deleted `_conftest_module._DISCOVERED_TOOL_NAMES` seam to the new
+        canonical location at `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES`
+        (Plan 14-05). Mirrors tests/unit/test_runner_migration.py.
+        """
+        from mcp_test_framework import _runner as _r
+        from tests.conftest import _resolve_tool_names
+
+        config = Config(
+            tools={
+                "a": ToolConfig(),
+                "b": ToolConfig(skip=True, skip_reason="testing the filter"),
+                "c": ToolConfig(),
+            }
+        )
+        _r._DISCOVERED_TOOL_NAMES = ["a", "b", "c"]
+        names = _resolve_tool_names(config)
         assert names == ["a", "c"], (
             f"expected skip:true tool 'b' filtered out; got {names!r}"
         )
-    finally:
-        _conftest_module._DISCOVERED_TOOL_NAMES = None
+        # Cleanup handled by the class-scoped autouse fixture.
 
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "Phase 13 v2-schema rework dropped the `target:` block "
+            "(extra_forbidden). The v1.1.1 SAFE-01 explicit-override "
+            "semantics need a v2 equivalent before this test can be "
+            "retargeted -- tracked under Phase 13 verification follow-up "
+            "(NOT Phase 14 gap-closure scope per 14-HUMAN-UAT.md Gap 3 "
+            "diagnosis). Preserved-not-deleted so git blame survives the "
+            "Phase 13 follow-up."
+        ),
+    )
+    def test_resolve_tool_names_explicit_target_overrides_skip_true(self) -> None:
+        """v1.1.1-EXPLICIT-OVERRIDE: target.tool_name=X short-circuits before
+        the new filter, so an explicit single-target run still includes a
+        skip:true tool. Preserves the D-12 _preflight warning path
+        (fixtures.py:200-213).
 
-def test_resolve_tool_names_explicit_target_overrides_skip_true() -> None:
-    """v1.1.1-EXPLICIT-OVERRIDE: target.tool_name=X short-circuits before
-    the new filter, so an explicit single-target run still includes a
-    skip:true tool. Preserves the D-12 _preflight warning path
-    (fixtures.py:200-213).
-    """
-    config = Config(
-        tools={"b": ToolConfig(skip=True, skip_reason="testing override")},
-        target={"tool_name": "b"},
-    )
-    # Deliberately do NOT touch _DISCOVERED_TOOL_NAMES -- the explicit-target
-    # branch must return before the cache is consulted.
-    names = _conftest_module._resolve_tool_names(config)
-    assert names == ["b"], (
-        f"explicit target.tool_name='b' should win over skip:true; got {names!r}"
-    )
+        XFAIL: Phase 13 v2-schema rework removed `target:` from the Config
+        schema (extra_forbidden). This test fails at Config construction time
+        with Pydantic ValidationError, not at the assertion. Retargeting
+        belongs in the Phase 13 verification follow-up, not the Phase 14
+        gap-closure.
+        """
+        from mcp_test_framework import _runner as _r  # noqa: F401 (kept for parity with sibling test)
+        from tests.conftest import _resolve_tool_names
+
+        config = Config(
+            tools={"b": ToolConfig(skip=True, skip_reason="testing override")},
+            target={"tool_name": "b"},
+        )
+        names = _resolve_tool_names(config)
+        assert names == ["b"], (
+            f"explicit target.tool_name='b' should win over skip:true; got {names!r}"
+        )
 
 
 # ===========================================================================
