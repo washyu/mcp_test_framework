@@ -835,3 +835,36 @@ def render_debug_appendix(
             for line in body.splitlines():
                 print(f"  {line}", file=file)
             print("", file=file)
+
+
+# ===========================================================================
+# Phase 14 Plan 05: in-pytest discovery cache (migrated from the deleted
+# v1.1 reporter plugin).
+# ===========================================================================
+#
+# This cache lives in `_runner` (a real importable module under src/) rather
+# than `tests/conftest.py` because `tests/` is NOT a Python package (no
+# `tests/__init__.py`). Surviving Phase 13 SAFE-01 allowlist unit tests need
+# to patch this cache via a real import path:
+#
+#     from mcp_test_framework import _runner as _r
+#     _r._DISCOVERED_TOOL_NAMES = ["alpha", "beta"]
+#
+# This cache is SEPARATE from the wrapper-side discovery in
+# `cli.py:_discover_tools_for_run`. The TWO-cache architecture is intentional
+# for v1.2 (each discovery costs <1s); consolidation is a v1.3 candidate.
+# The wrapper cache lives only on the RenderContext; this cache lives at
+# module scope because `pytest_generate_tests` in conftest needs to read
+# it across multiple parametrize calls within a single pytest session.
+# ===========================================================================
+
+_DISCOVERED_TOOL_NAMES: "list[str] | None" = None
+
+
+def _set_discovered_tool_names(names: list[str]) -> None:
+    """Phase 14 Plan 05: helper for `tests/conftest.py:_resolve_tool_names` to
+    populate the in-pytest discovery cache without using a `global` declaration
+    at the call site. Tests can patch the cache directly via
+    `_runner._DISCOVERED_TOOL_NAMES = [...]`."""
+    global _DISCOVERED_TOOL_NAMES
+    _DISCOVERED_TOOL_NAMES = list(names)
