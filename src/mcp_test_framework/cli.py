@@ -370,6 +370,25 @@ def run(
             "(which still runs)."
         ),
     ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help=(
+            "Append raw pytest output and failure tracebacks after the "
+            "domain UI. Useful for debugging; does not reshape the default "
+            "output."
+        ),
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "-q",
+        "--quiet",
+        help=(
+            "Print only the summary line (no header, no per-tool rows). "
+            "Independent of pytest's -q; pytest still runs at default "
+            "verbosity internally so JUnit XML stays complete."
+        ),
+    ),
     pytest_args: list[str] | None = typer.Argument(
         None,
         help="Args after `--` are forwarded to pytest.",
@@ -414,6 +433,7 @@ def run(
         # D-11: raw mode -- no tempfile, no capture, no render, no discovery.
         # Operator junit_xml (if any) still flows through _build_pytest_args
         # inside the runner so RUNNER-05 is preserved.
+        # --raw bypasses domain UI entirely; -q and --debug do not apply.
         rc, _tmp, _stdout, _stderr = _runner.run_pytest_subprocess(
             junit_xml=junit_xml,
             pytest_args=pytest_args,
@@ -476,7 +496,23 @@ def run(
             judges=judges,
             total_planned_cases=parsed.total_cases,
         )
-        _runner.render_domain_ui(parsed, ctx)
+        # Phase 14 D-12/D-13: verbosity ladder.
+        # -q (quiet) swaps render_domain_ui -> render_summary_only.
+        # --debug appends raw pytest output AFTER whichever rung above ran.
+        # The two flags are orthogonal: `-q --debug` means
+        # "summary line, then appendix" -- D-13 invariant (each rung adds
+        # info; none re-shapes the layer below).
+        if quiet:
+            _runner.render_summary_only(parsed, ctx)
+        else:
+            _runner.render_domain_ui(parsed, ctx)
+
+        if debug:
+            # D-13: --debug appends AFTER whatever the lower rung rendered.
+            # Default UI shape unchanged; --debug only adds info.
+            _runner.render_debug_appendix(
+                captured_stdout, captured_stderr, parsed,
+            )
 
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
