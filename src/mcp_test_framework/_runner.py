@@ -263,7 +263,7 @@ def _dispatch_default_mode_or_error(
 # Phase 14 Plan 02: JUnit XML parser + domain model
 # ===========================================================================
 #
-# Ported from the v1.1 plugin (`_reporter.py` -- to be deleted in Plan 14-05)
+# Ported from the v1.1 in-pytest reporter plugin (deleted in Plan 14-05)
 # adapted to read JUnit XML elements rather than pytest report objects.
 # Pins Phase 09 D-03 (any-fail-wins) + D-05 (skip-reason dedup+cap) + Phase 13
 # D-12 (locked skip-reason constants). Tests pin both constants verbatim in
@@ -490,15 +490,16 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
 # cli.py:run) and emits the operator-facing header / per-tool rows / summary
 # line described in SEED-011 §2 and Phase 14 D-04..D-09.
 #
-# Architectural shift vs the v1.1 _reporter plugin: the state-(a)/(c) skip
+# Architectural shift vs the v1.1 in-pytest plugin: the state-(a)/(c) skip
 # composer is now a PURE FUNCTION (_compose_unparametrized_skips_from_config)
-# that takes discovered_tools as an argument rather than reading
-# _reporter._DISCOVERED_TOOL_NAMES off a module global. The wrapper runs
-# outside the pytest process and cannot reach the in-pytest cache; it
-# performs its own discovery call before launching the subprocess.
+# that takes discovered_tools as an argument rather than reading a module
+# global off the deleted plugin. The wrapper runs outside the pytest process
+# and cannot reach the in-pytest cache; it performs its own discovery call
+# before launching the subprocess.
 #
 # Em-dash U+2014 ("—") appears verbatim in this source file -- locked at
-# Phase 09 SC-3 + _reporter.py:275 + tests/test_reporter.py:391-417.
+# Phase 09 SC-3 and the v1.1 reporter tests (Plan 14 Plans 02-03 re-pin via
+# tests/test_runner_renderer.py).
 # ===========================================================================
 
 
@@ -544,9 +545,9 @@ def _compose_unparametrized_skips_from_config(
                somehow didn't run -- defensive)
                -> _REASON_NOT_SELECTED
 
-    Architectural shift vs v1.1 _reporter._compose_unparametrized_skips:
-    this function is PURE -- discovered_tools is an argument, not a module
-    global. The wrapper rediscovers tools before launching pytest (cli.py:
+    Architectural shift vs the v1.1 in-pytest composer: this function is
+    PURE -- discovered_tools is an argument, not a module global. The
+    wrapper rediscovers tools before launching pytest (cli.py:
     _discover_tools_for_run) because the in-pytest cache lives in another
     process.
     """
