@@ -101,7 +101,10 @@ gaps_diagnosed: 3
     - "Detect non-UTF-8 stdout and downgrade glyphs to ASCII (`✓` → `[PASS]`, `✗` → `[FAIL]`, `–` → `[SKIP]`) — preserves output integrity even if reconfigure fails"
 
 - truth: "Operator running `mcp-test-framework run` (default or `-q`) sees progress feedback while the child pytest is working — they can tell the process is alive, not hung"
-  status: failed
+  status: deferred
+  deferred_to: SEED-013
+  deferred_reason: |
+    User decision 2026-05-11: this finding is goal-adjacent (Phase 14's goal is "operator sees domain UI instead of pytest framing" — the goal IS met; the silent wait is about WHEN they see it, not WHAT). Fits Phase 16 (reporter UX overhaul) naturally and was planted as SEED-013-progress-feedback-during-run.md. Phase 14 gap-closure should NOT include this — only Gap 1 (Windows Unicode) and Gap 3 (stale cache patch path).
   reason: |
     User reported: the `-q` and default paths run silently for ~20s before any output appears. With `-q` it's especially jarring because there's no header to anchor on — operator sees nothing, then the summary line drops. Distinguishing "hung" from "running" is a basic domain-UX contract for a CLI whose stated goal is "operator-first output."
   severity: minor
