@@ -47,6 +47,8 @@ The MVP is intentionally narrow so the integration contract between framework, M
 
 ### Module Layout
 
+The test tree splits the operator-relevant SUT-contract surface (`tests/contract/`) from framework self-tests (`tests/framework/`); the runner collects `tests/contract/` by default and adds `tests/framework/` only when invoked with `--with-framework`.
+
 ```
 mcp_test_framework/
 ├── pyproject.toml
@@ -63,8 +65,20 @@ mcp_test_framework/
 │       ├── schema_validator.py     # MCP schema structural checks
 │       └── fixtures.py             # Pytest fixtures
 └── tests/
-    ├── conftest.py
-    └── test_homelab_list_registered_servers.py
+    ├── conftest.py                                    # session-scoped fixtures (applies to both subtrees)
+    ├── contract/
+    │   └── test_mcp_tool_contract.py                  # operator-relevant SUT-contract surface
+    └── framework/                                     # framework self-tests (config, runner, snippets, banned imports, smoke)
+        ├── test_banned_imports.py
+        ├── test_isolation.py
+        ├── test_readme_snippets.py
+        ├── test_runner_*.py
+        ├── test_config_init_cli.py
+        ├── test_tool_config.py
+        ├── unit/                                      # 20 unit self-tests
+        ├── smoke/                                     # 3 live-marker smoke tests (homelab-mcp + Ollama)
+        ├── _fixtures/                                 # banned-imports negative fixture
+        └── fixtures/                                  # JUnit XML parser fixtures
 ```
 
 ### Dependencies
@@ -229,7 +243,7 @@ mcp-test-framework version
 
 ## Test Cases (MVP)
 
-All tests live in `tests/test_homelab_list_registered_servers.py`.
+The MVP's SUT-contract tests live in `tests/contract/test_mcp_tool_contract.py` (parametrized across the operator's enabled tool list); framework self-tests (config validation, runner internals, snippet correctness, isolation, banned imports, smoke) live under `tests/framework/`.
 
 ### Category 1: Schema Validation (deterministic, no LLM)
 
