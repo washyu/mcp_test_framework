@@ -1,8 +1,8 @@
 ---
 phase: 16-reporter-ux-overhaul
 verified: 2026-05-12T00:00:00Z
-status: human_needed
-score: 13/13 must-haves verified
+status: gaps_found
+score: 13/14 must-haves verified
 overrides_applied: 0
 re_verification:
   previous_status: gaps_found
@@ -10,12 +10,23 @@ re_verification:
   gaps_closed:
     - "README.md's -q description matches Phase 16 D-09 (Result: line format)"
     - "README's post-run per-tool rows example matches the renderer's actual output shape (passing: header + 2-space indent)"
-  gaps_remaining: []
-  regressions: []
-human_verification:
-  - test: "Per-judge reasoning surfaces in domain UI tail at runtime (UX-03 / SC-3)"
-    expected: "When a contract test fails because a judge returns score < 4, the FAIL row in the post-run rows shows the judge's reasoning text after the em-dash separator (`  <tool>  ✗ FAIL — clarity score 2/5: <reasoning>`)."
-    why_human: "Requires a live `mcp-test-framework run` against a real Ollama judge or a contrived failing tool — preflight requires `homelab-mcp` on PATH; cannot be exercised on this verification host. Static evidence (failure_message field threaded from JUnit XML at _runner.py:849) suggests it works, but the operator-facing reasoning quality / formatting is not statically verifiable."
+    - "Per-judge reasoning surfaces in domain UI tail at runtime (UX-03 / SC-3) — live-run UAT 2026-05-12 confirmed `clarity score 2 < 4. reasoning=\"...\"` after em-dash on FAIL rows"
+  gaps_remaining:
+    - truth: "Pre-run digest's `Judges:` line accurately reports the rubrics that will run for the configured tools (UX-01 / SC-1)"
+      status: failed
+      reason: "Live-run UAT 2026-05-12 against `config.yaml` (two tools, both `{}`, judges field unset) produced `Judges:      (none configured)`. But the run failed both tools on `clarity score 2 < 4` — proving all three rubrics (clarity/disambiguation/parameters) fired. Root cause: `cli.py:512-516` derives `judges_set` via `getattr(tool_cfg, 'judges', []) or []`. When `tool_cfg.judges is None` (the default in `models.py:98`, semantically meaning 'run all rubrics' per TOOLCFG-06 / contract gates at `test_mcp_tool_contract.py:124,154,185`), the loop contributes nothing — so the digest reports `(none configured)` while the runner actually executes the full rubric set. The digest lies about runtime behavior, violating SC-1's 'unambiguous pre-run digest of what will execute' contract."
+      artifacts:
+        - path: "src/mcp_test_framework/cli.py:512-516"
+          issue: "Union-loop treats `judges: None` (default = run all rubrics) as 'no judges' instead of 'expand to RUBRIC_IDS'."
+        - path: "src/mcp_test_framework/models.py:98"
+          issue: "ToolConfig.judges default `None` semantically means 'run all rubrics' per TOOLCFG-06, but cli.py's digest assembly does not honor this contract."
+        - path: "src/mcp_test_framework/_runner.py:749,765"
+          issue: "Renderer correctly emits `(none configured)` when given an empty union — the bug is upstream, in how the union is computed in cli.py. No renderer change needed."
+      missing:
+        - "Update cli.py:512-516 union loop: when `tool_cfg.judges is None`, add all of `RUBRIC_IDS` to `judges_set`; when `tool_cfg.judges == []`, contribute nothing (explicit opt-out); when `tool_cfg.judges` is a non-empty list, contribute those rubric IDs."
+        - "Add unit test pinning `Judges:` digest output for: (a) default judges=None case (expect all 3 rubrics listed), (b) explicit empty `judges: []` (expect `(none configured)`), (c) explicit subset `judges: [clarity]` (expect `clarity` only)."
+        - "Consider amending Phase 16 CONTEXT.md / RESEARCH.md to record this judges-union semantic (the existing decisions don't address the None/[]/[items] distinction at the digest level)."
+human_verification: []
 ---
 
 # Phase 16: Reporter UX overhaul Verification Report
