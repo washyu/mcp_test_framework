@@ -30,7 +30,7 @@ def _run_framework_subprocess(*args: str, cwd: Path) -> subprocess.CompletedProc
 
 
 def test_live_run_emits_domain_header_and_summary() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     proc = _run_framework_subprocess(cwd=repo_root)
     # Header strings appear.
     assert "MCP Test Framework" in proc.stdout
@@ -44,7 +44,7 @@ def test_live_run_emits_domain_header_and_summary() -> None:
 
 
 def test_live_run_junit_xml_path_preserved(tmp_path: Path) -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     target = tmp_path / "live.xml"
     proc = _run_framework_subprocess(f"--junit-xml={target}", cwd=repo_root)
     assert target.exists(), f"--junit-xml=PATH did not populate {target}: {proc.stdout}"
@@ -54,7 +54,7 @@ def test_live_run_junit_xml_path_preserved(tmp_path: Path) -> None:
 
 
 def test_live_run_raw_produces_pytest_framing() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     proc = _run_framework_subprocess("--raw", cwd=repo_root)
     # --raw passes pytest's output through; framing IS expected.
     assert "test session starts" in proc.stdout or "test session starts" in (proc.stderr or "")
