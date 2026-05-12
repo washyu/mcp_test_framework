@@ -41,7 +41,7 @@
  (completed 2026-05-10)
 - [x] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch.
  (completed 2026-05-11)
-- [ ] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`.
+- [x] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`. (completed 2026-05-12)
 - [ ] **Phase 16: Reporter UX overhaul** — Pre-run digest (server / discovered / running / skipping / judges / test-plan totals), `--explain` flag for per-tool skip reasons, post-run aggregation, and verbosity ladder (`-q` / default / `--explain` / `--debug`). Output designed for N=70 readability.
 
 ## Phase Details
@@ -110,11 +110,11 @@
   2. A maintainer running `uv run pytest tests/` directly continues to exercise both `tests/contract/` and `tests/framework/`; the runner's `--with-framework` (or equivalent) opt-in flag makes the same surface reachable through the operator CLI for CI use.
   3. The repo's `tests/contract/` and `tests/framework/` directory split preserves git history for every moved file (verified by `git log --follow` on at least one file from each subtree).
   4. The black-box rule remains mechanically enforced: `tests/framework/test_banned_imports.py` continues to fail the maintainer suite if `homelab-mcp` is imported anywhere in `src/`. The enforcement does not depend on which test surface the operator selected.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
   - [x] 15-01-PLAN.md — `git mv` tests/ into tests/contract/ + tests/framework/; hoist test_banned_imports.py to SURFACE-04 literal path (SURFACE-01, SURFACE-03, SURFACE-04; wave 1)
   - [x] 15-02-PLAN.md — Flip `_build_pytest_args` default to `tests/contract`; add `--with-framework` Typer flag plumbed through `run_pytest_subprocess`; update D-12 help text anchor (SURFACE-02; wave 2, depends 15-01)
   - [x] 15-03-PLAN.md — Refresh README.md "Run the test suite" + "Isolation guarantee" sections + docs/mcp_test_framework_mvp_spec.md Module Layout + Test Cases section to reflect post-split paths (SURFACE-02; wave 2, depends 15-01)
-  - [ ] 15-04-PLAN.md — Run 7 verification recipes (operator default scope, --with-framework, maintainer backward compat, git history preservation, SURFACE-04 enforcement) + human checkpoint (SURFACE-01..04; wave 3, depends 15-01..03)
+  - [x] 15-04-PLAN.md — Run 7 verification recipes (operator default scope, --with-framework, maintainer backward compat, git history preservation, SURFACE-04 enforcement) + human checkpoint (SURFACE-01..04; wave 3, depends 15-01..03)
 
 
 ### Phase 16: Reporter UX overhaul
@@ -155,5 +155,5 @@
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
 | 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete    | 2026-05-11 |
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete   | 2026-05-11 |
-| 15. Operator vs framework test surface split | v1.2 | 3/4 | In Progress|  |
+| 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete   | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |
