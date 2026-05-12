@@ -40,6 +40,8 @@ from typing import Literal
 
 import typer
 
+from .rubrics import RUBRIC_IDS
+
 
 # ===========================================================================
 # Helpers promoted from cli.py (Phase 14 D-01 -- avoid circular import)
@@ -626,6 +628,33 @@ def _compose_pre_run_skip_reasons(
     return _compose_unparametrized_skips_from_config(
         discovered_tools, tools_config, ran_tools=running
     )
+
+
+def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
+    """Phase 16 plan 05: build the digest's `Judges:` union, honoring TOOLCFG-06.
+
+    ToolConfig.judges semantics (locked at models.py:98 + contract gates at
+    tests/contract/test_mcp_tool_contract.py:124,154,185):
+      - None  (default, unset)      -> run ALL rubrics in RUBRIC_IDS
+      - []    (explicit empty list) -> explicit opt-out, run no rubrics on this tool
+      - [...] (subset list)         -> run literally these rubrics
+
+    The pre-run digest must reflect what will actually execute. Pre-plan-05,
+    cli.py's union loop used `getattr(tool_cfg, "judges", []) or []`, which
+    silently collapsed the None default to [] and produced an empty union
+    even when every tool was running all three rubrics at runtime.
+
+    Returns: sorted list of rubric IDs that will fire for at least one
+    configured tool. Empty list iff every tool explicitly opts out via [].
+    """
+    judges_set: set[str] = set()
+    for tool_cfg in tools_config.values():
+        declared = getattr(tool_cfg, "judges", None)
+        if declared is None:
+            judges_set.update(RUBRIC_IDS)  # TOOLCFG-06: None = run all rubrics
+        else:
+            judges_set.update(declared)    # [] is a no-op; subset passes through
+    return sorted(judges_set)
 
 
 # ---------------------------------------------------------------------------
