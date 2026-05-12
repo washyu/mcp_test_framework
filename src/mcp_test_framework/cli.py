@@ -508,12 +508,12 @@ def run(
     # running set × constant, not from this field.
     server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
     # Judges: derive from the union of every configured tool's `judges`
-    # list, de-duplicated and sorted.
-    judges_set: set[str] = set()
-    for tool_cfg in cfg.tools.values():
-        for judge_name in getattr(tool_cfg, "judges", []) or []:
-            judges_set.add(judge_name)
-    judges = sorted(judges_set)
+    # list, de-duplicated and sorted. ToolConfig.judges semantics per
+    # TOOLCFG-06 (models.py:98): None default => run ALL rubrics; []
+    # => explicit opt-out; subset => literal. The helper honors this
+    # three-way contract; a prior loop using `or []` silently collapsed
+    # None to [] and produced an empty union (16-VERIFICATION.md gap G-1).
+    judges = _runner._compose_judges_from_tool_configs(cfg.tools)
 
     pre_run_ctx = _runner.RenderContext(
         server_cmd=server_cmd,
