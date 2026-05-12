@@ -128,10 +128,11 @@
   3. An operator's post-run output aggregates per-tool PASS/FAIL/SKIP plus per-judge reasoning into the domain UI's tail; v1.1's separate `_reporter.py` per-tool summary section is no longer needed (subsumed or replaced).
   4. An operator running `-q` / `--quiet` sees neither the digest nor the per-tool rows — only the final summary line. v1.1's quiet-mode parity is preserved.
   5. The digest's discovered/running/skipping counts agree with what the runner actually executes; an operator's manual config inspection cannot find a tool that the digest claims to skip but that actually runs (or vice versa).
-**Plans:** 3/3 plans complete
+**Plans:** 4 plans (3 complete + 1 gap-closure pending)
   - [x] 16-01-pre-run-digest-renderer-PLAN.md — _runner.py additions: CASES_PER_CONTRACT_TOOL constant + _render_pre_run_digest + _compose_pre_run_skip_reasons + _render_skipped_tools_explain; remove _render_header call from render_domain_ui (UX-01, UX-03, UX-04; wave 1)
   - [x] 16-02-explain-flag-and-cli-wiring-PLAN.md — cli.py: --explain Typer flag + pre-run digest rendering pipeline + 3 test files (digest pin + --explain end-to-end + -q parity) (UX-01, UX-02, UX-04, UX-05; wave 2, depends 16-01)
   - [x] 16-03-documentation-refresh-PLAN.md — README.md + docs/mcp_test_framework_mvp_spec.md prose updates for pre-run digest + --explain + -q (UX-01, UX-02, UX-05; wave 3, depends 16-02)
+  - [ ] 16-04-readme-format-corrections-PLAN.md — README.md Result: line + per-tool row format drift fix (gap closure for CR-01 BLOCKER + IN-02 from 16-VERIFICATION.md; UX-01, UX-05; wave 1, no deps)
 
 
 ## Progress
@@ -155,4 +156,4 @@
 | 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete    | 2026-05-11 |
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete   | 2026-05-11 |
 | 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete    | 2026-05-12 |
-| 16. Reporter UX overhaul | v1.2 | 3/3 | Complete   | 2026-05-12 |
+| 16. Reporter UX overhaul | v1.2 | 3/4 | Gap closure pending | 2026-05-12 |
