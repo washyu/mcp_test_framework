@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Operator-First Design
-status: executing
+status: ready_to_plan
 stopped_at: Phase 15 context gathered
 last_updated: "2026-05-11T21:24:48.659Z"
 last_activity: 2026-05-11 -- Phase 15 execution started
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 25
   completed_plans: 21
-  percent: 84
+  percent: 80
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 ## Current Position
 
-Phase: 15 (operator-vs-framework-test-surface-split) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 15
-Last activity: 2026-05-11 -- Phase 15 execution started
+Phase: 16
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-12
 
 ## Performance Metrics
 

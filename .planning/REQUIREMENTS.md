@@ -55,10 +55,10 @@ REQ-IDs continue numbering from v1.1 (archived at `.planning/milestones/v1.1-REQ
 
 ### SURFACE — Operator vs framework test surface split
 
-- [ ] **SURFACE-01**: `tests/` directory split into `tests/contract/` (operator-relevant: tests against the SUT contract) and `tests/framework/` (internal: framework self-tests like config validation, reporter, isolation, banned-imports, snippet correctness).
-- [ ] **SURFACE-02**: `mcp-test-framework run` (post-RUNNER-01 wrapper) collects only `tests/contract/` by default. Framework self-tests are reachable via `uv run pytest tests/` directly or a `--with-framework` (or equivalent) opt-in flag on the runner.
-- [ ] **SURFACE-03**: Existing test files moved to the correct subdirectory via `git mv` so file history is preserved. Shared fixtures (e.g. `pytest_generate_tests` for tool discovery) stay in a top-level `tests/conftest.py` or are split appropriately.
-- [ ] **SURFACE-04**: Banned-imports test continues to run against the framework (`tests/framework/test_banned_imports.py` enforces `homelab-mcp` is not imported by `src/`). The black-box rule is enforced regardless of which test surface ran.
+- [x] **SURFACE-01**: `tests/` directory split into `tests/contract/` (operator-relevant: tests against the SUT contract) and `tests/framework/` (internal: framework self-tests like config validation, reporter, isolation, banned-imports, snippet correctness).
+- [x] **SURFACE-02**: `mcp-test-framework run` (post-RUNNER-01 wrapper) collects only `tests/contract/` by default. Framework self-tests are reachable via `uv run pytest tests/` directly or a `--with-framework` (or equivalent) opt-in flag on the runner.
+- [x] **SURFACE-03**: Existing test files moved to the correct subdirectory via `git mv` so file history is preserved. Shared fixtures (e.g. `pytest_generate_tests` for tool discovery) stay in a top-level `tests/conftest.py` or are split appropriately.
+- [x] **SURFACE-04**: Banned-imports test continues to run against the framework (`tests/framework/test_banned_imports.py` enforces `homelab-mcp` is not imported by `src/`). The black-box rule is enforced regardless of which test surface ran.
 
 ### UX — Reporter UX overhaul
 
@@ -129,10 +129,10 @@ Note: v1.2 scoping moved the SEED-002 / SEED-005 / warm-up cohort from "v1.2 (vi
 | RUNNER-04 | Phase 14 | Pending |
 | RUNNER-05 | Phase 14 | Pending |
 | RUNNER-06 | Phase 14 | Pending |
-| SURFACE-01 | Phase 15 | Pending |
-| SURFACE-02 | Phase 15 | Pending |
-| SURFACE-03 | Phase 15 | Pending |
-| SURFACE-04 | Phase 15 | Pending |
+| SURFACE-01 | Phase 15 | Complete |
+| SURFACE-02 | Phase 15 | Complete |
+| SURFACE-03 | Phase 15 | Complete |
+| SURFACE-04 | Phase 15 | Complete |
 | UX-01 | Phase 16 | Pending |
 | UX-02 | Phase 16 | Pending |
 | UX-03 | Phase 16 | Pending |

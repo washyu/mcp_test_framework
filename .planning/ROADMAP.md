@@ -155,5 +155,5 @@
 | 12. Doc & persona foundation | v1.2 | 9/9 | Complete   | 2026-05-10 |
 | 13. Config safety & opt-in tool selection | v1.2 | 5/5 | Complete    | 2026-05-11 |
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete   | 2026-05-11 |
-| 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete   | 2026-05-12 |
+| 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete    | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 0/0 | Not started | - |
