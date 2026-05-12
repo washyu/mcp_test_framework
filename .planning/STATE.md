@@ -4,14 +4,14 @@ milestone: v1.2
 milestone_name: Operator-First Design
 status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-05-12T06:44:40.504Z"
-last_activity: 2026-05-12 -- Phase 16 planning complete
+last_updated: "2026-05-12T15:22:39.503Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 29
-  completed_plans: 28
-  percent: 97
+  completed_plans: 29
+  percent: 100
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 ## Current Position
 
 Phase: 16 (reporter-ux-overhaul) — EXECUTING
-Plan: 3 of 3
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-12 -- Phase 16 planning complete
+Last activity: 2026-05-12
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Last activity: 2026-05-12 -- Phase 16 planning complete
 | Phase 16 P01 | 25 | 3 tasks | 3 files |
 | Phase 16 P02 | 6 | 4 tasks | 4 files |
 | Phase 16 P03 | 6 | 2 tasks | 1 files |
+| Phase 16 P04 | 5m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Plan 16-02: Phase 14 D-14 negative test renamed in place preserving the regression breadcrumb (test_run_help_lists_explain_phase16)
 - [Phase 16]: Plan 16-03: README documents Phase 16 pre-run digest + --explain composition matrix + Phase 16 sample green run
 - [Phase 16]: Plan 16-03: docs/mcp_test_framework_mvp_spec.md zero-diff (intentional) — spec is MVP design contract, not operator CLI output reference
+- [Phase ?]: Mirror renderer output literally in docs — README sample blocks quote what _runner.py emits char-for-char, including whitespace quirks.
 
 ### Blockers/Concerns
 
@@ -106,6 +108,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-12T06:04:20.929Z
+Last session: 2026-05-12T15:22:39.496Z
 Stopped at: Phase 16 context gathered
 Resume next: `/gsd-plan-phase 12`
