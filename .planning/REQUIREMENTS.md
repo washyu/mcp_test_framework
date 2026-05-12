@@ -62,10 +62,10 @@ REQ-IDs continue numbering from v1.1 (archived at `.planning/milestones/v1.1-REQ
 
 ### UX — Reporter UX overhaul
 
-- [ ] **UX-01**: Pre-run digest shown by default before tests execute: server, discovered tool count, running count + names, skipping count (with `--explain` cue), defaulting count, judges-per-tool table, test-plan totals (e.g. "20 contract cases"). Replaces pytest's misleading "N collected, M deselected" line.
+- [x] **UX-01**: Pre-run digest shown by default before tests execute: server, discovered tool count, running count + names, skipping count (with `--explain` cue), defaulting count, judges-per-tool table, test-plan totals (e.g. "20 contract cases"). Replaces pytest's misleading "N collected, M deselected" line.
 - [ ] **UX-02**: `--explain` flag adds full per-tool skip reasons (one line per skipped tool, formatted to stay readable at homelab-mcp scale ~70 tools). The `--explain` flag is plumbed through Typer at the framework CLI layer, not forwarded to pytest.
-- [ ] **UX-03**: Post-run summary aggregates per-tool PASS/FAIL/SKIP and per-judge reasoning into the domain UI's tail. Subsumes v1.1's `_reporter.py` per-tool summary (the plugin model may be obsoleted entirely by RUNNER-01).
-- [ ] **UX-04**: Output design tested at N=70 (homelab-mcp surface). Pre-run digest stays a single screen regardless of N; `--explain` mode produces ≤ N+5 lines and is grep-able.
+- [x] **UX-03**: Post-run summary aggregates per-tool PASS/FAIL/SKIP and per-judge reasoning into the domain UI's tail. Subsumes v1.1's `_reporter.py` per-tool summary (the plugin model may be obsoleted entirely by RUNNER-01).
+- [x] **UX-04**: Output design tested at N=70 (homelab-mcp surface). Pre-run digest stays a single screen regardless of N; `--explain` mode produces ≤ N+5 lines and is grep-able.
 - [ ] **UX-05**: `-q` / `--quiet` suppresses the digest and per-tool rows; only the final summary line is emitted. Mirrors v1.1's quiet-mode parity.
 
 ---
@@ -133,10 +133,10 @@ Note: v1.2 scoping moved the SEED-002 / SEED-005 / warm-up cohort from "v1.2 (vi
 | SURFACE-02 | Phase 15 | Complete |
 | SURFACE-03 | Phase 15 | Complete |
 | SURFACE-04 | Phase 15 | Complete |
-| UX-01 | Phase 16 | Pending |
+| UX-01 | Phase 16 | Complete |
 | UX-02 | Phase 16 | Pending |
-| UX-03 | Phase 16 | Pending |
-| UX-04 | Phase 16 | Pending |
+| UX-03 | Phase 16 | Complete |
+| UX-04 | Phase 16 | Complete |
 | UX-05 | Phase 16 | Pending |
 
 ---

@@ -4,14 +4,14 @@ milestone: v1.2
 milestone_name: Operator-First Design
 status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-05-12T05:19:46.492Z"
-last_activity: 2026-05-12 -- Phase 16 planning complete
+last_updated: "2026-05-12T05:47:11.526Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 28
-  completed_plans: 25
-  percent: 89
+  completed_plans: 26
+  percent: 93
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 15 — operator-vs-framework-test-surface-split
+**Current focus:** Phase 16 — reporter-ux-overhaul
 
 ## Current Position
 
-Phase: 16
-Plan: Not started
+Phase: 16 (reporter-ux-overhaul) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-12 -- Phase 16 planning complete
+Last activity: 2026-05-12
 
 ## Performance Metrics
 
@@ -39,6 +39,7 @@ Last activity: 2026-05-12 -- Phase 16 planning complete
 | Requirements scoped | 31 | All v1.2 reqs mapped 1:1 to phases (no orphans) |
 | Requirements complete | 0 | |
 | v1.1 closing metrics (reference) | 6 phases / 17 plans / 25 reqs | shipped 2026-05-08 |
+| Phase 16 P01 | 25 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -55,6 +56,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **5 phases for 31 reqs.** Comparable density to v1.1 (6 phases / 25 reqs). Phase 12 is intentionally larger (9 reqs) because CLEAN+PERSONA is mostly mechanical doc work; Phase 13 (7 reqs) is the heaviest single technical chunk (schema migration). No phase is a "feature half" — each delivers a coherent operator-perceivable capability.
 - **Granularity = standard.** v1.1's "coarse" justification (each phase genuinely separable) holds here too; calibrated 5 phases without padding or compression.
 - **No v1.3+ work in v1.2.** xdist (SEED-002), OpenAI-compat backend (SEED-005), warm-up stage all deferred to v1.3 per scoping decision. v1.2 = operator-first foundations; v1.3 = performance + portability.
+- [Phase ?]: Plan 16-01: _compose_pre_run_skip_reasons filters state-b via computed running set (Rule 1 deviation; smoke-test contract wins)
+- [Phase ?]: Plan 16-01: render_domain_ui no longer emits banner; two verbosity CLI e2e tests temporarily flipped to banner-ABSENCE until 16-02 wires pre-run digest
 
 ### Blockers/Concerns
 
@@ -96,6 +99,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-12T04:56:38.186Z
+Last session: 2026-05-12T05:47:05.820Z
 Stopped at: Phase 16 context gathered
 Resume next: `/gsd-plan-phase 12`
