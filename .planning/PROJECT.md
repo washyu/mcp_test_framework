@@ -10,34 +10,28 @@ A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema �
 
 ## Current State
 
-**Shipped:** v1.1 Multi-Tool + Isolation + JUnit (2026-05-08)
+**Shipped:** v1.2 Operator-First Design (2026-05-12)
 
-- 13 phases shipped (v1.0 + v1.1), 39 plans, 54/54 requirements satisfied across both milestones (29 + 25; audit-clean)
-- ~5,784 LOC Python under `src/mcp_test_framework/` + `tests/`
-- v1.1 generalizations: multi-tool discovery via `pytest_generate_tests`, per-session `HOME`/`USERPROFILE` redirect + null keyring backend (sha256-verified zero state mutation), `tools.<name>` config registry with `extra="forbid"` + `version: 1`, JUnit XML emit + `_reporter.py` per-tool summary plugin
-- Live green: `uv run mcp-test-framework run` against live `homelab-mcp` (via `uvx`) + Ollama `qwen3.6:latest` at `127.0.0.1:11434`
-- Default target tools: `list_keyring_credentials` + `suggest_deployments` (per-tool config drives the rest of homelab-mcp's surface to skip-by-default)
+- 18 phases shipped (v1.0 + v1.1 + v1.2), 69 plans, 85/85 requirements satisfied across all three milestones (29 + 25 + 31)
+- v1.2 carry-forward debt: live-stack UAT pair (Phases 13 & 14 — needs `homelab-mcp` on PATH), Phase 16 D-11 `--debug` per-judge breakdown deferred to v1.3
+- ~7,700+ LOC Python (post-v1.2 — +37,100 / −1,928 across 168 files in v1.2 alone, including doc churn and test additions)
+- v1.2 generalizations: operator-domain UI replaces pytest framing; `tools:` is an opt-in allowlist; config schema bumped to `version: 2`; `tests/contract/` vs `tests/framework/` split; `--raw` escape hatch preserves the pytest framing for maintainers
+- Live green: `uv run mcp-test-framework run` against live `homelab-mcp` (via `uvx`) + Ollama at `127.0.0.1:11434`
+- Default operator path: `mcp-test-framework config-init -o config.yaml` → edit allowlist → `mcp-test-framework run` (pre-run digest → opt-in tools execute → post-run domain UI)
 
-## Current Milestone: v1.2 Operator-First Design
+## Current Milestone: Planning v1.3
 
-**Goal:** Reshape the framework around an operator who didn't write the MCP server they're testing — make config safe by default, output legible, examples generic, and the test surface operator-vs-framework-split.
+No phases scoped yet. `/gsd-new-milestone` will frame v1.3 scope.
 
-**Target features:**
+**Strong v1.3 candidates carried forward:**
 
-- Doc & example cleanup (strip 18 planning-artifact IDs, generic `config.example.yaml`, new `examples/homelab-mcp.yaml`, self-contained `config-init` scaffold) — SEED-009
-- Vibe-coded persona reframe ("black-box" as user-facing feature, not test-discipline rule) — SEED-007
-- Config safety + opt-in tool selection (`tools:` as allowlist, auto-discover cwd/config.yaml, fail-loud, fix `MCPTF_CONFIG_FILE` typo silent-drop, drop `.env` + env-overlay entirely, schema `version: 2` migration) — SEED-006
-- Operator vs framework test surface split (`tests/contract/` vs `tests/framework/`) — SEED-010
-- Hybrid runner with domain UI (wrap `pytest.main()`, render MCP-domain UI from JUnit XML) — SEED-011
-- Reporter UX overhaul (pre-run digest + `--explain` flag, scales at N=70) — SEED-008
+- **D-11 — `--debug` per-judge breakdown block.** Phase 16 deferred this rung intentionally; surfaces per-judge raw responses inside the `--debug` ladder.
+- **SEED-002 — Tool-level parallelism via `pytest-xdist`** with read/write resource markers.
+- **SEED-005 — OpenAI-compat judge backend** (pluggable judge plumbing).
+- **SEED-001 — Replace rubric-style judge with agent tool-use loop**.
+- 15 plant-seed items total — see `.planning/seeds/` and Deferred section below.
 
-**Pre-committed v1.3 cohort (deferred):** SEED-002 (xdist parallelism), SEED-005 (OpenAI-compat backend), warm-up stage — "performance + portability" ships separately.
-
-**Key decisions locked at scoping:**
-- Drop `.env` + env-overlay entirely. Config sources = YAML + CLI flags only. Env vars become CI-secret passthrough only (e.g., API keys), not a config source. Real-world repro 2026-05-08: explicit `--config PATH` silently overridden by `.env`.
-- Bump config schema `version: 1 → 2` with loud migration error. Configs that relied on implicit-discovery (no `tools:` block → run everything) break with a clear message; `mcp-test-framework config-init` is the recovery action.
-- No automated planning-artifact regression guard. Manual hygiene during v1.2 cleanup; rely on review after.
-- Hybrid runner (SEED-011) decided BEFORE folder split (SEED-010) — runner contract drives the split.
+**Pre-committed cohort theme:** "performance + portability" — xdist parallelism, alternative judge backends, warm-up stage. Awaits scoping pass.
 
 ## Long-term Vision
 
@@ -118,17 +112,22 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 - ✓ Per-tool config registry: `tools.<name>` blocks with `skip` / `call_arguments` / `judges` / forward-compat `setup:` `depends_on:` reservations — v1.1 (TOOLCFG-01..07)
 - ✓ JUnit XML output (`--junit-xml=PATH`) + per-tool reporting via `_reporter.py` plugin — v1.1 (OUTPUT-01..03)
 - ✓ v1.1 documentation: README sections (Per-tool config, Isolation guarantee, CI integration) + EXTENDING.md walkthroughs (add a tool target, env passthrough allowlist) — v1.1 (DOC-04..07)
+- ✓ Doc & persona foundation: planning-artifact IDs stripped, `config.example.yaml` split (placeholder template + `examples/homelab-mcp.yaml` worked reference), `config-init` scaffold complete, "Testing an MCP server you didn't write" persona — v1.2 (CLEAN-01..06, PERSONA-01..03)
+- ✓ Config safety + opt-in tool selection: `tools:` allowlist, `--config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud` precedence, schema `version: 1 → 2` migration with LOCKED error message, `.env` + env-overlay dropped — v1.2 (SAFE-01..07, TOOLCFG-06 None/[]/subset semantics)
+- ✓ Hybrid runner with domain UI: `cli.py:run` wraps pytest subprocess, internal JUnit XML capture, MCP-domain UI in `_runner.py`, `-q` / default / `--explain` / `--debug` verbosity ladder, `--raw` maintainer escape hatch — v1.2 (RUNNER-01..06)
+- ✓ Operator vs framework test surface split: `tests/contract/` (operator) + `tests/framework/` (self-tests); runner default scope `tests/contract/`; banned-imports under `tests/framework/` — v1.2 (SURFACE-01..04)
+- ✓ Reporter UX overhaul: 8-line pre-run digest replaces pytest "N collected M deselected" framing; `--explain` grep-able skip rationale at N=70; post-run per-tool aggregation with per-judge reasoning on FAIL rows; D-12 height-bounded digest — v1.2 (UX-01..05)
 
 ### Active
 
-(Defining for v1.2 Operator-First Design — requirements being scoped via `/gsd-new-milestone` 2026-05-08; will populate after REQUIREMENTS.md is written.)
+(Defining for v1.3 — requirements scoped via `/gsd-new-milestone` after v1.2 close 2026-05-12.)
 
 ### Out of Scope
 
 - Multiple MCP servers in one run — generalization deferred until single-server contract is proven (✓ proven in v1.0; multi-tool-per-server proven in v1.1)
 - ~~Multiple tool targets in one run~~ — **shipped in v1.1** (MULTI-01..04: discovery + parameterized testing)
 - ~~JSON / JUnit output formats~~ — **shipped in v1.1** (OUTPUT-01..03)
-- ~~Pluggable judge backends (OpenAI-compatible, etc.)~~ — Ollama-only for v1.0/v1.1; SEED-005 plants the OpenAI-compat backend for v1.2
+- ~~Pluggable judge backends (OpenAI-compatible, etc.)~~ — Ollama-only for v1.0/v1.1/v1.2; SEED-005 carries to v1.3 cohort
 - HTTP and SSE MCP transports — stdio is sufficient to validate the contract (✓ validated)
 - LLM as test input generator — explicit Phase 2 ("Plant Seed" below); judge-only for MVP
 - Best-of-N judge consensus — single-shot at `score >= 4` proved adequate; revisit only if flaky in practice
@@ -184,6 +183,15 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 | Phase 08 — `extra="forbid"` + `version: 1` on `tools.<name>` config blocks | Typos must surface as Pydantic errors at config load, not silent test omissions | ✓ Good — forward-compat `setup:`/`depends_on:` reservations don't break the strict shape |
 | Phase 09 — `_reporter.py` as a pytest plugin (not CLI post-processor) | Plugin model uses live `terminalreporter` events; post-processor would re-parse pytest output. Plugin keeps the contract testable in-process | ✓ Good — 29 unit tests + 3 live tests pin OUTPUT-01..03 |
 | Phase 11 — gap-closure phase as last v1.1 phase | Milestone audit (W-1, W-3, W-4, W-5, W-6) surfaced paper-only drift before archive — closing in-milestone keeps audit-clean state | ✓ Good — 25/25 requirements Complete at archive |
+| Phase 12 — merged CLEAN + PERSONA into one phase | Both doc-heavy and small; separate phases would have been overhead for near-trivial work. Foundational hygiene lands first so downstream phases operate on clean docs | ✓ Good — 9 plans / 6 must-haves delivered; downstream phases never had to scrub artifact IDs |
+| Phase 13 — drop `.env` + env-overlay entirely | Real-world repro 2026-05-08: explicit `--config PATH` silently overridden by `.env`. Env-overlay was a footgun, not an ergonomic | ✓ Good — destructive-default class of bugs eliminated; debug session `dotenv-example-invisible` becomes moot |
+| Phase 13 — schema `version: 1 → 2` with LOCKED migration error | Inverting `tools:` to allowlist is a breaking change; loud error citing `config-init` is the correct migration UX | ✓ Good — fresh operators get the right scaffold; existing operators get an actionable path |
+| Phase 14 before Phase 15 (RUNNER before SURFACE split) | Runner contract drives what the folder split needs to support; reversing would have made the split speculative | ✓ Good — `tests/contract/` scope baked into `_build_pytest_args` defaults cleanly |
+| Phase 14 — hybrid runner via subprocess (not `pytest.main()`) | Subprocess isolation lets the wrapper capture JUnit XML via tempfile without coupling to pytest's in-process state; `--raw` escape hatch trivially bypasses | ✓ Good — operator path and maintainer path share the same config gate, diverge only on output rendering |
+| Phase 16 — D-13 verbosity ladder invariant ("each rung adds, none reshapes") | Composing `-q --debug` is allowed and renders "summary, then appendix"; prevents flag-pair combinatoric ambiguity | ✓ Good — orthogonal flags pass unit tests across all 4 combinations |
+| Phase 16 — D-11 per-judge breakdown deferred to v1.3 | Plan 16-01 found D-11 had no clear UI shape yet; deferring kept Phase 16 ship-shape without churning the unproven debug surface | — Pending — carries into v1.3 cohort |
+| Phase 16 — plan 16-05 inline gap closure (digest judges union) | Live UAT exposed `judges: (none configured)` lying about runtime behavior; TOOLCFG-06 None default must expand to RUBRIC_IDS at the digest layer | ✓ Good — 25 LOC fix + 3 regression tests; restored truth between digest and runtime |
+| v1.2 close — CLEAN-03 closed via `/gsd-quick` (not gap-closure phase) | 3-line patch (example configs to v2). Audit had documented it; a full phase for mechanical work would have been overhead | ✓ Good — audit→quick-fix loop demonstrates the milestone-audit value (caught what per-phase verification missed) |
 
 ## Plant Seed: LLM-Generated Test Cases (Post-MVP)
 
@@ -207,4 +215,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-10 — Phase 13 (config-safety-opt-in-tool-selection) complete: SAFE-01..07 delivered. Resolver enforces `--config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud`; `tools:` flipped to opt-in allowlist; schema `version: 1 → 2` with locked migration error; `.env` + env-overlay stripped; `TargetConfig` removed (single-tool focus via `--config focus-<tool>.yaml`); `docs/MIGRATION-v1-to-v2.md` shipped. v1.2 progress: 2/5 phases done (12, 13).*
+*Last updated: 2026-05-12 — v1.2 Operator-First Design milestone complete. All 5 phases (12–16) shipped, all 31 requirements satisfied (1 cross-phase BLOCKER caught by milestone audit and closed via quick task 260512-dcs). Carry-forward debt: live-stack UAT pair in Phases 13 & 14 (needs `homelab-mcp` on PATH); Phase 16 D-11 deferred to v1.3 per CONTEXT decision. Next: `/gsd-new-milestone` to scope v1.3 (performance + portability cohort).*

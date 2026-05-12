@@ -1,5 +1,36 @@
 # Milestones — mcp_test_framework
 
+## v1.2 — Operator-First Design
+
+**Shipped:** 2026-05-12
+**Phases:** 5 (12, 13, 14, 15, 16)
+**Plans:** 30 / 30 complete
+**Quick tasks:** 1 (260512-dcs — CLEAN-03 gap closure)
+**Requirements:** 31 / 31 satisfied (1 carry-forward live UAT pair in phases 13 & 14)
+**Source diff:** +37,100 / −1,928 across 168 files
+**Timeline:** 2026-05-09 → 2026-05-12 (4 days, 236 commits)
+**Audit:** [v1.2-MILESTONE-AUDIT.md](milestones/v1.2-MILESTONE-AUDIT.md) — status `tech_debt` (CLEAN-03 BLOCKER closed pre-completion)
+
+**Theme:** Reframe the framework around the operator persona — someone testing an MCP server they didn't write — by making every default behavior, error message, and output surface speak the operator's domain language instead of pytest/framework internals.
+
+**Key accomplishments:**
+
+- **Phase 12 — Doc & persona foundation.** Stripped planning-artifact IDs from operator-facing docs; split `config.example.yaml` into a 3-pattern placeholder template + a `examples/homelab-mcp.yaml` worked reference (history preserved via `git mv`); shipped the `config-init` scaffold + `_emit_operator_error` helper across all 8 cli.py/fixtures.py error surfaces; added the "Testing an MCP server you didn't write" persona reframe across README and EXTENDING.
+- **Phase 13 — Config safety & opt-in tool selection.** Inverted `tools:` from skip-list to allowlist (TOOLCFG-06 None=run-all-rubrics, []=opt-out, subset=literal); added `--config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud` precedence; bumped schema `version: 1 → 2` with a LOCKED migration error citing `config-init`; dropped `.env` and the env-overlay entirely (eliminating the silent-override class of bugs).
+- **Phase 14 — Hybrid runner with domain UI.** Rewrote `cli.py:run` to invoke pytest as a child subprocess with internal tempfile JUnit XML capture; new `src/mcp_test_framework/_runner.py` module owns the MCP-domain UI (header / per-tool rows / summary line); shipped the `-q` / default / `--debug` verbosity ladder (orthogonal, additive, never reshapes the layer below); `--raw` escape hatch preserves the pytest framing for maintainers while keeping the config pre-flight gate.
+- **Phase 15 — Operator vs framework test surface split.** `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests); runner default scope is `tests/contract/`, `--with-framework` appends (never replaces); banned-imports and snippet checks remain enforced under `tests/framework/`.
+- **Phase 16 — Reporter UX overhaul.** 8-line pre-run digest emitted before pytest (server / discovered / running / skipping / judges / test-plan totals) — replaces pytest's misleading "N collected, M deselected" framing; `--explain` flag emits grep-able N+5-line skip rationale at homelab-mcp scale (~70 tools); post-run aggregation per-tool + per-judge reasoning surface on FAIL rows; D-12 height-bounded digest passes capsys test at N=70.
+
+**v1.2 thesis validated:** An operator with no framework internals knowledge can `cd <my-mcp-project> && mcp-test-framework config-init -o config.yaml && (edit allowlist) && mcp-test-framework run` and get a clean domain-language experience start to finish.
+
+**Carry-forward debt:**
+- Phase 13: live-stack UAT — E2E run with real MCP server + v2 config; migration doc walkthrough (needs `homelab-mcp` on PATH).
+- Phase 14: live-stack UAT — `test_runner_live_smoke.py` with `-m live_homelab` + visual domain UI checks (needs live MCP + Ollama).
+- Phase 16: D-11 `--debug` per-judge breakdown block deferred to v1.3 per CONTEXT.md.
+- 15 plant-seed items deferred to v1.3+ (see PROJECT.md Deferred section).
+
+---
+
 A running log of shipped versions. Each entry summarizes what was delivered; full archives live in `.planning/milestones/v[X.Y]-*.md`.
 
 ---

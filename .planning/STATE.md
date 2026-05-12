@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Operator-First Design
-status: milestone_complete
+status: completed
 stopped_at: Phase 16 context gathered
-last_updated: "2026-05-12T15:58:04.330Z"
-last_activity: 2026-05-12 -- Phase 16 planning complete
+last_updated: "2026-05-12T16:43:37.761Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 30
-  completed_plans: 29
+  completed_plans: 30
   percent: 100
 ---
 
@@ -18,31 +18,28 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
+See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 16 — reporter-ux-overhaul
+**Current focus:** Between milestones — v1.2 shipped, v1.3 not yet scoped. `/gsd-new-milestone` to start v1.3.
 
 ## Current Position
 
-Phase: 16
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-12
+Milestone: v1.2 SHIPPED 2026-05-12 (Operator-First Design)
+Next: planning v1.3 (no phases scoped yet)
+Last activity: 2026-05-12 — v1.2 milestone closed; ROADMAP/PROJECT/MILESTONES updated; REQUIREMENTS.md archived
 
 ## Performance Metrics
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Phases planned | 5 | 12, 13, 14, 15, 16 |
-| Phases complete | 0 | |
-| Requirements scoped | 31 | All v1.2 reqs mapped 1:1 to phases (no orphans) |
-| Requirements complete | 0 | |
+| v1.0 closing metrics (reference) | 7 phases / 22 plans / 29 reqs | shipped 2026-05-06 |
 | v1.1 closing metrics (reference) | 6 phases / 17 plans / 25 reqs | shipped 2026-05-08 |
-| Phase 16 P01 | 25 | 3 tasks | 3 files |
-| Phase 16 P02 | 6 | 4 tasks | 4 files |
-| Phase 16 P03 | 6 | 2 tasks | 1 files |
-| Phase 16 P04 | 5m | 2 tasks | 1 files |
+| v1.2 closing metrics | 5 phases / 30 plans / 31 reqs | shipped 2026-05-12 |
+| v1.2 source diff | +37,100 / −1,928 across 168 files | doc churn + tests dominate |
+| v1.2 timeline | 4 days (2026-05-09 → 2026-05-12) | 236 commits in range |
+| v1.2 quick tasks | 1 (260512-dcs) | CLEAN-03 closure via audit |
+| Cross-milestone totals | 18 phases / 69 plans / 85 reqs | all satisfied at milestone close |
 
 ## Accumulated Context
 
