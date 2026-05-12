@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 01–05 (shipped 2026-05-06) — see [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Multi-Tool + Isolation + JUnit** — Phases 06–11 (shipped 2026-05-08) — see [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Operator-First Design** — Phases 12–16 (shipped 2026-05-12) — see [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
-- 📋 **v1.3** — TBD (planning not yet started; `/gsd-new-milestone` to scope)
+- 🚧 **v1.3 Homelab Scenario Testing** — Phases 17–21 (planning, scoped 2026-05-12)
 
 ## Phases
 
@@ -47,15 +47,70 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 </details>
 
-### 📋 v1.3 — TBD
+### 🚧 v1.3 Homelab Scenario Testing (Phases 17–21) — IN PLANNING
 
-No phases scoped yet. Start with `/gsd-new-milestone` to define the milestone goal, run domain research, define requirements, and decompose into phases. Strong v1.3 candidates carried forward from earlier plant-seeds and v1.2 deferred items:
+- [ ] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06)
+- [ ] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02)
+- [ ] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01)
+- [ ] **Phase 20: Preflight + conditional skip** — `requires_homelab(...)` marker factory with fast, graceful reachability checks (PREFLIGHT-01..02)
+- [ ] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03)
 
-- **D-11 — `--debug` per-judge breakdown block** (Phase 16 defer — `--debug` ladder rung that surfaces per-judge raw responses).
-- **SEED-002 — Tool-level parallelism via `pytest-xdist`** with read/write resource markers.
-- **SEED-005 — OpenAI-compat judge backend** (swappable judge plumbing).
-- **SEED-001 — Replace rubric-style judge with agent tool-use loop**.
-- 15 plant-seed items total (see `.planning/seeds/` + PROJECT.md Deferred section).
+## Phase Details
+
+### Phase 17: Schema-driven codegen surface
+**Goal**: An SDET can run a single command and get importable, typed Python classes for every tool the connected MCP server advertises — covering both `outputSchema`-declared and `outputSchema`-undeclared tools through a uniform base.
+**Depends on**: Phase 16 (v1.2 close — runner contract, config gate)
+**Requirements**: CODEGEN-01, CODEGEN-02, CODEGEN-03, CODEGEN-04, CODEGEN-05, CODEGEN-06
+**Success Criteria** (what must be TRUE):
+  1. Operator can run `mcp-test-framework gen-sdet-classes` against a configured MCP server and find generated `<ToolName>Params` / `<ToolName>Response` classes under `src/mcp_test_framework/sdet/generated/<server_slug>/` that compile under mypy/pyright with no errors.
+  2. Re-running `gen-sdet-classes` is idempotent — only the generated files inside `generated/<server_slug>/` change; nothing outside that tree is touched; generated files carry a clear "do not hand-edit" header.
+  3. A test file importing a generated `Params` class and calling `tool("name").call(params)` validates the params against the live `inputSchema` before the wire call (Pydantic) and returns a typed response object on the way back.
+  4. The `ToolResponse` base provides `.raw`, `.data`, `.text`, `.is_error` uniformly — test code accessing `.data["..."]` or `.text` does not need to branch on whether the response type is `outputSchema`-declared or generic.
+**Plans**: TBD
+
+### Phase 18: SDET test surface + typed errors
+**Goal**: An SDET can write `tests/sdet/test_<name>.py`, import `mcp_session` + `tool("name")` from a stable public seam, and run those tests via `mcp-test-framework run --sdet` — with tool-side errors surfacing as a typed `ToolCallError` instead of an untyped `CallToolResult` blob.
+**Depends on**: Phase 17 (call wrappers wrap the generated response classes)
+**Requirements**: SDET-01, SDET-02, SDET-03, SDET-04, UI-02
+**Success Criteria** (what must be TRUE):
+  1. `tests/sdet/` is a recognized discovery scope; the default `mcp-test-framework run` collects only `tests/contract/` (no behavior change); `mcp-test-framework run --sdet` opts the SDET scope into the run and composes cleanly with `-q`, `--explain`, `--debug`, `--raw`, and `--with-framework`.
+  2. An SDET importing `from mcp_test_framework.sdet import mcp_session, tool` gets a session-scoped `McpTestClient` wrapper and a `tool(name)` builder; both require `@pytest.mark.asyncio` markers under pytest-asyncio strict mode.
+  3. When a tool call returns `result.isError = True`, the call wrapper raises `ToolCallError` with `.tool` / `.code` / `.message` / `.raw` populated; the existing em-dash failure-detail pattern from Phase 16 surfaces `.code` / `.message` in default-mode FAIL rows.
+  4. Under `--debug`, the raw `CallToolResult` for a failed call is dumped into the debug appendix without crashing the renderer.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 19: Stateful primitives + domain UI integration
+**Goal**: An SDET can author a create-modify-delete scenario whose teardown reliably executes even when an intervening assertion fails, see each scenario step rendered as a nested row under its parent tool group in the domain UI, and have the framework's own dogfood scenario (VM lifecycle against Proxmox) demonstrate the canonical idiom end-to-end.
+**Depends on**: Phase 18 (uses `mcp_session` + `tool()` + `ToolCallError`)
+**Requirements**: STATE-01, STATE-02, STATE-03, STATE-04, UI-01
+**Success Criteria** (what must be TRUE):
+  1. The VM-lifecycle dogfood scenario (`create_vm` → `modify_vm` → `delete_vm`) ships in this repo under `tests/sdet/`, uses module-scope yield fixtures, and on a live Proxmox-reachable run produces a clean green result.
+  2. A deliberately-failing dogfood test in `tests/framework/` (or equivalent self-test surface) asserts that a stateful fixture's `yield`-teardown still ran after an intervening test raised — cleanup-on-failure is enforced and observable.
+  3. SDET scenario runs render through `_render_per_tool_rows`: each scenario module appears as a per-tool group header (e.g. `proxmox_vm_lifecycle`); individual test functions render as nested rows with their function names (`create_returns_pending_vm`, `modify_accepts_cpu_increase`, etc.) and the same PASS/FAIL/SKIP glyph vocabulary the contract pass already uses.
+  4. Cross-file scenario ordering via `pytest-order` (or equivalent) is documented as a recipe; the framework ships no custom ordering mechanism.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 20: Preflight + conditional skip
+**Goal**: An SDET decorating a scenario module with `requires_homelab(proxmox=True, ollama=False, ...)` gets a fast, graceful SKIP on hosts where the named subsystem isn't reachable — with the unreachable target named in the skip reason and zero stack traces.
+**Depends on**: Phase 18 (exports from the `mcp_test_framework.sdet` namespace)
+**Requirements**: PREFLIGHT-01, PREFLIGHT-02
+**Success Criteria** (what must be TRUE):
+  1. `from mcp_test_framework.sdet import requires_homelab` is importable; applying `@requires_homelab(proxmox=True)` to a module/class/function under `tests/sdet/` produces a clean SKIP when Proxmox is unreachable, naming the host that failed reachability.
+  2. Reachability checks for each supported subsystem (Proxmox, Ollama, MCP server) return in sub-second wall-clock time on an unreachable host (no long TCP-connect or HTTP timeout); a refused-connection or DNS-failure path produces a clean SKIP, not a stack trace.
+  3. The VM-lifecycle dogfood scenario from Phase 19, when run on a host with no Proxmox, produces a clean SKIP block with the unreachable target named — not a green run, not a stack trace, not a misleading FAIL.
+**Plans**: TBD
+
+### Phase 21: SDET authoring docs + README parity
+**Goal**: A new SDET arriving at the repo finds a step-by-step authoring walkthrough using the VM-lifecycle scenario as the worked example, understands the codegen regeneration workflow, and sees one scenario sample in the README whose output is char-for-char identical to what the runner emits.
+**Depends on**: Phases 17–20 (docs describe the shipped surface, not a moving target)
+**Requirements**: DOC-SDET-01, DOC-SDET-02, DOC-SDET-03
+**Success Criteria** (what must be TRUE):
+  1. `docs/SDET-AUTHORING.md` exists, uses the VM-lifecycle scenario as its worked example, and covers: fixture patterns (`mcp_session`, `tool()`), module-scope state passing, `requires_homelab` preflight, response-typing degradation for `outputSchema`-undeclared tools, and the cleanup-on-failure contract.
+  2. The codegen regeneration workflow is documented (when to regen, what gets overwritten, mypy/pyright as the change-detection signal, import-surface stability contract); CLAUDE.md updated to note the dual operator+SDET persona.
+  3. The README has one SDET scenario sample whose rendered output block matches the runner's emission char-for-char (Phase 16 / SEED-008 doc-mirroring contract); a snippet-correctness test in `tests/framework/` pins the parity against drift.
+**Plans**: TBD
 
 ## Progress
 
@@ -79,3 +134,8 @@ No phases scoped yet. Start with `/gsd-new-milestone` to define the milestone go
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete | 2026-05-11 |
 | 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 5/5 | Complete | 2026-05-12 |
+| 17. Schema-driven codegen surface | v1.3 | 0/? | Not started | — |
+| 18. SDET test surface + typed errors | v1.3 | 0/? | Not started | — |
+| 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
+| 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
+| 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |

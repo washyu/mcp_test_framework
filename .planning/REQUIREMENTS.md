@@ -107,28 +107,38 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 
 ## Traceability Table
 
-| Requirement ID | Phase | Status   |
-| -------------- | ----- | -------- |
-| SDET-01        | TBD   | Pending  |
-| SDET-02        | TBD   | Pending  |
-| SDET-03        | TBD   | Pending  |
-| SDET-04        | TBD   | Pending  |
-| CODEGEN-01     | TBD   | Pending  |
-| CODEGEN-02     | TBD   | Pending  |
-| CODEGEN-03     | TBD   | Pending  |
-| CODEGEN-04     | TBD   | Pending  |
-| CODEGEN-05     | TBD   | Pending  |
-| CODEGEN-06     | TBD   | Pending  |
-| STATE-01       | TBD   | Pending  |
-| STATE-02       | TBD   | Pending  |
-| STATE-03       | TBD   | Pending  |
-| STATE-04       | TBD   | Pending  |
-| PREFLIGHT-01   | TBD   | Pending  |
-| PREFLIGHT-02   | TBD   | Pending  |
-| UI-01          | TBD   | Pending  |
-| UI-02          | TBD   | Pending  |
-| DOC-SDET-01    | TBD   | Pending  |
-| DOC-SDET-02    | TBD   | Pending  |
-| DOC-SDET-03    | TBD   | Pending  |
+| Requirement ID | Phase    | Status   |
+| -------------- | -------- | -------- |
+| SDET-01        | Phase 18 | Pending  |
+| SDET-02        | Phase 18 | Pending  |
+| SDET-03        | Phase 18 | Pending  |
+| SDET-04        | Phase 18 | Pending  |
+| CODEGEN-01     | Phase 17 | Pending  |
+| CODEGEN-02     | Phase 17 | Pending  |
+| CODEGEN-03     | Phase 17 | Pending  |
+| CODEGEN-04     | Phase 17 | Pending  |
+| CODEGEN-05     | Phase 17 | Pending  |
+| CODEGEN-06     | Phase 17 | Pending  |
+| STATE-01       | Phase 19 | Pending  |
+| STATE-02       | Phase 19 | Pending  |
+| STATE-03       | Phase 19 | Pending  |
+| STATE-04       | Phase 19 | Pending  |
+| PREFLIGHT-01   | Phase 20 | Pending  |
+| PREFLIGHT-02   | Phase 20 | Pending  |
+| UI-01          | Phase 19 | Pending  |
+| UI-02          | Phase 18 | Pending  |
+| DOC-SDET-01    | Phase 21 | Pending  |
+| DOC-SDET-02    | Phase 21 | Pending  |
+| DOC-SDET-03    | Phase 21 | Pending  |
 
-**Total: 21 requirements.** Phase assignments will be filled by the roadmapper.
+**Total: 21 requirements mapped across 5 phases (17–21). Coverage: 21/21 (100%).**
+
+### Phase coverage summary
+
+| Phase | Requirements                                                                | Count |
+| ----- | --------------------------------------------------------------------------- | ----- |
+| 17    | CODEGEN-01, CODEGEN-02, CODEGEN-03, CODEGEN-04, CODEGEN-05, CODEGEN-06      | 6     |
+| 18    | SDET-01, SDET-02, SDET-03, SDET-04, UI-02                                   | 5     |
+| 19    | STATE-01, STATE-02, STATE-03, STATE-04, UI-01                               | 5     |
+| 20    | PREFLIGHT-01, PREFLIGHT-02                                                  | 2     |
+| 21    | DOC-SDET-01, DOC-SDET-02, DOC-SDET-03                                       | 3     |
