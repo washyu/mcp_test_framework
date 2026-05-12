@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: planning
-last_updated: "2026-05-12T23:30:00.000Z"
-last_activity: 2026-05-12
+status: completed
+stopped_at: Phase 17 context gathered
+last_updated: "2026-05-12T23:24:20.261Z"
+last_activity: 2026-05-12 — v1.3 roadmap created
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -71,6 +71,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **Carry-forward debt:** Phase 13 + 14 live-stack UATs from v1.2 will close opportunistically during v1.3 — the SDET runs against live homelab-mcp + Proxmox + Ollama are the same live-stack exercise those UATs were waiting on. Phase 16 D-11 `--debug` per-judge breakdown remains deferred to v1.5 (cohort with SEED-003); v1.3 does NOT pick it up.
 
 **v1.2 plan-checks (preserved from v1.2 milestone):**
+
 - [Phase ?]: Plan 16-01: _compose_pre_run_skip_reasons filters state-b via computed running set (Rule 1 deviation; smoke-test contract wins)
 - [Phase ?]: Plan 16-01: render_domain_ui no longer emits banner; two verbosity CLI e2e tests temporarily flipped to banner-ABSENCE until 16-02 wires pre-run digest
 - [Phase ?]: Plan 16-02: --explain owned by Typer wrapper, never forwarded to pytest (D-07 enforced by subprocess stub assert)
@@ -126,6 +127,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-12T23:30:00.000Z
-Stopped at: v1.3 roadmap created (5 phases, 21/21 reqs mapped)
+Last session: 2026-05-12T23:24:20.254Z
+Stopped at: Phase 17 context gathered
 Resume next: `/gsd-plan-phase 17`
