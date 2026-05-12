@@ -136,15 +136,13 @@ def test_run_help_lists_quiet_and_debug() -> None:
     assert "--debug" in result.output
 
 
-def test_run_help_does_not_list_explain() -> None:
-    """D-14: --explain is owned by Phase 16, not Phase 14."""
+def test_run_help_lists_explain_phase16() -> None:
+    """Phase 16 D-07: --explain is registered by the Typer wrapper.
+    (Inverts Phase 14 D-14's deferral assertion now that Phase 16 ships.)
+    """
     result = _invoke("run", "--help")
     assert result.exit_code == 0, result.output
-    # `--explain` flag MUST NOT appear in the help text. The literal
-    # string "use --explain to list" IS allowed inside the header at
-    # runtime (forward-reference hint) but is not in `--help`.
-    assert "--explain " not in result.output
-    assert "--explain\n" not in result.output
+    assert "--explain" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -213,10 +211,9 @@ def test_run_default_renders_full_domain_ui(monkeypatch, tmp_path) -> None:
 
     result = _invoke("run", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    # Phase 16 D-01: header moved pre-run. Plan 16-01 removed the call site
-    # from render_domain_ui; Plan 16-02 will wire _render_pre_run_digest in
-    # cli.py. Until 16-02 lands, default-mode CLI output omits the banner.
-    assert "MCP Test Framework" not in result.output
+    # Phase 16 D-01: pre-run digest now emits BEFORE the subprocess (wired in
+    # Plan 16-02). Banner is back in default-mode CLI output, just earlier.
+    assert "MCP Test Framework" in result.output
     assert "Result:" in result.output
     # No pytest framing.
     assert "test session starts" not in result.output
@@ -235,13 +232,15 @@ def test_run_debug_appends_appendix_after_domain_ui(monkeypatch, tmp_path) -> No
 
     result = _invoke("run", "--debug", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    # D-13 invariant + Phase 16 D-01: header moved pre-run (wired in Plan 16-02);
-    # appendix still appears after the per-tool rows in the post-run output.
+    # D-13 invariant + Phase 16 D-01: pre-run digest banner now emits BEFORE
+    # the subprocess (Plan 16-02 wired _render_pre_run_digest in cli.py);
+    # debug appendix still appears AFTER per-tool rows + summary.
+    assert "MCP Test Framework" in result.output
     assert "--- raw pytest output ---" in result.output
-    # Order: per-tool rows ("passing:") BEFORE the appendix.
-    passing_idx = result.output.index("Result:")
+    # Order: banner BEFORE appendix (banner is pre-pytest, appendix is post-pytest).
+    header_idx = result.output.index("MCP Test Framework")
     appendix_idx = result.output.index("--- raw pytest output ---")
-    assert passing_idx < appendix_idx
+    assert header_idx < appendix_idx
 
 
 def test_run_quiet_plus_debug_renders_summary_then_appendix(
@@ -292,3 +291,47 @@ def test_run_raw_ignores_quiet_and_debug(monkeypatch, tmp_path) -> None:
     assert "MCP Test Framework" not in result.output  # no domain UI header
     assert "Result:" not in result.output  # no domain UI summary
     assert "--- raw pytest output ---" not in result.output  # no appendix
+
+
+# ---------------------------------------------------------------------------
+# Phase 16: -q quiet-mode parity (D-09 / UX-05)
+# ---------------------------------------------------------------------------
+
+
+def test_run_quiet_emits_exactly_one_line(monkeypatch, tmp_path) -> None:
+    """Phase 16 D-09 / UX-05: -q output is exactly one non-empty line
+    (the `Result:` summary). The pre-run digest and per-tool rows are both
+    suppressed."""
+    cfg = _make_valid_config(tmp_path)
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_writing_xml("junit-all-pass.xml"),
+    )
+    monkeypatch.setattr(
+        "mcp_test_framework.cli._discover_tools_for_run",
+        lambda c: ["alpha", "beta", "gamma"],
+    )
+    result = _invoke("run", "-q", "--config", str(cfg))
+    assert result.exit_code == 0, result.output
+    non_empty = [l for l in result.output.split("\n") if l.strip()]
+    assert len(non_empty) == 1, (
+        f"-q emitted {len(non_empty)} non-empty lines: {result.output!r}"
+    )
+    assert non_empty[0].startswith("Result:"), repr(non_empty[0])
+
+
+def test_run_quiet_suppresses_pre_run_digest(monkeypatch, tmp_path) -> None:
+    """Phase 16 D-09: -q gates the pre-run digest off in cli.py:run."""
+    cfg = _make_valid_config(tmp_path)
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_writing_xml("junit-all-pass.xml"),
+    )
+    monkeypatch.setattr(
+        "mcp_test_framework.cli._discover_tools_for_run",
+        lambda c: ["alpha"],
+    )
+    result = _invoke("run", "-q", "--config", str(cfg))
+    assert "MCP Test Framework" not in result.output
+    assert "Discovered:" not in result.output
+    assert "use --explain to list" not in result.output
