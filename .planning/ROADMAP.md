@@ -66,7 +66,12 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   2. Re-running `gen-sdet-classes` is idempotent — only the generated files inside `generated/<server_slug>/` change; nothing outside that tree is touched; generated files carry a clear "do not hand-edit" header.
   3. A test file importing a generated `Params` class and calling `tool("name").call(params)` validates the params against the live `inputSchema` before the wire call (Pydantic) and returns a typed response object on the way back.
   4. The `ToolResponse` base provides `.raw`, `.data`, `.text`, `.is_error` uniformly — test code accessing `.data["..."]` or `.text` does not need to branch on whether the response type is `outputSchema`-declared or generic.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 17-01-PLAN.md — ToolResponse base (CODEGEN-04)
+  - [ ] 17-02-PLAN.md — JSON-Schema walker + file emitter (CODEGEN-02, CODEGEN-03, CODEGEN-06)
+  - [ ] 17-03-PLAN.md — tool() factory + Phase-18 seam (CODEGEN-05)
+  - [ ] 17-04-PLAN.md — gen-sdet-classes Typer command (CODEGEN-01)
+  - [ ] 17-05-PLAN.md — pyright dev dep + typecheck gate (CODEGEN-01..06 verification)
 
 ### Phase 18: SDET test surface + typed errors
 **Goal**: An SDET can write `tests/sdet/test_<name>.py`, import `mcp_session` + `tool("name")` from a stable public seam, and run those tests via `mcp-test-framework run --sdet` — with tool-side errors surfacing as a typed `ToolCallError` instead of an untyped `CallToolResult` blob.
@@ -134,7 +139,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete | 2026-05-11 |
 | 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 5/5 | Complete | 2026-05-12 |
-| 17. Schema-driven codegen surface | v1.3 | 0/? | Not started | — |
+| 17. Schema-driven codegen surface | v1.3 | 0/5 | Planned | — |
 | 18. SDET test surface + typed errors | v1.3 | 0/? | Not started | — |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
