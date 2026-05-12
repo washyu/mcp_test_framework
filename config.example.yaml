@@ -25,8 +25,8 @@ mcp_server:
 # Outer budget cap on each judge HTTP call.
 judge_timeout_seconds: 120
 
-# Schema version. This release accepts version 1.
-version: 1
+# Schema version. This release accepts version 2.
+version: 2
 
 # Per-tool registry: each entry below illustrates one pattern variation.
 # Replace placeholder names with actual tool names from

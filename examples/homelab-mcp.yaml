@@ -1,6 +1,6 @@
 # Worked reference for the homelab-mcp server.
 # Copy to config.yaml at your project root, or point MCPTF_CONFIG_FILE at it.
-# Precedence: CLI > env > .env > YAML > defaults.
+# Precedence: CLI > env > YAML > defaults.
 
 ollama:
   base_url: http://127.0.0.1:11434
@@ -16,8 +16,8 @@ mcp_server:
 
 judge_timeout_seconds: 120
 
-# Schema version. This release accepts version 1.
-version: 1
+# Schema version. This release accepts version 2.
+version: 2
 
 # Per-tool registry. Keys MUST match tool names returned by
 # `mcp-test-framework list-tools`. Tools with no entry use safe defaults
