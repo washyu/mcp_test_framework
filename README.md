@@ -78,8 +78,9 @@ Skipping:    56  (use --explain to list)
 Judges:      clarity, disambiguation, parameters
 Test plan:   20 contract cases
 
-list_keyring_credentials  ✓ PASS
-suggest_deployments       ✓ PASS
+passing:
+  list_keyring_credentials  ✓ PASS
+  suggest_deployments       ✓ PASS
 
 Result: 20 PASS / 0 FAIL / 560 SKIP  in 4.3s
 ```
@@ -222,8 +223,9 @@ Skipping:    56  (use --explain to list)
 Judges:      clarity, disambiguation, parameters
 Test plan:   20 contract cases
 
-list_keyring_credentials  ✓ PASS
-suggest_deployments       ✓ PASS
+passing:
+  list_keyring_credentials  ✓ PASS
+  suggest_deployments       ✓ PASS
 
 Result: 20 PASS / 0 FAIL / 560 SKIP  in 4.3s
 ```
