@@ -367,9 +367,9 @@ def run(
         "--raw",
         help=(
             "Bypass the domain UI wrapper and stream pytest's native output. "
-            "All flags forward verbatim to pytest. Equivalent to "
-            "`uv run pytest tests/contract/` modulo the config pre-flight gate "
-            "(which still runs)."
+            "All flags forward verbatim to pytest. Default scope is "
+            "tests/contract; pass --with-framework to also include "
+            "tests/framework. The config pre-flight gate still runs."
         ),
     ),
     debug: bool = typer.Option(
