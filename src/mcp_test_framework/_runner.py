@@ -305,6 +305,13 @@ _SKIP_REASON_CAP: int = 3
 _REASON_NOT_SELECTED = "not selected in config"        # state (a): unlisted
 _REASON_EXPLICIT_DEFAULT = "explicit skip in config"   # state (c): default
 
+# Phase 16 D-03: pre-run "Test plan" multiplier. Pinned by
+# tests/framework/unit/test_runner_pre_run_digest.py::test_cases_per_contract_tool_constant_locked
+# AND by tests/framework/unit/test_runner_pre_run_digest.py::test_cases_per_contract_tool_matches_actual_parametrize_count
+# (which AST-counts test_* funcs in tests/contract/test_mcp_tool_contract.py).
+# Sources: 5 schema validators + 4 judge dimensions + 1 output conformance = 10.
+CASES_PER_CONTRACT_TOOL: int = 10
+
 
 def _extract_tool_name(nodeid_or_name: str) -> str | None:
     """Return tool name from `[<tool>]` parametrize suffix, or None.
@@ -590,6 +597,21 @@ def _compose_unparametrized_skips_from_config(
         else:
             result[name] = _REASON_NOT_SELECTED
     return result
+
+
+def _compose_pre_run_skip_reasons(
+    discovered_tools: list[str],
+    tools_config: dict,
+) -> dict[str, str]:
+    """Phase 16 D-05/D-14: pre-run skip-reason map for `--explain`.
+
+    Thin wrapper that makes the `ran_tools=set()` pre-run intent explicit
+    at the call site (pytest hasn't run yet, so no tool has 'ran').
+    Returns: {tool_name: reason_string} for every state-(a)/(c) skip.
+    """
+    return _compose_unparametrized_skips_from_config(
+        discovered_tools, tools_config, ran_tools=set()
+    )
 
 
 # ---------------------------------------------------------------------------
