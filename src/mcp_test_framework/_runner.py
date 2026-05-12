@@ -682,6 +682,84 @@ def _render_header(ctx: RenderContext, parsed: ParsedRun, file=None) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Phase 16 D-01: Pre-run digest — moves SEED-011 §2 header to BEFORE pytest.
+# ---------------------------------------------------------------------------
+
+
+def _render_pre_run_digest(
+    ctx: RenderContext,
+    with_framework: bool = False,
+    explain: bool = False,
+    file=None,
+) -> None:
+    """Phase 16 D-01/D-03/D-04/D-12: pre-run digest emitted before pytest runs.
+
+    Lines (exact order, ≤ 10 total in default mode; up to 11 with with_framework=True):
+      ========================================
+      MCP Test Framework
+      ========================================
+      MCP server:  {server_cmd}
+      Discovered:  {N} tools
+      Running:     {R}  ({comma-joined names, sorted})
+      Skipping:    {S}  (use --explain to list)   [hint omitted if explain=True]
+      Judges:      {comma-joined, sorted}
+      Test plan:   {R * CASES_PER_CONTRACT_TOOL} contract cases
+                   + framework self-tests        [only if with_framework=True]
+      (blank line)
+
+    `file=None` -> sys.stdout at call-time (capsys-friendly; see _render_header
+    docstring for the rationale).
+
+    D-04: two buckets only — Running and Skipping. The Phase 13 state-(a) /
+    state-(c) distinction is visible in --explain output, not here.
+    D-12: digest height ≤ 10 lines regardless of N (the Skipping list is
+    NEVER inline-expanded here — `--explain` is the expansion surface).
+
+    Running list is derived from `ctx.discovered_tools` filtered by
+    `ctx.tools_config` (state-b: listed AND not skip:true). This matches
+    the runtime selection logic in tests/conftest.py without re-importing it.
+    """
+    if file is None:
+        file = sys.stdout
+
+    discovered_n = len(ctx.discovered_tools)
+    # state-b: tool is in tools_config AND tools_config[t].skip is not True.
+    # Anything else (state-a unlisted, state-c skip:true) is "skipping".
+    running = sorted(
+        t
+        for t in ctx.discovered_tools
+        if t in ctx.tools_config and not getattr(ctx.tools_config[t], "skip", False)
+    )
+    running_n = len(running)
+    skipping_n = max(0, discovered_n - running_n)
+    judges_text = ", ".join(ctx.judges) if ctx.judges else "(none configured)"
+    running_text = ", ".join(running) if running else "(none)"
+    planned_cases = running_n * CASES_PER_CONTRACT_TOOL
+
+    print("=" * 40, file=file)
+    print("MCP Test Framework", file=file)
+    print("=" * 40, file=file)
+    print(f"MCP server:  {ctx.server_cmd}", file=file)
+    print(f"Discovered:  {discovered_n} tools", file=file)
+    print(f"Running:     {running_n:>2}  ({running_text})", file=file)
+    # REVISION: omit "(use --explain to list)" hint when explain=True (the
+    # explain block renders right below, so the hint would lie).
+    if explain:
+        print(f"Skipping:    {skipping_n:>2}", file=file)
+    else:
+        print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+    print(f"Judges:      {judges_text}", file=file)
+    print(f"Test plan:   {planned_cases} contract cases", file=file)
+    # REVISION: --with-framework suffix emits IMMEDIATELY after Test plan line,
+    # BEFORE the trailing blank, as a continuation line. 13-space indent matches
+    # the label column width so "+ framework self-tests" visually hangs under
+    # the contract-cases value.
+    if with_framework:
+        print("             + framework self-tests", file=file)
+    print("", file=file)  # blank line before next section
+
+
+# ---------------------------------------------------------------------------
 # Per-tool rows (Phase 09 CD-03 ordering, D-08 reasoning, em-dash separator)
 # ---------------------------------------------------------------------------
 
