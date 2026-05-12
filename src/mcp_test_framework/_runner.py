@@ -605,12 +605,26 @@ def _compose_pre_run_skip_reasons(
 ) -> dict[str, str]:
     """Phase 16 D-05/D-14: pre-run skip-reason map for `--explain`.
 
-    Thin wrapper that makes the `ran_tools=set()` pre-run intent explicit
-    at the call site (pytest hasn't run yet, so no tool has 'ran').
-    Returns: {tool_name: reason_string} for every state-(a)/(c) skip.
+    Pre-run wrapper that exposes ONLY state-(a) unlisted + state-(c) explicit
+    skips. State-(b) tools (listed AND skip=False) are running pre-run and
+    must NOT appear in the skip-explain output. The post-run composer's
+    defensive `skip=False -> _REASON_NOT_SELECTED` fallback is correct for
+    post-run (a state-b tool that produced no testcase is anomalous) but
+    incorrect pre-run (state-b is the running set).
+
+    Returns: {tool_name: reason_string} for state-(a)/(c) skips only.
     """
+    # Compute the running set (state-b: in config AND skip != True), then
+    # delegate to the post-run composer with ran_tools=<running>. This filters
+    # state-b out via the existing `if name in ran_tools: continue` clause,
+    # leaving only state-(a) unlisted + state-(c) explicit-skip entries.
+    running: set[str] = {
+        name
+        for name in discovered_tools
+        if name in tools_config and not getattr(tools_config[name], "skip", False)
+    }
     return _compose_unparametrized_skips_from_config(
-        discovered_tools, tools_config, ran_tools=set()
+        discovered_tools, tools_config, ran_tools=running
     )
 
 
@@ -759,6 +773,45 @@ def _render_pre_run_digest(
     print("", file=file)  # blank line before next section
 
 
+def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
+    """Phase 16 D-05/D-13: `--explain` expansion of the digest's Skipping hint.
+
+    Lines (alphabetical order):
+      Skipping (N):
+        <tool>  — <reason>      [N times, sorted alphabetically]
+      (blank line)
+
+    Reasons sourced from `_compose_pre_run_skip_reasons` (Phase 14's pure
+    composer called with `ran_tools=set()` since pytest hasn't run yet).
+
+    Format invariants (D-13, grep-able at N=70):
+      - One tool per line, no wrapping.
+      - U+2014 em-dash separator (matches Phase 09 SC-3 / Phase 14 _render_per_tool_rows).
+      - Tool name left-justified to width(longest skipped tool name) for visual scan.
+      - Output footprint ≤ N+2 lines (header + N tool lines + 1 trailing blank).
+
+    `file=None` -> sys.stdout at call-time (capsys-friendly).
+    """
+    if file is None:
+        file = sys.stdout
+
+    skipped = _compose_pre_run_skip_reasons(ctx.discovered_tools, ctx.tools_config)
+    if not skipped:
+        # Edge: nothing to explain. Emit a zero-tool header so the operator
+        # sees the empty state explicitly rather than silence.
+        print("Skipping (0):", file=file)
+        print("", file=file)
+        return
+
+    name_width = max(len(t) for t in skipped)
+    print(f"Skipping ({len(skipped)}):", file=file)
+    for tool in sorted(skipped.keys()):
+        # U+2014 em-dash; two spaces before + after. Matches the
+        # `  ✗ {tag} — {failure_message}` shape in _render_per_tool_rows.
+        print(f"  {tool.ljust(name_width)}  — {skipped[tool]}", file=file)
+    print("", file=file)
+
+
 # ---------------------------------------------------------------------------
 # Per-tool rows (Phase 09 CD-03 ordering, D-08 reasoning, em-dash separator)
 # ---------------------------------------------------------------------------
@@ -859,7 +912,8 @@ def render_domain_ui(
 ) -> None:
     """Top-level renderer. Phase 14 D-04 (batch render) + D-06 (stdlib + ANSI).
 
-    Order: header -> per-tool rows -> summary line.
+    Order: per-tool rows -> summary line. (Header moved pre-run to
+    _render_pre_run_digest per Phase 16 D-01.)
     State-(a)/(c) SKIP rows merge with XML-derived SKIPs via
     _compose_unparametrized_skips_from_config.
     `file=None` -> sys.stdout at call time (capsys-friendly).
@@ -870,7 +924,6 @@ def render_domain_ui(
     unparam_skips = _compose_unparametrized_skips_from_config(
         ctx.discovered_tools, ctx.tools_config, ran_tools
     )
-    _render_header(ctx, parsed, file=file)
     _render_per_tool_rows(parsed, unparam_skips, file=file)
     _render_summary_line(parsed, unparam_skips, file=file)
 

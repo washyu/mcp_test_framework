@@ -270,8 +270,10 @@ def test_render_domain_ui_full_flow(capsys) -> None:
     )
     render_domain_ui(parsed, ctx)
     out = capsys.readouterr().out
-    # Header
-    assert "MCP Test Framework" in out
+    # Phase 16 D-01: render_domain_ui no longer emits the banner / labels;
+    # the digest moved pre-run. Assert the banner is GONE here.
+    assert "MCP Test Framework" not in out
+    assert "=" * 40 not in out  # banner string absent
     # Per-tool rows
     assert "failures:" in out
     assert "skipped:" in out

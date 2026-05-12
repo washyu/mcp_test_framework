@@ -213,7 +213,10 @@ def test_run_default_renders_full_domain_ui(monkeypatch, tmp_path) -> None:
 
     result = _invoke("run", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    assert "MCP Test Framework" in result.output
+    # Phase 16 D-01: header moved pre-run. Plan 16-01 removed the call site
+    # from render_domain_ui; Plan 16-02 will wire _render_pre_run_digest in
+    # cli.py. Until 16-02 lands, default-mode CLI output omits the banner.
+    assert "MCP Test Framework" not in result.output
     assert "Result:" in result.output
     # No pytest framing.
     assert "test session starts" not in result.output
@@ -232,13 +235,13 @@ def test_run_debug_appends_appendix_after_domain_ui(monkeypatch, tmp_path) -> No
 
     result = _invoke("run", "--debug", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    # D-13 invariant: header still present (default unchanged), AND appendix appended.
-    assert "MCP Test Framework" in result.output
+    # D-13 invariant + Phase 16 D-01: header moved pre-run (wired in Plan 16-02);
+    # appendix still appears after the per-tool rows in the post-run output.
     assert "--- raw pytest output ---" in result.output
-    # Order: header line BEFORE the appendix.
-    header_idx = result.output.index("MCP Test Framework")
+    # Order: per-tool rows ("passing:") BEFORE the appendix.
+    passing_idx = result.output.index("Result:")
     appendix_idx = result.output.index("--- raw pytest output ---")
-    assert header_idx < appendix_idx
+    assert passing_idx < appendix_idx
 
 
 def test_run_quiet_plus_debug_renders_summary_then_appendix(
