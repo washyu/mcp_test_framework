@@ -19,19 +19,37 @@ A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema �
 - Live green: `uv run mcp-test-framework run` against live `homelab-mcp` (via `uvx`) + Ollama at `127.0.0.1:11434`
 - Default operator path: `mcp-test-framework config-init -o config.yaml` → edit allowlist → `mcp-test-framework run` (pre-run digest → opt-in tools execute → post-run domain UI)
 
-## Current Milestone: Planning v1.3
+## Current Milestone: v1.3 Homelab Scenario Testing
 
-No phases scoped yet. `/gsd-new-milestone` will frame v1.3 scope.
+**Goal:** Replace manual Claude-client verification of homelab-mcp with automated end-to-end coverage. Every tool gets graded by the existing static contract pass (schema + description rubrics); stateful tools additionally get authored SDET scenarios for functional verification (e.g. VM lifecycle: create → modify → delete with cleanup). After v1.3, "what's actually working?" is `mcp-test-framework run --sdet` away, not a 20-minute Claude session.
 
-**Strong v1.3 candidates carried forward:**
+**Persona shift:** v1.0–v1.2 served the operator persona (CLI invocation, opt-in allowlist, domain UI). v1.3 adds the **SDET persona** as a second first-class user — a test engineer authoring intentional stateful scenarios alongside the auto-generated contract pass. Library-mode delivery (SEED-015) is deferred to v1.4 so the SDET surface can stabilize on the current CLI model first.
 
-- **D-11 — `--debug` per-judge breakdown block.** Phase 16 deferred this rung intentionally; surfaces per-judge raw responses inside the `--debug` ladder.
-- **SEED-002 — Tool-level parallelism via `pytest-xdist`** with read/write resource markers.
-- **SEED-005 — OpenAI-compat judge backend** (pluggable judge plumbing).
-- **SEED-001 — Replace rubric-style judge with agent tool-use loop**.
-- 15 plant-seed items total — see `.planning/seeds/` and Deferred section below.
+**Target features:**
 
-**Pre-committed cohort theme:** "performance + portability" — xdist parallelism, alternative judge backends, warm-up stage. Awaits scoping pass.
+- **SDET test surface** — `tests/sdet/` discovery scope, `mcp_session` and `tool("name")` fixtures built on the existing `McpTestClient`, opt-in via `--sdet` flag (or auto-discovered alongside `--with-framework`)
+- **Schema-driven codegen** — `mcp-test-framework gen-sdet-classes` introspects the live MCP server and generates: parameter classes (Pydantic from `inputSchema`), response classes (Pydantic from `outputSchema` when declared, generic `ToolResponse` base with `.data`/`.text`/`.raw`/`.is_error` for all tools regardless), and typed call wrappers tying them together. Output to `src/mcp_test_framework/sdet/generated/<server_slug>/`
+- **Stateful primitives (SEED-004)** — pytest yield-fixture patterns for create/cleanup chains; cleanup-on-failure contract via fixture finalization; documented idioms for module-scope state passing (VM-ID carries from create → modify → delete)
+- **Test ordering** — pytest module-scope fixture chaining for in-file ordering; cross-file ordering via pytest-order or equivalent when needed
+- **Preflight + conditional skip** — `requires_homelab(proxmox=True, ollama=False, ...)` marker that checks reachability and emits clean operator-domain skip messages when the environment isn't there
+- **Domain UI integration** — SDET runs render through Phase 14's `_render_per_tool_rows`; scenario names appear as nested rows under their parent tool group
+- **`ToolCallError` typed errors** — structured wrapper around `result.isError` with `.tool`/`.code`/`.message`/`.raw` fields, raised when the wire signals a tool-side error
+- **Docs** — "Authoring a scenario test" walkthrough using the VM lifecycle as the worked example; codegen regeneration workflow; `outputSchema`-undeclared graceful-degradation guidance
+
+**Pre-committed seeds for v1.3 scope:**
+- **SEED-004** (stateful tool testing primitives) — required dependency of SEED-014 per its own breadcrumb; folded into v1.3 to avoid the "half-product" trap the seed warned about
+- **SEED-014** (programmatic SDET test authoring) — pulled forward from `target_milestone: v2.0+` with the explicit caveat that v1.x persona expands from "operator only" to "operator + SDET". The vibe-coded-MCP-operator persona is preserved; the SDET persona is additive
+
+**Deferred to later milestones (explicit, not silent):**
+- **SEED-015** (library mode / pytest plugin delivery) → v1.4. The SDET surface stabilizes on CLI first; library mode wraps it once the API has settled
+- **SEED-005** (OpenAI-compat judge backend) → v1.4 or v1.5
+- **SEED-003** (dynamic judging protocol / rubrics-as-data + agent-realism input fuzz) → v1.5
+- **SEED-002** (pytest-xdist parallelism) → v1.4 (cohort with SEED-015)
+- **Phase 16 D-11** (--debug per-judge breakdown) → v1.5 cohort with SEED-003
+
+**Carry-forward debt closure:** v1.3 SDET runs against live homelab-mcp naturally exercise the same surfaces that Phase 13 + 14's live-stack UATs were waiting on. Those UATs close opportunistically as v1.3 ships rather than requiring separate verification passes.
+
+**Why pull SEED-014 forward from v2.0:** The original seed framing assumed v1.x was operator-shaped and SDET would muddy the persona work. After v1.2 closed cleanly, the persona work is *done*, not in flight. Adding SDET as a second persona now is additive, not disruptive. The motivating user pain ("manually testing through the Claude client is time-consuming") is real today, not a v2.x problem.
 
 ## Long-term Vision
 
@@ -120,7 +138,13 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 
 ### Active
 
-(Defining for v1.3 — requirements scoped via `/gsd-new-milestone` after v1.2 close 2026-05-12.)
+**v1.3 Homelab Scenario Testing (in scope; see REQUIREMENTS.md for full traceability):**
+- [ ] SDET surface — `tests/sdet/` discovery, `mcp_session` + `tool("name")` fixtures, `--sdet` CLI flag (SDET-01..04)
+- [ ] Schema-driven codegen — `gen-sdet-classes` command, param classes, response classes, call wrappers, `ToolResponse` base (CODEGEN-01..06)
+- [ ] Stateful primitives — yield-fixture cleanup contract, module-scope state passing patterns, test ordering (STATE-01..04)
+- [ ] Preflight + conditional skip — `requires_homelab(...)` marker, reachability checks for Proxmox/Ollama/MCP (PREFLIGHT-01..02)
+- [ ] Domain UI integration — scenario rendering through `_render_per_tool_rows`, `ToolCallError` typed errors (UI-01..02)
+- [ ] Docs — SDET authoring walkthrough, regen workflow, outputSchema degradation guidance (DOC-SDET-01..03)
 
 ### Out of Scope
 
@@ -215,4 +239,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 — v1.2 Operator-First Design milestone complete. All 5 phases (12–16) shipped, all 31 requirements satisfied (1 cross-phase BLOCKER caught by milestone audit and closed via quick task 260512-dcs). Carry-forward debt: live-stack UAT pair in Phases 13 & 14 (needs `homelab-mcp` on PATH); Phase 16 D-11 deferred to v1.3 per CONTEXT decision. Next: `/gsd-new-milestone` to scope v1.3 (performance + portability cohort).*
+*Last updated: 2026-05-12 — v1.3 Homelab Scenario Testing scoped. Pivots from the originally-pencilled "performance + portability" cohort (xdist + OpenAI-compat) to "SDET + stateful primitives" after operator pain-point clarification: manual Claude-client verification of homelab-mcp is the real bottleneck, and stateful tool coverage (VM lifecycle: create → modify → delete) is the unblock. SEED-014 + SEED-004 cohort pulled forward from v2.0+; SEED-015 library mode deferred to v1.4 so SDET stabilizes on CLI first. Next: `/gsd-plan-phase 17` once roadmap is approved.*

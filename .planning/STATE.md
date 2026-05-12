@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Operator-First Design
-status: completed
-stopped_at: Phase 16 context gathered
-last_updated: "2026-05-12T16:43:37.761Z"
+milestone: v1.3
+milestone_name: Homelab Scenario Testing
+status: planning
+last_updated: "2026-05-12T22:45:23.296Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 30
-  completed_plans: 30
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,13 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Between milestones — v1.2 shipped, v1.3 not yet scoped. `/gsd-new-milestone` to start v1.3.
+**Current focus:** v1.3 Homelab Scenario Testing — SDET surface, schema-driven codegen, stateful primitives. Replaces manual Claude-client verification of homelab-mcp with automated end-to-end coverage. Operator + SDET dual-persona milestone.
 
 ## Current Position
 
-Milestone: v1.2 SHIPPED 2026-05-12 (Operator-First Design)
-Next: planning v1.3 (no phases scoped yet)
-Last activity: 2026-05-12 — v1.2 milestone closed; ROADMAP/PROJECT/MILESTONES updated; REQUIREMENTS.md archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-12 — Milestone v1.3 started
 
 ## Performance Metrics
 
@@ -55,7 +55,11 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **Phase 16 (UX) lands last.** SEED-008: "Land AFTER SEED-006 (semantics) and SEED-009 (doc cleanup), since this is the UX layer over the new semantics." UX-03 explicitly subsumes v1.1's `_reporter.py`, which RUNNER-01 may obsolete entirely — sequencing UX after RUNNER lets the reporter rebuild rather than be ported.
 - **5 phases for 31 reqs.** Comparable density to v1.1 (6 phases / 25 reqs). Phase 12 is intentionally larger (9 reqs) because CLEAN+PERSONA is mostly mechanical doc work; Phase 13 (7 reqs) is the heaviest single technical chunk (schema migration). No phase is a "feature half" — each delivers a coherent operator-perceivable capability.
 - **Granularity = standard.** v1.1's "coarse" justification (each phase genuinely separable) holds here too; calibrated 5 phases without padding or compression.
-- **No v1.3+ work in v1.2.** xdist (SEED-002), OpenAI-compat backend (SEED-005), warm-up stage all deferred to v1.3 per scoping decision. v1.2 = operator-first foundations; v1.3 = performance + portability.
+- **No v1.3+ work in v1.2.** xdist (SEED-002), OpenAI-compat backend (SEED-005), warm-up stage all deferred per scoping decision. v1.2 = operator-first foundations.
+
+**v1.3 roadmapping decision (2026-05-12, post-v1.2 close):**
+
+- **Pivot from "performance + portability" to "SDET + stateful primitives".** v1.2 close + operator pain-point clarification ("manually testing through the Claude client is time-consuming") reframed the v1.3 driver. The originally-pencilled xdist + OpenAI-compat cohort is real, but it deepens the existing contract-validation product; SDET + state opens a new persona (SDET) and unblocks coverage of stateful homelab-mcp tools (VM lifecycle, etc.) that the contract-rubric model can't exercise meaningfully. SEED-014 + SEED-004 pulled forward from `target_milestone: v2.0+`; SEED-015 (library mode) deferred to v1.4 so the SDET surface stabilizes on CLI first. SEED-005/SEED-003 carry to v1.4–v1.5.
 - [Phase ?]: Plan 16-01: _compose_pre_run_skip_reasons filters state-b via computed running set (Rule 1 deviation; smoke-test contract wins)
 - [Phase ?]: Plan 16-01: render_domain_ui no longer emits banner; two verbosity CLI e2e tests temporarily flipped to banner-ABSENCE until 16-02 wires pre-run digest
 - [Phase ?]: Plan 16-02: --explain owned by Typer wrapper, never forwarded to pytest (D-07 enforced by subprocess stub assert)
