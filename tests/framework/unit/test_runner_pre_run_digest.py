@@ -18,9 +18,11 @@ import pytest
 from mcp_test_framework._runner import (
     CASES_PER_CONTRACT_TOOL,
     RenderContext,
+    _compose_judges_from_tool_configs,
     _compose_pre_run_skip_reasons,
     _render_pre_run_digest,
 )
+from mcp_test_framework.models import ToolConfig
 
 # tests/framework/unit/<here> -> tests/framework/fixtures
 # (precedent: test_runner_parser.py:31)
@@ -209,3 +211,101 @@ def test_compose_pre_run_skip_reasons_state_c_custom_reason() -> None:
         ["a"], {"a": SimpleNamespace(skip=True, skip_reason="dangerous in CI")}
     )
     assert skipped.get("a") == "dangerous in CI"
+
+
+# ---------------------------------------------------------------------------
+# Phase 16 plan 05: digest `Judges:` line honors TOOLCFG-06 None semantic
+# (gap G-1 from 16-VERIFICATION.md, live UAT 2026-05-12).
+# Tests drive both the helper and the renderer to pin end-to-end behavior.
+# ---------------------------------------------------------------------------
+
+
+def test_judges_line_lists_all_rubrics_when_judges_unset(capsys) -> None:
+    """TOOLCFG-06: ToolConfig.judges default `None` semantically means
+    'run all rubrics'. The digest's `Judges:` line MUST reflect that.
+
+    Pre-plan-05 bug: cli.py's union loop used `getattr(tool_cfg, 'judges',
+    []) or []` which collapsed None -> [] and rendered `(none configured)`
+    while the runtime contract gates at test_mcp_tool_contract.py:124,154,185
+    fired all three rubrics anyway. The digest was lying about runtime.
+    """
+    # Both tools have judges field unset (TOOLCFG-06 default = None).
+    tools_config = {
+        "list_keyring_credentials": ToolConfig(),
+        "suggest_deployments": ToolConfig(),
+    }
+    # Verify helper output directly.
+    assert _compose_judges_from_tool_configs(tools_config) == [
+        "clarity",
+        "disambiguation",
+        "parameters",
+    ]
+    # Verify end-to-end via the renderer (the operator-facing surface).
+    ctx = RenderContext(
+        server_cmd="uvx homelab-mcp",
+        discovered_tools=["list_keyring_credentials", "suggest_deployments"],
+        tools_config=tools_config,
+        judges=_compose_judges_from_tool_configs(tools_config),
+        total_planned_cases=0,
+    )
+    _render_pre_run_digest(ctx)
+    out = capsys.readouterr().out
+    assert "Judges:      clarity, disambiguation, parameters" in out, repr(out)
+    assert "(none configured)" not in out, (
+        "digest must NOT report '(none configured)' when judges field defaults "
+        "to None (TOOLCFG-06 means 'run all rubrics'). G-1 regression."
+    )
+
+
+def test_judges_line_reports_none_configured_when_judges_explicitly_empty(
+    capsys,
+) -> None:
+    """TOOLCFG-06: `judges: []` (explicit empty list) means 'explicit
+    opt-out, run no rubrics on this tool'. With every tool opting out,
+    the union is empty and the renderer correctly emits '(none configured)'.
+
+    This is the ONLY path that should produce '(none configured)' — the
+    default-None path covered by the test above must NOT.
+    """
+    tools_config = {"list_keyring_credentials": ToolConfig(judges=[])}
+    assert _compose_judges_from_tool_configs(tools_config) == []
+    ctx = RenderContext(
+        server_cmd="uvx homelab-mcp",
+        discovered_tools=["list_keyring_credentials"],
+        tools_config=tools_config,
+        judges=_compose_judges_from_tool_configs(tools_config),
+        total_planned_cases=0,
+    )
+    _render_pre_run_digest(ctx)
+    out = capsys.readouterr().out
+    assert "Judges:      (none configured)" in out, repr(out)
+
+
+def test_judges_line_lists_subset_when_judges_explicit(capsys) -> None:
+    """TOOLCFG-06: explicit subset lists pass through literally and the
+    union de-duplicates + sorts alphabetically. With tool A: ['clarity']
+    and tool B: ['parameters'], the digest shows 'clarity, parameters'
+    (sorted, deduped, no 'disambiguation' since neither tool runs it).
+    """
+    tools_config = {
+        "tool_a": ToolConfig(judges=["clarity"]),
+        "tool_b": ToolConfig(judges=["parameters"]),
+    }
+    assert _compose_judges_from_tool_configs(tools_config) == [
+        "clarity",
+        "parameters",
+    ]
+    ctx = RenderContext(
+        server_cmd="uvx homelab-mcp",
+        discovered_tools=["tool_a", "tool_b"],
+        tools_config=tools_config,
+        judges=_compose_judges_from_tool_configs(tools_config),
+        total_planned_cases=0,
+    )
+    _render_pre_run_digest(ctx)
+    out = capsys.readouterr().out
+    assert "Judges:      clarity, parameters" in out, repr(out)
+    # Disambiguation must NOT appear — neither tool opted into it.
+    assert "disambiguation" not in out, (
+        f"'disambiguation' leaked into digest despite no tool requesting it: {out!r}"
+    )
