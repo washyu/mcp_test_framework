@@ -81,7 +81,7 @@ Test plan:   20 contract cases
 list_keyring_credentials  ✓ PASS
 suggest_deployments       ✓ PASS
 
-Result: 20 passed, 0 failed, 560 skipped
+Result: 20 PASS / 0 FAIL / 560 SKIP  in 4.3s
 ```
 
 Flags that reshape this output:
@@ -89,7 +89,7 @@ Flags that reshape this output:
 | Flag | Effect |
 |------|--------|
 | `--explain` | Expands the pre-run digest's `Skipping (N) (use --explain to list)` hint into one alphabetically-sorted line per skipped tool with its reason. Renders inline between the digest and the pytest subprocess. Wrapper-owned; never forwarded to pytest. Ignored under `--raw` and under `-q` / `--quiet`. |
-| `-q` / `--quiet` | Suppresses the pre-run digest, the `--explain` expansion (if also passed), and the per-tool rows. Emits only the final `Result: N passed, M failed, S skipped` line. Mirrors v1.1's quiet-mode parity for CI consumers that want a single-line summary. |
+| `-q` / `--quiet` | Suppresses the pre-run digest, the `--explain` expansion (if also passed), and the per-tool rows. Emits only the final `Result: N PASS / M FAIL [/ S SKIP]  in T.Ts` line (the `SKIP` segment is omitted entirely when zero skips; double space before `in` is literal). Mirrors v1.1's quiet-mode parity for CI consumers that want a single-line summary. |
 | `--raw` | Bypasses the domain UI entirely and streams pytest's native output. `--explain` is a no-op under `--raw` (the wrapper-side renderer is skipped). All flags after `--` still forward to pytest verbatim. |
 | `--debug` | Appends raw pytest output and failure tracebacks after the per-tool rows + summary. Compatible with `--explain` -- both surfaces render. |
 | `--with-framework` | Also collects `tests/framework/`. The digest's `Test plan:` line gains a `+ framework self-tests` continuation. Under `--explain`, the `Skipping (N):` block lists tool-side skips only (framework tests have no per-tool skip semantics). |
@@ -225,7 +225,7 @@ Test plan:   20 contract cases
 list_keyring_credentials  ✓ PASS
 suggest_deployments       ✓ PASS
 
-Result: 20 passed, 0 failed, 560 skipped
+Result: 20 PASS / 0 FAIL / 560 SKIP  in 4.3s
 ```
 
 The first nine lines are the **pre-run digest** -- the wrapper computes the
@@ -238,8 +238,8 @@ internal JUnit XML.
 
 Skipped tools (`Skipping: 56` in the example) are absent from the per-tool
 row block under the default surface -- their counts roll into the `Result:`
-line's `skipped` field at the parametrized-case level (56 tools × 10 cases =
-560 skipped cases). Pass `--explain` to see each skipped tool with its reason
+line's `SKIP` segment at the parametrized-case level (56 tools × 10 cases =
+560 SKIP cases). Pass `--explain` to see each skipped tool with its reason
 between the digest and the pytest subprocess. Pass `--debug` to append raw
 pytest output and failure tracebacks after the per-tool rows.
 
