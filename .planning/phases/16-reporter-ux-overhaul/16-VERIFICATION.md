@@ -1,8 +1,9 @@
 ---
 phase: 16-reporter-ux-overhaul
 verified: 2026-05-12T17:30:00Z
-status: human_needed
+status: passed
 score: 14/14 must-haves verified
+human_uat: approved 2026-05-12 (HUMAN-UAT.md result: pass; operator confirmed during /gsd-execute-phase 16)
 overrides_applied: 0
 re_verification:
   previous_status: gaps_found
