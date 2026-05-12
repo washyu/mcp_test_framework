@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Operator-First Design
-status: executing
+status: verifying
 stopped_at: Phase 16 context gathered
-last_updated: "2026-05-12T05:58:35.634Z"
+last_updated: "2026-05-12T06:08:02.581Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 28
-  completed_plans: 27
-  percent: 96
+  completed_plans: 28
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-08 after v1.1 milestone close)
 
 Phase: 16 (reporter-ux-overhaul) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-12
 
 ## Performance Metrics
@@ -41,6 +41,7 @@ Last activity: 2026-05-12
 | v1.1 closing metrics (reference) | 6 phases / 17 plans / 25 reqs | shipped 2026-05-08 |
 | Phase 16 P01 | 25 | 3 tasks | 3 files |
 | Phase 16 P02 | 6 | 4 tasks | 4 files |
+| Phase 16 P03 | 6 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Plan 16-02: --explain owned by Typer wrapper, never forwarded to pytest (D-07 enforced by subprocess stub assert)
 - [Phase ?]: Plan 16-02: pre-run RenderContext built before subprocess (total_planned_cases=0), rebuilt post-parse with parsed.total_cases for summary line
 - [Phase ?]: Plan 16-02: Phase 14 D-14 negative test renamed in place preserving the regression breadcrumb (test_run_help_lists_explain_phase16)
+- [Phase 16]: Plan 16-03: README documents Phase 16 pre-run digest + --explain composition matrix + Phase 16 sample green run
+- [Phase 16]: Plan 16-03: docs/mcp_test_framework_mvp_spec.md zero-diff (intentional) — spec is MVP design contract, not operator CLI output reference
 
 ### Blockers/Concerns
 
@@ -103,6 +106,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-12T05:58:28.199Z
+Last session: 2026-05-12T06:04:20.929Z
 Stopped at: Phase 16 context gathered
 Resume next: `/gsd-plan-phase 12`
