@@ -41,7 +41,8 @@
  (completed 2026-05-10)
 - [x] **Phase 14: Hybrid runner with domain UI** — `mcp-test-framework run` wraps pytest, captures JUnit XML internally, and renders an MCP-domain UI (header / per-tool rows / summary) in operator language. Pytest framing no longer leaks; `--raw` keeps the maintainer escape hatch.
  (completed 2026-05-11)
-- [x] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`. (completed 2026-05-12)
+- [x] **Phase 15: Operator vs framework test surface split** — `git mv` `tests/` into `tests/contract/` (operator-relevant) and `tests/framework/` (self-tests). The runner's default collection scope becomes `tests/contract/`; banned-imports and snippet checks stay enforced under `tests/framework/`.
+ (completed 2026-05-12)
 - [ ] **Phase 16: Reporter UX overhaul** — Pre-run digest (server / discovered / running / skipping / judges / test-plan totals), `--explain` flag for per-tool skip reasons, post-run aggregation, and verbosity ladder (`-q` / default / `--explain` / `--debug`). Output designed for N=70 readability.
 
 ## Phase Details
@@ -127,12 +128,10 @@
   3. An operator's post-run output aggregates per-tool PASS/FAIL/SKIP plus per-judge reasoning into the domain UI's tail; v1.1's separate `_reporter.py` per-tool summary section is no longer needed (subsumed or replaced).
   4. An operator running `-q` / `--quiet` sees neither the digest nor the per-tool rows — only the final summary line. v1.1's quiet-mode parity is preserved.
   5. The digest's discovered/running/skipping counts agree with what the runner actually executes; an operator's manual config inspection cannot find a tool that the digest claims to skip but that actually runs (or vice versa).
-**Plans:** 5 plans
-  - [x] 13-01-cli-resolver-PLAN.md — Promote _load_config into the SAFE-02/03/04 resolver + flip config-init scaffold version literal 1→2 (wave 1)
-  - [x] 13-02-env-overlay-strip-PLAN.md — Delete _BareNameNestedEnvSource + .env/env-overlay; flip _validate_version 1→2 with LOCKED SAFE-06 ERROR-STYLE message (wave 2, depends 13-01)
-  - [x] 13-03-allowlist-three-state-PLAN.md — Invert tests/conftest.py filter to allowlist; compose state-a/state-c reasons in _reporter.py with two locked constants (wave 2, depends 13-01)
-  - [ ] 13-04-target-removal-PLAN.md — Delete TargetConfig, Config.target field, and fixtures.py override block; collapse selection to single allowlist mechanism (wave 3, depends 13-02 + 13-03)
-  - [ ] 13-05-migration-doc-PLAN.md — Create docs/MIGRATION-v1-to-v2.md (SAFE-07) + audit pyproject.toml has no python-dotenv direct dep (wave 3, depends 13-02)
+**Plans:** 3 plans
+  - [ ] 16-01-pre-run-digest-renderer-PLAN.md — _runner.py additions: CASES_PER_CONTRACT_TOOL constant + _render_pre_run_digest + _compose_pre_run_skip_reasons + _render_skipped_tools_explain; remove _render_header call from render_domain_ui (UX-01, UX-03, UX-04; wave 1)
+  - [ ] 16-02-explain-flag-and-cli-wiring-PLAN.md — cli.py: --explain Typer flag + pre-run digest rendering pipeline + 3 test files (digest pin + --explain end-to-end + -q parity) (UX-01, UX-02, UX-04, UX-05; wave 2, depends 16-01)
+  - [ ] 16-03-documentation-refresh-PLAN.md — README.md + docs/mcp_test_framework_mvp_spec.md prose updates for pre-run digest + --explain + -q (UX-01, UX-02, UX-05; wave 3, depends 16-02)
 
 
 ## Progress
