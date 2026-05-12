@@ -56,6 +56,76 @@ The `-m 'not live_homelab and not live_ollama'` `addopts` contract from
 `pyproject.toml` stays in effect; gate live tests with environment variables or
 markers as documented in the spec.
 
+#### Run output shape
+
+Default `run` output is split into a **pre-run digest** (emitted before pytest's
+subprocess starts) and a **post-run** block of per-tool rows + a `Result:`
+summary line. The pre-run digest shows the MCP server command, the discovered
+tool count, the running / skipping tool counts, the active judges, and the
+total contract test-plan size. The `Skipping (N)` count carries a
+`(use --explain to list)` hint -- pass `--explain` to expand it inline.
+
+Canonical small-N example:
+
+```
+========================================
+MCP Test Framework
+========================================
+MCP server:  uvx homelab-mcp
+Discovered:  58 tools
+Running:      2  (list_keyring_credentials, suggest_deployments)
+Skipping:    56  (use --explain to list)
+Judges:      clarity, disambiguation, parameters
+Test plan:   20 contract cases
+
+list_keyring_credentials  ✓ PASS
+suggest_deployments       ✓ PASS
+
+Result: 20 passed, 0 failed, 560 skipped
+```
+
+Flags that reshape this output:
+
+| Flag | Effect |
+|------|--------|
+| `--explain` | Expands the pre-run digest's `Skipping (N) (use --explain to list)` hint into one alphabetically-sorted line per skipped tool with its reason. Renders inline between the digest and the pytest subprocess. Wrapper-owned; never forwarded to pytest. Ignored under `--raw` and under `-q` / `--quiet`. |
+| `-q` / `--quiet` | Suppresses the pre-run digest, the `--explain` expansion (if also passed), and the per-tool rows. Emits only the final `Result: N passed, M failed, S skipped` line. Mirrors v1.1's quiet-mode parity for CI consumers that want a single-line summary. |
+| `--raw` | Bypasses the domain UI entirely and streams pytest's native output. `--explain` is a no-op under `--raw` (the wrapper-side renderer is skipped). All flags after `--` still forward to pytest verbatim. |
+| `--debug` | Appends raw pytest output and failure tracebacks after the per-tool rows + summary. Compatible with `--explain` -- both surfaces render. |
+| `--with-framework` | Also collects `tests/framework/`. The digest's `Test plan:` line gains a `+ framework self-tests` continuation. Under `--explain`, the `Skipping (N):` block lists tool-side skips only (framework tests have no per-tool skip semantics). |
+
+##### `--explain` example
+
+`--explain` drops the `(use --explain to list)` hint and renders the list
+inline between the digest and the pytest subprocess:
+
+```
+$ mcp-test-framework run --explain
+========================================
+MCP Test Framework
+========================================
+MCP server:  uvx homelab-mcp
+Discovered:  58 tools
+Running:      2  (list_keyring_credentials, suggest_deployments)
+Skipping:    56
+Judges:      clarity, disambiguation, parameters
+Test plan:   20 contract cases
+
+Skipping (56):
+  bulk_update_inventory       — explicit skip in config
+  delete_server               — explicit skip in config
+  ... (52 more, alphabetical) ...
+  zone_reset                  — not selected in config
+
+(pytest subprocess runs here, then per-tool rows + Result: line)
+```
+
+Skip reasons come from your `tools.<name>.skip_reason` if set; otherwise the
+framework emits one of two defaults: `"not selected in config"` for tools not
+listed under `tools:` at all, or `"explicit skip in config"` for tools with
+`skip: true` but no `skip_reason`. Output is grep-able (one tool per line) and
+scales to homelab-mcp's full ~70-tool surface.
+
 ### List MCP server tools
 
 ```bash
@@ -142,40 +212,48 @@ For a complete real-server config, see [`config.example.yaml`](config.example.ya
 ## Sample green run
 
 ```text
-============================= test session starts =============================
-platform win32 -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0
-rootdir: <home>\projects\mvp_test_framework
-configfile: pyproject.toml
-plugins: anyio-4.13.0, asyncio-1.3.0
-asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
-collected 72 items / 5 deselected / 67 selected
+========================================
+MCP Test Framework
+========================================
+MCP server:  uvx homelab-mcp
+Discovered:  58 tools
+Running:      2  (list_keyring_credentials, suggest_deployments)
+Skipping:    56  (use --explain to list)
+Judges:      clarity, disambiguation, parameters
+Test plan:   20 contract cases
 
-tests\smoke\test_mcp_client_teardown_regression.py .                     [  1%]
-tests\test_homelab_list_registered_servers.py ..........                 [ 16%]
-tests\unit\test_banned_imports.py ...                                    [ 20%]
-tests\unit\test_config.py ............                                   [ 38%]
-tests\unit\test_mcp_client.py .....                                      [ 46%]
-tests\unit\test_ollama_judge.py ...............                          [ 68%]
-tests\unit\test_rubrics.py .........                                     [ 82%]
-tests\unit\test_schema_validator.py ............                         [100%]
+list_keyring_credentials  ✓ PASS
+suggest_deployments       ✓ PASS
 
-================ 67 passed, 5 deselected, 1 warning in 22.02s =================
+Result: 20 passed, 0 failed, 560 skipped
 ```
 
-Captured verbatim from a real local run on Windows 11 against live `homelab-mcp`
-+ Ollama, against a representative tool surface from the connected server.
-The summary line says "67 passed in 22.02s" once you mentally fold over the
-deselect/warning tokens -- pytest formats the wall-clock as `... in N.NNs`.
-The 5 deselected tests are the live-marker smoke tests in `tests/framework/smoke/` gated
-behind `-m 'not live_homelab and not live_ollama'`. The single warning is
-pytest's standard `PytestAssertRewriteWarning` for `anyio` (already imported by
-the time pytest tries to instrument it) and is unrelated to test outcomes.
+The first nine lines are the **pre-run digest** -- the wrapper computes the
+running / skipping counts from `cfg.tools` and the live tool list returned by
+the MCP server, then prints the digest before pytest's subprocess starts. The
+two `✓ PASS` rows are the **post-run** per-tool view, one row per tool that
+actually ran, sorted FAIL → SKIP → PASS within each verdict bucket. The final
+`Result:` line is the parametrized-case summary parsed back out of the
+internal JUnit XML.
+
+Skipped tools (`Skipping: 56` in the example) are absent from the per-tool
+row block under the default surface -- their counts roll into the `Result:`
+line's `skipped` field at the parametrized-case level (56 tools × 10 cases =
+560 skipped cases). Pass `--explain` to see each skipped tool with its reason
+between the digest and the pytest subprocess. Pass `--debug` to append raw
+pytest output and failure tracebacks after the per-tool rows.
 
 If you enable a tool whose declared description does not satisfy the
 description-quality rubrics, the test fails with the judge's reasoning
-recorded in the JUnit XML and printed in the summary. Either tweak the
-tool's description upstream, or skip the tool in your config (per the
-"Per-tool configuration" section above).
+surfaced after an em-dash on the FAIL row, e.g.:
+
+```
+list_registered_servers  ✗ FAIL — clarity score 2/5: description is too terse for an agent to disambiguate from related tools
+```
+
+The same reasoning is recorded in the JUnit XML's `<failure message="…">`.
+Either tweak the tool's description upstream, or skip the tool in your config
+(per the "Per-tool configuration" section above).
 
 ## Isolation guarantee
 
