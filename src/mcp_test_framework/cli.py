@@ -401,6 +401,17 @@ def run(
             "(without this flag) collects only the SUT-contract surface."
         ),
     ),
+    explain: bool = typer.Option(
+        False,
+        "--explain",
+        help=(
+            "Expand the pre-run digest's 'Skipping (N)' hint into one line "
+            "per skipped tool with its skip reason, sorted alphabetically. "
+            "Renders inline before the pytest subprocess starts. "
+            "Ignored under --raw (no domain UI) and under -q / --quiet "
+            "(summary-only output)."
+        ),
+    ),
     pytest_args: list[str] | None = typer.Argument(
         None,
         help="Args after `--` are forwarded to pytest.",
@@ -489,6 +500,44 @@ def run(
     # in the JUnit XML at all).
     discovered_tools = _discover_tools_for_run(cfg)
 
+    # Phase 16 D-01: build RenderContext BEFORE the subprocess so the
+    # pre-run digest can render. total_planned_cases is set from
+    # running × CASES_PER_CONTRACT_TOOL pre-run; the post-run code below
+    # rebuilds ctx with parsed.total_cases for the summary line's count
+    # source. The pre-run digest computes its "Test plan" line from the
+    # running set × constant, not from this field.
+    server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
+    # Judges: derive from the union of every configured tool's `judges`
+    # list, de-duplicated and sorted.
+    judges_set: set[str] = set()
+    for tool_cfg in cfg.tools.values():
+        for judge_name in getattr(tool_cfg, "judges", []) or []:
+            judges_set.add(judge_name)
+    judges = sorted(judges_set)
+
+    pre_run_ctx = _runner.RenderContext(
+        server_cmd=server_cmd,
+        discovered_tools=discovered_tools,
+        tools_config=cfg.tools,
+        judges=judges,
+        total_planned_cases=0,  # post-parse ctx below carries parsed.total_cases
+    )
+
+    # Phase 16 D-09: pre-run digest + --explain expansion BOTH gate on
+    # `not quiet`. -q wins over --explain per D-08 / UX-05.
+    # `with_framework=` flows into the digest so the "+ framework self-tests"
+    # continuation line emits inline (no awkward blank gap).
+    # `explain=` suppresses the "(use --explain to list)" hint when the list
+    # is rendered inline right below.
+    if not quiet:
+        _runner._render_pre_run_digest(
+            pre_run_ctx,
+            with_framework=with_framework,
+            explain=explain,
+        )
+        if explain:
+            _runner._render_skipped_tools_explain(pre_run_ctx)
+
     rc, tmp_xml, captured_stdout, captured_stderr = _runner.run_pytest_subprocess(
         junit_xml=junit_xml,
         pytest_args=pytest_args,
@@ -518,17 +567,9 @@ def run(
                 ),
             )
 
-        # Build the renderer's context.
-        server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
-        # Judges: derive from the union of every configured tool's `judges`
-        # list, de-duplicated and sorted. Phase 14 D-07 ships a MINIMAL
-        # header; per-tool judge breakdown is Phase 16.
-        judges_set: set[str] = set()
-        for tool_cfg in cfg.tools.values():
-            for judge_name in getattr(tool_cfg, "judges", []) or []:
-                judges_set.add(judge_name)
-        judges = sorted(judges_set)
-
+        # Phase 16: rebuild ctx with the real total_planned_cases for the
+        # post-run summary. discovered_tools / tools_config / judges /
+        # server_cmd are unchanged from pre_run_ctx.
         ctx = _runner.RenderContext(
             server_cmd=server_cmd,
             discovered_tools=discovered_tools,
