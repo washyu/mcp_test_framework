@@ -343,10 +343,16 @@ def test_plugins_list_does_not_register_reporter() -> None:
     """Phase 14 Plan 05: conftest.py's pytest_plugins must not list the
     deleted v1.1 plugin (the file is gone). Use a module-spec-based import
     rather than `import tests.conftest` to keep the probe lightweight and
-    insulated from import side-effects."""
+    insulated from import side-effects.
+
+    Phase 15-04 fix: after Plan 15-01 moved this file from `tests/` to
+    `tests/framework/`, `parents[1]` resolves to `tests/` rather than the
+    project root. Use `parents[2]` to keep the conftest.py probe pointing
+    at `<repo_root>/tests/conftest.py`.
+    """
     import importlib.util
     from pathlib import Path
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     spec = importlib.util.spec_from_file_location(
         "_phase14_conftest_probe", repo_root / "tests" / "conftest.py"
     )

@@ -22,10 +22,14 @@ from pathlib import Path
 
 import pytest
 
-# tests/unit/test_banned_imports.py is two levels under the repo root.
+# Phase 15-04 fix: after Plan 15-01 hoisted this file from tests/unit/ to
+# tests/framework/, parents[2] still resolves to the repo root (tests/framework/
+# is also two levels under the repo root). The fixture itself was moved by
+# Plan 15-01 from tests/_fixtures/ to tests/framework/_fixtures/, so the
+# fixture path constant is updated to match the post-split layout.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PYPROJECT = _REPO_ROOT / "pyproject.toml"
-_FIXTURE = _REPO_ROOT / "tests" / "_fixtures" / "banned_import_should_fail.py.txt"
+_FIXTURE = _REPO_ROOT / "tests" / "framework" / "_fixtures" / "banned_import_should_fail.py.txt"
 
 
 def _run_ruff_against(target: Path) -> subprocess.CompletedProcess[str]:
