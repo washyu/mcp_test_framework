@@ -49,7 +49,8 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 ### 🚧 v1.3 Homelab Scenario Testing (Phases 17–22) — IN PLANNING
 
-- [x] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06) (completed 2026-05-13)
+- [x] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06)
+ (completed 2026-05-13)
 - [ ] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02)
 - [ ] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01)
 - [ ] **Phase 20: Preflight + conditional skip** — `requires_homelab(...)` marker factory with fast, graceful reachability checks (PREFLIGHT-01..02)
@@ -83,7 +84,15 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   2. An SDET importing `from mcp_test_framework.sdet import mcp_session, tool` gets a session-scoped `McpTestClient` wrapper and a `tool(name)` builder; both require `@pytest.mark.asyncio` markers under pytest-asyncio strict mode.
   3. When a tool call returns `result.isError = True`, the call wrapper raises `ToolCallError` with `.tool` / `.code` / `.message` / `.raw` populated; the existing em-dash failure-detail pattern from Phase 16 surfaces `.code` / `.message` in default-mode FAIL rows.
   4. Under `--debug`, the raw `CallToolResult` for a failed call is dumped into the debug appendix without crashing the renderer.
-**Plans**: TBD
+**Plans**: 8 plans
+  - [ ] 18-01-errors-module-PLAN.md — Ship ToolCallError + _extract_code_message (UI-02; D-07 + D-08) [wave 1; depends_on: none]
+  - [ ] 18-02-tool-wrapper-body-PLAN.md — Fill ToolWrapper.call() body + add _ACTIVE_CLIENT slot (SDET-03, UI-02) [wave 2; depends_on: 18-01]
+  - [ ] 18-03-mcp-session-fixture-PLAN.md — Ship mcp_session fixture with D-02 registry activation + D-03 fail-loud (SDET-03, SDET-04) [wave 3; depends_on: 18-02]
+  - [ ] 18-04-sdet-public-surface-PLAN.md — Re-export mcp_session, tool, ToolCallError from sdet/__init__.py (SDET-03, SDET-04, UI-02) [wave 4; depends_on: 18-01, 18-02, 18-03]
+  - [ ] 18-05-sdet-cli-flag-PLAN.md — Register --sdet Typer flag; thread through _build_pytest_args + run_pytest_subprocess (SDET-01, SDET-02, SDET-04) [wave 1; depends_on: none]
+  - [ ] 18-06-runner-renderer-integration-PLAN.md — D-09 JUnit-property parser hook + D-06 scenario digest + D-11 --debug appendix (SDET-02, UI-02) [wave 2; depends_on: 18-01, 18-05]
+  - [ ] 18-07-tests-sdet-scaffolding-PLAN.md — tests/sdet/ __init__.py + conftest.py (D-09 hook) + test_basic_call.py sanity (SDET-01, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06]
+  - [ ] 18-08-framework-self-tests-PLAN.md — Pin D-01..D-11 via test_tool_call_error/test_sdet_fixtures/test_sdet_cli/test_sdet_renderer + update test_tool_factory (SDET-01, SDET-02, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06, 18-07]
 **UI hint**: yes
 
 ### Phase 19: Stateful primitives + domain UI integration
