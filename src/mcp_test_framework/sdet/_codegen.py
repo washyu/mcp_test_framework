@@ -430,7 +430,15 @@ def _render_init(
         mod = module_name(tool_name)
         import_lines.append(f"from .{mod} import {params_cls}, {response_cls}")
         all_names.extend([f'"{params_cls}"', f'"{response_cls}"'])
-        registry_lines.append(f'    "{tool_name}": ({params_cls}, {response_cls}),')
+        # CR-02: json.dumps()-escape tool_name so a server-advertised name
+        # containing `"` / newline cannot close the dict-key string literal
+        # and inject a callable into the registry dict (which Phase 18's
+        # factory then dispatches against). For names that match the MCP
+        # spec regex `[A-Za-z_][A-Za-z0-9_]*` the visible form is identical
+        # to the prior `f'"{tool_name}"'` interpolation.
+        registry_lines.append(
+            f"    {json.dumps(tool_name)}: ({params_cls}, {response_cls}),"
+        )
 
     all_block = "__all__ = [\n    " + ",\n    ".join(all_names) + ",\n]" if all_names else "__all__ = []"
     registry_block = (
