@@ -23,13 +23,18 @@ Pure-data: this module reads dicts and emits strings. No filesystem I/O in
 """
 from __future__ import annotations
 
+import datetime as _dt
 import json
 import keyword
 import re
+import shutil
 from dataclasses import dataclass
+from pathlib import Path
 
 from jsonschema.validators import Draft202012Validator, validator_for
 from mcp.types import Tool
+
+from mcp_test_framework.sdet._slugs import module_name, pascal_case, server_slug
 
 # `Draft202012Validator` + `validator_for` are referenced here per RESEARCH
 # "Don't Hand-Roll" row 1 -- MCP tool schemas declare Draft 2020-12. We deliberately
@@ -39,8 +44,6 @@ from mcp.types import Tool
 # below catches structurally-broken schemas (e.g. `required: "not-a-list"`)
 # without forcing every type token to be a JSON Schema primitive.
 _ = (Draft202012Validator, validator_for)
-
-from mcp_test_framework.sdet._slugs import module_name, pascal_case
 
 
 HEADER_TEMPLATE = (
@@ -547,12 +550,8 @@ def translate_tool(
 
 
 # --- File emission (D-03 wipe-and-write) ----------------------------------
-
-import datetime as _dt
-import shutil
-from pathlib import Path
-
-from mcp_test_framework.sdet._slugs import server_slug
+# WR-04: imports for this section (datetime, shutil, Path, server_slug) are
+# now hoisted to the top of the module per PEP 8; nothing to import here.
 
 
 def _render_init(
