@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: executing
-stopped_at: Phase 18 complete (all 8 plans shipped; ready for Phase 19)
-last_updated: "2026-05-13T12:00:00.000Z"
-last_activity: 2026-05-13
+status: Phase 18 closed. All D-01..D-11 decisions regression-pinned under tests/framework/unit/.
+stopped_at: Phase 19 context gathered
+last_updated: "2026-05-13T16:28:58.937Z"
+last_activity: "2026-05-13 - Completed quick task 260513-chh: Fix _session_needs_preflight nodeid path mismatch"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -144,6 +144,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-13T08:00:00.000Z
-Stopped at: Phase 18 Plan 07 completed (tests/sdet/ scaffolding)
+Last session: 2026-05-13T16:28:58.930Z
+Stopped at: Phase 19 context gathered
 Resume next: `/gsd-execute-phase 18` to pick up Plan 18-08 (framework self-tests / composition matrix)
