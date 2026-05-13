@@ -356,10 +356,10 @@ def run(
         None,
         "--junit-xml",
         help=(
-            "Write JUnit XML to PATH (Phase 09 OUTPUT-01 contract). Translates "
-            "to pytest's --junitxml=PATH. In default mode the wrapper consumes "
-            "its own internal tempfile for the domain UI; this flag's path is "
-            "populated independently via a post-subprocess copy."
+            "Write JUnit XML to PATH. Translates to pytest's --junitxml=PATH. "
+            "In default mode the wrapper consumes its own internal tempfile "
+            "for the domain UI; this flag's path is populated independently "
+            "via a post-subprocess copy."
         ),
     ),
     raw: bool = typer.Option(
