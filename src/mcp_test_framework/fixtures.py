@@ -372,9 +372,15 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
             ):
                 try:
                     with anyio.fail_after(config.mcp_server.timeout_seconds):
-                        await session.initialize()
+                        init_result = await session.initialize()
+                    # Phase 18 SDET-03 (Plan 03 Rule 3): capture serverInfo
+                    # so the mcp_session fixture can derive the generated-
+                    # module slug. The mcp SDK discards InitializeResult
+                    # after caching _server_capabilities only.
                     client = McpTestClient._wrap(
-                        session, config.mcp_server.timeout_seconds
+                        session,
+                        config.mcp_server.timeout_seconds,
+                        server_info=init_result.serverInfo,
                     )
                 except BaseException as exc:
                     if not ready.done():

@@ -41,7 +41,7 @@ from typing import Any
 
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
-from mcp.types import CallToolResult, Tool
+from mcp.types import CallToolResult, Implementation, Tool
 
 from mcp_test_framework._isolation import _build_isolated_env
 
@@ -112,9 +112,22 @@ class McpTestClient:
         self._timeout_seconds = timeout_seconds
         self._stack: AsyncExitStack | None = None
         self._session: ClientSession | None = None
+        # Phase 18 SDET-03: serverInfo from the MCP initialize handshake.
+        # Set by __aenter__ (smoke path) or _wrap (fixture owner-task path).
+        # None until the handshake completes; consumers (mcp_session fixture)
+        # MUST guard or assert. The mcp SDK's ClientSession discards the
+        # InitializeResult after caching ``_server_capabilities`` only --
+        # ``serverInfo`` would be lost otherwise (Phase 18-03 Rule 3 fix).
+        self.server_info: Implementation | None = None
 
     @classmethod
-    def _wrap(cls, session: ClientSession, timeout_seconds: int) -> "McpTestClient":
+    def _wrap(
+        cls,
+        session: ClientSession,
+        timeout_seconds: int,
+        *,
+        server_info: Implementation | None = None,
+    ) -> "McpTestClient":
         """Build an instance pre-bound to a live ClientSession (Phase 4.1 owner-task pattern).
 
         Skips __aenter__ / AsyncExitStack ownership -- caller (the mcp_client
@@ -127,6 +140,13 @@ class McpTestClient:
         which this construction path bypasses. `_stack=None` signals "not
         owned by this instance" to __aexit__ (which is a no-op when _stack is
         None -- see existing __aexit__ guard).
+
+        Phase 18 SDET-03 addition: ``server_info`` is the ``serverInfo`` field
+        returned by ``ClientSession.initialize()``. The mcp SDK discards this
+        value after the handshake (only ``_server_capabilities`` is cached on
+        the session), so the fixture's owner task captures the result and
+        threads it here. Required by the ``mcp_session`` fixture (Phase 18
+        Plan 03) to derive the generated-module slug.
         """
         instance = cls.__new__(cls)
         instance._command = "<wrapped>"
@@ -134,6 +154,7 @@ class McpTestClient:
         instance._timeout_seconds = timeout_seconds
         instance._stack = None
         instance._session = session
+        instance.server_info = server_info
         return instance
 
     async def __aenter__(self) -> "McpTestClient":
@@ -168,12 +189,15 @@ class McpTestClient:
             )
             session = await stack.enter_async_context(ClientSession(read, write))
             async with asyncio.timeout(self._timeout_seconds):
-                await session.initialize()
+                init_result = await session.initialize()
         except BaseException:
             await stack.aclose()
             raise
         self._stack = stack
         self._session = session
+        # Phase 18 SDET-03: capture serverInfo (the mcp SDK drops it after
+        # caching _server_capabilities; we need it for slug derivation).
+        self.server_info = init_result.serverInfo
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

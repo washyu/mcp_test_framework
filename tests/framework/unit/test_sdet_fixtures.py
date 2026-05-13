@@ -74,19 +74,25 @@ def test_mcp_session_is_pytest_asyncio_session_scoped_fixture() -> None:
     """D-01: decorator must be @pytest_asyncio.fixture(loop_scope='session', scope='session')."""
     from mcp_test_framework.sdet.session import mcp_session
 
-    marker = getattr(mcp_session, "_pytestfixturefunction", None)
+    # pytest >=8 / pytest_asyncio >=1: FixtureFunctionDefinition exposes the
+    # FixtureFunctionMarker on `_fixture_function_marker` and the async loop
+    # scope on `_loop_scope`.
+    marker = getattr(mcp_session, "_fixture_function_marker", None)
     assert marker is not None, (
-        "mcp_session must be a pytest fixture (missing _pytestfixturefunction)"
+        "mcp_session must be a pytest fixture (missing _fixture_function_marker)"
     )
     assert marker.scope == "session", f"expected scope='session', got {marker.scope!r}"
+    loop_scope = getattr(mcp_session, "_loop_scope", None)
+    assert loop_scope == "session", f"expected loop_scope='session', got {loop_scope!r}"
 
 
 def test_mcp_session_signature_depends_on_mcp_client() -> None:
     """D-01: the fixture parameter name is ``mcp_client`` (pytest dependency by name)."""
     from mcp_test_framework.sdet.session import mcp_session
 
-    # pytest_asyncio wraps the fixture; the original is on __wrapped__ or directly inspectable.
-    func = getattr(mcp_session, "__wrapped__", mcp_session)
+    # pytest_asyncio wraps the fixture; FixtureFunctionDefinition exposes the
+    # original via `_get_wrapped_function()`.
+    func = _unwrap(mcp_session)
     sig = inspect.signature(func)
     assert "mcp_client" in sig.parameters, (
         f"mcp_session must depend on mcp_client (params: {list(sig.parameters)})"
@@ -101,12 +107,20 @@ def test_mcp_session_module_imports_cleanly() -> None:
 # --- D-02: registry activation around yield -------------------------------
 
 
+def _unwrap(fixture):
+    """Get the underlying async generator function from a pytest-asyncio fixture."""
+    get_wrapped = getattr(fixture, "_get_wrapped_function", None)
+    if get_wrapped is not None:
+        return get_wrapped()
+    return getattr(fixture, "__wrapped__", fixture)
+
+
 async def _run_fixture(mcp_session_func, client) -> tuple[object, dict]:
     """Drive the async generator fixture and capture state at yield time.
 
     Returns (yielded_value, state_snapshot_at_yield_time).
     """
-    func = getattr(mcp_session_func, "__wrapped__", mcp_session_func)
+    func = _unwrap(mcp_session_func)
     agen = func(client)
     yielded = await agen.__anext__()
     snapshot = {
@@ -176,7 +190,7 @@ async def test_mcp_session_fail_loud_on_missing_generated_module(
     monkeypatch.setattr(session_mod.importlib, "import_module", _raise)
 
     client = _make_fake_client("unknown-server")
-    func = getattr(mcp_session, "__wrapped__", mcp_session)
+    func = _unwrap(mcp_session)
     agen = func(client)
     with pytest.raises(pytest.exit.Exception) as exc_info:
         await agen.__anext__()
@@ -194,13 +208,18 @@ async def test_mcp_session_fail_loud_on_missing_generated_module(
 
 
 def test_session_module_opens_no_anyio_cancel_scope() -> None:
-    """Phase 04.1: session.py source must NOT introduce a new anyio CancelScope."""
+    """Phase 04.1: session.py must NOT open a new anyio cancel scope.
+
+    Mirrors the plan's acceptance criterion:
+      ``grep -cE "with anyio\\.|CancelScope" returns 0``.
+    """
     import inspect as _inspect
+    import re
 
     from mcp_test_framework.sdet import session as session_mod
 
     src = _inspect.getsource(session_mod)
-    assert "CancelScope" not in src, "session.py must not introduce anyio.CancelScope"
-    assert "anyio.fail_after" not in src, "session.py must not introduce anyio.fail_after"
-    # `with anyio.` would indicate a new cancel scope context manager.
-    assert "with anyio." not in src, "session.py must not open new anyio cancel scopes"
+    matches = re.findall(r"with anyio\.|CancelScope", src)
+    assert matches == [], (
+        f"session.py must not introduce anyio cancel scopes; found: {matches}"
+    )
