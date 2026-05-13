@@ -490,7 +490,21 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
         name = tc.get("name", "")
         tool = _extract_tool_name(name)
         if tool is None:
-            continue  # D-09: testcases without [<tool>] suffix excluded.
+            # SDET-scope fall-through: testcases under tests/sdet/ are
+            # hand-authored (no parametrize bracket). Group by the
+            # classname's trailing module name with `test_` stripped;
+            # use the test function name (also `test_` stripped) as the
+            # row label. Synthetic key shape `<group>::<row_label>`
+            # keeps the parser->renderer dataclass surface frozen
+            # (mirrors the Phase 18 Plan 06 "Strategy 1" lock -- no new
+            # ToolVerdict fields).
+            classname = tc.get("classname", "")
+            if classname.startswith("tests.sdet.test_"):
+                group = classname.rsplit(".", 1)[-1].removeprefix("test_")
+                row_label = name.removeprefix("test_")
+                tool = f"{group}::{row_label}"
+            else:
+                continue  # legacy: testcases without [<tool>] suffix excluded.
 
         bucket = run.per_tool.setdefault(
             tool, ToolVerdict(name=tool, verdict="PASS")
