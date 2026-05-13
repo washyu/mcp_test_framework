@@ -31,19 +31,20 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from jsonschema.validators import Draft202012Validator, validator_for
 from mcp.types import Tool
 
 from mcp_test_framework.sdet._slugs import module_name, pascal_case, server_slug
 
-# `Draft202012Validator` + `validator_for` are referenced here per RESEARCH
-# "Don't Hand-Roll" row 1 -- MCP tool schemas declare Draft 2020-12. We deliberately
-# do NOT call `check_schema` (the full metaschema validator) because it rejects
-# fields like `{"type": "color"}` outright; the walker's D-02 contract is to
-# DEGRADE on unknown type tokens, not refuse. `_check_schema_structural`
-# below catches structurally-broken schemas (e.g. `required: "not-a-list"`)
-# without forcing every type token to be a JSON Schema primitive.
-_ = (Draft202012Validator, validator_for)
+# NOTE: jsonschema's `Draft202012Validator` / `validator_for` are deliberately
+# NOT imported here per RESEARCH "Don't Hand-Roll" row 1 -- MCP tool schemas
+# declare Draft 2020-12, but calling `check_schema(...)` (the full metaschema
+# validator) would reject fields like `{"type": "color"}` outright. The
+# walker's D-02 contract is to DEGRADE on unknown type tokens, not refuse.
+# `_check_schema_structural` below catches structurally-broken schemas
+# (e.g. `required: "not-a-list"`) without forcing every type token to be a
+# JSON Schema primitive. WR-05: previously this lived as a `_ = (...)`
+# no-op pinning the imports for documentation; the imports are now removed
+# and the rationale survives in this comment.
 
 
 HEADER_TEMPLATE = (
