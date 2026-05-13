@@ -105,22 +105,40 @@ def config() -> Config:
 # ---------------------------------------------------------------------------
 
 
-def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
-    """Skip preflight if every collected test lives under tests/unit/.
+# Live-MCP scopes: items under these prefixes call the real homelab-mcp /
+# Ollama stack and require the preflight gate. Anything else (framework
+# unit / smoke / runner self-tests under tests/framework/...) must skip
+# preflight so it runs cleanly on a machine with no homelab-mcp / Ollama
+# configured.
+#
+# Kept in sync with the Phase 18 renderer's scope discrimination
+# (tests/contract vs tests/sdet) — single source of truth for live scopes.
+_LIVE_PREFIXES: tuple[str, ...] = ("tests/contract/", "tests/sdet/")
 
-    Unit tests are pure-data sync tests with no MCP/Ollama dependency. The
-    integration tests (tests/test_*.py) are the consumers preflight is
-    designed to gate -- D-preflight-1 / FIX-02. This guard preserves
-    `autouse=True` semantics for integration runs while letting
-    `uv run pytest tests/unit/` pass on a machine without homelab-mcp /
-    Ollama (Plan 04-02 Task 3 acceptance).
+
+def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
+    """Return True iff any collected item is under a live-MCP scope.
+
+    Live-MCP scopes (`tests/contract/`, `tests/sdet/`) call into the real
+    homelab-mcp subprocess and Ollama HTTP API; everything else
+    (`tests/framework/...`) is pure-data and must not be gated by the
+    autouse preflight fixture.
+
+    Pre-Phase-15 this keyed on `tests/unit/`, a prefix that no longer
+    exists in the current layout (the Phase 15 reorg moved unit tests
+    to `tests/framework/unit/`). The stale check always returned True
+    and forced operators to either set `MCPTF_CONFIG_FILE` or pass
+    `--noconftest` to run framework-only suites. Quick-task 260513-chh
+    inverts the predicate to a live-scope allowlist (Option B from the
+    originating todo) so the preflight gate keys on "does this item
+    need a live MCP server?" rather than on a stale unit-test prefix.
     """
     items = getattr(request.session, "items", []) or []
     if not items:
         return False
     for item in items:
-        # item.nodeid uses forward slashes on every platform pytest supports
-        if not item.nodeid.startswith("tests/unit/"):
+        # item.nodeid uses forward slashes on every platform pytest supports.
+        if item.nodeid.startswith(_LIVE_PREFIXES):
             return True
     return False
 
@@ -143,8 +161,10 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
     paid by TEST-05 within the locked 120s httpx.Timeout.
 
     The session-scope guard `_session_needs_preflight` short-circuits when
-    only `tests/unit/` items are collected -- unit tests have no MCP/Ollama
-    dependency and must not be gated by integration preconditions.
+    no items under live-MCP scopes (`tests/contract/`, `tests/sdet/`) are
+    collected -- framework self-tests under `tests/framework/...` have no
+    MCP/Ollama dependency and must not be gated by integration
+    preconditions.
     """
     if not _session_needs_preflight(request):
         yield
