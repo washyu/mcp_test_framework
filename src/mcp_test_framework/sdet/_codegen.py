@@ -247,9 +247,15 @@ def _format_field_line(name: str, spec: FieldSpec, *, required: bool) -> str:
     `FieldSpec.default_is_none` flag set by `_emit_field`.
     """
     py_type = spec.py_type
-    # Optional fields without an explicit default get `| None`. We add this
-    # only for faithful scalar paths -- degradation already types to Any.
-    if not required and spec.default_is_none and spec.degrade_reason is None and py_type != "typing.Any":
+    # Optional fields without an explicit default get `| None`. Skip when the
+    # type is already `typing.Any` (Any subsumes None). Phase 17 plan 17-05
+    # pyright-strict gate caught the original predicate which also required
+    # `degrade_reason is None` -- that excluded nested-object degradation paths
+    # that still emit a concrete `dict[str, typing.Any]` type (not Any), so
+    # pyright rejected `config: dict[str, Any] = Field(default=None)`. Any field
+    # with default_is_none and a non-Any type needs `| None` regardless of
+    # degrade status.
+    if not required and spec.default_is_none and py_type != "typing.Any":
         py_type = f"{py_type} | None"
     lines: list[str] = []
     if spec.degrade_reason is not None:

@@ -26,6 +26,7 @@ mcp-test-framework = "mcp_test_framework.cli:app"
 # published PyPI metadata if/when this package is released).
 [dependency-groups]
 dev = [
+    "pyright>=1.1.409",
     "pytest>=9.0",
     "pytest-asyncio>=1.3",
     # Surfaces hung tests with a per-test deadline + traceback rather than an
