@@ -109,7 +109,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 
 | Requirement ID | Phase    | Status   |
 | -------------- | -------- | -------- |
-| SDET-01        | Phase 18 | Pending  |
+| SDET-01        | Phase 18 | Complete |
 | SDET-02        | Phase 18 | Pending  |
 | SDET-03        | Phase 18 | Complete |
 | SDET-04        | Phase 18 | Complete |

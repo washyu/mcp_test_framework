@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 18 context gathered
-last_updated: "2026-05-13T07:02:06.855Z"
+stopped_at: Phase 18 Plan 07 completed
+last_updated: "2026-05-13T08:00:00.000Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 ## Current Position
 
 Phase: 18 (sdet-test-surface-typed-errors) — EXECUTING
-Plan: 3 of 8
-Status: Ready to execute
+Plan: 7 of 8 completed (Plan 08 remaining)
+Status: Plan 07 complete (tests/sdet/ scaffolding shipped; live SDET sanity 2/2)
 Last activity: 2026-05-13
 
 ## Performance Metrics
@@ -44,6 +44,7 @@ Last activity: 2026-05-13
 | Cross-milestone totals (shipped) | 18 phases / 69 plans / 85 reqs | all satisfied at milestone close |
 | Phase 18 P03 | 365 | 1 tasks | 4 files |
 | Phase 18 P04 | 51 | 1 tasks | 1 files |
+| Phase 18 P07 | ~1500 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 16]: Plan 16-03: docs/mcp_test_framework_mvp_spec.md zero-diff (intentional) — spec is MVP design contract, not operator CLI output reference
 - [Phase ?]: Mirror renderer output literally in docs — README sample blocks quote what _runner.py emits char-for-char, including whitespace quirks.
 - [Phase ?]: Plan 18-03 mcp_session fixture: Rule 3 deviation added public McpTestClient.server_info accessor (mcp SDK's ClientSession discards InitializeResult.serverInfo after caching only _server_capabilities)
+- [Phase 18]: Plan 18-07 tests/sdet/ scaffolding: Rule 1 deviation -- async tests using session-scoped mcp_session fixture MUST use `@pytest.mark.asyncio(loop_scope="session")`; bare `@pytest.mark.asyncio` hangs at the wire call boundary because pytest-asyncio strict mode under `asyncio_default_fixture_loop_scope="session"` pins the fixture's anyio streams to the session loop. Plan's example snippet used bare form; fixed in test file and documented for Phase 21 (DOC-SDET) docs.
 
 ### Roadmap Evolution
 
@@ -135,6 +137,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-13T07:02:06.847Z
-Stopped at: Phase 18 context gathered
-Resume next: `/gsd-plan-phase 17`
+Last session: 2026-05-13T08:00:00.000Z
+Stopped at: Phase 18 Plan 07 completed (tests/sdet/ scaffolding)
+Resume next: `/gsd-execute-phase 18` to pick up Plan 18-08 (framework self-tests / composition matrix)

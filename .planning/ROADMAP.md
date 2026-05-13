@@ -91,7 +91,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   - [x] 18-04-sdet-public-surface-PLAN.md — Re-export mcp_session, tool, ToolCallError from sdet/__init__.py (SDET-03, SDET-04, UI-02) [wave 4; depends_on: 18-01, 18-02, 18-03]
   - [x] 18-05-sdet-cli-flag-PLAN.md — Register --sdet Typer flag; thread through _build_pytest_args + run_pytest_subprocess (SDET-01, SDET-02, SDET-04) [wave 1; depends_on: none]
   - [x] 18-06-runner-renderer-integration-PLAN.md — D-09 JUnit-property parser hook + D-06 scenario digest + D-11 --debug appendix (SDET-02, UI-02) [wave 2; depends_on: 18-01, 18-05]
-  - [ ] 18-07-tests-sdet-scaffolding-PLAN.md — tests/sdet/ __init__.py + conftest.py (D-09 hook) + test_basic_call.py sanity (SDET-01, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06]
+  - [x] 18-07-tests-sdet-scaffolding-PLAN.md — tests/sdet/ __init__.py + conftest.py (D-09 hook) + test_basic_call.py sanity (SDET-01, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06] — completed 2026-05-13
   - [ ] 18-08-framework-self-tests-PLAN.md — Pin D-01..D-11 via test_tool_call_error/test_sdet_fixtures/test_sdet_cli/test_sdet_renderer + update test_tool_factory (SDET-01, SDET-02, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06, 18-07]
 **UI hint**: yes
 
