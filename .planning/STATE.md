@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 19 context gathered
-last_updated: "2026-05-13T19:00:14.168Z"
-last_activity: 2026-05-13 -- Phase 19 planning complete
+last_updated: "2026-05-13T19:06:38.125Z"
+last_activity: 2026-05-13 -- Phase 19 execution started
 progress:
   total_phases: 6
   completed_phases: 2
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 18 — sdet-test-surface-typed-errors
+**Current focus:** Phase 19 — stateful-primitives-domain-ui-integration
 
 ## Current Position
 
-Phase: 18 (sdet-test-surface-typed-errors) — COMPLETE
-Plan: 8 of 8 completed (final plan shipped 2026-05-13)
-Status: Ready to execute
+Phase: 19 (stateful-primitives-domain-ui-integration) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 19
         76/76 new tests pass; 111/111 prior tests still pass; public SDET surface frozen at 4 names.
 Next: Phase 19 (STATE + UI-01) — stateful primitives + first VM-lifecycle dogfood scenario.
-Last activity: 2026-05-13 -- Phase 19 planning complete
+Last activity: 2026-05-13 -- Phase 19 execution started
 
 ## Performance Metrics
 
