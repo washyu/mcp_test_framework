@@ -485,8 +485,14 @@ def translate_tool(
     document (raises SchemaValidityError per "Don't Hand-Roll" row 1).
     """
     input_schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
-    if input_schema:
-        _check_schema_structural(tool.name, input_schema)
+    # WR-06: always run the structural check on dict inputs (the function
+    # short-circuits on non-dict). The previous `if input_schema:` guard let
+    # a schema like `{"required": "not-a-list"}` slip through -- it has no
+    # `type` / `properties` so `_emit_params_body` falls to the `pass` body
+    # path, silently accepting a schema the structural check would otherwise
+    # refuse. Calling unconditionally aligns the gating with the function's
+    # documented contract.
+    _check_schema_structural(tool.name, input_schema)
 
     cls_base = pascal_case(tool.name)
     header = _render_header(
