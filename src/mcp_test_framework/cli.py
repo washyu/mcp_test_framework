@@ -622,8 +622,14 @@ def run(
         if debug:
             # D-13: --debug appends AFTER whatever the lower rung rendered.
             # Default UI shape unchanged; --debug only adds info.
+            # Phase 18 D-11: pass xml_path so the appendix can scan for
+            # ToolCallError-attached mcptf_error_* user_properties and emit
+            # the `--- ToolCallError dump ---` block BEFORE raw pytest output.
+            # When no such properties are present, the appendix is
+            # byte-identical to the Phase 14 baseline (D-13 invariant).
             _runner.render_debug_appendix(
                 captured_stdout, captured_stderr, parsed,
+                xml_path=tmp_xml,
             )
 
         mapped, warning = _runner._map_exit_code(rc)

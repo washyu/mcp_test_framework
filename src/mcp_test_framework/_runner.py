@@ -1119,11 +1119,82 @@ def render_summary_only(
     _render_summary_line(parsed, unparam_skips, file=file)
 
 
+@dataclass(frozen=True)
+class _ToolCallErrorRecord:
+    """Phase 18 D-11 appendix record. tool/code/message/raw all reconstructed
+    from JUnit user_properties (set by tests/sdet/conftest.py:
+    pytest_exception_interact -- see Plan 18-07 Task 2).
+
+    raw carries the CallToolResult.model_dump_json(indent=2) string that
+    pytest_exception_interact emits as the `mcptf_error_raw` property. Empty
+    string when the test did not raise ToolCallError, OR when exc.raw was None.
+    """
+
+    tool: str
+    code: str | None
+    message: str
+    raw: str  # the mcptf_error_raw user_property value; "" when absent / None
+
+
+def _extract_tool_call_errors_from_xml(xml_path: Path) -> list[_ToolCallErrorRecord]:
+    """Phase 18 D-11: scan a JUnit XML file for ToolCallError-attached
+    testcases (testcases with mcptf_error_message user_property -- code/raw
+    optional). Returns one record per such testcase. Returns [] when none
+    present (D-13 invariant: --debug appendix unchanged when no ToolCallError
+    failures occurred).
+
+    Reads ALL THREE user_properties emitted by Plan 18-07's
+    pytest_exception_interact:
+      - mcptf_error_code    -> .code  (None if missing or value="")
+      - mcptf_error_message -> .message (required -- testcase skipped if absent)
+      - mcptf_error_raw     -> .raw  (""  if missing or exc.raw was None;
+                                       otherwise the CallToolResult JSON dump)
+
+    Strategy 1: re-parse the XML here (vs threading dump strings through
+    ToolVerdict) so the dataclass surface stays unchanged. O(N) extra pass
+    is negligible at MVP scale.
+    """
+    if not xml_path.is_file():
+        return []
+    try:
+        tree = ET.parse(xml_path)
+    except ET.ParseError:
+        return []
+    out: list[_ToolCallErrorRecord] = []
+    root = tree.getroot()
+    for tc in root.iter("testcase"):
+        props = tc.find("properties")
+        if props is None:
+            continue
+        code: str | None = None
+        message: str | None = None
+        raw_dump: str = ""
+        for prop in props.iter("property"):
+            n = prop.get("name", "")
+            v = prop.get("value", "")
+            if n == "mcptf_error_code":
+                code = v or None
+            elif n == "mcptf_error_message":
+                message = v
+            elif n == "mcptf_error_raw":
+                # D-11: full CallToolResult.model_dump_json(indent=2) string.
+                # Empty value means exc.raw was None -- render as "(none)".
+                raw_dump = v
+        if message is None:
+            continue
+        tool_name = tc.get("name", "(unknown)")
+        out.append(_ToolCallErrorRecord(
+            tool=tool_name, code=code, message=message, raw=raw_dump,
+        ))
+    return out
+
+
 def render_debug_appendix(
     captured_stdout: str,
     captured_stderr: str,
     parsed: ParsedRun,
     file=None,
+    xml_path: Path | None = None,
 ) -> None:
     """Phase 14 D-13: `--debug` -- appended AFTER the domain UI.
 
@@ -1141,9 +1212,50 @@ def render_debug_appendix(
 
     The `--- raw pytest output ---` separator string is grep-able
     regression-pin material; do not reword.
+
+    Phase 18 D-11: when `xml_path` is provided AND the JUnit XML carries
+    ToolCallError-attached testcases (mcptf_error_* user_properties set by
+    tests/sdet/conftest.py:pytest_exception_interact), a `--- ToolCallError
+    dump ---` block is emitted BEFORE `--- raw pytest output ---` for each
+    such testcase. When `xml_path` is None or the XML lacks those
+    properties, the appendix is byte-identical to the Phase 14 baseline
+    (D-13 invariant: each rung adds info; none re-shapes the layer below).
     """
     if file is None:
         file = sys.stdout
+
+    # Phase 18 D-11: ToolCallError dump block emits BEFORE raw pytest output
+    # so operators get a parseable summary they can grep first. The raw:
+    # section carries the full CallToolResult.model_dump_json(indent=2) string
+    # emitted by Plan 18-07's pytest_exception_interact as the
+    # mcptf_error_raw property. When xml_path is absent (legacy callers) or
+    # no ToolCallError-attached testcases are present, this block emits
+    # zero bytes -- D-13 invariant preserved.
+    if xml_path is not None:
+        tool_call_errors = _extract_tool_call_errors_from_xml(xml_path)
+        for err in tool_call_errors:
+            print("--- ToolCallError dump ---", file=file)
+            print(f"tool: {err.tool}", file=file)
+            print(f"code: {err.code or '(none)'}", file=file)
+            print(f"message: {err.message}", file=file)
+            if err.raw:
+                # D-11: render the indented JSON dump. Each line of the dump
+                # (which already comes back from model_dump_json(indent=2)
+                # with its own 2-space internal indent) gets an ADDITIONAL
+                # 2-space prefix so the appendix layout matches CONTEXT.md
+                # lines 129-130.
+                print("raw:", file=file)
+                for line in err.raw.splitlines():
+                    print(f"  {line}", file=file)
+            else:
+                # exc.raw was None OR mcptf_error_raw property absent --
+                # explicit sentinel per CONTEXT.md "raw: <CallToolResult.
+                # model_dump_json>" contract; no fallback workaround
+                # because the dump is supposed to traverse the JUnit cycle.
+                print("raw: (none)", file=file)
+            print("---", file=file)
+            print("", file=file)
+
     print("", file=file)
     print("--- raw pytest output ---", file=file)
     if captured_stdout:
