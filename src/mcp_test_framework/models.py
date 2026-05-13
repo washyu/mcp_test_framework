@@ -132,3 +132,54 @@ class ToolConfig(BaseModel):
                 "(TOOLCFG-07: the reason surfaces in pytest skip output)"
             )
         return self
+
+
+class HomelabProxmoxConfig(BaseModel):
+    """Proxmox-specific knobs for SDET dogfood scenarios.
+
+    Currently exposes only ``dogfood_vmid_range`` -- the reserved VMID
+    window the framework's VM-lifecycle dogfood scenario allocates
+    from. Default avoids collision with typical operator-owned ranges.
+    Override in ``config.yaml`` if your cluster reserves 9990-9999 for
+    something else.
+
+    Not env-routable (mirrors ToolConfig per Phase 13 D-07): no
+    ``validation_alias=AliasChoices(...)``. ``extra="forbid"`` makes
+    typos (e.g. ``dogfood_vmd_range``) fail loudly at config load.
+    """
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
+
+    dogfood_vmid_range: tuple[int, int] = Field(
+        default=(9990, 9999),
+        description=(
+            "Reserved VMID range for dogfood scenario VMs as (lo, hi). "
+            "The framework only creates / deletes VMs within this range."
+        ),
+    )
+
+    @field_validator("dogfood_vmid_range", mode="after")
+    @classmethod
+    def _validate_dogfood_vmid_range(cls, v: tuple[int, int]) -> tuple[int, int]:
+        lo, hi = v
+        if lo > hi:
+            raise ValueError(
+                f"dogfood_vmid_range {v!r} must be (lo, hi) with lo <= hi"
+            )
+        if lo < 100 or hi > 999_999_999:
+            raise ValueError(
+                f"dogfood_vmid_range {v!r} out of Proxmox bounds [100, 999999999]"
+            )
+        return v
+
+
+class HomelabConfig(BaseModel):
+    """Container for homelab-specific scenario config domains.
+
+    v1.3 ships only ``proxmox``; future homelab.* domains (ansible,
+    terraform, etc.) extend this model additively.
+    """
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
+
+    proxmox: HomelabProxmoxConfig = Field(default_factory=HomelabProxmoxConfig)
