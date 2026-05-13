@@ -1,12 +1,47 @@
 ---
 id: SEED-020
-status: dormant
+status: superseded
 planted: 2026-05-12
+superseded: 2026-05-12
+superseded_by: Architectural principle — "framework provides primitives; SDET owns safety calls" (see SEED-022)
 planted_during: Phase 17 planning (post v1.3 milestone open, after second homelab-mcp run feedback)
-trigger_when: Phase 18 (SDET test surface) scoping if SEED-018 + SEED-019 are also being addressed; OR Phase 19 (stateful primitives) scoping; OR a v2.0 milestone reframing the framework around effect-aware testing
+trigger_when: N/A — superseded
 scope: Medium
-related_seeds: [SEED-018 (example-args manifest), SEED-019 (preview-as-contract-target), SEED-004 (stateful testing — depends on this), SEED-014 (programmatic SDET — depends on this)]
+related_seeds: [SEED-018 (example-args manifest), SEED-019 (preview-as-contract-target — also superseded), SEED-004 (stateful testing — depends on this), SEED-014 (programmatic SDET — depends on this)]
 ---
+
+# SEED-020: First-class tool effect taxonomy  *[SUPERSEDED 2026-05-12]*
+
+## Why This Was Superseded
+
+Planted earlier the same day and retired within hours. The user made the
+architectural call that obsoletes this seed:
+
+> "we can drop the is this a safe tool assumption and just let the
+> sdet/QAE decide that when they are creating tests with this framework."
+
+The taxonomy's value was gating framework behavior (auto-skip destructive
+in contract suite, redirect to preview, etc.). Under the new principle the
+framework does no gating — the SDET reads the tool's description, decides
+what's safe to test how, and writes assertions accordingly.
+
+Without framework-side gating, the taxonomy becomes informational metadata
+the SDET could optionally consume — and at that point it's just docstrings
+on test files, not a framework feature. Not seed-worthy.
+
+A weaker version of this idea survives in SEED-021 (judge documentation):
+the README should explain *which test classes are safe-by-construction*
+(description judges = no wire call) vs *operator-judged* (output
+conformance = wire call). That's the taxonomy that actually matters under
+the new principle, and it lives in docs, not code.
+
+Preserved here (rather than deleted) so the rationale survives for future
+readers asking "did we consider an effect enum?" Answer: yes, then chose
+a cleaner principle that doesn't need one.
+
+---
+
+# Original content (preserved for history):
 
 # SEED-020: First-class tool effect taxonomy (`read` / `preview` / `mutating` / `destructive` / `stateful`)
 

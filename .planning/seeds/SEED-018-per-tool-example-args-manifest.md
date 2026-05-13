@@ -2,42 +2,66 @@
 id: SEED-018
 status: dormant
 planted: 2026-05-12
-planted_during: Phase 17 planning (post v1.3 milestone open, after second homelab-mcp run feedback)
-trigger_when: Phase 18 (SDET test surface + typed errors) scoping, OR any conversation about closing the contract-suite "required property" noise floor, OR a v1.3 milestone audit notices that 23 of 55 failures in the v2 homelab run are missing-required-param errors
+rewritten: 2026-05-12
+planted_during: Phase 17 planning (post v1.3 milestone open)
+trigger_when: Phase 18 (SDET test surface + typed errors) scoping, OR any conversation about giving SDETs an ergonomic shortcut for the common "call this tool with these args, assert no error" test pattern
 scope: Small
-related_seeds: [SEED-014 (programmatic SDET authoring — parent), SEED-020 (tool effect taxonomy — sibling)]
+related_seeds: [SEED-014 (programmatic SDET authoring — parent), SEED-022 (architectural principle — sets the safety frame)]
 ---
 
-# SEED-018: Per-tool example-args manifest for contract tests
+# SEED-018: Per-tool `example_args` as SDET output-conformance shortcut
 
 ## Why This Matters
 
-In the 2026-05-12 second homelab-mcp run (580 contract cases against 58 tools),
-**23 of 55 failures were "Input validation error: 'X' is a required property"
-failures** — the framework correctly invoked each tool, but the parametrize-derived
-payload had nothing to put in `node`, `device_id`, `hostname`, `service_name`,
-`filter_type`, `query`, `backup_id`. These aren't framework bugs; they're missing
-operator-supplied test fixtures.
+Under the architectural principle locked 2026-05-12 (see SEED-022), the
+framework does no safety reasoning about tool calls — the SDET decides
+which tools to opt into which test classes and what arguments to invoke
+them with.
 
-This is noise that drowns out the real signal (the ~31 description-quality
-failures the judge correctly identified). Every contract run against a real
-server with non-trivial schemas will have this problem until the framework
-gives the operator a way to declare example values per tool.
+That makes the per-tool `example_args` manifest **not** a framework-side
+fixture (the earlier framing) but an **ergonomic shortcut for SDETs**.
 
-**This is orthogonal to Phase 18's SDET surface.** SDET-authored tests carry
-their own params (the operator imports `CreateProxmoxVmParams` and fills them
-in). The manifest is specifically for the contract suite — the cheap-to-run
-"call every tool, assert it doesn't error" pass that should stay automated.
+The common case: an SDET opts a tool into output-conformance testing
+("call this tool, assert `isError == False`, assert response shape
+matches `outputSchema`"). Today the SDET has to hand-write a one-line
+test file for every such tool:
+
+```python
+async def test_create_proxmox_vm_conformance(mcp_session):
+    result = await tool("create_proxmox_vm").call(
+        CreateProxmoxVmParams(node="pve1", vmid=999, name="test-vm")
+    )
+    assert not result.is_error
+```
+
+With `example_args` declared in config, the framework can synthesize that
+test for any tool the SDET has opted in. Same test, no boilerplate:
+
+```yaml
+tools:
+  create_proxmox_vm:
+    enabled: true
+    judges: [output_conformance]
+    example_args:
+      node: "pve1"
+      vmid: 999
+      name: "test-vm"
+```
+
+The operator's act of providing `example_args` *is* the safety judgment —
+they're saying "yes, calling this tool with these args is fine in my
+environment, run it." No framework-side `effect: destructive` reasoning;
+the operator's decision is sufficient.
 
 ## When to Surface
 
-**Trigger:** Phase 18 scoping (most natural fit), OR a v1.3 audit that asks
-"why is the contract suite still 23/55 noisy after we shipped codegen", OR any
-user file asking for a way to give the contract suite example data.
+**Trigger:** Phase 18 (SDET test surface) scoping, OR any conversation
+about SDET authoring boilerplate, OR "I want to skip writing the same
+two-line conformance test for 30 tools."
 
-Surface during `/gsd-new-milestone` when the milestone touches: contract suite
-ergonomics, false-positive reduction, operator fixture data, or "give the
-framework a way to know what arguments each tool wants."
+Surface during `/gsd-new-milestone` when the milestone touches: SDET
+authoring ergonomics, test boilerplate reduction, or config-driven
+output-conformance.
 
 ## Scope Estimate
 
@@ -45,100 +69,111 @@ framework a way to know what arguments each tool wants."
 
 ### 1. Config schema extension
 
-Add `tools.<name>.example_args` to `config.yaml`:
+Add `tools.<name>.example_args` to `config.yaml` (or sibling
+`example_args.yaml` for large tool surfaces — see Open Questions):
 
 ```yaml
 tools:
   create_proxmox_vm:
+    enabled: true
+    judges: [output_conformance]
     example_args:
       node: "pve1"
       vmid: 999
-      name: "framework-test-vm"
-      memory: 512
-  decommission_device:
-    example_args:
-      device_id: "test-device-do-not-use"
+      name: "test-vm"
   list_registered_servers:
-    # no required params, no entry needed
+    enabled: true
+    judges: [output_conformance]
+    # no required params, no example_args needed
+  delete_proxmox_vm:
+    enabled: false   # SDET decided this needs a real test, not the shortcut
 ```
 
-Pydantic-validated against the tool's generated `Params` class once Phase 17
-ships (codegen surface). Until then, validated against `inputSchema` via
-existing `Draft202012Validator`.
+Once Phase 17 ships, validate `example_args` against the tool's generated
+`Params` class. Until then, validate against `inputSchema` via existing
+`Draft202012Validator`.
 
-### 2. Contract-suite fixture wiring
+### 2. Output-conformance test generation
 
-Conftest fixture `example_args(tool_name) -> dict | None`:
-- Returns the configured args if present.
-- Returns `None` if no entry AND `inputSchema.required` is empty (tool needs no args).
-- Returns `None` AND emits a skip-with-reason if `inputSchema.required` is
-  non-empty AND no entry is configured. The skip reason names the missing
-  required keys so the operator sees exactly what to add.
+When a tool is opted into the `output_conformance` judge AND has
+`example_args` declared, the framework synthesizes the conformance test at
+collection time. No SDET boilerplate required.
 
-### 3. Skip-with-reason rendering
-
-`tools that need fixtures` becomes a domain-UI section, distinct from
-`failures` and `passing`. Reads:
+If a tool is opted in but has no `example_args` AND `inputSchema.required`
+is non-empty: skip-with-reason naming the missing keys. The skip reason
+tells the SDET exactly what to add:
 ```
-needs example_args:
-  create_proxmox_vm        (required: node, vmid, name)
-  decommission_device      (required: device_id)
-  …
+skipped: create_proxmox_vm — output_conformance requires example_args (missing: node, vmid)
 ```
-This turns the 23 false-failures from this run into 23 actionable
-"add these to your config.yaml" items.
+
+If `inputSchema.required` is empty (no required params), call with `{}`.
+
+### 3. Renders cleanly in the domain UI
+
+Conformance-from-`example_args` results render the same as hand-written
+SDET tests — no separate section, no "fixture vs test" distinction. From
+the operator's view, output-conformance is one test class; whether it
+came from a config entry or a hand-written file is implementation detail.
+
+## What This Seed Is NOT
+
+- **Not** a framework-side safety mechanism. The framework does no
+  classification of tools as safe/unsafe. The SDET decides what to opt
+  in via `enabled: true` + `judges: [...]`.
+- **Not** an auto-running contract suite. Without explicit
+  `output_conformance` opt-in per tool, no wire call happens.
+- **Not** a replacement for hand-written SDET tests. Complex flows,
+  stateful scenarios, custom assertions, and parameter-space sweeps all
+  still belong in SDET-authored test files. `example_args` is for the
+  common "call once, assert shape" case only.
 
 ## Open Design Questions
 
-- Should example_args be allowed to reference shell environment vars / 
-  `$NODE` interpolation? (Yes for v1, probably — matches the existing
-  config.example.yaml convention.)
-- What about tools where "running the example" *is* destructive? Answer:
-  pair with SEED-019 (_preview convention) and SEED-020 (effect taxonomy) —
-  if a tool is tagged destructive AND has a `_preview` sibling, the contract
-  suite invokes the preview using `example_args`. SDET tests retain the
-  ability to run the real thing explicitly.
-- Should the manifest live in config.yaml or a sibling
-  `example_args.yaml`? Sibling is cleaner for tools-with-70-entries
-  (homelab-mcp scale memory note); config.yaml is simpler for small SUTs.
-  Recommended: support both, with `tools.*.example_args` taking precedence
-  over `example_args.yaml` for fine overrides.
+- Should `example_args` allow env-var interpolation (e.g.,
+  `node: "${PROXMOX_TEST_NODE}"`)? Yes for v1 — matches the existing
+  `config.example.yaml` interpolation convention.
+- Single-file `config.yaml` entry vs sibling `example_args.yaml`?
+  Sibling is cleaner at 70-tool scale (homelab-mcp memory note);
+  config.yaml is simpler for small SUTs. Recommended: support both,
+  with `tools.*.example_args` taking precedence.
+- Multiple example-arg sets per tool (e.g., minimal vs full vs edge-case)?
+  Probably yes — `example_args` becomes a list, each entry generates a
+  separate conformance case. Defer to a separate seed if it gets too
+  large.
 
 ## Breadcrumbs
 
 Related code (verified present 2026-05-12):
-- `src/mcp_test_framework/config.py` / `models.py` — where ToolConfig lives;
-  add `example_args: dict[str, Any] | None = None`.
-- `tests/contract/` (current generic contract suite location) — where the
-  `example_args` fixture would wire in.
-- Phase 17 generated `Params` classes — manifest can validate against
-  `Params(**example_args)` once codegen ships.
+- `src/mcp_test_framework/models.py::ToolConfig` — add
+  `example_args: dict[str, Any] | None = None`.
+- Phase 17 generated `Params` classes (in progress) — `example_args` can
+  validate via `Params(**example_args)` once codegen ships.
+- Existing output-conformance test path (wherever `assert not isError`
+  lives in the current contract suite) — replace its blind-call logic
+  with the `example_args`-driven flow.
 
 Related decisions:
-- v1.2 SAFE-* config-safety lineage — manifest follows the same "fail loud
-  if config is missing something needed" posture; never silently default
-  missing required args to `None`.
-- Phase 09 OUTPUT-01 contract — manifest does not change JUnit XML shape;
-  skipped tests render as `<skipped>` with the reason, matching existing
-  contract.
+- v1.2 opt-in design: `tools:` is an allowlist (unlisted tools auto-skip).
+  `example_args` extends that same opt-in shape rather than introducing
+  a new opt-in surface.
+- Architectural principle (SEED-022): framework provides primitives; SDET
+  owns safety. `example_args` is the operator's act of opting in to a
+  wire call — no framework-side reasoning required.
 
 Related seeds:
 - **SEED-014** (programmatic SDET authoring) — parent. SEED-018 is the
-  contract-suite-shaped narrower piece SEED-014 doesn't explicitly cover.
-- **SEED-019** (_preview-as-contract-target) — sibling. Example args + 
-  preview redirect together close the destructive-tool gap.
-- **SEED-020** (tool effect taxonomy) — sibling. Taxonomy tells the
-  framework *what* a tool is; example_args tells it *what to send*.
+  ergonomic-shortcut subset that lets opt-in conformance tests be
+  config-driven instead of hand-written.
+- **SEED-022** (architectural principle) — sets the safety frame this
+  seed operates within.
 
 ## Notes
 
-Captured during Phase 17 planning on 2026-05-12 after the user ran the
-framework against homelab-mcp's full 58-tool surface and observed the
-23-false-failure pattern. The user explicitly said they should have
-surfaced this before opening v1.3 — strong signal this belongs *in* v1.3,
-ideally as a small phase between 17 and 18, or folded into Phase 18's
-"SDET test surface" prerequisites.
-
-If v1.3 closes without this, Phase 18's SDET tests will work, but the
-contract suite that's supposed to give the operator "running coverage
-across all 58 tools" will keep producing noisy output until v1.4.
+Originally planted 2026-05-12 as a "framework fixture to close the 23
+required-property false-failures in the v2 homelab-mcp run." The user
+challenged the framing later the same day with the architectural call
+that the framework should make no safety assumptions about tools. This
+seed was rewritten to fit the new principle: it is no longer a contract-
+suite fixture but an SDET-authoring shortcut. The 23 v2-run failures
+remain real but are now an SDET-side concern, not a framework concern —
+they'll close when an SDET opts those tools in with `example_args`.

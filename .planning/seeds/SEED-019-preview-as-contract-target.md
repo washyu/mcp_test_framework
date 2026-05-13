@@ -1,12 +1,46 @@
 ---
 id: SEED-019
-status: dormant
+status: superseded
 planted: 2026-05-12
+superseded: 2026-05-12
+superseded_by: Architectural principle — "framework provides primitives; SDET owns safety calls" (see SEED-022)
 planted_during: Phase 17 planning (post v1.3 milestone open, after second homelab-mcp run feedback)
-trigger_when: Phase 18 (SDET test surface + typed errors) scoping, OR Phase 19 (stateful primitives) scoping, OR any conversation about safely exercising destructive tools without a sandbox environment
+trigger_when: N/A — superseded
 scope: Small
 related_seeds: [SEED-018 (example-args manifest — sibling), SEED-020 (effect taxonomy — sibling), SEED-004 (stateful testing — adjacent)]
 ---
+
+# SEED-019: `_preview`-as-contract-target convention  *[SUPERSEDED 2026-05-12]*
+
+## Why This Was Superseded
+
+Planted earlier the same day and retired within hours after the user
+challenged the homelab-mcp coupling: "i am wondering if we are starting to
+model this tool around testing the homelab_mcp rather then keeping it
+generic. i am not sure if mcp generally have a preview feature for there
+tools."
+
+The `_preview` convention is a homelab-mcp idiom, not an MCP protocol
+feature. Designing a framework feature around it would over-fit the
+framework to one server's idiosyncrasy.
+
+The user then made the deeper architectural call that obsoletes this
+seed entirely:
+
+> "we can drop the is this a safe tool assumption and just let the
+> sdet/QAE decide that when they are creating tests with this framework."
+
+Under that principle, the framework does no safety reasoning at all —
+SDETs decide what to call, with what args, and write their own assertions.
+Preview-redirect was framework-side safety reasoning, so it goes.
+
+Preserved here (rather than deleted) so the rationale survives in the
+seed corpus for future readers asking "did we consider preview redirect?"
+Answer: yes, briefly, then chose a cleaner architectural line.
+
+---
+
+# Original content (preserved for history):
 
 # SEED-019: `_preview`-as-contract-target convention
 
