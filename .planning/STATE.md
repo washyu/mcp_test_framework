@@ -30,7 +30,7 @@ Plan: 8 of 8 completed (final plan shipped 2026-05-13)
 Status: Phase 18 closed. All D-01..D-11 decisions regression-pinned under tests/framework/unit/.
         76/76 new tests pass; 111/111 prior tests still pass; public SDET surface frozen at 4 names.
 Next: Phase 19 (STATE + UI-01) — stateful primitives + first VM-lifecycle dogfood scenario.
-Last activity: 2026-05-13
+Last activity: 2026-05-13 - Completed quick task 260513-chh: Fix _session_needs_preflight nodeid path mismatch
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ None at roadmap stage. Open design questions captured in REQUIREMENTS.md (CLI su
 | 260507-n0g | Safe-by-default tool skips in `config.example.yaml` (55 new skip entries; only `list_keyring_credentials` + `suggest_deployments` enabled) | 2026-05-07 | 0d8337b | [260507-n0g-safe-by-default-tool-skips](./quick/260507-n0g-safe-by-default-tool-skips/) |
 | 260508-p0b | v1.1.1 hotfix: filter `tools.<name>.skip:true` at parametrize time so skipped tools are absent from collection (not runtime-SKIPPED 10x each); 691 → 133 collected under config.example.yaml | 2026-05-08 | 509daee | [260508-p0b-fix-v1-1-skip-doesnt-filter-parametrize-](./quick/260508-p0b-fix-v1-1-skip-doesnt-filter-parametrize-/) |
 | 260512-dcs | Migrate example configs to schema v2 (closes CLEAN-03 BLOCKER from v1.2 milestone audit; examples/homelab-mcp.yaml + config.example.yaml flipped to `version: 2`, `.env` precedence comment stripped) | 2026-05-12 | 814d743 | [260512-dcs-flip-example-config-version-1-to-2-close](./quick/260512-dcs-flip-example-config-version-1-to-2-close/) |
+| 260513-chh | Fix `_session_needs_preflight` nodeid path mismatch — invert predicate to live-scope allowlist (`tests/contract/`, `tests/sdet/`); 9-case regression test added; framework unit tests no longer trigger live MCP preflight | 2026-05-13 | 1ba103b | [260513-chh-fix-session-needs-preflight-nodeid-path-](./quick/260513-chh-fix-session-needs-preflight-nodeid-path-/) |
 
 ## Deferred Items
 
