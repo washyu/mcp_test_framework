@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-05-13T05:18:09.028Z"
-last_activity: 2026-05-13 -- Phase 18 execution started
+last_updated: "2026-05-13T06:59:00.571Z"
+last_activity: 2026-05-13
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 6
-  percent: 43
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 ## Current Position
 
 Phase: 18 (sdet-test-surface-typed-errors) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 18
-Last activity: 2026-05-13 -- Phase 18 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-05-13
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Last activity: 2026-05-13 -- Phase 18 execution started
 | v1.2 quick tasks | 1 (260512-dcs) | CLEAN-03 closure via audit |
 | v1.3 scoping metrics | 5 phases / 21 reqs / plans TBD | roadmap created 2026-05-12 |
 | Cross-milestone totals (shipped) | 18 phases / 69 plans / 85 reqs | all satisfied at milestone close |
+| Phase 18 P03 | 365 | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 16]: Plan 16-03: README documents Phase 16 pre-run digest + --explain composition matrix + Phase 16 sample green run
 - [Phase 16]: Plan 16-03: docs/mcp_test_framework_mvp_spec.md zero-diff (intentional) — spec is MVP design contract, not operator CLI output reference
 - [Phase ?]: Mirror renderer output literally in docs — README sample blocks quote what _runner.py emits char-for-char, including whitespace quirks.
+- [Phase ?]: Plan 18-03 mcp_session fixture: Rule 3 deviation added public McpTestClient.server_info accessor (mcp SDK's ClientSession discards InitializeResult.serverInfo after caching only _server_capabilities)
 
 ### Roadmap Evolution
 
@@ -132,6 +134,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-13T04:42:03.177Z
+Last session: 2026-05-13T06:58:23.746Z
 Stopped at: Phase 18 context gathered
 Resume next: `/gsd-plan-phase 17`

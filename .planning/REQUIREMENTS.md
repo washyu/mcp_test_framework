@@ -111,8 +111,8 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | -------------- | -------- | -------- |
 | SDET-01        | Phase 18 | Pending  |
 | SDET-02        | Phase 18 | Pending  |
-| SDET-03        | Phase 18 | Pending  |
-| SDET-04        | Phase 18 | Pending  |
+| SDET-03        | Phase 18 | Complete |
+| SDET-04        | Phase 18 | Complete |
 | CODEGEN-01     | Phase 17 | Pending  |
 | CODEGEN-02     | Phase 17 | Pending  |
 | CODEGEN-03     | Phase 17 | Pending  |

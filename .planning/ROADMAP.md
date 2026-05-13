@@ -87,7 +87,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 **Plans**: 8 plans
   - [x] 18-01-errors-module-PLAN.md — Ship ToolCallError + _extract_code_message (UI-02; D-07 + D-08) [wave 1; depends_on: none]
   - [x] 18-02-tool-wrapper-body-PLAN.md — Fill ToolWrapper.call() body + add _ACTIVE_CLIENT slot (SDET-03, UI-02) [wave 2; depends_on: 18-01]
-  - [ ] 18-03-mcp-session-fixture-PLAN.md — Ship mcp_session fixture with D-02 registry activation + D-03 fail-loud (SDET-03, SDET-04) [wave 3; depends_on: 18-02]
+  - [x] 18-03-mcp-session-fixture-PLAN.md — Ship mcp_session fixture with D-02 registry activation + D-03 fail-loud (SDET-03, SDET-04) [wave 3; depends_on: 18-02]
   - [ ] 18-04-sdet-public-surface-PLAN.md — Re-export mcp_session, tool, ToolCallError from sdet/__init__.py (SDET-03, SDET-04, UI-02) [wave 4; depends_on: 18-01, 18-02, 18-03]
   - [x] 18-05-sdet-cli-flag-PLAN.md — Register --sdet Typer flag; thread through _build_pytest_args + run_pytest_subprocess (SDET-01, SDET-02, SDET-04) [wave 1; depends_on: none]
   - [x] 18-06-runner-renderer-integration-PLAN.md — D-09 JUnit-property parser hook + D-06 scenario digest + D-11 --debug appendix (SDET-02, UI-02) [wave 2; depends_on: 18-01, 18-05]
@@ -150,7 +150,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 5/5 | Complete | 2026-05-12 |
 | 17. Schema-driven codegen surface | v1.3 | 6/6 | Complete   | 2026-05-13 |
-| 18. SDET test surface + typed errors | v1.3 | 4/8 | In Progress|  |
+| 18. SDET test surface + typed errors | v1.3 | 5/8 | In Progress|  |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
 | 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |
@@ -172,7 +172,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. All Phase 17 unit tests still pass after the scrub (no behavior changes — pure documentation/comment edits)
   4. `mcp-test-framework --help` and each subcommand `--help` still describe the command's purpose clearly (the prose is at least as informative as the current ID-tagged version)
 
-**Plans:** 4/8 plans executed
+**Plans:** 5/8 plans executed
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 22 to break down)
