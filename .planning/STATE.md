@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: Phase 18 closed. All D-01..D-11 decisions regression-pinned under tests/framework/unit/.
+status: executing
 stopped_at: Phase 19 context gathered
-last_updated: "2026-05-13T16:28:58.937Z"
-last_activity: "2026-05-13 - Completed quick task 260513-chh: Fix _session_needs_preflight nodeid path mismatch"
+last_updated: "2026-05-13T19:00:14.168Z"
+last_activity: 2026-05-13 -- Phase 19 planning complete
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 14
+  total_plans: 18
   completed_plans: 14
-  percent: 100
+  percent: 78
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 Phase: 18 (sdet-test-surface-typed-errors) — COMPLETE
 Plan: 8 of 8 completed (final plan shipped 2026-05-13)
-Status: Phase 18 closed. All D-01..D-11 decisions regression-pinned under tests/framework/unit/.
+Status: Ready to execute
         76/76 new tests pass; 111/111 prior tests still pass; public SDET surface frozen at 4 names.
 Next: Phase 19 (STATE + UI-01) — stateful primitives + first VM-lifecycle dogfood scenario.
-Last activity: 2026-05-13 - Completed quick task 260513-chh: Fix _session_needs_preflight nodeid path mismatch
+Last activity: 2026-05-13 -- Phase 19 planning complete
 
 ## Performance Metrics
 
