@@ -40,13 +40,17 @@ _HAS_PYRIGHT = _pyright_available()
 
 
 def _synthetic_tools() -> list[Tool]:
-    """5-tool synthetic fixture exercising the D-02 coverage matrix.
+    """6-tool synthetic fixture exercising the D-02 coverage matrix + the
+    Gap-1 / 17-HUMAN-UAT shape.
 
     1. simple_tool   -- scalars (str + int with default)
     2. array_tool    -- array of scalar (list[str])
     3. object_tool   -- nested object (degrades to dict[str, Any] in v1.3)
     4. enum_tool     -- enum (degrades to typing.Any)
     5. oneof_tool    -- oneOf (degrades to typing.Any)
+    6. basic_tool    -- zero params (Gap-1 regression: pre-Plan-17-06 emitter
+                        produced orphaned `import typing` and `Field` imports
+                        that pyright strict rejected with reportUnusedImport).
     """
     return [
         Tool(
@@ -110,6 +114,16 @@ def _synthetic_tools() -> list[Tool]:
             },
             outputSchema=None,
         ),
+        Tool(
+            name="basic_tool",
+            description="A tool with zero params (the Gap-1 / 17-HUMAN-UAT shape). Live homelab-mcp tools like list_registered_servers produced 29 reportUnusedImport pyright errors because the emitter unconditionally wrote `import typing` and `Field` even when neither was referenced. This fixture pins the gate against that shape.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            outputSchema=None,
+        ),
     ]
 
 
@@ -137,7 +151,7 @@ def test_synthetic_generated_passes_pyright_strict(tmp_path: Path) -> None:
         out_root=out_root,
         timestamp="2026-05-12T00:00:00+00:00",
     )
-    assert counts["tools"] == 5
+    assert counts["tools"] == 6
     # 3 degradations: enum_tool.kind (enum) + oneof_tool.target (oneOf) +
     # object_tool.config (nested object with `properties` -- per _codegen.py
     # _emit_field: nested-object-with-properties degrades in v1.3, while a

@@ -167,3 +167,66 @@ def test_emitter_loud_fail_on_empty_server_name(tmp_path: Path) -> None:
             tools=[_t("create_vm")],
             out_root=tmp_path, timestamp=_FIXED_TS,
         )
+
+
+def test_emitter_omits_unused_typing_import_when_no_typing_any(tmp_path: Path) -> None:
+    """Gap-1 regression (17-HUMAN-UAT): a tool with no params and no
+    typing.Any degradation MUST NOT emit `import typing`. Pyright strict's
+    reportUnusedImport otherwise fails for this shape against live homelab-mcp.
+    """
+    # Empty-params tool: no fields -> no `Field(` calls AND no `typing.Any`.
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[_t("ping")],  # _t default schema: {"type":"object","properties":{},"required":[]}
+        out_root=tmp_path, timestamp=_FIXED_TS,
+    )
+    text = (tmp_path / "homelab_mcp" / "ping.py").read_text(encoding="utf-8")
+    # The bug: pre-fix emitter wrote `import typing` unconditionally.
+    assert "import typing" not in text, (
+        f"empty-params tool unexpectedly emitted `import typing`; "
+        f"this is the Gap-1 regression. File text:\n{text}"
+    )
+
+
+def test_emitter_omits_unused_field_import_when_no_field_calls(tmp_path: Path) -> None:
+    """Gap-1 regression (17-HUMAN-UAT): a tool whose rendered body contains
+    no `Field(` calls MUST NOT include `Field` in the pydantic import.
+    """
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[_t("ping")],
+        out_root=tmp_path, timestamp=_FIXED_TS,
+    )
+    text = (tmp_path / "homelab_mcp" / "ping.py").read_text(encoding="utf-8")
+    # Pydantic import line should be `from pydantic import BaseModel, ConfigDict`
+    # without `Field`. Allow either ordering robustness via two assertions:
+    assert "from pydantic import BaseModel, ConfigDict\n" in text, (
+        f"expected pydantic import without Field; got file text:\n{text}"
+    )
+    assert ", Field" not in text and "Field," not in text and "Field\n" not in text, (
+        f"Field unexpectedly imported despite no Field(...) usage. File text:\n{text}"
+    )
+
+
+def test_emitter_still_emits_typing_and_field_when_used(tmp_path: Path) -> None:
+    """Positive control: a tool whose rendered body DOES use typing.Any
+    (via degradation) AND Field(default=...) (via optional with default)
+    MUST still emit both imports.
+    """
+    tools = [_t("create_vm", input_schema={
+        "type": "object",
+        "properties": {
+            "kind": {"type": "string", "enum": ["a", "b"]},  # degrades -> typing.Any
+            "count": {"type": "integer", "default": 1},      # optional with default -> Field(default=1)
+        },
+        "required": ["kind"],
+    })]
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=tools, out_root=tmp_path, timestamp=_FIXED_TS,
+    )
+    text = (tmp_path / "homelab_mcp" / "create_vm.py").read_text(encoding="utf-8")
+    assert "import typing\n" in text, f"typing should be imported (degraded field uses typing.Any). File:\n{text}"
+    assert "from pydantic import BaseModel, ConfigDict, Field\n" in text, (
+        f"Field should be imported (count uses Field(default=1)). File:\n{text}"
+    )

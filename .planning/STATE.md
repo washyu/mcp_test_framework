@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-05-13T00:09:11.277Z"
-last_activity: 2026-05-13 -- Phase 17 planning complete
+last_updated: "2026-05-13T03:41:35.131Z"
+last_activity: 2026-05-13 -- Phase 17 execution started
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 0
-  total_plans: 5
-  completed_plans: 0
-  percent: 0
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** v1.3 Homelab Scenario Testing — SDET surface, schema-driven codegen, stateful primitives. Replaces manual Claude-client verification of homelab-mcp with automated end-to-end coverage. Operator + SDET dual-persona milestone.
+**Current focus:** Phase 17 — schema-driven-codegen-surface
 
 ## Current Position
 
-Phase: Not started (roadmap approved 2026-05-12; awaiting `/gsd-plan-phase 17`)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-13 -- Phase 17 planning complete
+Phase: 17 (schema-driven-codegen-surface) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 17
+Last activity: 2026-05-13 -- Phase 17 execution started
 
 ## Performance Metrics
 
