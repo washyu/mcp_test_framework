@@ -123,8 +123,10 @@ def test_emitter_init_py_carries_registry(tmp_path: Path) -> None:
     # __all__
     assert '"CreateVmParams"' in init_text
     assert '"DeleteVmResponse"' in init_text
-    # _REGISTRY for Phase 18 dispatch
-    assert "_REGISTRY: dict[str, tuple[type, type[ToolResponse]]] = {" in init_text
+    # _REGISTRY for Phase 18 dispatch -- WR-02 tightened annotation from bare
+    # `type` to `type[BaseModel]` to match _tool_factory._REGISTRIES.
+    assert "_REGISTRY: dict[str, tuple[type[BaseModel], type[ToolResponse]]] = {" in init_text
+    assert "from pydantic import BaseModel" in init_text
     assert '"create_vm": (CreateVmParams, CreateVmResponse),' in init_text
 
 

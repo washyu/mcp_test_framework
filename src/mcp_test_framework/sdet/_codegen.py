@@ -587,20 +587,24 @@ def _render_init(
         )
 
     all_block = "__all__ = [\n    " + ",\n    ".join(all_names) + ",\n]" if all_names else "__all__ = []"
+    # WR-02: emit the tighter `type[BaseModel]` annotation to match
+    # _tool_factory._REGISTRIES expectations. Downstream consumers of the
+    # generated _REGISTRY see a typed Pydantic model class, not bare `type`.
     registry_block = (
         "# Phase 17 CODEGEN-05: tool(name) factory dispatches against this.\n"
         "# Phase 18 will consume _REGISTRY through "
         "`mcp_test_framework.sdet._tool_factory`.\n"
-        "_REGISTRY: dict[str, tuple[type, type[ToolResponse]]] = {\n"
+        "_REGISTRY: dict[str, tuple[type[BaseModel], type[ToolResponse]]] = {\n"
         + "\n".join(registry_lines) + "\n}\n"
     ) if registry_lines else (
-        "_REGISTRY: dict[str, tuple[type, type[ToolResponse]]] = {}\n"
+        "_REGISTRY: dict[str, tuple[type[BaseModel], type[ToolResponse]]] = {}\n"
     )
 
     body = "\n".join(import_lines) + ("\n\n" if import_lines else "")
     return (
         f"{header}"
         f"from __future__ import annotations\n\n"
+        f"from pydantic import BaseModel\n\n"
         f"from mcp_test_framework.sdet.response import ToolResponse\n\n"
         f"{body}"
         f"{all_block}\n\n"
