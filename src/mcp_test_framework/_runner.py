@@ -991,25 +991,39 @@ def _render_per_tool_rows(
 ) -> None:
     """Phase 09 CD-03: FAIL -> SKIP -> PASS, alphabetical within each.
     Phase 14 D-08: FAIL row appends `failure_message` after em-dash.
+    Phase 19: scenario keys carry '::' (e.g. 'group::row_label') and
+    render as a bare group header followed by indented per-test rows;
+    these keys are excluded from the contract `name_width` ljust.
     Em-dash separator = U+2014 (literal '—'), not ASCII hyphen.
     `file=None` -> sys.stdout at call time (capsys-friendly).
     """
     if file is None:
         file = sys.stdout
-    fails = sorted(t for t, v in parsed.per_tool.items() if v.verdict == "FAIL")
-    skips_xml = {t for t, v in parsed.per_tool.items() if v.verdict == "SKIP"}
-    passes = sorted(t for t, v in parsed.per_tool.items() if v.verdict == "PASS")
+
+    # Split per_tool into contract entries (no '::') and scenario entries.
+    contract_per_tool = {k: v for k, v in parsed.per_tool.items() if "::" not in k}
+    scenario_entries: dict[str, list[tuple[str, ToolVerdict]]] = {}
+    for k, v in parsed.per_tool.items():
+        if "::" not in k:
+            continue
+        group, _, row_label = k.partition("::")
+        scenario_entries.setdefault(group, []).append((row_label, v))
+
+    # -- Contract block (BYTE-IDENTICAL to pre-Phase-19 behavior when no scenarios) --
+    fails = sorted(t for t, v in contract_per_tool.items() if v.verdict == "FAIL")
+    skips_xml = {t for t, v in contract_per_tool.items() if v.verdict == "SKIP"}
+    passes = sorted(t for t, v in contract_per_tool.items() if v.verdict == "PASS")
 
     # Union XML-derived SKIPs with state-(a)/(c) composer entries.
     all_skips = sorted(skips_xml | set(unparam_skips.keys()))
 
-    all_names = list(parsed.per_tool.keys()) + list(unparam_skips.keys())
+    all_names = list(contract_per_tool.keys()) + list(unparam_skips.keys())
     name_width = max((len(n) for n in all_names), default=0)
 
     if fails:
         print("failures:", file=file)
         for tool in fails:
-            v = parsed.per_tool[tool]
+            v = contract_per_tool[tool]
             tag = _red("FAIL", file)
             if v.failure_message:
                 # U+2014 em-dash; matches Phase 09 SC-3 (locked separator).
@@ -1020,8 +1034,8 @@ def _render_per_tool_rows(
     if all_skips:
         print("skipped:", file=file)
         for tool in all_skips:
-            if tool in parsed.per_tool and parsed.per_tool[tool].verdict == "SKIP":
-                reasons_text = _format_skip_reasons(parsed.per_tool[tool].skip_reasons)
+            if tool in contract_per_tool and contract_per_tool[tool].verdict == "SKIP":
+                reasons_text = _format_skip_reasons(contract_per_tool[tool].skip_reasons)
             else:
                 reasons_text = unparam_skips[tool]
             tag = _dim("SKIP", file)
@@ -1035,6 +1049,28 @@ def _render_per_tool_rows(
         for tool in passes:
             tag = _green("PASS", file)
             print(f"  {tool.ljust(name_width)}  ✓ {tag}", file=file)
+
+    # -- Scenario blocks (Phase 19) --
+    # Bare group header, indented per-test rows (glyph + row_label;
+    # NO tag word). FAIL rows append em-dash + failure_message; SKIP
+    # rows append em-dash + reasons. Groups and rows sorted alphabetically.
+    for group in sorted(scenario_entries):
+        print(group, file=file)
+        for row_label, v in sorted(scenario_entries[group], key=lambda pair: pair[0]):
+            if v.verdict == "PASS":
+                print(f"  ✓ {row_label}", file=file)
+            elif v.verdict == "FAIL":
+                if v.failure_message:
+                    # U+2014 em-dash; Phase 09 SC-3 (locked separator).
+                    print(f"  ✗ {row_label} — {v.failure_message}", file=file)
+                else:
+                    print(f"  ✗ {row_label}", file=file)
+            else:  # SKIP
+                reasons_text = _format_skip_reasons(v.skip_reasons)
+                if reasons_text:
+                    print(f"  – {row_label} — {reasons_text}", file=file)
+                else:
+                    print(f"  – {row_label}", file=file)
 
 
 # ---------------------------------------------------------------------------

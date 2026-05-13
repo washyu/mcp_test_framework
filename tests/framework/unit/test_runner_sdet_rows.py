@@ -176,7 +176,7 @@ def _strip_ansi(s: str) -> str:
 
 
 def test_render_scenario_block_pass():
-    parsed = ParsedRun(total_tests=1, total_failures=0, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=1, total_failures=0, total_skipped=0, total_errors=0)
     parsed.per_tool["proxmox_vm_lifecycle::create_returns_pending_vm"] = ToolVerdict(
         name="proxmox_vm_lifecycle::create_returns_pending_vm", verdict="PASS"
     )
@@ -191,7 +191,7 @@ def test_render_scenario_block_pass():
 
 
 def test_render_scenario_block_multi_row_alphabetical_within_group():
-    parsed = ParsedRun(total_tests=3, total_failures=0, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=3, total_failures=0, total_skipped=0, total_errors=0)
     for name in ["test_c", "test_a", "test_b"]:
         key = f"proxmox_vm_lifecycle::{name.removeprefix('test_')}"
         parsed.per_tool[key] = ToolVerdict(name=key, verdict="PASS")
@@ -211,7 +211,7 @@ def test_render_scenario_block_multi_row_alphabetical_within_group():
 
 
 def test_render_scenario_block_fail_with_em_dash():
-    parsed = ParsedRun(total_tests=1, total_failures=1, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=1, total_failures=1, total_skipped=0, total_errors=0)
     key = "proxmox_vm_lifecycle::create_returns_pending_vm"
     parsed.per_tool[key] = ToolVerdict(
         name=key, verdict="FAIL", failure_message="[E_X] boom"
@@ -228,7 +228,7 @@ def test_render_scenario_block_fail_with_em_dash():
 
 
 def test_render_scenario_block_skip_with_reason():
-    parsed = ParsedRun(total_tests=1, total_failures=0, total_skipped=1, total_errors=0)
+    parsed = ParsedRun(total_cases=1, total_failures=0, total_skipped=1, total_errors=0)
     key = "proxmox_vm_lifecycle::create_returns_pending_vm"
     parsed.per_tool[key] = ToolVerdict(
         name=key, verdict="SKIP", skip_reasons=["requires homelab"]
@@ -244,7 +244,7 @@ def test_render_scenario_block_skip_with_reason():
 
 
 def test_render_mixed_contract_and_scenario():
-    parsed = ParsedRun(total_tests=2, total_failures=0, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=2, total_failures=0, total_skipped=0, total_errors=0)
     # Contract tool (no ::).
     parsed.per_tool["list_tools"] = ToolVerdict(name="list_tools", verdict="PASS")
     # Scenario tool (with ::).
@@ -269,7 +269,7 @@ def test_render_mixed_contract_and_scenario():
 
 def test_scenario_keys_excluded_from_name_width():
     """A very long scenario key must NOT widen the contract row's ljust."""
-    parsed = ParsedRun(total_tests=2, total_failures=0, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=2, total_failures=0, total_skipped=0, total_errors=0)
     # Short contract tool name.
     parsed.per_tool["short"] = ToolVerdict(name="short", verdict="PASS")
     # Long scenario key — should not affect contract row alignment.
@@ -293,7 +293,7 @@ def test_scenario_keys_excluded_from_name_width():
 
 
 def test_groups_sorted_alphabetically():
-    parsed = ParsedRun(total_tests=2, total_failures=0, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=2, total_failures=0, total_skipped=0, total_errors=0)
     parsed.per_tool["proxmox_vm_lifecycle::create"] = ToolVerdict(
         name="proxmox_vm_lifecycle::create", verdict="PASS"
     )
@@ -311,7 +311,7 @@ def test_groups_sorted_alphabetically():
 
 def test_scenario_block_empty_if_no_scenarios():
     """No scenario keys -> output byte-identical to pre-Phase-19 contract-only behavior."""
-    parsed = ParsedRun(total_tests=1, total_failures=0, total_skipped=0, total_errors=0)
+    parsed = ParsedRun(total_cases=1, total_failures=0, total_skipped=0, total_errors=0)
     parsed.per_tool["list_tools"] = ToolVerdict(name="list_tools", verdict="PASS")
     buf = io.StringIO()
     _render_per_tool_rows(parsed, {}, file=buf)
