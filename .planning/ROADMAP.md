@@ -104,7 +104,11 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   2. A deliberately-failing dogfood test in `tests/framework/` (or equivalent self-test surface) asserts that a stateful fixture's `yield`-teardown still ran after an intervening test raised — cleanup-on-failure is enforced and observable.
   3. SDET scenario runs render through `_render_per_tool_rows`: each scenario module appears as a per-tool group header (e.g. `proxmox_vm_lifecycle`); individual test functions render as nested rows with their function names (`create_returns_pending_vm`, `modify_accepts_cpu_increase`, etc.) and the same PASS/FAIL/SKIP glyph vocabulary the contract pass already uses.
   4. Cross-file scenario ordering via `pytest-order` (or equivalent) is documented as a recipe; the framework ships no custom ordering mechanism.
-**Plans**: TBD
+**Plans**: 4 plans (2 waves)
+  - [ ] 19-01-PLAN.md — STATE-02 cleanup-on-failure self-test (xfail strict + module-global counter) [wave 1; depends_on: ]
+  - [ ] 19-02-PLAN.md — homelab.proxmox.dogfood_vmid_range Pydantic sub-model + Config wiring + example YAML [wave 1; depends_on: ]
+  - [ ] 19-03-PLAN.md — _runner.py parser + renderer extension for tests/sdet/ scenario rows (UI-01) [wave 1; depends_on: ]
+  - [ ] 19-04-PLAN.md — VM-lifecycle dogfood scenario (STATE-01/03/04 + STATE-04 pytest-order recipe) [wave 2; depends_on: 19-02, 19-03]
 **UI hint**: yes
 
 ### Phase 20: Preflight + conditional skip
@@ -151,7 +155,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 16. Reporter UX overhaul | v1.2 | 5/5 | Complete | 2026-05-12 |
 | 17. Schema-driven codegen surface | v1.3 | 6/6 | Complete   | 2026-05-13 |
 | 18. SDET test surface + typed errors | v1.3 | 8/8 | Complete | 2026-05-13 |
-| 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
+| 19. Stateful primitives + domain UI integration | v1.3 | 0/4 | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
 | 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |
 
