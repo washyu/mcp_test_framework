@@ -84,6 +84,21 @@ my-mcp-server/
 | `mcp_test_framework.cli` (the `mcp-test-framework` command) | Maintained but secondary | Doesn't grow new flags unless library mode also benefits. |
 | Domain UI plugin (`mcp_test_framework.report`) | Experimental v1.3, stable v1.4 | Naming TBD. Phase 14's parametrize-id-leak issue resolves naturally because the renderer is now reading test-node-ids from pytest's collection, not parsing JUnit XML. |
 
+### Sub-item: Codegen output path must become configurable
+
+**Surfaced 2026-05-13 during Phase 17 live UAT.** Phase 17's `gen-sdet-classes` command hard-codes the output root to `src/mcp_test_framework/sdet/generated/<server_slug>/` (locked by Phase 17 CONTEXT.md D-08 + REQUIREMENTS.md CODEGEN-01). That works for single-project dogfooding, but library-mode delivery breaks it:
+
+- `pip install`'d `mcp_test_framework` lives in the consumer's `site-packages/` — usually read-only, blown away on upgrade, invisible to the consumer's IDE/test runner.
+- Generated code must instead land in the consumer's own project tree (typical layout: `tests/_generated/<server_slug>/` next to their existing tests).
+- Operators in library mode would want one of: (a) a config key like `sdet.generated_root: tests/_generated`, (b) a `--output-dir` CLI override, (c) auto-detection of "we're installed as a package vs. running from source", or (d) default to `tests/_generated/` whenever cwd has a `tests/` directory.
+
+**Operator quote (2026-05-13):** "When we make this an importable package into an actual code folder they would probably want this to be in a test folder, not just the root."
+
+**Design notes for the eventual implementation:**
+- Whatever shape the override takes, D-09 (`tool("name")` is stringly-typed) means consumers must still import from a known module path. So the `register()` API (or its successor) needs to accept either an absolute import path or a filesystem path it can convert. Cleanest: config key holds the filesystem path, codegen writes there, and `register()`/`mcp_session` learns the same path so `_REGISTRIES[slug]` can be populated from it at test-collection time without operator-side import gymnastics.
+- The wipe-and-write idempotence guarantee MUST be preserved for the new location — destination resolved at runtime, but blast radius still locked to `<resolved_root>/<server_slug>/` only.
+- Decision D-08's spirit ("no `--output-dir` for v1.3") was about CLI flag complexity for the homelab-mcp dogfood case. Library-mode is the trigger for revisiting it.
+
 ## When to Surface
 
 **Trigger:** When the operator-vs-CLI mental model starts feeling like a leak from framework-author ergonomics into the operator surface. Specifically:
