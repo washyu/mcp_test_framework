@@ -144,3 +144,50 @@ def test_run_raw_no_sdet_argv_has_tests_contract(tmp_path, monkeypatch) -> None:
     argv = captured.get("argv", [])
     assert "tests/contract" in argv, argv
     assert "tests/sdet" not in argv, argv
+
+
+# ---------------------------------------------------------------------------
+# Phase 18 D-06: pre-run digest dispatch
+# ---------------------------------------------------------------------------
+
+
+def test_run_sdet_dispatches_scenario_digest(tmp_path, monkeypatch) -> None:
+    """D-06: `run --sdet` (non-raw) prints the SDET digest banner, NOT the
+    tool-flavored 'MCP Test Framework' banner."""
+    cfg_path = _make_valid_config(tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    captured: dict = {}
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_capturing_argv(captured),
+    )
+    # Avoid the wrapper's own discovery call (which would spawn the MCP server).
+    monkeypatch.setattr(
+        "mcp_test_framework.cli._discover_tools_for_run",
+        lambda cfg: [],
+    )
+    result = _invoke("run", "--sdet", "--config", str(cfg_path))
+    assert result.exit_code == 0, result.output
+    assert "MCP Test Framework (SDET)" in result.output, result.output
+    # The tool banner ("MCP Test Framework" followed by newline, no (SDET)
+    # suffix) must NOT appear under --sdet.
+    assert "\nMCP Test Framework\n" not in result.output
+
+
+def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
+    """D-06 regression: `run` (no --sdet) still prints the tool digest banner."""
+    cfg_path = _make_valid_config(tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    captured: dict = {}
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_capturing_argv(captured),
+    )
+    monkeypatch.setattr(
+        "mcp_test_framework.cli._discover_tools_for_run",
+        lambda cfg: [],
+    )
+    result = _invoke("run", "--config", str(cfg_path))
+    assert result.exit_code == 0, result.output
+    assert "MCP Test Framework" in result.output
+    assert "MCP Test Framework (SDET)" not in result.output
