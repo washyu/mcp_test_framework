@@ -51,7 +51,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 - [x] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06)
  (completed 2026-05-13)
-- [ ] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02)
+- [x] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02) (completed 2026-05-13)
 - [ ] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01)
 - [ ] **Phase 20: Preflight + conditional skip** — `requires_homelab(...)` marker factory with fast, graceful reachability checks (PREFLIGHT-01..02)
 - [ ] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03)
@@ -92,7 +92,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   - [x] 18-05-sdet-cli-flag-PLAN.md — Register --sdet Typer flag; thread through _build_pytest_args + run_pytest_subprocess (SDET-01, SDET-02, SDET-04) [wave 1; depends_on: none]
   - [x] 18-06-runner-renderer-integration-PLAN.md — D-09 JUnit-property parser hook + D-06 scenario digest + D-11 --debug appendix (SDET-02, UI-02) [wave 2; depends_on: 18-01, 18-05]
   - [x] 18-07-tests-sdet-scaffolding-PLAN.md — tests/sdet/ __init__.py + conftest.py (D-09 hook) + test_basic_call.py sanity (SDET-01, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06] — completed 2026-05-13
-  - [ ] 18-08-framework-self-tests-PLAN.md — Pin D-01..D-11 via test_tool_call_error/test_sdet_fixtures/test_sdet_cli/test_sdet_renderer + update test_tool_factory (SDET-01, SDET-02, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06, 18-07]
+  - [x] 18-08-framework-self-tests-PLAN.md — Pin D-01..D-11 via test_tool_call_error/test_sdet_fixtures/test_sdet_cli/test_sdet_renderer + update test_tool_factory (SDET-01, SDET-02, SDET-03, SDET-04, UI-02) [wave 5; depends_on: 18-04, 18-06, 18-07] — completed 2026-05-13
 **UI hint**: yes
 
 ### Phase 19: Stateful primitives + domain UI integration
@@ -150,7 +150,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 5/5 | Complete | 2026-05-12 |
 | 17. Schema-driven codegen surface | v1.3 | 6/6 | Complete   | 2026-05-13 |
-| 18. SDET test surface + typed errors | v1.3 | 6/8 | In Progress|  |
+| 18. SDET test surface + typed errors | v1.3 | 8/8 | Complete | 2026-05-13 |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
 | 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |

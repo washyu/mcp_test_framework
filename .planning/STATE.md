@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 18 Plan 07 completed
-last_updated: "2026-05-13T08:00:00.000Z"
+stopped_at: Phase 18 complete (all 8 plans shipped; ready for Phase 19)
+last_updated: "2026-05-13T12:00:00.000Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 ## Current Position
 
-Phase: 18 (sdet-test-surface-typed-errors) — EXECUTING
-Plan: 7 of 8 completed (Plan 08 remaining)
-Status: Plan 07 complete (tests/sdet/ scaffolding shipped; live SDET sanity 2/2)
+Phase: 18 (sdet-test-surface-typed-errors) — COMPLETE
+Plan: 8 of 8 completed (final plan shipped 2026-05-13)
+Status: Phase 18 closed. All D-01..D-11 decisions regression-pinned under tests/framework/unit/.
+        76/76 new tests pass; 111/111 prior tests still pass; public SDET surface frozen at 4 names.
+Next: Phase 19 (STATE + UI-01) — stateful primitives + first VM-lifecycle dogfood scenario.
 Last activity: 2026-05-13
 
 ## Performance Metrics
@@ -45,6 +47,7 @@ Last activity: 2026-05-13
 | Phase 18 P03 | 365 | 1 tasks | 4 files |
 | Phase 18 P04 | 51 | 1 tasks | 1 files |
 | Phase 18 P07 | ~1500 | 3 tasks | 4 files |
+| Phase 18 P08 | ~1500 | 4 tasks | 4 files | 50 tests added; Task 5 no-op (pre-satisfied by 18-02) |
 
 ## Accumulated Context
 
@@ -86,6 +89,9 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Mirror renderer output literally in docs — README sample blocks quote what _runner.py emits char-for-char, including whitespace quirks.
 - [Phase ?]: Plan 18-03 mcp_session fixture: Rule 3 deviation added public McpTestClient.server_info accessor (mcp SDK's ClientSession discards InitializeResult.serverInfo after caching only _server_capabilities)
 - [Phase 18]: Plan 18-07 tests/sdet/ scaffolding: Rule 1 deviation -- async tests using session-scoped mcp_session fixture MUST use `@pytest.mark.asyncio(loop_scope="session")`; bare `@pytest.mark.asyncio` hangs at the wire call boundary because pytest-asyncio strict mode under `asyncio_default_fixture_loop_scope="session"` pins the fixture's anyio streams to the session loop. Plan's example snippet used bare form; fixed in test file and documented for Phase 21 (DOC-SDET) docs.
+- [Phase 18]: Plan 18-08 framework self-tests: Task 5 (test_tool_factory.py update) was a documented no-op -- Plan 18-02 already deleted the NotImplementedError test, added test_call_raises_runtime_error_when_no_active_client, and extended _reset_module_state to save/restore _ACTIVE_CLIENT. All Task 5 acceptance criteria pre-satisfied by commit 0cec347.
+- [Phase 18]: Plan 18-08: test_sdet_renderer.py D-11 round-trip pinning uses xml.sax.saxutils.quoteattr for the mcptf_error_raw property value so the model_dump_json(indent=2) string survives XML attribute serialization; json.loads on the recovered string verifies CallToolResult schema keys (isError, content, structuredContent) survived the full pipeline.
+- [Phase 18]: Plan 18-08: indented-JSON grep gate uses 4-space prefix (not 2) because model_dump_json(indent=2) already adds its own 2-space indent and render_debug_appendix adds another 2-space prefix on every dump line -- combined left margin is 4 spaces before inner JSON keys. Test-author error caught during first run; fix is test-side only.
 
 ### Roadmap Evolution
 
