@@ -82,6 +82,10 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 16]: Plan 16-03: docs/mcp_test_framework_mvp_spec.md zero-diff (intentional) — spec is MVP design contract, not operator CLI output reference
 - [Phase ?]: Mirror renderer output literally in docs — README sample blocks quote what _runner.py emits char-for-char, including whitespace quirks.
 
+### Roadmap Evolution
+
+- 2026-05-13: Phase 22 added — scrub requirement-ID leaks from `src/` (5 user-visible CLI docstrings + 58 internal references). Surfaced during Phase 17 live UAT when `mcp-test-framework --help` exposed `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style tags. Source-code analog of the v1.2 doc scrub. v1.3 milestone range extended from Phases 17–21 to Phases 17–22.
+
 ### Blockers/Concerns
 
 None at roadmap stage. Open design questions captured in REQUIREMENTS.md (CLI surface for `gen-sdet-classes`, generated-file location, server-slug derivation, `requires_homelab` location, `tool()` vs attribute-access idiom, stub vs alias for outputSchema-undeclared responses) are deferred to plan-phase decisions, not roadmap blockers.

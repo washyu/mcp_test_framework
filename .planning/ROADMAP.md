@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 01–05 (shipped 2026-05-06) — see [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Multi-Tool + Isolation + JUnit** — Phases 06–11 (shipped 2026-05-08) — see [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Operator-First Design** — Phases 12–16 (shipped 2026-05-12) — see [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
-- 🚧 **v1.3 Homelab Scenario Testing** — Phases 17–21 (planning, scoped 2026-05-12)
+- 🚧 **v1.3 Homelab Scenario Testing** — Phases 17–22 (planning, scoped 2026-05-12)
 
 ## Phases
 
@@ -47,13 +47,14 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 </details>
 
-### 🚧 v1.3 Homelab Scenario Testing (Phases 17–21) — IN PLANNING
+### 🚧 v1.3 Homelab Scenario Testing (Phases 17–22) — IN PLANNING
 
 - [ ] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06)
 - [ ] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02)
 - [ ] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01)
 - [ ] **Phase 20: Preflight + conditional skip** — `requires_homelab(...)` marker factory with fast, graceful reachability checks (PREFLIGHT-01..02)
 - [ ] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03)
+- [ ] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01)
 
 ## Phase Details
 
@@ -144,3 +145,25 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
 | 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |
+
+### Phase 22: Scrub requirement-ID leaks from src/
+
+**Goal:** Operator running `mcp-test-framework --help` (or any subcommand `--help`) sees no requirement-ID leaks like `CLI-01`, `PERSONA-02`, `CODEGEN-01`, `SAFE-03`, etc. — only descriptive prose. Internal source comments are also scrubbed so future grep doesn't surface planning-system artifacts inside the shipped package.
+
+**Scope:**
+  - 5 user-visible Typer command docstrings (`run`, `list-tools`, `version`, `gen-sdet-classes`, `_emit_yaml_scaffold`) that render through `--help`
+  - 58 additional in-source references across `src/mcp_test_framework/` (module docstrings, decision-anchor comments, inline annotations)
+  - Replace with prose, or drop entirely when the reference adds no value; preserve only references that explicitly aid future maintenance reasoning (and move those to `.planning/` if so)
+
+**Depends on:** Phase 21 (last v1.3 functional phase — scrub lands as the v1.3 close-hygiene pass; same sequencing pattern as v1.2's CLEAN-03 closure)
+**Requirements**: SCRUB-SRC-01 (TBD — formalize during plan-phase)
+**Success Criteria** (what must be TRUE):
+  1. `uv run mcp-test-framework --help` and each subcommand `--help` show zero matches for the regex `(CLI|PERSONA|CODEGEN|SAFE|RUNNER|UX|ISOL|JUNIT|SURFACE|TEST|CLEAN|DOC|UI|SDET|STATE|PREFLIGHT|SCRUB)-\d+`
+  2. `grep -rE '(CLI|PERSONA|CODEGEN|SAFE|RUNNER|UX|ISOL|JUNIT|SURFACE|TEST|CLEAN|DOC|UI|SDET|STATE|PREFLIGHT|SCRUB)-\d+' src/mcp_test_framework/` returns zero hits (or only an allowlist of intentional references with justification)
+  3. All Phase 17 unit tests still pass after the scrub (no behavior changes — pure documentation/comment edits)
+  4. `mcp-test-framework --help` and each subcommand `--help` still describe the command's purpose clearly (the prose is at least as informative as the current ID-tagged version)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 22 to break down)
