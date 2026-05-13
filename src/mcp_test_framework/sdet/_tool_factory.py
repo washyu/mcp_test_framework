@@ -4,39 +4,55 @@ Per Phase 17 CONTEXT.md decisions:
   - D-09: stringly-typed `tool("name").call(params)` -- single surface, no
     attribute-access namespace (`Tool.create_vm.call(...)` ergonomic deferred
     to v1.4 if SDETs ask).
-  - Phase 17 ships the SEAM only: ToolWrapper is constructible, lookup works,
-    and the wrapper's .params_cls / .response_cls are correct. The .call()
-    wire body raises NotImplementedError pointing at Phase 18.
+  - Phase 17 shipped the SEAM only: ToolWrapper is constructible, lookup
+    works, and the wrapper's .params_cls / .response_cls are correct. Phase
+    17 also shipped a stub `.call()` body that pointed at Phase 18.
 
-The module-level _REGISTRIES + _ACTIVE_SLUG slots are populated by Phase 18's
-``mcp_session`` fixture: the fixture imports
+Phase 18 SDET-03 (this module's current state):
+  - The `.call()` body is fully wired. It serializes params via Pydantic
+    (`mode="json"`), routes through the active McpTestClient stashed in
+    `_ACTIVE_CLIENT`, raises `ToolCallError` (UI-02) on `result.isError`, and
+    constructs `self.response_cls(raw=result)` on success.
+  - A new module slot `_ACTIVE_CLIENT` is set/cleared by the `mcp_session`
+    fixture body (sibling to `_ACTIVE_SLUG`).
+
+The module-level _REGISTRIES + _ACTIVE_SLUG + _ACTIVE_CLIENT slots are
+populated by Phase 18's ``mcp_session`` fixture: the fixture imports
 ``mcp_test_framework.sdet.generated.<slug>``, reads its ``_REGISTRY`` attr,
-inserts it into ``_REGISTRIES[slug]``, sets ``_ACTIVE_SLUG = slug``, then
-yields. On teardown the fixture restores the previous state.
+inserts it into ``_REGISTRIES[slug]``, sets ``_ACTIVE_SLUG = slug`` and
+``_ACTIVE_CLIENT = <client>``, then yields. On teardown the fixture restores
+the previous state.
 
-Why ship the seam now (and not roll the whole factory into Phase 18):
+Why the seam was shipped in Phase 17 (and not rolled into Phase 18):
   - The generated ``generated/<slug>/__init__.py`` writes ``_REGISTRY`` entries
     keyed against ``(type[BaseModel], type[ToolResponse])``. If Phase 17 didn't
     expose ``ToolWrapper`` / ``tool``, the generated ``_REGISTRY`` would point
     at types with no consumer -- pyright-clean but semantically dangling.
-  - Phase 18's only change to this module is the body of ``ToolWrapper.call``.
-    The dispatch shape, error messages, and slot contract are LOCKED here.
+  - Phase 18's only change to this module is the body of ``ToolWrapper.call``
+    (plus the `_ACTIVE_CLIENT` slot). The dispatch shape, error messages, and
+    slot contract are LOCKED here.
 
-Module-level state warning: tests MUST reset _ACTIVE_SLUG / _REGISTRIES to
-their default in a fixture teardown to avoid bleed.
+Module-level state warning: tests MUST reset _ACTIVE_SLUG / _ACTIVE_CLIENT /
+_REGISTRIES to their default in a fixture teardown to avoid bleed.
 """
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+from typing import Generic, TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel
 
 from mcp_test_framework.sdet.response import ToolResponse
 
+if TYPE_CHECKING:
+    from mcp_test_framework.mcp_client import McpTestClient
+
 
 # Phase 18 will mutate these; Phase 17 ships the slots.
 _REGISTRIES: dict[str, dict[str, tuple[type[BaseModel], type[ToolResponse]]]] = {}
 _ACTIVE_SLUG: str | None = None
+# Phase 18 SDET-03: active McpTestClient injected by the mcp_session fixture.
+# Mutated ONLY by mcp_session in src/mcp_test_framework/sdet/session.py.
+_ACTIVE_CLIENT: "McpTestClient | None" = None
 
 
 P = TypeVar("P", bound=BaseModel)
@@ -44,22 +60,22 @@ R = TypeVar("R", bound=ToolResponse)
 
 
 class ToolWrapper(Generic[P, R]):
-    """Returned by ``tool(name)``. Phase 17 ships the shape; Phase 18 wires .call().
+    """Returned by ``tool(name)``. Phase 18 wires the full call path.
 
-    Phase 17 contract:
+    Phase 17 contract (still in force):
       - Constructed by ``tool(name)`` with the registered ``(params_cls,
         response_cls)`` tuple from the generated ``_REGISTRY``.
       - ``.params_cls`` and ``.response_cls`` are exposed for introspection
         (and for downstream tooling like docs generation).
-      - ``.call(params)`` raises NotImplementedError -- the missing piece is
-        Phase 18's ``mcp_session`` fixture which owns the ``ClientSession``.
 
-    Phase 18 contract (forward-look only; not implemented here):
+    Phase 18 SDET-03 contract (now live in this module):
       - ``.call(params)`` validates `params` against the inputSchema by virtue
         of being a Pydantic BaseModel (already done at ``CreateVmParams(...)``
-        construction), then calls ``ClientSession.call_tool(self.name,
-        params.model_dump(mode='python'))``, then constructs
-        ``self.response_cls(raw=<result>)``.
+        construction), then serializes via ``params.model_dump(mode='json')``,
+        awaits ``McpTestClient.call_tool(self.name, arguments)`` on the active
+        ``_ACTIVE_CLIENT`` slot, and either raises ``ToolCallError`` (when
+        ``result.isError`` is True) or constructs
+        ``self.response_cls(raw=result)``.
     """
 
     def __init__(self, name: str, params_cls: type[P], response_cls: type[R]) -> None:
@@ -68,18 +84,41 @@ class ToolWrapper(Generic[P, R]):
         self.response_cls = response_cls
 
     async def call(self, params: P) -> R:
-        """Wire body deferred to Phase 18. Raises NotImplementedError.
+        """Make the MCP wire call; raise ToolCallError on isError; else return response_cls.
 
-        Phase 17 ships this stub so generated files are importable + pyright
-        sees a coherent return-type chain; Phase 17 tests assert the
-        NotImplementedError message is operator-readable.
+        Phase 18 SDET-03 + UI-02 wiring:
+          - Resolves the active McpTestClient via the module-level _ACTIVE_CLIENT
+            slot (set/cleared by the mcp_session fixture). Raises RuntimeError if
+            unset (naming the missing fixture so the operator can fix it).
+          - Serializes `params` via Pydantic with mode="json" (MCP wire format
+            expects JSON-serializable dicts; preserves int/str/list/None as-is).
+          - Awaits McpTestClient.call_tool (which already enforces asyncio.timeout
+            per mcp_client.py:207-210).
+          - On result.isError=True: extracts code+message via the D-08 strict
+            heuristic chain and raises ToolCallError(tool, code, message, raw).
+          - On result.isError=False: constructs self.response_cls(raw=result) per
+            CODEGEN-04's uniform .raw/.data/.text/.is_error contract.
         """
-        raise NotImplementedError(
-            "tool().call() requires Phase 18's `mcp_session` fixture which "
-            "owns the ClientSession. Phase 17 ships the codegen + dispatch "
-            "shape only. See REQUIREMENTS.md SDET-03 (Phase 18) for the "
-            "fixture contract."
-        )
+        if _ACTIVE_CLIENT is None:
+            raise RuntimeError(
+                "no active MCP client. tool().call() requires the `mcp_session` "
+                "fixture (Phase 18). Use it in an SDET test under `tests/sdet/`."
+            )
+        arguments = params.model_dump(mode="json")
+        result = await _ACTIVE_CLIENT.call_tool(self.name, arguments)
+        if result.isError:
+            from mcp_test_framework.sdet.errors import (
+                ToolCallError,
+                _extract_code_message,
+            )
+            code, message = _extract_code_message(result)
+            raise ToolCallError(
+                tool=self.name,
+                code=code,
+                message=message,
+                raw=result,
+            )
+        return self.response_cls(raw=result)
 
 
 def tool(name: str) -> ToolWrapper:
