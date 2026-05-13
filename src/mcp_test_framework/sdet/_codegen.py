@@ -343,11 +343,24 @@ def translate_tool(
     else:
         response_class += f'    """\n{response_body}'
 
+    # Gap-1 fix (Plan 17-06): emit `import typing` and `Field` only when the
+    # rendered body actually references them. Pyright strict's reportUnusedImport
+    # otherwise errors on tools with only basic-type params (no typing.Any
+    # degradation) or zero params (no Field(...) annotations at all).
+    body_text = params_body + response_class
+    needs_typing = "typing." in body_text
+    needs_field = "Field(" in body_text
+
+    pydantic_imports = "BaseModel, ConfigDict"
+    if needs_field:
+        pydantic_imports += ", Field"
+    typing_import_line = "import typing\n\n" if needs_typing else ""
+
     source = (
         f"{header}"
         f"from __future__ import annotations\n\n"
-        f"import typing\n\n"
-        f"from pydantic import BaseModel, ConfigDict, Field\n\n"
+        f"{typing_import_line}"
+        f"from pydantic import {pydantic_imports}\n\n"
         f"from mcp_test_framework.sdet.response import ToolResponse\n\n\n"
         f"class {cls_base}Params(BaseModel):\n"
         f'    """Params for the `{tool.name}` tool.\n\n'

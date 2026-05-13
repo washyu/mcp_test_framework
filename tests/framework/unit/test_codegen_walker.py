@@ -115,7 +115,19 @@ class TestWalkerHeader:
         assert _FIXED_TS in src
 
     def test_emits_future_annotations_and_pydantic_imports(self) -> None:
-        src, _ = translate_tool(_t("create_vm"), **_FIXED_HEADER_KW)
+        # Plan 17-06 Gap-1 fix: `import typing` and `Field` are now CONDITIONAL
+        # on actual usage in the rendered body (pyright strict reportUnusedImport).
+        # Use a tool whose body exercises BOTH: a degraded enum (forces `typing.Any`)
+        # and a required scalar field (forces `Field(...)`).
+        tool = _t("create_vm", input_schema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "kind": {"type": "string", "enum": ["a", "b"]},  # degrades -> typing.Any
+            },
+            "required": ["name", "kind"],
+        })
+        src, _ = translate_tool(tool, **_FIXED_HEADER_KW)
         assert "from __future__ import annotations" in src
         assert "from pydantic import BaseModel, ConfigDict, Field" in src
         assert "from mcp_test_framework.sdet.response import ToolResponse" in src
