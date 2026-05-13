@@ -381,18 +381,54 @@ def _format_field_line(name: str, spec: FieldSpec, *, required: bool) -> str:
     return "\n".join(lines)
 
 
-def _emit_params_body(schema: dict | None) -> tuple[str, int]:
-    """Emit the body of a <Tool>Params class. Returns (body_text, degraded_count).
+@dataclass(frozen=True)
+class _BodyEmission:
+    """Structured output of `_emit_params_body` / `_emit_response_body`.
 
-    Empty / non-object inputSchema -> `pass` body. degraded_count is 0 in that case.
+    CR-04: replaces the previous `(body_text, degraded_count)` tuple plus
+    post-render substring scans on the rendered text. The substring scan
+    false-positived when a field description literally contained "typing."
+    or "Field(" -- a description like "Accepts any typing.Any-compatible
+    value" caused the emitter to write `import typing` against a body that
+    never referenced typing.Any, resurrecting the orphaned-import shape
+    Plan 17-06 was meant to close.
+
+    Fields:
+      body_text:        the rendered class body (with the trailing newline
+                        the previous return shape already included).
+      degraded_count:   how many fields fell to a typing.Any (or
+                        dict[str, typing.Any]) degradation path.
+      uses_typing_any:  True iff ANY emitted field's annotation references
+                        `typing.` (covers both bare `typing.Any` and
+                        composite `dict[str, typing.Any]`). Structured
+                        signal -- consulted at the import-emission site
+                        instead of substring-scanning the rendered body.
+      has_fields:       True iff at least one `Field(...)` call was
+                        emitted. False for `pass`-body classes (no
+                        properties, non-object inputSchema, or None
+                        outputSchema). Structured signal for the
+                        conditional `from pydantic import ..., Field`.
+    """
+    body_text: str
+    degraded_count: int
+    uses_typing_any: bool
+    has_fields: bool
+
+
+def _emit_params_body(schema: dict | None) -> _BodyEmission:
+    """Emit the body of a <Tool>Params class.
+
+    Empty / non-object inputSchema -> `pass` body. degraded_count is 0 in
+    that case and both `uses_typing_any` / `has_fields` are False.
     """
     if not isinstance(schema, dict) or schema.get("type") != "object":
-        return "    pass\n", 0
+        return _BodyEmission("    pass\n", 0, False, False)
     props = schema.get("properties") or {}
     required = set(schema.get("required") or [])
     if not props:
-        return "    pass\n", 0
+        return _BodyEmission("    pass\n", 0, False, False)
     degraded = 0
+    uses_typing_any = False
     lines: list[str] = []
     # Required first (alphabetical), then optional (alphabetical) -- matches
     # `_format_param_signature` at cli.py:932-950.
@@ -403,14 +439,23 @@ def _emit_params_body(schema: dict | None) -> tuple[str, int]:
         spec = _emit_field(name, prop_schema, required=(name in required))
         if spec.degrade_reason is not None:
             degraded += 1
+        if "typing." in spec.py_type:
+            uses_typing_any = True
         lines.append(_format_field_line(name, spec, required=(name in required)))
-    return "\n".join(lines) + "\n", degraded
+    # `lines` is non-empty here because `props` is non-empty and we iterate
+    # over both required and optional names. `has_fields=True`.
+    return _BodyEmission(
+        body_text="\n".join(lines) + "\n",
+        degraded_count=degraded,
+        uses_typing_any=uses_typing_any,
+        has_fields=True,
+    )
 
 
-def _emit_response_body(schema: dict | None) -> tuple[str, int]:
+def _emit_response_body(schema: dict | None) -> _BodyEmission:
     """Emit the body of a <Tool>Response class. D-06 stub when schema is None."""
     if schema is None:
-        return "    pass\n", 0
+        return _BodyEmission("    pass\n", 0, False, False)
     # When outputSchema IS declared, treat it the same as Params (object walk).
     return _emit_params_body(schema)
 
@@ -440,9 +485,9 @@ def translate_tool(
         server_version=server_version, timestamp=timestamp,
     )
 
-    params_body, params_degraded = _emit_params_body(input_schema)
+    params = _emit_params_body(input_schema)
     output_schema = tool.outputSchema if isinstance(tool.outputSchema, dict) else None
-    response_body, response_degraded = _emit_response_body(output_schema)
+    response = _emit_response_body(output_schema)
 
     response_class = (
         f"class {cls_base}Response(ToolResponse):\n"
@@ -455,18 +500,23 @@ def translate_tool(
             f"    outputSchema was undeclared at codegen time; .data falls\n"
             f"    back to JSON-parse / text-dict per CODEGEN-04 chain.\n"
             f'    """\n'
-            f"{response_body}"
+            f"{response.body_text}"
         )
     else:
-        response_class += f'    """\n{response_body}'
+        response_class += f'    """\n{response.body_text}'
 
-    # Gap-1 fix (Plan 17-06): emit `import typing` and `Field` only when the
-    # rendered body actually references them. Pyright strict's reportUnusedImport
-    # otherwise errors on tools with only basic-type params (no typing.Any
-    # degradation) or zero params (no Field(...) annotations at all).
-    body_text = params_body + response_class
-    needs_typing = "typing." in body_text
-    needs_field = "Field(" in body_text
+    # Gap-1 fix (Plan 17-06) + CR-04: emit `import typing` / `Field` only
+    # when the body actually uses them. The previous scan was a substring
+    # check over the rendered body (`"typing." in body_text`,
+    # `"Field(" in body_text`), which false-positived when a field's
+    # description literally contained "typing." or "Field(" -- resurrecting
+    # the orphaned-import shape pyright-strict's reportUnusedImport rejects.
+    # `_BodyEmission` now threads `uses_typing_any` / `has_fields` as
+    # structured signals computed at field-emission time (over the typed
+    # FieldSpec, not the rendered string), so descriptions can't poison the
+    # decision.
+    needs_typing = params.uses_typing_any or response.uses_typing_any
+    needs_field = params.has_fields or response.has_fields
 
     pydantic_imports = "BaseModel, ConfigDict"
     if needs_field:
@@ -485,10 +535,10 @@ def translate_tool(
         f"    default rules at construction time before the wire call.\n"
         f'    """\n'
         f"    model_config = ConfigDict(extra=\"forbid\")\n\n"
-        f"{params_body}\n\n"
+        f"{params.body_text}\n\n"
         f"{response_class}"
     )
-    return source, params_degraded + response_degraded
+    return source, params.degraded_count + response.degraded_count
 
 
 # --- File emission (D-03 wipe-and-write) ----------------------------------
