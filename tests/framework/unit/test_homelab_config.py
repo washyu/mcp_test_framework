@@ -44,3 +44,42 @@ def test_homelab_proxmox_frozen():
     cfg = HomelabProxmoxConfig()
     with pytest.raises((ValidationError, TypeError)):
         cfg.dogfood_vmid_range = (1, 2)  # type: ignore[misc]
+
+
+# --- Config root integration tests ---
+
+import textwrap
+
+from mcp_test_framework.config import Config
+
+
+def test_config_default_homelab():
+    # Pure-default Config (no YAML, no env). Confirms the new field
+    # default_factory wires through the root model.
+    cfg = Config()
+    assert cfg.homelab.proxmox.dogfood_vmid_range == (9990, 9999)
+
+
+def test_config_yaml_homelab_override(tmp_path):
+    path = tmp_path / "cfg.yaml"
+    path.write_text(textwrap.dedent("""\
+        version: 2
+        homelab:
+          proxmox:
+            dogfood_vmid_range: [9200, 9209]
+    """))
+    cfg = Config(yaml_file=str(path))
+    assert cfg.homelab.proxmox.dogfood_vmid_range == (9200, 9209)
+
+
+def test_config_yaml_typo_rejected(tmp_path):
+    path = tmp_path / "cfg.yaml"
+    path.write_text(textwrap.dedent("""\
+        version: 2
+        homelab:
+          proxmox:
+            dogfood_vmd_range: [1, 2]
+    """))
+    with pytest.raises(ValidationError) as excinfo:
+        Config(yaml_file=str(path))
+    assert "dogfood_vmd_range" in str(excinfo.value) or "extra" in str(excinfo.value).lower()
