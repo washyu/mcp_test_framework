@@ -352,8 +352,118 @@ def translate_tool(
         f"{params_body}\n\n"
         f"{response_class}"
     )
-    # Suppress unused-import warning if the walker module imports module_name
-    # for future use (it's used by `generate()` in Task 3); keep the import
-    # at module scope to avoid re-imports in the hot path.
-    _ = module_name
     return source, params_degraded + response_degraded
+
+
+# --- File emission (D-03 wipe-and-write) ----------------------------------
+
+import datetime as _dt
+import shutil
+from pathlib import Path
+
+from mcp_test_framework.sdet._slugs import server_slug
+
+
+def _render_init(
+    *,
+    slug: str,
+    server_name: str,
+    server_version: str,
+    timestamp: str,
+    registry_entries: list[tuple[str, str]],  # [(tool_name, pascal_base), ...]
+) -> str:
+    """Render generated/<slug>/__init__.py: header + per-tool imports + _REGISTRY.
+
+    Per RESEARCH Pattern 4 + CONTEXT.md "What gen-sdet-classes prints" (sorted).
+    """
+    header = HEADER_TEMPLATE.format(
+        slug=slug, server_name=server_name,
+        server_version=server_version, timestamp=timestamp,
+    )
+    # Imports, sorted alphabetically by tool_name (diff-stable).
+    import_lines: list[str] = []
+    all_names: list[str] = []
+    registry_lines: list[str] = []
+    for tool_name, pascal in sorted(registry_entries, key=lambda t: t[0]):
+        params_cls = f"{pascal}Params"
+        response_cls = f"{pascal}Response"
+        mod = module_name(tool_name)
+        import_lines.append(f"from .{mod} import {params_cls}, {response_cls}")
+        all_names.extend([f'"{params_cls}"', f'"{response_cls}"'])
+        registry_lines.append(f'    "{tool_name}": ({params_cls}, {response_cls}),')
+
+    all_block = "__all__ = [\n    " + ",\n    ".join(all_names) + ",\n]" if all_names else "__all__ = []"
+    registry_block = (
+        "# Phase 17 CODEGEN-05: tool(name) factory dispatches against this.\n"
+        "# Phase 18 will consume _REGISTRY through "
+        "`mcp_test_framework.sdet._tool_factory`.\n"
+        "_REGISTRY: dict[str, tuple[type, type[ToolResponse]]] = {\n"
+        + "\n".join(registry_lines) + "\n}\n"
+    ) if registry_lines else (
+        "_REGISTRY: dict[str, tuple[type, type[ToolResponse]]] = {}\n"
+    )
+
+    body = "\n".join(import_lines) + ("\n\n" if import_lines else "")
+    return (
+        f"{header}"
+        f"from __future__ import annotations\n\n"
+        f"from mcp_test_framework.sdet.response import ToolResponse\n\n"
+        f"{body}"
+        f"{all_block}\n\n"
+        f"{registry_block}"
+    )
+
+
+def generate(
+    *,
+    server_name: str,
+    server_version: str,
+    tools: list[Tool],
+    out_root: Path,
+    timestamp: str | None = None,
+) -> dict[str, int]:
+    """Wipe-and-write generated/<slug>/ from a list of Tool objects.
+
+    D-03: shutil.rmtree(target, ignore_errors=True) -> mkdir -> write per-tool
+    files -> write __init__.py LAST (Pitfall 5: partial states fail clean,
+    not half-imported).
+
+    `timestamp=None` uses datetime.now(UTC) at sub-second precision; tests
+    pass a fixed value for byte-identical idempotency.
+
+    Returns counts: {"tools": <N>, "degraded_fields": <M>}.
+    """
+    if timestamp is None:
+        timestamp = _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds")
+
+    slug = server_slug(server_name)  # raises ValueError on empty/all-non-ident
+    target = out_root / slug
+
+    # D-03 wipe.
+    shutil.rmtree(target, ignore_errors=True)
+    target.mkdir(parents=True, exist_ok=True)
+
+    counts = {"tools": 0, "degraded_fields": 0}
+    registry_entries: list[tuple[str, str]] = []
+
+    # Sorted emission for diff-stability.
+    for tool in sorted(tools, key=lambda t: t.name):
+        rendered, degraded_n = translate_tool(
+            tool, slug=slug, server_name=server_name,
+            server_version=server_version, timestamp=timestamp,
+        )
+        per_tool_path = target / f"{module_name(tool.name)}.py"
+        per_tool_path.write_text(rendered, encoding="utf-8")
+        counts["tools"] += 1
+        counts["degraded_fields"] += degraded_n
+        registry_entries.append((tool.name, pascal_case(tool.name)))
+
+    # Write __init__.py LAST (Pitfall 5).
+    init_text = _render_init(
+        slug=slug, server_name=server_name,
+        server_version=server_version, timestamp=timestamp,
+        registry_entries=registry_entries,
+    )
+    (target / "__init__.py").write_text(init_text, encoding="utf-8")
+
+    return counts
