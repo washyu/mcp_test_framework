@@ -19,6 +19,13 @@ judge_timeout_seconds: 120
 # Schema version. This release accepts version 2.
 version: 2
 
+# SDET dogfood scenarios use a pinned VMID range to avoid colliding with
+# operator-owned VMs. Override this if your cluster reserves 9990-9999
+# for something else. Names are `mcptf-dogfood-<ISO8601-timestamp>`.
+homelab:
+  proxmox:
+    dogfood_vmid_range: [9990, 9999]
+
 # Per-tool registry. Keys MUST match tool names returned by
 # `mcp-test-framework list-tools`. Tools with no entry use safe defaults
 # (skip=false, call_arguments={}, judges=null = run all rubrics).

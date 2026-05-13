@@ -36,6 +36,7 @@ from pydantic_settings import (
 )
 
 from mcp_test_framework.models import (
+    HomelabConfig,
     McpServerConfig,
     OllamaConfig,
     ToolConfig,
@@ -52,6 +53,7 @@ class Config(BaseSettings):
 
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     mcp_server: McpServerConfig = Field(default_factory=McpServerConfig)
+    homelab: HomelabConfig = Field(default_factory=HomelabConfig)
 
     judge_timeout_seconds: int = 120
 
