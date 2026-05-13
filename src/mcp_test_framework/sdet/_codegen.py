@@ -24,6 +24,8 @@ Pure-data: this module reads dicts and emits strings. No filesystem I/O in
 from __future__ import annotations
 
 import json
+import keyword
+import re
 from dataclasses import dataclass
 
 from jsonschema.validators import Draft202012Validator, validator_for
@@ -259,6 +261,90 @@ def _emit_field(name: str, schema: dict, *, required: bool) -> FieldSpec:
     )
 
 
+_FIELD_NON_IDENT = re.compile(r"[^a-zA-Z0-9_]+")
+
+
+def _safe_field_ident(name: str) -> tuple[str, str | None]:
+    """Map a JSON-Schema property name to (python_ident, alias_if_renamed).
+
+    CR-03: JSON-Schema property keys are arbitrary strings -- Python keywords
+    (`class`, `import`), leading-digit (`2fa_code`), hyphenated (`vm-id`),
+    whitespace / unicode (`vm id`, `配置`) all produce SyntaxError when
+    interpolated verbatim into `<name>: <type> = Field(...)`. The slug and
+    PascalCase helpers in `_slugs.py` already implement this guard for module
+    and class names; the field path lacked an equivalent.
+
+    Returns (ident, alias):
+      - ident: the safe Python identifier to emit on the LHS of the field
+        declaration.
+      - alias: the original (wire) name, or None when no rename was needed.
+        Callers thread alias through `Field(alias=<original>)` so Pydantic
+        validates the wire field under its real name even though the Python
+        attribute has been renamed.
+
+    Sanitization strategy is close to `module_name` in `_slugs.py` but
+    diverges on the leading-digit case: Pydantic v2 raises NameError on
+    any field whose Python attribute name starts with "_" (interpreted as a
+    private attr). So leading-digit / collapsed-to-empty names are prefixed
+    with "f_" instead of "_", keeping the attribute public.
+
+    Rules:
+      - non-ident chars -> "_"
+      - strip leading/trailing "_"
+      - leading-digit / empty -> prefix "f_"
+      - keyword -> suffix "_"
+    """
+    if name.isidentifier() and not keyword.iskeyword(name):
+        return name, None
+    ident = _FIELD_NON_IDENT.sub("_", name).strip("_")
+    if not ident:
+        # All-non-ident input (e.g. "---" or unicode-only) collapses to empty.
+        ident = "f_field"
+    elif ident[0].isdigit():
+        # Pydantic rejects leading-underscore field names (NameError at class
+        # construction), so use "f_" rather than the "_" prefix used by
+        # `module_name` for module file names.
+        ident = "f_" + ident
+    if keyword.iskeyword(ident):
+        ident = ident + "_"
+    return ident, name
+
+
+def _inject_alias(default_expr: str, alias: str) -> str:
+    """Insert `alias=<repr(alias)>` as the first keyword argument inside Field(...).
+
+    `default_expr` is always one of:
+      - `Field(...)`                                    (required)
+      - `Field(...,  description='...')`                (required + desc)
+      - `Field(default=<repr>)`                         (optional with default)
+      - `Field(default=<repr>, description='...')`      (optional with default + desc)
+      - `Field(default=None)`                           (optional, no default)
+      - `Field(default=None, description='...')`        (optional, no default + desc)
+
+    All shapes start with literal `Field(` and end with `)`. We splice
+    `alias=<repr>, ` immediately after the opening paren so it lands as the
+    first keyword. The repr is via `json.dumps` for a safely-escaped
+    double-quoted Python string literal.
+    """
+    assert default_expr.startswith("Field("), (
+        f"_inject_alias: unexpected default_expr shape: {default_expr!r}"
+    )
+    head = "Field("
+    rest = default_expr[len(head):]
+    # `Field(...)` -- positional `...` is the required marker; alias goes AFTER
+    # it as a kwarg, not before. Detect and splice after.
+    if rest.startswith("..."):
+        after_ellipsis = rest[3:]
+        if after_ellipsis.startswith(", "):
+            return f"Field(..., alias={json.dumps(alias)},{after_ellipsis[1:]}"
+        if after_ellipsis.startswith(")"):
+            return f"Field(..., alias={json.dumps(alias)}){after_ellipsis[1:]}"
+        # Defensive fallback for any unexpected shape.
+        return f"Field(..., alias={json.dumps(alias)}, {after_ellipsis}"
+    # Kwarg-only forms: splice alias= as the first kwarg.
+    return f"Field(alias={json.dumps(alias)}, {rest}"
+
+
 def _format_field_line(name: str, spec: FieldSpec, *, required: bool) -> str:
     """Render a FieldSpec to source lines (degrade comment + field decl).
 
@@ -266,6 +352,11 @@ def _format_field_line(name: str, spec: FieldSpec, *, required: bool) -> str:
     which false-positived when a description happened to contain the literal
     string "default=None". We now consult the structured
     `FieldSpec.default_is_none` flag set by `_emit_field`.
+
+    CR-03: `name` is the JSON-Schema property key (the wire-side name);
+    `_safe_field_ident` maps it to a valid Python identifier, and any
+    rename injects `alias=<original>` into the Field(...) call so Pydantic
+    still validates the wire field under its real name.
     """
     py_type = spec.py_type
     # Optional fields without an explicit default get `| None`. Skip when the
@@ -278,10 +369,15 @@ def _format_field_line(name: str, spec: FieldSpec, *, required: bool) -> str:
     # degrade status.
     if not required and spec.default_is_none and py_type != "typing.Any":
         py_type = f"{py_type} | None"
+    # CR-03: sanitize the LHS identifier and inject alias= on rename.
+    ident, alias = _safe_field_ident(name)
+    default_expr = spec.default_expr
+    if alias is not None:
+        default_expr = _inject_alias(default_expr, alias)
     lines: list[str] = []
     if spec.degrade_reason is not None:
         lines.append(f"    # codegen: degraded -- {spec.degrade_reason}")
-    lines.append(f"    {name}: {py_type} = {spec.default_expr}")
+    lines.append(f"    {ident}: {py_type} = {default_expr}")
     return "\n".join(lines)
 
 
