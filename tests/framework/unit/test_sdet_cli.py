@@ -191,3 +191,71 @@ def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     assert "MCP Test Framework" in result.output
     assert "MCP Test Framework (SDET)" not in result.output
+
+
+# ---------------------------------------------------------------------------
+# Plan 18-08: extended composition-matrix pinning
+# ---------------------------------------------------------------------------
+
+
+def test_run_default_no_sdet_raw_argv_has_tests_contract(
+    tmp_path, monkeypatch
+) -> None:
+    """D-04 baseline: `run --raw` (no --sdet) argv carries tests/contract,
+    not tests/sdet. Phase 16 default-path zero-diff regression."""
+    cfg_path = _make_valid_config(tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    captured: dict = {}
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_capturing_argv(captured),
+    )
+    result = _invoke("run", "--raw", "--config", str(cfg_path))
+    assert result.exit_code == 0, result.output
+    argv = captured.get("argv", [])
+    assert "tests/contract" in argv, argv
+    assert "tests/sdet" not in argv, argv
+
+
+def test_run_with_framework_only_argv_has_contract_and_framework(
+    tmp_path, monkeypatch
+) -> None:
+    """D-05 baseline: `run --raw --with-framework` (no --sdet) argv has
+    tests/contract + tests/framework (additive on the contract scope)."""
+    cfg_path = _make_valid_config(tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    captured: dict = {}
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_capturing_argv(captured),
+    )
+    result = _invoke(
+        "run", "--raw", "--with-framework", "--config", str(cfg_path)
+    )
+    assert result.exit_code == 0, result.output
+    argv = captured.get("argv", [])
+    assert "tests/contract" in argv, argv
+    assert "tests/framework" in argv, argv
+    assert "tests/sdet" not in argv, argv
+
+
+def test_run_sdet_q_argv_has_tests_sdet(tmp_path, monkeypatch) -> None:
+    """D-05: `run --sdet -q --raw` argv has tests/sdet; -q is a pytest flag
+    that DOES forward to the subprocess (unlike --sdet, which is wrapper-owned).
+    Pinned here to document the asymmetry: --sdet is wrapper-only,
+    -q passes through to pytest."""
+    cfg_path = _make_valid_config(tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    captured: dict = {}
+    monkeypatch.setattr(
+        "mcp_test_framework._runner.subprocess.run",
+        _stub_subprocess_capturing_argv(captured),
+    )
+    result = _invoke(
+        "run", "--raw", "--sdet", "-q", "--config", str(cfg_path)
+    )
+    assert result.exit_code == 0, result.output
+    argv = captured.get("argv", [])
+    assert "tests/sdet" in argv, argv
+    # --sdet is wrapper-owned; never leaks to pytest argv.
+    assert "--sdet" not in argv, argv
