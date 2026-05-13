@@ -279,3 +279,158 @@ def test_error_child_counts_as_failure(tmp_path: Path) -> None:
     run = parse_junit_xml(xml)
     assert run.per_tool["qux"].verdict == "FAIL"
     assert run.per_tool["qux"].failure_message == "setup error"
+
+
+# ---------------------------------------------------------------------------
+# Phase 18 D-09 / D-10: mcptf_error_* user_property hookup
+# ---------------------------------------------------------------------------
+#
+# Plan 18-07's pytest_exception_interact attaches three user_properties to
+# the JUnit XML <testcase>:
+#   - mcptf_error_code    (str | None)
+#   - mcptf_error_message (str)
+#   - mcptf_error_raw     (str -- CallToolResult JSON dump; renderer-side)
+#
+# parse_junit_xml only reads code/message; it must compose
+# failure_message = "[code] message" when code is present, bare message
+# otherwise. Absence of the <properties> block preserves Phase 16 behavior.
+# ---------------------------------------------------------------------------
+
+
+def test_parser_uses_mcptf_error_properties_over_raw_failure_message(
+    tmp_path: Path,
+) -> None:
+    """D-09: when mcptf_error_message present, it wins over <failure message=...>.
+    D-10: when mcptf_error_code present, format is '[code] message'."""
+    xml = tmp_path / "synth.xml"
+    xml.write_text(
+        '<?xml version="1.0"?>'
+        '<testsuites>'
+        '<testsuite name="pytest" tests="1" failures="1" skipped="0" errors="0" time="0.1">'
+        '<testcase classname="t" name="test_x[create_vm]" time="0.05">'
+        '<failure message="raw_msg" type="ToolCallError">tb</failure>'
+        '<properties>'
+        '<property name="mcptf_error_code" value="VM_NAME_TAKEN"/>'
+        '<property name="mcptf_error_message" value="name already in use"/>'
+        '</properties>'
+        '</testcase>'
+        '</testsuite></testsuites>',
+        encoding="utf-8",
+    )
+    run = parse_junit_xml(xml)
+    assert run.per_tool["create_vm"].verdict == "FAIL"
+    assert (
+        run.per_tool["create_vm"].failure_message
+        == "[VM_NAME_TAKEN] name already in use"
+    )
+
+
+def test_parser_falls_back_to_failure_message_when_no_properties_block(
+    tmp_path: Path,
+) -> None:
+    """D-09 regression guard (Phase 16): absence of <properties> preserves the
+    raw <failure message="..."> extraction byte-identically."""
+    xml = tmp_path / "synth.xml"
+    xml.write_text(
+        '<?xml version="1.0"?>'
+        '<testsuites>'
+        '<testsuite name="pytest" tests="1" failures="1" skipped="0" errors="0" time="0.1">'
+        '<testcase classname="t" name="test_x[plain]" time="0.05">'
+        '<failure message="raw_msg">tb</failure>'
+        '</testcase>'
+        '</testsuite></testsuites>',
+        encoding="utf-8",
+    )
+    run = parse_junit_xml(xml)
+    assert run.per_tool["plain"].failure_message == "raw_msg"
+
+
+def test_parser_emits_bare_message_when_code_property_absent(tmp_path: Path) -> None:
+    """D-10: mcptf_error_message without mcptf_error_code -> bare message
+    (no brackets, no leading space)."""
+    xml = tmp_path / "synth.xml"
+    xml.write_text(
+        '<?xml version="1.0"?>'
+        '<testsuites>'
+        '<testsuite name="pytest" tests="1" failures="1" skipped="0" errors="0" time="0.1">'
+        '<testcase classname="t" name="test_x[bare]" time="0.05">'
+        '<failure message="raw_msg">tb</failure>'
+        '<properties>'
+        '<property name="mcptf_error_message" value="name already in use"/>'
+        '</properties>'
+        '</testcase>'
+        '</testsuite></testsuites>',
+        encoding="utf-8",
+    )
+    run = parse_junit_xml(xml)
+    assert run.per_tool["bare"].failure_message == "name already in use"
+
+
+def test_parser_falls_back_when_code_present_but_message_absent(
+    tmp_path: Path,
+) -> None:
+    """D-10: code alone is insufficient -- must have message. Falls back to
+    <failure message=...> extraction when mcptf_error_message is missing."""
+    xml = tmp_path / "synth.xml"
+    xml.write_text(
+        '<?xml version="1.0"?>'
+        '<testsuites>'
+        '<testsuite name="pytest" tests="1" failures="1" skipped="0" errors="0" time="0.1">'
+        '<testcase classname="t" name="test_x[code_only]" time="0.05">'
+        '<failure message="raw_msg">tb</failure>'
+        '<properties>'
+        '<property name="mcptf_error_code" value="VM_NAME_TAKEN"/>'
+        '</properties>'
+        '</testcase>'
+        '</testsuite></testsuites>',
+        encoding="utf-8",
+    )
+    run = parse_junit_xml(xml)
+    assert run.per_tool["code_only"].failure_message == "raw_msg"
+
+
+def test_parser_treats_empty_string_code_as_none(tmp_path: Path) -> None:
+    """D-09: mcptf_error_code value='' is treated as None (code missing).
+    The message is rendered bare (no '[] message' with empty brackets)."""
+    xml = tmp_path / "synth.xml"
+    xml.write_text(
+        '<?xml version="1.0"?>'
+        '<testsuites>'
+        '<testsuite name="pytest" tests="1" failures="1" skipped="0" errors="0" time="0.1">'
+        '<testcase classname="t" name="test_x[empty_code]" time="0.05">'
+        '<failure message="raw_msg">tb</failure>'
+        '<properties>'
+        '<property name="mcptf_error_code" value=""/>'
+        '<property name="mcptf_error_message" value="name already in use"/>'
+        '</properties>'
+        '</testcase>'
+        '</testsuite></testsuites>',
+        encoding="utf-8",
+    )
+    run = parse_junit_xml(xml)
+    assert run.per_tool["empty_code"].failure_message == "name already in use"
+
+
+def test_parser_preserves_failure_body_when_properties_present(
+    tmp_path: Path,
+) -> None:
+    """D-09 invariant: only the message-extraction branch changes; the
+    failure_body (<failure>.text) extraction is preserved byte-identically."""
+    xml = tmp_path / "synth.xml"
+    xml.write_text(
+        '<?xml version="1.0"?>'
+        '<testsuites>'
+        '<testsuite name="pytest" tests="1" failures="1" skipped="0" errors="0" time="0.1">'
+        '<testcase classname="t" name="test_x[body]" time="0.05">'
+        '<failure message="raw_msg">traceback body text</failure>'
+        '<properties>'
+        '<property name="mcptf_error_code" value="X"/>'
+        '<property name="mcptf_error_message" value="m"/>'
+        '</properties>'
+        '</testcase>'
+        '</testsuite></testsuites>',
+        encoding="utf-8",
+    )
+    run = parse_junit_xml(xml)
+    assert run.per_tool["body"].failure_body == "traceback body text"
+    assert run.per_tool["body"].failure_message == "[X] m"
