@@ -68,6 +68,23 @@ select = ["E", "F", "I", "TID"]
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "homelab_mcp" = { msg = "Do not import homelab_mcp -- it is a black-box subprocess under test (see PROJECT.md). Drive it via mcp.client.stdio.stdio_client only." }
 
+# Phase 17 D-04: pyright type-check scope.
+# Scoped to generated SDET classes + the ToolResponse base only. The rest of
+# src/ has v1.0-v1.2 type debt that's out of v1.3's scope (Pitfall 4 in
+# 17-RESEARCH.md). When/if the whole codebase is brought under pyright,
+# expand `include` and `strict`.
+[tool.pyright]
+include = [
+    "src/mcp_test_framework/sdet/generated",
+    "src/mcp_test_framework/sdet/response.py",
+]
+strict = [
+    "src/mcp_test_framework/sdet/generated",
+    "src/mcp_test_framework/sdet/response.py",
+]
+reportMissingTypeStubs = false
+pythonVersion = "3.14"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
