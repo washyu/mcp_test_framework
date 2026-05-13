@@ -1,14 +1,15 @@
 ---
-status: diagnosed
+status: complete
 phase: 17-schema-driven-codegen-surface
 source: [17-VERIFICATION.md]
 started: 2026-05-13
-updated: 2026-05-13
+updated: 2026-05-12
+gap_closure_plan: 17-06
 ---
 
 ## Current Test
 
-[complete -- gap identified in test 2]
+[complete -- Gap-1 closed by Plan 17-06; live re-verification passed]
 
 ## Tests
 
@@ -18,20 +19,22 @@ result: passed -- live codegen ran against homelab-mcp; output tree populated; p
 
 ### 2. Pyright strict against the live-generated tree
 expected: Operator runs `uv run pyright src/mcp_test_framework/sdet/generated/homelab_mcp/` after the live codegen run. Exit 0 -- every Params/Response class type-checks clean under strict mode, including degraded `typing.Any` fields. Real homelab-mcp schemas surface enum/oneOf/anyOf/nested-object combinations the synthetic 5-tool fixture doesn't model.
-result: failed -- 29 `reportUnusedImport` errors across 27 generated files. Root cause: `src/mcp_test_framework/sdet/_codegen.py:347-360` emits `import typing` and `from pydantic import BaseModel, ConfigDict, Field` unconditionally. Tools whose params resolve to only basic types (str/int/bool) without `Field(...)` annotations or `typing.Any` degradation leave one or both imports orphaned. The synthetic 5-tool gate in `tests/framework/unit/test_codegen_typecheck.py` did not catch this because every fixture tool's schema surfaced `typing.Any` via `oneOf` / object-degradation paths -- gap in the gate, not just the emitter.
+result: passed -- Plan 17-06 shipped conditional `import typing` / `Field` emission in `translate_tool()` plus a 6th synthetic fixture tool (`basic_tool`, empty-params shape) that pins the regression at unit-test time. Live re-verification on 2026-05-12 (executor-run inside Plan 17-06's worktree): `uv run pyright src/mcp_test_framework/sdet/generated/homelab_mcp/` returned **0 errors, 0 warnings, 0 informations**, down from 29 reportUnusedImport errors pre-fix. See `17-06-SUMMARY.md` for the captured pyright output and commit chain (fcadd31, 5a6c752, 8d15054).
 
 ## Summary
 
 total: 2
-passed: 1
-issues: 1
+passed: 2
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-### Gap-1: Emitter unconditionally writes unused imports (CODEGEN-04 / SC1 violation)
+### Gap-1: Emitter unconditionally writes unused imports (CODEGEN-04 / SC1 violation) — RESOLVED 2026-05-12
+
+**Status:** resolved by Plan 17-06 (commits fcadd31 / 5a6c752 / 8d15054). Live re-verification: 0 pyright errors against homelab-mcp generated tree.
 
 **Severity:** blocking-for-SC1 -- "generated files compile under mypy/pyright with no errors" fails for 27/~50 tools against the live homelab-mcp surface.
 
