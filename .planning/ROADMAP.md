@@ -66,12 +66,12 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   2. Re-running `gen-sdet-classes` is idempotent — only the generated files inside `generated/<server_slug>/` change; nothing outside that tree is touched; generated files carry a clear "do not hand-edit" header.
   3. A test file importing a generated `Params` class and calling `tool("name").call(params)` validates the params against the live `inputSchema` before the wire call (Pydantic) and returns a typed response object on the way back.
   4. The `ToolResponse` base provides `.raw`, `.data`, `.text`, `.is_error` uniformly — test code accessing `.data["..."]` or `.text` does not need to branch on whether the response type is `outputSchema`-declared or generic.
-**Plans**: 5 plans
-  - [ ] 17-01-PLAN.md — ToolResponse base (CODEGEN-04)
-  - [ ] 17-02-PLAN.md — JSON-Schema walker + file emitter (CODEGEN-02, CODEGEN-03, CODEGEN-06)
-  - [ ] 17-03-PLAN.md — tool() factory + Phase-18 seam (CODEGEN-05)
-  - [ ] 17-04-PLAN.md — gen-sdet-classes Typer command (CODEGEN-01)
-  - [ ] 17-05-PLAN.md — pyright dev dep + typecheck gate (CODEGEN-01..06 verification)
+**Plans**: 5 plans (4 waves)
+  - [ ] 17-01-PLAN.md — ToolResponse base (CODEGEN-04) [wave 1; depends_on: ]
+  - [ ] 17-02-PLAN.md — JSON-Schema walker + file emitter (CODEGEN-02, CODEGEN-03, CODEGEN-06) [wave 2; depends_on: 17-01]
+  - [ ] 17-03-PLAN.md — tool() factory + Phase-18 seam (CODEGEN-05) [wave 2; depends_on: 17-01]
+  - [ ] 17-04-PLAN.md — gen-sdet-classes Typer command (CODEGEN-01) [wave 3; depends_on: 17-01, 17-02, 17-03]
+  - [ ] 17-05-PLAN.md — pyright dev dep + typecheck gate (CODEGEN-01..06 verification) [wave 4; depends_on: 17-02, 17-04]
 
 ### Phase 18: SDET test surface + typed errors
 **Goal**: An SDET can write `tests/sdet/test_<name>.py`, import `mcp_session` + `tool("name")` from a stable public seam, and run those tests via `mcp-test-framework run --sdet` — with tool-side errors surfacing as a typed `ToolCallError` instead of an untyped `CallToolResult` blob.
