@@ -986,6 +986,15 @@ def gen_sdet_classes(
     )
 
 
+# WR-01: serializes concurrent _run_codegen_handshake calls in the same
+# process. The class-level monkey-patch of ClientSession.initialize is
+# process-global, so two concurrent handshakes would corrupt each other's
+# `holder` capture and race the `finally` restoration. asyncio.Lock is
+# safe to construct at module load in Python 3.10+ (no event-loop
+# attachment until first acquire).
+_codegen_handshake_lock = asyncio.Lock()
+
+
 async def _run_codegen_handshake(cfg: Config) -> tuple[object, list[Tool]]:
     """Open one-shot McpTestClient; return (serverInfo, tools) for gen-sdet-classes.
 
@@ -1013,42 +1022,51 @@ async def _run_codegen_handshake(cfg: Config) -> tuple[object, list[Tool]]:
     If mcp 2.x exposes a public ``server_info`` accessor on ClientSession,
     this helper should switch to it (delete the patch); the Plan 17-05
     typecheck pass will surface that opportunity.
+
+    WR-01: the class-level patch is process-global -- concurrent calls in
+    the same process would corrupt each other's ``holder`` capture and
+    race the ``finally`` restoration. The ``_codegen_handshake_lock``
+    below serializes the patched window so at most one handshake holds
+    the patch at a time. Single-CLI-invocation callers are unaffected;
+    future in-process / parallel test callers get linear queueing instead
+    of silent corruption.
     """
     from mcp import ClientSession
 
-    holder: dict[str, object] = {}
-    original_initialize = ClientSession.initialize
+    async with _codegen_handshake_lock:
+        holder: dict[str, object] = {}
+        original_initialize = ClientSession.initialize
 
-    async def _capturing_initialize(self):  # type: ignore[no-untyped-def]
-        result = await original_initialize(self)
-        holder["result"] = result
-        return result
+        async def _capturing_initialize(self):  # type: ignore[no-untyped-def]
+            result = await original_initialize(self)
+            holder["result"] = result
+            return result
 
-    ClientSession.initialize = _capturing_initialize  # type: ignore[method-assign]
-    try:
-        async with AsyncExitStack() as stack:
-            client = await stack.enter_async_context(
-                McpTestClient(
-                    cfg.mcp_server.command,
-                    cfg.mcp_server.args,
-                    cfg.mcp_server.timeout_seconds,
+        ClientSession.initialize = _capturing_initialize  # type: ignore[method-assign]
+        try:
+            async with AsyncExitStack() as stack:
+                client = await stack.enter_async_context(
+                    McpTestClient(
+                        cfg.mcp_server.command,
+                        cfg.mcp_server.args,
+                        cfg.mcp_server.timeout_seconds,
+                    )
                 )
-            )
-            init_result = holder.get("result")
-            if init_result is None:
-                # Defensive: McpTestClient.__aenter__ always calls
-                # session.initialize() (mcp_client.py:170-171); a missing
-                # capture means the SDK changed under us.
-                raise RuntimeError(
-                    "ClientSession.initialize was not invoked during "
-                    "McpTestClient.__aenter__; mcp SDK contract changed "
-                    "(see _run_codegen_handshake docstring for the recovery)."
-                )
-            server_info = getattr(init_result, "serverInfo", None)
-            tools = await client.list_tools()
-            return server_info, tools
-    finally:
-        ClientSession.initialize = original_initialize  # type: ignore[method-assign]
+                init_result = holder.get("result")
+                if init_result is None:
+                    # Defensive: McpTestClient.__aenter__ always calls
+                    # session.initialize() (mcp_client.py:170-171); a missing
+                    # capture means the SDK changed under us.
+                    raise RuntimeError(
+                        "ClientSession.initialize was not invoked during "
+                        "McpTestClient.__aenter__; mcp SDK contract changed "
+                        "(see _run_codegen_handshake docstring for the recovery)."
+                    )
+                server_info = getattr(init_result, "serverInfo", None)
+                tools = await client.list_tools()
+                return server_info, tools
+        finally:
+            ClientSession.initialize = original_initialize  # type: ignore[method-assign]
 
 
 async def _list_tools_async(cfg: Config) -> list[Tool]:
