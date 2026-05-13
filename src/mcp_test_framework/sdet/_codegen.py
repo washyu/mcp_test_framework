@@ -186,8 +186,13 @@ def _default_expr(schema: dict, required: bool) -> str:
     return f"Field(default=None{desc_kwarg})"
 
 
-def _emit_field(name: str, schema: dict, *, required: bool) -> FieldSpec:
+def _emit_field(schema: dict, *, required: bool) -> FieldSpec:
     """Translate one property's schema to a FieldSpec.
+
+    WR-03: dropped the unused `name: str` parameter that lingered from an
+    earlier draft. Callers no longer pass it. The JSON-Schema property
+    name (and its safe-Python ident / alias) is owned by
+    `_format_field_line`, which receives `name` separately.
 
     Order of checks matters: degradation triggers (enum/oneOf/anyOf/$ref/
     multi-type) take precedence over `type:` dispatch so that
@@ -436,7 +441,7 @@ def _emit_params_body(schema: dict | None) -> _BodyEmission:
     opt_names = sorted(n for n in props if n not in required)
     for name in req_names + opt_names:
         prop_schema = props[name] if isinstance(props[name], dict) else {}
-        spec = _emit_field(name, prop_schema, required=(name in required))
+        spec = _emit_field(prop_schema, required=(name in required))
         if spec.degrade_reason is not None:
             degraded += 1
         if "typing." in spec.py_type:
