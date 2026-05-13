@@ -878,6 +878,179 @@ def version() -> None:
     typer.echo(v)
 
 
+@app.command("gen-sdet-classes")
+def gen_sdet_classes(
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        help=(
+            "Path to a YAML config (overrides MCPTF_CONFIG_FILE and "
+            "./config.yaml autodiscovery)."
+        ),
+    ),
+) -> None:
+    """Generate typed Pydantic Params/Response classes for every tool (CODEGEN-01).
+
+    Introspects the configured MCP server via list_tools and writes
+    src/mcp_test_framework/sdet/generated/<server_slug>/<tool>.py for every
+    tool advertised. Wipe-and-write: rerunning replaces the directory wholesale.
+    Honors --config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud
+    (Phase 13 SAFE-01..07).
+
+    Exit codes:
+      0   success
+      2   config error, server-start error, empty serverInfo.name,
+          invalid tool schema
+      130 SIGINT during MCP handshake / list_tools
+    """
+    cfg = _load_config(config)  # strict; SAFE-03 fires on absent config
+    assert cfg is not None, "_load_config(strict) must return Config or raise"
+    try:
+        with asyncio.Runner() as runner:
+            server_info, tools = runner.run(_run_codegen_handshake(cfg))
+    except KeyboardInterrupt:
+        raise typer.Exit(code=130)
+    except FileNotFoundError as exc:
+        # Mirror cli.list_tools FileNotFoundError branch.
+        if str(exc).startswith("MCP server command not on PATH:"):
+            _emit_operator_error(
+                summary=f"MCP server command not found: {cfg.mcp_server.command!r}",
+                detail=[
+                    f"the framework tried to launch the server with "
+                    f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`",
+                    "and the command is not on PATH.",
+                ],
+                next_step=(
+                    "update `mcp_server.command` / `mcp_server.args` in your "
+                    "config.yaml so the launch command resolves on PATH"
+                ),
+            )
+        _emit_operator_error(
+            summary="MCP server failed to start",
+            detail=[f"the launch attempt raised: {exc.__class__.__name__}: {exc}"],
+            next_step="verify the launch command runs cleanly in your shell",
+        )
+
+    server_name = (getattr(server_info, "name", "") or "").strip()
+    if not server_name:
+        # D-05 loud-fail with operator-tone error.
+        _emit_operator_error(
+            summary="gen-sdet-classes: server identification failed",
+            detail=[
+                f"the configured MCP server (command "
+                f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`) "
+                f"reports an empty serverInfo.name.",
+                "gen-sdet-classes needs a non-empty name to derive the "
+                "src/mcp_test_framework/sdet/generated/<slug>/ output directory.",
+            ],
+            next_step=(
+                "ask the server author to set a name in their server's "
+                "ServerInfo(name=..., version=...) initialization; this "
+                "cannot be set framework-side."
+            ),
+        )
+
+    # Local imports keep cli.py module-load cost minimal (gen-sdet-classes is
+    # a rarely-run command compared to `run` / `list-tools`).
+    from mcp_test_framework.sdet import _codegen
+    from mcp_test_framework.sdet._slugs import server_slug
+
+    out_root = Path(__file__).parent / "sdet" / "generated"
+    server_version = getattr(server_info, "version", "") or ""
+    try:
+        counts = _codegen.generate(
+            server_name=server_name,
+            server_version=server_version,
+            tools=tools,
+            out_root=out_root,
+        )
+    except _codegen.SchemaValidityError as exc:
+        _emit_operator_error(
+            summary="gen-sdet-classes: invalid tool schema",
+            detail=[str(exc)],
+            next_step=(
+                "report the offending tool to the server author; "
+                "gen-sdet-classes refuses to translate non-JSON-Schema input."
+            ),
+        )
+
+    slug = server_slug(server_name)
+    typer.echo(f"gen-sdet-classes: wrote SDET classes for {server_name}\n")
+    typer.echo(f"  server:    {server_name} v{server_version}")
+    typer.echo(f"  slug:      {slug}")
+    typer.echo(f"  target:    src/mcp_test_framework/sdet/generated/{slug}/")
+    typer.echo(f"  tools:     {counts['tools']} generated")
+    typer.echo(
+        f"  degraded:  {counts['degraded_fields']} fields "
+        f"(grep \"codegen: degraded\" for details)"
+    )
+
+
+async def _run_codegen_handshake(cfg: Config) -> tuple[object, list[Tool]]:
+    """Open one-shot McpTestClient; return (serverInfo, tools) for gen-sdet-classes.
+
+    Phase 17 LOCKED constraint: ``mcp_client.py`` is not modified
+    (CONTEXT.md "Hard dependencies"). To read serverInfo without modifying
+    the LOCKED file we patch ``ClientSession.initialize`` at the class level
+    for the duration of ``McpTestClient.__aenter__``: the patched method
+    delegates to the real one, then stores the result in a thread-local
+    holder. ``McpTestClient.__aenter__`` calls ``await session.initialize()``
+    internally; after entry returns, we read the captured InitializeResult
+    and restore the original method.
+
+    Rationale for class-level monkey-patch over the plan's stated
+    ``session._initialize_result`` access:
+      - mcp 1.27.0's ClientSession does NOT store the InitializeResult as
+        a private attribute (verified via inspect.getsource at plan-execute
+        time). Only ``_server_capabilities`` is cached; ``serverInfo`` is
+        only available via the return value of ``initialize()``.
+      - Re-invoking ``session.initialize()`` after McpTestClient has
+        already initialized would re-send the protocol handshake, which
+        is not spec-compliant.
+      - The class-level patch is scoped to a single ``async with`` block
+        and is reverted in the ``finally``; it does not leak across calls.
+
+    If mcp 2.x exposes a public ``server_info`` accessor on ClientSession,
+    this helper should switch to it (delete the patch); the Plan 17-05
+    typecheck pass will surface that opportunity.
+    """
+    from mcp import ClientSession
+
+    holder: dict[str, object] = {}
+    original_initialize = ClientSession.initialize
+
+    async def _capturing_initialize(self):  # type: ignore[no-untyped-def]
+        result = await original_initialize(self)
+        holder["result"] = result
+        return result
+
+    ClientSession.initialize = _capturing_initialize  # type: ignore[method-assign]
+    try:
+        async with AsyncExitStack() as stack:
+            client = await stack.enter_async_context(
+                McpTestClient(
+                    cfg.mcp_server.command,
+                    cfg.mcp_server.args,
+                    cfg.mcp_server.timeout_seconds,
+                )
+            )
+            init_result = holder.get("result")
+            if init_result is None:
+                # Defensive: McpTestClient.__aenter__ always calls
+                # session.initialize() (mcp_client.py:170-171); a missing
+                # capture means the SDK changed under us.
+                raise RuntimeError(
+                    "ClientSession.initialize was not invoked during "
+                    "McpTestClient.__aenter__; mcp SDK contract changed "
+                    "(see _run_codegen_handshake docstring for the recovery)."
+                )
+            server_info = getattr(init_result, "serverInfo", None)
+            tools = await client.list_tools()
+            return server_info, tools
+    finally:
+        ClientSession.initialize = original_initialize  # type: ignore[method-assign]
+
+
 async def _list_tools_async(cfg: Config) -> list[Tool]:
     """Drive the MCP client lifecycle on a single task.
 
