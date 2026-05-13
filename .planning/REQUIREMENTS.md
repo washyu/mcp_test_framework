@@ -126,7 +126,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | PREFLIGHT-01   | Phase 20 | Pending  |
 | PREFLIGHT-02   | Phase 20 | Pending  |
 | UI-01          | Phase 19 | Pending  |
-| UI-02          | Phase 18 | Pending  |
+| UI-02          | Phase 18 | Complete |
 | DOC-SDET-01    | Phase 21 | Pending  |
 | DOC-SDET-02    | Phase 21 | Pending  |
 | DOC-SDET-03    | Phase 21 | Pending  |
