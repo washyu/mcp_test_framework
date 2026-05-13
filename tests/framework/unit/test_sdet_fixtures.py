@@ -223,3 +223,77 @@ def test_session_module_opens_no_anyio_cancel_scope() -> None:
     assert matches == [], (
         f"session.py must not introduce anyio cancel scopes; found: {matches}"
     )
+
+
+# --- Plan 18-04 public surface (__all__ contract) -------------------------
+
+
+class TestPublicSurface:
+    """Phase 18 Plan 18-04 -- canonical public import surface for SDET tests.
+
+    Pins the four-symbol __all__ contract so future plans don't widen the
+    surface speculatively. Symbols added here MUST also land in:
+      - src/mcp_test_framework/sdet/__init__.py:__all__
+      - docs/sdet.md (Phase 21 DOC-SDET)
+    """
+
+    def test_canonical_imports_resolve(self) -> None:
+        """Plan 18-04: the four SDET symbols import from the package root."""
+        from mcp_test_framework.sdet import (
+            ToolCallError,
+            ToolResponse,
+            mcp_session,
+            tool,
+        )
+
+        assert ToolCallError is not None
+        assert ToolResponse is not None
+        assert mcp_session is not None
+        assert tool is not None
+
+    def test_all_lists_exact_four_names(self) -> None:
+        """Plan 18-04: __all__ is exactly the four-name set (no drift)."""
+        from mcp_test_framework.sdet import __all__
+
+        assert set(__all__) == {
+            "ToolCallError",
+            "ToolResponse",
+            "mcp_session",
+            "tool",
+        }
+
+    def test_all_is_alphabetical(self) -> None:
+        """Plan 18-04: __all__ is alphabetically ordered for stable reads."""
+        from mcp_test_framework.sdet import __all__
+
+        assert list(__all__) == sorted(__all__)
+
+    def test_internal_symbols_not_re_exported(self) -> None:
+        """Plan 18-04: internal helpers / module-state slots / ToolWrapper
+        are NOT re-exported through the package barrel."""
+        import mcp_test_framework.sdet as sdet_pkg
+
+        # These exist in sibling modules but must not be on the barrel.
+        for name in (
+            "_extract_code_message",  # errors.py internal helper
+            "_REGISTRIES",  # _tool_factory.py module state
+            "_ACTIVE_SLUG",  # _tool_factory.py module state
+            "_ACTIVE_CLIENT",  # _tool_factory.py module state (Plan 18-02)
+            "ToolWrapper",  # _tool_factory.py return type detail
+            "server_slug",  # _slugs.py codegen helper
+        ):
+            assert not hasattr(sdet_pkg, name), (
+                f"{name!r} must NOT be re-exported through "
+                f"mcp_test_framework.sdet barrel"
+            )
+
+    def test_tool_call_error_is_plain_exception(self) -> None:
+        """Plan 18-04 + Plan 18-01: re-exported ToolCallError is the typed
+        exception (sanity: re-export points at the right symbol)."""
+        from mcp_test_framework.sdet import ToolCallError
+        from mcp_test_framework.sdet.errors import (
+            ToolCallError as _ToolCallErrorDirect,
+        )
+
+        assert ToolCallError is _ToolCallErrorDirect
+        assert issubclass(ToolCallError, Exception)
