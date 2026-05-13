@@ -49,7 +49,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 ### 🚧 v1.3 Homelab Scenario Testing (Phases 17–22) — IN PLANNING
 
-- [ ] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06)
+- [x] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06) (completed 2026-05-13)
 - [ ] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02)
 - [ ] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01)
 - [ ] **Phase 20: Preflight + conditional skip** — `requires_homelab(...)` marker factory with fast, graceful reachability checks (PREFLIGHT-01..02)
@@ -68,11 +68,11 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. A test file importing a generated `Params` class and calling `tool("name").call(params)` validates the params against the live `inputSchema` before the wire call (Pydantic) and returns a typed response object on the way back.
   4. The `ToolResponse` base provides `.raw`, `.data`, `.text`, `.is_error` uniformly — test code accessing `.data["..."]` or `.text` does not need to branch on whether the response type is `outputSchema`-declared or generic.
 **Plans**: 5 plans (4 waves)
-  - [ ] 17-01-PLAN.md — ToolResponse base (CODEGEN-04) [wave 1; depends_on: ]
-  - [ ] 17-02-PLAN.md — JSON-Schema walker + file emitter (CODEGEN-02, CODEGEN-03, CODEGEN-06) [wave 2; depends_on: 17-01]
-  - [ ] 17-03-PLAN.md — tool() factory + Phase-18 seam (CODEGEN-05) [wave 2; depends_on: 17-01]
-  - [ ] 17-04-PLAN.md — gen-sdet-classes Typer command (CODEGEN-01) [wave 3; depends_on: 17-01, 17-02, 17-03]
-  - [ ] 17-05-PLAN.md — pyright dev dep + typecheck gate (CODEGEN-01..06 verification) [wave 4; depends_on: 17-02, 17-04]
+  - [x] 17-01-PLAN.md — ToolResponse base (CODEGEN-04) [wave 1; depends_on: ]
+  - [x] 17-02-PLAN.md — JSON-Schema walker + file emitter (CODEGEN-02, CODEGEN-03, CODEGEN-06) [wave 2; depends_on: 17-01]
+  - [x] 17-03-PLAN.md — tool() factory + Phase-18 seam (CODEGEN-05) [wave 2; depends_on: 17-01]
+  - [x] 17-04-PLAN.md — gen-sdet-classes Typer command (CODEGEN-01) [wave 3; depends_on: 17-01, 17-02, 17-03]
+  - [x] 17-05-PLAN.md — pyright dev dep + typecheck gate (CODEGEN-01..06 verification) [wave 4; depends_on: 17-02, 17-04]
 
 ### Phase 18: SDET test surface + typed errors
 **Goal**: An SDET can write `tests/sdet/test_<name>.py`, import `mcp_session` + `tool("name")` from a stable public seam, and run those tests via `mcp-test-framework run --sdet` — with tool-side errors surfacing as a typed `ToolCallError` instead of an untyped `CallToolResult` blob.
@@ -140,7 +140,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 14. Hybrid runner with domain UI | v1.2 | 7/7 | Complete | 2026-05-11 |
 | 15. Operator vs framework test surface split | v1.2 | 4/4 | Complete | 2026-05-12 |
 | 16. Reporter UX overhaul | v1.2 | 5/5 | Complete | 2026-05-12 |
-| 17. Schema-driven codegen surface | v1.3 | 0/5 | Planned | — |
+| 17. Schema-driven codegen surface | v1.3 | 6/6 | Complete   | 2026-05-13 |
 | 18. SDET test surface + typed errors | v1.3 | 0/? | Not started | — |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/? | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
@@ -163,7 +163,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. All Phase 17 unit tests still pass after the scrub (no behavior changes — pure documentation/comment edits)
   4. `mcp-test-framework --help` and each subcommand `--help` still describe the command's purpose clearly (the prose is at least as informative as the current ID-tagged version)
 
-**Plans:** 0 plans
+**Plans:** 6/6 plans complete
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 22 to break down)
