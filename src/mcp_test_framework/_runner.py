@@ -509,8 +509,35 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             # D-03 rule 1: any failed/error -> FAIL (sticky).
             bucket.verdict = "FAIL"
             elem = failure if failure is not None else error
+            # Phase 18 D-09: ToolCallError-attached JUnit properties (set by
+            # tests/sdet/conftest.py:pytest_exception_interact -- see Plan
+            # 18-07 Task 2) win over the raw <failure message="..."> attr
+            # when present. The third property `mcptf_error_raw` carries the
+            # CallToolResult.model_dump_json(indent=2) string and is consumed
+            # by the --debug appendix builder via a second XML pass
+            # (_extract_tool_call_errors_from_xml). No new ToolVerdict fields
+            # are added: the appendix re-parses the XML rather than threading
+            # the dump string through the dataclass (Strategy 1).
+            props = tc.find("properties")
+            prop_msg: str | None = None
+            if props is not None:
+                code: str | None = None
+                msg_field: str | None = None
+                for prop in props.iter("property"):
+                    n = prop.get("name", "")
+                    v = prop.get("value", "")
+                    if n == "mcptf_error_code":
+                        code = v or None
+                    elif n == "mcptf_error_message":
+                        msg_field = v
+                if msg_field is not None:
+                    # D-10: "[code] message" when code present; else bare.
+                    prop_msg = f"[{code}] {msg_field}" if code else msg_field
+
             msg = elem.get("message")
-            if msg and bucket.failure_message is None:
+            if prop_msg is not None and bucket.failure_message is None:
+                bucket.failure_message = prop_msg
+            elif msg and bucket.failure_message is None:
                 bucket.failure_message = msg
             body = (elem.text or "").strip()
             if body and bucket.failure_body is None:
