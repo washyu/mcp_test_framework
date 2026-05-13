@@ -543,13 +543,30 @@ def run(
     # `explain=` suppresses the "(use --explain to list)" hint when the list
     # is rendered inline right below.
     if not quiet:
-        _runner._render_pre_run_digest(
-            pre_run_ctx,
-            with_framework=with_framework,
-            explain=explain,
-        )
-        if explain:
-            _runner._render_skipped_tools_explain(pre_run_ctx)
+        if sdet:
+            # Phase 18 D-06: scenario-aware digest under --sdet.
+            # Fresh sdet-only RenderContext -- only server_cmd is consumed by
+            # the scenario digest; contract-scope discovered_tools /
+            # tools_config / judges fields have no meaning under SDET scope
+            # (pytest_generate_tests parametrize does NOT run under --sdet
+            # because pytest only discovers tests/sdet, not tests/contract).
+            sdet_ctx = _runner.RenderContext(server_cmd=pre_run_ctx.server_cmd)
+            scenarios, skipped_scenarios = _runner._collect_sdet_scenarios(sdet_ctx)
+            _runner._render_scenario_pre_run_digest(
+                sdet_ctx,
+                scenarios,
+                skipped_scenarios,
+                with_framework=with_framework,
+                explain=explain,
+            )
+        else:
+            _runner._render_pre_run_digest(
+                pre_run_ctx,
+                with_framework=with_framework,
+                explain=explain,
+            )
+            if explain:
+                _runner._render_skipped_tools_explain(pre_run_ctx)
 
     rc, tmp_xml, captured_stdout, captured_stderr = _runner.run_pytest_subprocess(
         junit_xml=junit_xml,

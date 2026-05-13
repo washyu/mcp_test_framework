@@ -846,6 +846,86 @@ def _render_pre_run_digest(
     print("", file=file)  # blank line before next section
 
 
+def _render_scenario_pre_run_digest(
+    ctx: RenderContext,
+    scenarios: list[str],
+    skipped_scenarios: dict[str, str],
+    with_framework: bool = False,
+    explain: bool = False,
+    file=None,
+) -> None:
+    """Phase 18 D-06: scenario-aware variant of _render_pre_run_digest.
+
+    Buckets are scenario MODULE stems (tests/sdet/test_proxmox_vm_lifecycle.py
+    -> 'proxmox_vm_lifecycle'). Same line-budget as _render_pre_run_digest
+    (<= 10 lines). Em-dash separator U+2014 reused per Phase 16 / Phase 09
+    SC-3 lock.
+
+    The em-dash literal U+2014 appears in:
+      1. judges_text = "(none — SDET scope)"   -- signals no Ollama grading
+      2. The --explain expansion line          -- matches Phase 09 SC-3 lock
+
+    Args:
+        ctx: shared RenderContext (server_cmd field consumed).
+        scenarios: list of scenario module stems to run (alphabetized on emit).
+        skipped_scenarios: dict[stem, reason] for scenarios pytest collected
+            but skipped (pytest.mark.skip / parametrize skip / preflight skip).
+        with_framework: if True, append the framework-self-tests breadcrumb.
+        explain: if True, expand the Skipping line into one-per-stem rows
+            with em-dash + reason; else show the (use --explain to list) hint.
+        file: stream to write to; defaults to sys.stdout (matches sibling).
+    """
+    if file is None:
+        file = sys.stdout
+    running = sorted(scenarios)
+    running_n = len(running)
+    skipping_n = len(skipped_scenarios)
+    judges_text = "(none — SDET scope)"   # em-dash U+2014
+    running_text = ", ".join(running) if running else "(none)"
+
+    print("=" * 40, file=file)
+    print("MCP Test Framework (SDET)", file=file)
+    print("=" * 40, file=file)
+    print(f"MCP server:  {ctx.server_cmd}", file=file)
+    print(f"Discovered:  {running_n + skipping_n} scenarios", file=file)
+    print(f"Running:     {running_n:>2}  ({running_text})", file=file)
+    if explain:
+        print(f"Skipping:    {skipping_n:>2}", file=file)
+        for stem in sorted(skipped_scenarios):
+            print(f"  {stem}  — {skipped_scenarios[stem]}", file=file)   # em-dash U+2014
+    else:
+        print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+    print(f"Judges:      {judges_text}", file=file)
+    if with_framework:
+        print("             + framework self-tests", file=file)
+    print("", file=file)
+
+
+def _collect_sdet_scenarios(
+    ctx: "RenderContext",
+) -> tuple[list[str], dict[str, str]]:
+    """Phase 18 D-06 helper: enumerate scenario module stems under tests/sdet/.
+
+    Phase 19 will extend this with preflight-skip detection (PREFLIGHT-01..02
+    skipped scenarios feed the skipped_scenarios return dict). Phase 18 ships
+    the discovery side only; skipped dict is always empty in this phase.
+
+    The `ctx` parameter is currently unused but kept on the signature so
+    Phase 19 can read RenderContext-carried scenario-skip state without a
+    breaking API change.
+
+    Returns:
+        (scenario_stems: list[str] sorted alphabetically, skipped: dict[str, str])
+    """
+    sdet_dir = Path("tests/sdet")
+    if not sdet_dir.is_dir():
+        return ([], {})
+    stems: list[str] = []
+    for p in sdet_dir.glob("test_*.py"):
+        stems.append(p.stem.removeprefix("test_"))
+    return (sorted(stems), {})
+
+
 def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
     """Phase 16 D-05/D-13: `--explain` expansion of the digest's Skipping hint.
 
