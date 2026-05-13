@@ -401,6 +401,18 @@ def run(
             "(without this flag) collects only the SUT-contract surface."
         ),
     ),
+    sdet: bool = typer.Option(
+        False,
+        "--sdet",
+        help=(
+            "Swap the operator-surface scope from tests/contract/ to "
+            "tests/sdet/. Runs SDET-authored scenarios against the active "
+            "MCP server. Composes with --with-framework (adds tests/framework/), "
+            "--raw (bypass domain UI), --debug (appendix), -q (summary only), "
+            "and --explain (per-scenario skip reasons). Default (without "
+            "this flag) collects only tests/contract/."
+        ),
+    ),
     explain: bool = typer.Option(
         False,
         "--explain",
@@ -488,6 +500,7 @@ def run(
             pytest_args=pytest_args,
             raw=True,
             with_framework=with_framework,
+            sdet=sdet,
         )
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
@@ -543,6 +556,7 @@ def run(
         pytest_args=pytest_args,
         raw=False,
         with_framework=with_framework,
+        sdet=sdet,
     )
     try:
         # D-16: if subprocess crashed before writing the tempfile, surface a

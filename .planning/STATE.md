@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-05-13T05:15:12.555Z"
-last_activity: 2026-05-13 -- Phase 18 planning complete
+last_updated: "2026-05-13T05:18:09.028Z"
+last_activity: 2026-05-13 -- Phase 18 execution started
 progress:
   total_phases: 6
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 17 — schema-driven-codegen-surface
+**Current focus:** Phase 18 — sdet-test-surface-typed-errors
 
 ## Current Position
 
-Phase: 17 (schema-driven-codegen-surface) — EXECUTING
-Plan: 1 of 6
-Status: Ready to execute
-Last activity: 2026-05-13 -- Phase 18 planning complete
+Phase: 18 (sdet-test-surface-typed-errors) — EXECUTING
+Plan: 1 of 8
+Status: Executing Phase 18
+Last activity: 2026-05-13 -- Phase 18 execution started
 
 ## Performance Metrics
 
