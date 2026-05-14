@@ -6,17 +6,20 @@ Pins D-01/D-02/D-03 (Phase 18 CONTEXT.md):
     ClientSession lifecycle introduced.
   - D-02: registry activation lives in the fixture body. 5 steps: read
     ``serverInfo.name`` from the live client, slugify via ``_slugs.server_slug``,
-    ``importlib.import_module(f"mcp_test_framework.sdet.generated.{slug}")``,
-    read ``_REGISTRY``, install into ``_REGISTRIES[slug]`` + set
+    load ``<cfg.sdet.generated_root>/<slug>/__init__.py`` via
+    ``importlib.util.spec_from_file_location`` (Phase 21.1 RELOC-02; was
+    package-namespace ``importlib.import_module`` pre-21.1), read
+    ``_REGISTRY``, install into ``_REGISTRIES[slug]`` + set
     ``_ACTIVE_SLUG`` + set ``_ACTIVE_CLIENT``. On teardown restore prior state
     and pop the registry entry.
-  - D-03: ModuleNotFoundError -> ``_pytest_exit_operator_tone(returncode=2)``
-    with operator-readable message naming the slug, ``gen-sdet-classes``, and
-    ``--sdet``.
+  - D-03: missing generated package (slug dir / __init__.py absent under
+    ``cfg.sdet.generated_root``) triggers
+    ``_pytest_exit_operator_tone(returncode=2)`` with operator-readable
+    message naming the slug, ``gen-sdet-classes``, and ``--sdet``.
 
-The fixture body's mutations are SYNC (importlib.import_module + dict mutation
-+ attribute assignment); no anyio CancelScope is opened across the yield
-(Phase 04.1 invariant preserved).
+The fixture body's mutations are SYNC (spec_from_file_location load + dict
+mutation + attribute assignment); no anyio CancelScope is opened across the
+yield (Phase 04.1 invariant preserved).
 """
 from __future__ import annotations
 
@@ -65,6 +68,71 @@ def _make_fake_client(server_name: str = "homelab-mcp") -> MagicMock:
     client = MagicMock()
     client.server_info = SimpleNamespace(name=server_name)
     return client
+
+
+# Phase 21.1 RELOC-03: synthetic codegen harness for mock-based fixture tests.
+# Lifted from tests/framework/unit/test_codegen_integration_mock.py to keep the
+# test self-contained without importing private helpers from another test file.
+
+from pathlib import Path  # noqa: E402
+
+import yaml  # noqa: E402
+from mcp.types import Tool  # noqa: E402
+
+from mcp_test_framework.sdet._codegen import generate as _codegen_generate  # noqa: E402
+
+_SYNTHETIC_SERVER_NAME = "synthetic-mcp"
+_SYNTHETIC_SLUG = "synthetic_mcp"
+_FIXED_TS = "2026-05-14T12:00:00+00:00"
+
+
+def _synthetic_tools() -> list[Tool]:
+    """Single-tool synthetic fixture -- minimal _REGISTRY for activation tests."""
+    return [
+        Tool(
+            name="echo_message",
+            description="Echo the message back.",
+            inputSchema={
+                "type": "object",
+                "properties": {"message": {"type": "string"}},
+                "required": ["message"],
+            },
+        ),
+    ]
+
+
+def _build_synthetic_slug_dir(tmp_path: Path) -> Path:
+    """Run codegen into tmp_path; return tmp_path/<synthetic_slug>."""
+    _codegen_generate(
+        server_name=_SYNTHETIC_SERVER_NAME,
+        server_version="0.0.0",
+        tools=_synthetic_tools(),
+        out_root=tmp_path,
+        timestamp=_FIXED_TS,
+    )
+    slug_dir = tmp_path / _SYNTHETIC_SLUG
+    assert slug_dir.is_dir(), f"codegen did not create {slug_dir}"
+    return slug_dir
+
+
+def _write_config_with_generated_root(tmp_path: Path, generated_root: Path) -> Path:
+    """Write a minimal v2 config.yaml with sdet.generated_root pinned.
+
+    Returns the YAML path; caller must monkeypatch MCPTF_CONFIG_FILE to it so
+    the bare ``Config()`` call inside ``mcp_session`` picks it up.
+    """
+    yaml_path = tmp_path / "_test_config.yaml"
+    yaml_path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 2,
+                "mcp_server": {"command": "uvx", "args": ["x"], "timeout_seconds": 30},
+                "sdet": {"generated_root": str(generated_root)},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return yaml_path
 
 
 # --- D-01: fixture shape ---------------------------------------------------
@@ -123,11 +191,13 @@ async def _run_fixture(mcp_session_func, client) -> tuple[object, dict]:
     func = _unwrap(mcp_session_func)
     agen = func(client)
     yielded = await agen.__anext__()
+    # Snapshot registries by deep-copying the dict so post-teardown asserts
+    # against the yield-time state still see the activated synthetic slug.
     snapshot = {
         "_ACTIVE_SLUG": tf._ACTIVE_SLUG,
         "_ACTIVE_CLIENT": tf._ACTIVE_CLIENT,
         "_REGISTRIES_keys": set(tf._REGISTRIES.keys()),
-        "homelab_mcp_registry": tf._REGISTRIES.get("homelab_mcp"),
+        "_REGISTRIES_snapshot": dict(tf._REGISTRIES),
     }
     # finish teardown
     with pytest.raises(StopAsyncIteration):
@@ -136,25 +206,46 @@ async def _run_fixture(mcp_session_func, client) -> tuple[object, dict]:
 
 
 @pytest.mark.asyncio
-async def test_mcp_session_activates_registry_on_entry() -> None:
-    """D-02: on entry, _ACTIVE_SLUG / _ACTIVE_CLIENT / _REGISTRIES[slug] are set."""
-    from mcp_test_framework.sdet.generated import homelab_mcp as gen_mod
+async def test_mcp_session_activates_registry_on_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D-02 (Phase 21.1 RELOC-03 reworked): on entry, _ACTIVE_SLUG /
+    _ACTIVE_CLIENT / _REGISTRIES[slug] are set against the spec-loaded
+    synthetic package."""
     from mcp_test_framework.sdet.session import mcp_session
 
-    client = _make_fake_client("homelab-mcp")
+    slug_dir = _build_synthetic_slug_dir(tmp_path)
+    yaml_path = _write_config_with_generated_root(tmp_path, tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
+
+    client = _make_fake_client(_SYNTHETIC_SERVER_NAME)
     yielded, snapshot = await _run_fixture(mcp_session, client)
 
     assert yielded is client, "fixture must yield the mcp_client argument"
-    assert snapshot["_ACTIVE_SLUG"] == "homelab_mcp"
+    assert snapshot["_ACTIVE_SLUG"] == _SYNTHETIC_SLUG
     assert snapshot["_ACTIVE_CLIENT"] is client
-    assert "homelab_mcp" in snapshot["_REGISTRIES_keys"]
-    assert snapshot["homelab_mcp_registry"] is gen_mod._REGISTRY
+    assert _SYNTHETIC_SLUG in snapshot["_REGISTRIES_keys"]
+    # _REGISTRY identity: the spec-loaded package's _REGISTRY attr is what's
+    # installed under the synthetic slug. Snapshot at yield-time confirms
+    # the synthetic tool was registered before teardown popped the entry.
+    registry = snapshot["_REGISTRIES_snapshot"].get(_SYNTHETIC_SLUG)
+    assert registry is not None
+    assert "echo_message" in registry
+    # slug_dir is the directory the spec loader used; pinning it for clarity.
+    assert slug_dir.is_dir()
 
 
 @pytest.mark.asyncio
-async def test_mcp_session_restores_prior_state_on_teardown() -> None:
-    """D-02 step 7: teardown restores prior _ACTIVE_SLUG/_ACTIVE_CLIENT and pops registry."""
+async def test_mcp_session_restores_prior_state_on_teardown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D-02 step 7 (Phase 21.1 RELOC-03 reworked): teardown restores prior
+    _ACTIVE_SLUG / _ACTIVE_CLIENT and pops the synthetic registry."""
     from mcp_test_framework.sdet.session import mcp_session
+
+    _build_synthetic_slug_dir(tmp_path)
+    yaml_path = _write_config_with_generated_root(tmp_path, tmp_path)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
 
     # Set non-default prior state
     prior_client_marker = MagicMock(name="prior_client")
@@ -162,13 +253,13 @@ async def test_mcp_session_restores_prior_state_on_teardown() -> None:
     tf._ACTIVE_CLIENT = prior_client_marker
     tf._REGISTRIES["prior_slug"] = {"x": (_FakeParams, _FakeResponse)}
 
-    client = _make_fake_client("homelab-mcp")
+    client = _make_fake_client(_SYNTHETIC_SERVER_NAME)
     await _run_fixture(mcp_session, client)
 
-    # After teardown: prior state restored, homelab_mcp registry popped.
+    # After teardown: prior state restored, synthetic registry popped.
     assert tf._ACTIVE_SLUG == "prior_slug"
     assert tf._ACTIVE_CLIENT is prior_client_marker
-    assert "homelab_mcp" not in tf._REGISTRIES
+    assert _SYNTHETIC_SLUG not in tf._REGISTRIES
     assert "prior_slug" in tf._REGISTRIES  # prior entry untouched
 
 
@@ -177,29 +268,29 @@ async def test_mcp_session_restores_prior_state_on_teardown() -> None:
 
 @pytest.mark.asyncio
 async def test_mcp_session_fail_loud_on_missing_generated_module(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """D-03: ModuleNotFoundError triggers pytest.exit(returncode=2) with operator message."""
-    from mcp_test_framework.sdet import session as session_mod
+    """D-03 (Phase 21.1 RELOC-03 reworked): missing slug dir under
+    cfg.sdet.generated_root triggers pytest.exit(returncode=2) with
+    operator-tone message naming the slug, gen-sdet-classes, and --sdet."""
     from mcp_test_framework.sdet.session import mcp_session
 
-    # Force importlib.import_module to raise ModuleNotFoundError
-    def _raise(_name: str):
-        raise ModuleNotFoundError(f"No module named {_name!r}")
+    # Point sdet.generated_root at an empty tmp_path; no slug dir exists.
+    empty_root = tmp_path / "empty_root"
+    empty_root.mkdir()
+    yaml_path = _write_config_with_generated_root(tmp_path, empty_root)
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
 
-    monkeypatch.setattr(session_mod.importlib, "import_module", _raise)
-
-    client = _make_fake_client("unknown-server")
+    client = _make_fake_client("missing-server")
     func = _unwrap(mcp_session)
     agen = func(client)
     with pytest.raises(pytest.exit.Exception) as exc_info:
         await agen.__anext__()
 
-    # pytest.exit raises pytest.exit.Exception with returncode + reason; verify shape.
     assert exc_info.value.returncode == 2
     message = str(exc_info.value)
     assert "No generated SDET classes" in message
-    assert "unknown_server" in message  # slug normalization
+    assert "missing_server" in message  # slug normalization
     assert "gen-sdet-classes" in message
     assert "--sdet" in message
 
