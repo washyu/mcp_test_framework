@@ -129,8 +129,8 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | REQ-SCRUB-01        | Phase 20 | Pending  |
 | UI-01          | Phase 19 | Pending  |
 | UI-02          | Phase 18 | Complete |
-| DOC-SDET-01    | Phase 21 | Pending  |
-| DOC-SDET-02    | Phase 21 | Pending  |
+| DOC-SDET-01    | Phase 21 | Complete |
+| DOC-SDET-02    | Phase 21 | Complete |
 | DOC-SDET-03    | Phase 21 | Pending  |
 
 **Total: 22 requirements mapped across 5 phases (17–21). Coverage: 22/22 (100%).**

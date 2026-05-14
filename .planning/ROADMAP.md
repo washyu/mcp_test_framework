@@ -137,7 +137,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   2. The codegen regeneration workflow is documented (when to regen, what gets overwritten, mypy/pyright as the change-detection signal, import-surface stability contract); CLAUDE.md updated to note the dual operator+SDET persona.
   3. The README has one SDET scenario sample whose rendered output block matches the runner's emission char-for-char (Phase 16 / SEED-008 doc-mirroring contract); a snippet-correctness test in `tests/framework/` pins the parity against drift.
 **Plans**: 4 plans (3 waves)
-  - [ ] 21-01-PLAN.md — Author docs/SDET-AUTHORING.md (DOC-SDET-01, DOC-SDET-02) [wave 1; depends_on: ]
+  - [x] 21-01-PLAN.md — Author docs/SDET-AUTHORING.md (DOC-SDET-01, DOC-SDET-02) [wave 1; depends_on: ]
   - [ ] 21-02-PLAN.md — README ## SDET scenarios section with char-for-char snapshot (DOC-SDET-03) [wave 2; depends_on: 21-01]
   - [ ] 21-03-PLAN.md — CLAUDE.md dual-persona note (DOC-SDET-02) [wave 2; depends_on: 21-01]
   - [ ] 21-04-PLAN.md — End-of-phase verification matrix (DOC-SDET-01, DOC-SDET-02, DOC-SDET-03) [wave 3; depends_on: 21-01, 21-02, 21-03]
@@ -168,7 +168,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 18. SDET test surface + typed errors | v1.3 | 8/8 | Complete | 2026-05-13 |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/4 | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 5/5 | Complete   | 2026-05-14 |
-| 21. SDET authoring docs + README parity | v1.3 | 0/4 | Not started | — |
+| 21. SDET authoring docs + README parity | v1.3 | 1/4 | In Progress|  |
 
 ### Phase 22: Scrub requirement-ID leaks from src/
 
@@ -187,7 +187,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. All Phase 17 unit tests still pass after the scrub (no behavior changes — pure documentation/comment edits)
   4. `mcp-test-framework --help` and each subcommand `--help` still describe the command's purpose clearly (the prose is at least as informative as the current ID-tagged version)
 
-**Plans:** 5/5 plans complete
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 22 to break down)

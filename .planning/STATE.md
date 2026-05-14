@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: verifying
+status: executing
 stopped_at: Phase 21 context gathered
-last_updated: "2026-05-14T06:23:00.394Z"
-last_activity: 2026-05-14 -- Phase 20 Plan 05 complete (commit 8980f5c)
+last_updated: "2026-05-14T06:49:54.549Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
+  total_plans: 27
+  completed_plans: 24
+  percent: 89
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 20 — preflight-conditional-skip
+**Current focus:** Phase 21 — SDET Authoring Docs README Parity
 
 ## Current Position
 
-Phase: 20 (preflight-conditional-skip) — COMPLETE (5/5 plans summarized)
-Plan: 5 of 5
-Status: Phase 20 complete — awaiting phase verifier.
+Phase: 21 (SDET Authoring Docs README Parity) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
         All 5 plans landed: 20-01 (REQ scrub), 20-02 (ROADMAP rewrite), 20-03 (STATE update), 20-04 (tests/sdet cleanup), 20-05 (mock-fixture codegen tests).
         Plan 20-05 added 10 CI-safe mock-fixture codegen integration tests under tests/framework/unit/test_codegen_integration_mock.py (319 lines); all 10 PASS. Satisfies CODEGEN-COVERAGE-01.
         Two findings still tracked from Phase 19: (1) D-02 CPU-cores bump impossible — RESOLVED-BY-DELETION via 20-04 (Proxmox dogfood file deleted); (2) homelab-mcp UPSTREAM inputSchema bug — still OPEN as upstream fix, not a framework concern.
 Next: Phase verifier pass on Phase 20, then v1.3 close work (Phase 21 docs + Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
-Last activity: 2026-05-14 -- Phase 20 Plan 05 complete (commit 8980f5c)
+Last activity: 2026-05-14
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Last activity: 2026-05-14 -- Phase 20 Plan 05 complete (commit 8980f5c)
 | Phase 18 P07 | ~1500 | 3 tasks | 4 files |
 | Phase 18 P08 | ~1500 | 4 tasks | 4 files | 50 tests added; Task 5 no-op (pre-satisfied by 18-02) |
 | Phase 20 P20-05 | 2min | 1 tasks | 1 files |
+| Phase 21 P01 | ~20min | 4 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T06:23:00.386Z
+Last session: 2026-05-14T06:49:49.343Z
 Stopped at: Phase 21 context gathered
 Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
