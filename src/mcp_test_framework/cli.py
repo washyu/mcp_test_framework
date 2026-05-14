@@ -49,6 +49,17 @@ from pydantic import ValidationError
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
+from mcp_test_framework.models import SdetConfig
+
+# Phase 21.1 RELOC-01 (Rule 3 deviation, plan 21.1-01): the bootstrap
+# paths used by `list-tools` / `config-init` under ``allow_missing=True``
+# fall back to ``Config(sdet=_BOOTSTRAP_SDET_STUB)`` so the framework can
+# emit a starter scaffold from an unconfigured directory. The stub value
+# matches the convention emitted by ``_format_tools_yaml_scaffold`` so an
+# operator who saves the scaffold and re-runs gets a self-consistent path.
+# This stub is NEVER reachable from operator-supplied YAML: the path
+# remains required for any loaded config.
+_BOOTSTRAP_SDET_STUB = SdetConfig(generated_root=Path("tests/sdet/_generated"))
 
 app = typer.Typer(
     name="mcp-test-framework",
@@ -94,7 +105,24 @@ def _emit_operator_error_for_validation(
     Function never returns; every branch calls _emit_operator_error which raises.
     """
     errors = exc.errors()
-    primary = errors[0] if errors else {}
+    # Phase 21.1 RELOC-01 (Rule 1 deviation): with `sdet` now required on
+    # Config, a v1 YAML missing the `sdet` block produces TWO Pydantic
+    # errors -- the v1 version-mismatch AND the missing-sdet field. Order
+    # of `errors[0]` is implementation-defined and would silently shift the
+    # rendered SAFE-06 message to the SAFE-03 missing-required-field path,
+    # breaking the locked v1 migration error. Scan ALL errors and prefer
+    # the version-mismatch first so SAFE-06 stays load-bearing for v1
+    # operators upgrading.
+    version_err = next(
+        (
+            e
+            for e in errors
+            if ".".join(str(p) for p in e.get("loc", ())) == "version"
+            and "not supported by this build" in e.get("msg", "")
+        ),
+        None,
+    )
+    primary = version_err or (errors[0] if errors else {})
     loc = ".".join(str(p) for p in primary.get("loc", ()))
     err_type = primary.get("type", "")
     msg = primary.get("msg", "")
@@ -695,7 +723,7 @@ def list_tools(
     """
     cfg = _load_config(config, allow_missing=True)
     if cfg is None:
-        cfg = Config()
+        cfg = Config(sdet=_BOOTSTRAP_SDET_STUB)
     try:
         with asyncio.Runner() as runner:
             tools = runner.run(_list_tools_async(cfg))
@@ -815,7 +843,7 @@ def config_init(
 
     cfg = _load_config(config, allow_missing=True)
     if cfg is None:
-        cfg = Config()
+        cfg = Config(sdet=_BOOTSTRAP_SDET_STUB)
 
     # Apply --command / --arg overrides via Pydantic v2 model_copy on the
     # frozen Config / McpServerConfig instances. Re-instantiating Config(...)
@@ -1321,6 +1349,21 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
         "\n"
         "# Schema version. This release accepts version 2.\n"
         "version: 2\n"
+        "\n"
+        "# SDET codegen + fixture output path. REQUIRED.\n"
+        "#\n"
+        "# The `mcp-test-framework gen-sdet-classes` command writes generated\n"
+        "# typed classes into <generated_root>/<server_slug>/, and the\n"
+        "# `mcp_session` pytest fixture loads them from the same path.\n"
+        "# Recommended convention: `tests/sdet/_generated` (colocated with\n"
+        "# your tests/sdet/ scenarios; the `_` prefix signals\n"
+        "# \"tool-managed, don't hand-edit\"). Pick any path you want --\n"
+        "# the framework does not enforce a layout.\n"
+        "#\n"
+        "# Non-absolute paths are resolved relative to the current working\n"
+        "# directory when the config is loaded.\n"
+        "sdet:\n"
+        f"  generated_root: {json.dumps('tests/sdet/_generated')}\n"
         "\n"
         "# Per-tool registry. Every tool the connected server advertises is\n"
         "# listed below as `skip: true` -- the framework will not call any\n"

@@ -216,7 +216,9 @@ def test_run_exit_code_5_maps_to_0(monkeypatch, tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         "version: 2\nollama:\n  base_url: http://127.0.0.1:11434\n  model: q\n"
-        "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\ntools: {}\n",
+        "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\n"
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        "tools: {}\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(
@@ -235,7 +237,9 @@ def test_run_exit_code_1_passes_through(monkeypatch, tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         "version: 2\nollama:\n  base_url: http://127.0.0.1:11434\n  model: q\n"
-        "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\ntools: {}\n",
+        "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\n"
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        "tools: {}\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(

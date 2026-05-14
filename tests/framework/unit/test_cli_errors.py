@@ -150,6 +150,7 @@ def test_list_tools_mcp_spawn_failure(
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
         'version: 2\n'
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -184,6 +185,7 @@ def test_config_init_mcp_spawn_failure(
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
         'version: 2\n'
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -282,6 +284,7 @@ def test_safe_02_cwd_autodiscovery_picks_up_local_config(
         "version: 2\n"
         "ollama:\n  base_url: http://127.0.0.1:11434\n  model: qwen3.6:latest\n"
         "mcp_server:\n  command: /bin/true\n  args: []\n"
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
         "tools: {}\n",
         encoding="utf-8",
     )

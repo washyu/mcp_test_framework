@@ -39,6 +39,7 @@ from mcp_test_framework.models import (
     HomelabConfig,
     McpServerConfig,
     OllamaConfig,
+    SdetConfig,
     ToolConfig,
 )
 
@@ -54,6 +55,11 @@ class Config(BaseSettings):
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     mcp_server: McpServerConfig = Field(default_factory=McpServerConfig)
     homelab: HomelabConfig = Field(default_factory=HomelabConfig)
+    # Phase 21.1 RELOC-01: REQUIRED -- no default. Missing key triggers the
+    # SAFE-03 operator-tone error via _emit_operator_error_for_validation's
+    # `missing` branch (cli.py:137-150). One source of truth -- no env var,
+    # no CLI flag override (Phase 21.1 D-02).
+    sdet: SdetConfig
 
     judge_timeout_seconds: int = 120
 

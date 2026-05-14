@@ -202,6 +202,7 @@ def test_json_full_orthogonal(
         '  timeout_seconds: 30\n'
         'judge_timeout_seconds: 120\n'
         'version: 2\n'
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
         'tools: {}\n',
         encoding="utf-8",
     )

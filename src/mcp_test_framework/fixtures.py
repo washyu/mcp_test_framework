@@ -144,7 +144,7 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
 
 
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
-async def _preflight(request: pytest.FixtureRequest, config: Config):
+async def _preflight(request: pytest.FixtureRequest):
     """Three pre-test checks; pytest.exit(returncode=2) on any failure.
 
     Recommended order (CONTEXT D-discretion, cheapest first):
@@ -165,10 +165,23 @@ async def _preflight(request: pytest.FixtureRequest, config: Config):
     collected -- framework self-tests under `tests/framework/...` have no
     MCP/Ollama dependency and must not be gated by integration
     preconditions.
+
+    Phase 21.1 RELOC-01 (Rule 3 deviation, plan 21.1-01): the `config`
+    fixture is requested *lazily* via ``request.getfixturevalue`` AFTER
+    the live-MCP scope check, instead of as a direct parameter. With
+    `sdet.generated_root` now required on Config, a bare ``Config()``
+    constructed for framework-only test sessions (no MCPTF_CONFIG_FILE
+    set) would fail with the SAFE-03 missing-required-field error before
+    the short-circuit could run. Fetching the fixture only inside the
+    live-MCP branch preserves the SAFE-03 behavior where it matters
+    (operator-facing live runs) while keeping framework self-tests green
+    without requiring every framework test to set MCPTF_CONFIG_FILE.
     """
     if not _session_needs_preflight(request):
         yield
         return
+
+    config: Config = request.getfixturevalue("config")
 
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:

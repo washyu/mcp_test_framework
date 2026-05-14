@@ -201,7 +201,9 @@ class TestV111SkipFilter:
         from mcp_test_framework import _runner as _r
         from tests.conftest import _resolve_tool_names
 
+        from mcp_test_framework.models import SdetConfig
         config = Config(
+            sdet=SdetConfig(generated_root="tests/sdet/_generated"),
             tools={
                 "a": ToolConfig(),
                 "b": ToolConfig(skip=True, skip_reason="testing the filter"),

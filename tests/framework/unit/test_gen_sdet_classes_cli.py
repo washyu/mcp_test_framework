@@ -40,6 +40,10 @@ def _write_config(tmp_path: Path, *, command: str, args: list[str] | None = None
             "args": args or [],
             "timeout_seconds": 30,
         },
+        # Phase 21.1 RELOC-01: sdet.generated_root is now required on Config.
+        # Plan 03 will rework this helper to drive gen-sdet-classes into the
+        # configured path; this stub keeps the loader happy in the interim.
+        "sdet": {"generated_root": str(tmp_path / "_generated")},
     }
     cfg_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
     return cfg_path

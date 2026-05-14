@@ -118,6 +118,7 @@ def test_cr01_bare_config_picks_up_mcptf_config_file(
         "mcp_server:\n"
         "  command: uvx\n"
         "  args: [homelab-mcp]\n"
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
         "tools:\n"
         "  list_registered_servers:\n"
         "    skip: false\n",
@@ -162,6 +163,7 @@ def test_cr01_resolver_writes_mcptf_config_file_env_var(
         "mcp_server:\n"
         "  command: uvx\n"
         "  args: [homelab-mcp]\n"
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
         "tools:\n"
         "  alpha:\n"
         "    skip: false\n"

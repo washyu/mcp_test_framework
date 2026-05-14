@@ -172,7 +172,10 @@ def _make_valid_config(tmp_path: Path) -> Path:
     cfg = tmp_path / "config.yaml"
     cfg.write_text(
         "version: 2\nollama:\n  base_url: http://127.0.0.1:11434\n  model: q\n"
-        "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\ntools: {}\n",
+        "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\n"
+        # Phase 21.1 RELOC-01: sdet.generated_root is now required on Config.
+        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        "tools: {}\n",
         encoding="utf-8",
     )
     return cfg
