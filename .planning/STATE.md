@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: executing
-stopped_at: Phase 21 context gathered
-last_updated: "2026-05-14T06:49:54.549Z"
+status: verifying
+stopped_at: Phase 21.1 context gathered
+last_updated: "2026-05-14T17:30:36.270Z"
 last_activity: 2026-05-14
 progress:
-  total_phases: 7
-  completed_phases: 4
+  total_phases: 9
+  completed_phases: 5
   total_plans: 27
-  completed_plans: 24
-  percent: 89
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
@@ -113,6 +113,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - 2026-05-13: Phase 22 added — scrub requirement-ID leaks from `src/` (5 user-visible CLI docstrings + 58 internal references). Surfaced during Phase 17 live UAT when `mcp-test-framework --help` exposed `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style tags. Source-code analog of the v1.2 doc scrub. v1.3 milestone range extended from Phases 17–21 to Phases 17–22.
 - 2026-05-13: Phase 23 added — test suite debt cleanup. Surfaced during Phase 20 UAT: `uv run pytest tests/framework/` returns 11 failed + 1 error, all pre-existing at baseline `cfb04f2`. Four categories: (1) Config schema v1→v2 mismatch — 4 tests in `test_tool_config.py`/`test_homelab_config.py` still expect `version=1`; (2) `parents[2]` path resolution broken after Phase 15-01 folder split (`2e74967`) — 5 tests in `test_cli_errors.py`/`test_migration_doc.py` resolve repo root to `tests/`; (3) missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc; (4) README line 104 bare `mcp-test-framework run --explain` doc drift; plus 1 environmental ERROR (`homelab-mcp` not on PATH). Gate before v1.3 milestone close so debt does not carry forward. v1.3 milestone range extended from Phases 17–22 to Phases 17–23.
 - 2026-05-14: Phase 24 added — tool call serializer omits unset optional params (`model_dump(exclude_unset=True)`). Surfaced during Phase 21 Plan 21-02 UAT: live Proxmox run failed with the upstream homelab-mcp `inputSchema` bug hitting `create_proxmox_vm` (Phase 19-04's prediction that create was safe did not hold). Investigation found `_tool_factory.py:107` emits `null` for unset `cdrom`/`iso` fields. The Phase 17 SEED-022 lock-in disallowed `exclude_none=True` (which masks null bugs); `exclude_unset=True` is the SEED-022-compatible fix — distinguishes user-omitted from user-explicitly-set. Touches `_tool_factory.py`, `docs/SDET-AUTHORING.md` inputSchema-workaround section, README Plan 21-02 sample (re-capture as PASS), and the long-standing `homelab-mcp inputSchema` deferred-fix entry. v1.3 milestone range extended from Phases 17–23 to Phases 17–24.
+- Phase 21.1 inserted after Phase 21: SDET generated output relocation — make codegen output config-driven; remove SUT-specific code from src/ (URGENT)
 
 ### Blockers/Concerns
 
@@ -164,6 +165,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T06:49:49.343Z
-Stopped at: Phase 21 context gathered
+Last session: 2026-05-14T17:30:36.263Z
+Stopped at: Phase 21.1 context gathered
 Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans

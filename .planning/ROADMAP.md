@@ -172,6 +172,16 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 20. Preflight + conditional skip | v1.3 | 5/5 | Complete   | 2026-05-14 |
 | 21. SDET authoring docs + README parity | v1.3 | 1/4 | In Progress|  |
 
+### Phase 21.1: SDET generated output relocation — make codegen output config-driven; remove SUT-specific code from src/ (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 21.1 to break down)
+
 ### Phase 22: Scrub requirement-ID leaks from src/
 
 **Goal:** Operator running `mcp-test-framework --help` (or any subcommand `--help`) sees no requirement-ID leaks like `CLI-01`, `PERSONA-02`, `CODEGEN-01`, `SAFE-03`, etc. — only descriptive prose. Internal source comments are also scrubbed so future grep doesn't surface planning-system artifacts inside the shipped package.
