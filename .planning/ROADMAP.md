@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 01–05 (shipped 2026-05-06) — see [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Multi-Tool + Isolation + JUnit** — Phases 06–11 (shipped 2026-05-08) — see [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Operator-First Design** — Phases 12–16 (shipped 2026-05-12) — see [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
-- 🚧 **v1.3 Homelab Scenario Testing** — Phases 17–22 (planning, scoped 2026-05-12)
+- 🚧 **v1.3 Homelab Scenario Testing** — Phases 17–24 (planning, scoped 2026-05-12; Phase 23 + 24 added mid-flight)
 
 ## Phases
 
@@ -47,7 +47,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 </details>
 
-### 🚧 v1.3 Homelab Scenario Testing (Phases 17–22) — IN PLANNING
+### 🚧 v1.3 Homelab Scenario Testing (Phases 17–24) — IN PLANNING
 
 - [x] **Phase 17: Schema-driven codegen surface** — `gen-sdet-classes` command + Pydantic param/response classes + `ToolResponse` base + typed call wrappers (CODEGEN-01..06)
  (completed 2026-05-13)
@@ -55,8 +55,10 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 - [x] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01) (completed 2026-05-13, PASS-WITH-DEFERRALS — D-02 CPU-cores bump deferred to Phase 20; upstream homelab-mcp inputSchema bug filed against the server, NOT a framework fix per SEED-022)
 - [x] **Phase 20: v1.3 scope correction — dogfood cleanup + codegen coverage** — delete SUT-specific dogfood from `tests/sdet/`; replace PREFLIGHT-01/02 with mock-fixture codegen unit tests under `tests/framework/unit/`; rewrite REQUIREMENTS rows and this roadmap entry to match the reframed scope (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01)
  (completed 2026-05-14)
-- [ ] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03)
+- [x] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03) (completed 2026-05-14, PASS-WITH-DEVIATIONS — Plan 21-02 re-scoped at human-verify checkpoint to embed FAIL output as the README sample; upstream homelab-mcp inputSchema bug surfaced on `create_proxmox_vm`, exposing the framework-side serializer fix scoped for Phase 24)
 - [ ] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01)
+- [ ] **Phase 23: Test suite debt cleanup** — clear pre-existing `tests/framework/` failures discovered during Phase 20 UAT: config schema v1→v2 mismatches, `parents[2]` path resolution breakage after the Phase 15 folder split, missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc, README line-104 doc drift; closes 11 fails + 1 error so v1.3 close ships a green framework suite
+- [ ] **Phase 24: Tool call serializer omits unset optional params** — switch `tool().call()` serialization from `model_dump(mode="json")` to `model_dump(mode="json", exclude_unset=True)` so optionally-nullable fields aren't sent as `null` when the SDET never set them; preserves SEED-022 (explicit `cdrom=None` still serializes); softens [docs/SDET-AUTHORING.md](docs/SDET-AUTHORING.md) inputSchema-workaround section; re-captures Plan 21-02 README sample as PASS
 
 ## Phase Details
 
@@ -201,3 +203,20 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 23 to break down)
+
+### Phase 24: Tool call serializer omits unset optional params (exclude_unset)
+
+**Goal:** `tool().call()` serializes only fields the SDET explicitly set on the params model — optionally-nullable fields with `None` defaults stay off the wire when untouched, eliminating the framework's contribution to `Input validation error: None is not of type 'string'` failures against MCP servers whose `inputSchema` declares optionals as `type: "string"`. SDETs retain the ability to test null-handling explicitly by passing `field=None` in the constructor.
+**Requirements**: TBD (likely 1 framework requirement + 1 doc-update requirement; finalize at `/gsd-plan-phase 24`)
+**Depends on:** Phase 23 (test suite green so the serializer-change ripple is isolated)
+**Background:** Surfaced in Phase 21 Plan 21-02 UAT (2026-05-13): live Proxmox run failed with the upstream homelab-mcp inputSchema bug hitting `create_proxmox_vm`, not just `manage_proxmox_vm`. Investigation showed the framework's `_tool_factory.py:107` emits `null` for unset `cdrom`/`iso` fields via `model_dump(mode="json")`. The Phase 17 SEED-022 lock-in disallowed `exclude_none=True` (which masks upstream null-handling bugs); `exclude_unset=True` is the SEED-022-compatible fix — it distinguishes user-omitted from user-explicitly-set, sending null only when the SDET asks for it.
+**Scope (anticipated by planner):**
+  - `src/mcp_test_framework/sdet/_tool_factory.py` — single-line serializer change.
+  - `tests/framework/unit/test_tool_factory.py` (or sibling) — update any tests that assert on the full `model_dump()` payload.
+  - `docs/SDET-AUTHORING.md` — soften `## The inputSchema workaround` section. `_CpuBumpManageVmParams(extra="allow")` pattern reduces from "always needed" to "needed only when you want to send `null` explicitly."
+  - `README.md` — re-capture the `## SDET scenarios` snapshot (currently FAIL output per Plan 21-02 re-scope); the deleted `tests/sdet/test_proxmox_vm_lifecycle_readme_sample.py` may need temporary resurrection for the re-capture, matching the Plan 21-02 D-14 manual-snapshot pattern.
+  - `.planning/STATE.md` Deferred Items — re-scope the `homelab-mcp inputSchema` entry (framework-side default behavior is fixed; explicit null-testing remains an SDET-owned action).
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 24 to break down)
