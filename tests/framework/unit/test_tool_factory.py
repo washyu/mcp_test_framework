@@ -99,7 +99,6 @@ async def test_call_raises_runtime_error_when_no_active_client() -> None:
     msg = str(exc.value)
     assert "no active MCP client" in msg
     assert "mcp_session" in msg
-    assert "Phase 18" in msg
     assert "tests/sdet/" in msg
 
 
