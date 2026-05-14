@@ -957,8 +957,9 @@ def gen_sdet_classes(
     """Generate typed Pydantic Params/Response classes for every tool (CODEGEN-01).
 
     Introspects the configured MCP server via list_tools and writes
-    src/mcp_test_framework/sdet/generated/<server_slug>/<tool>.py for every
-    tool advertised. Wipe-and-write: rerunning replaces the directory wholesale.
+    <sdet.generated_root>/<server_slug>/<tool>.py for every tool advertised,
+    where `sdet.generated_root` is the required path declared in your
+    config.yaml. Wipe-and-write: rerunning replaces the directory wholesale.
     Honors --config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud
     (Phase 13 SAFE-01..07).
 
@@ -1006,7 +1007,7 @@ def gen_sdet_classes(
                 f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`) "
                 f"reports an empty serverInfo.name.",
                 "gen-sdet-classes needs a non-empty name to derive the "
-                "src/mcp_test_framework/sdet/generated/<slug>/ output directory.",
+                "<sdet.generated_root>/<slug>/ output directory.",
             ],
             next_step=(
                 "ask the server author to set a name in their server's "
@@ -1020,7 +1021,13 @@ def gen_sdet_classes(
     from mcp_test_framework.sdet import _codegen
     from mcp_test_framework.sdet._slugs import server_slug
 
-    out_root = Path(__file__).parent / "sdet" / "generated"
+    # Phase 21.1 RELOC-02: out_root is config-driven; the framework never
+    # writes generated Python code inside its own `src/` tree. Resolution
+    # is relative to CWD when not absolute (matches MCPTF_CONFIG_FILE
+    # precedent).
+    out_root = cfg.sdet.generated_root
+    if not out_root.is_absolute():
+        out_root = Path.cwd() / out_root
     server_version = getattr(server_info, "version", "") or ""
     try:
         counts = _codegen.generate(
@@ -1043,7 +1050,7 @@ def gen_sdet_classes(
     typer.echo(f"gen-sdet-classes: wrote SDET classes for {server_name}\n")
     typer.echo(f"  server:    {server_name} v{server_version}")
     typer.echo(f"  slug:      {slug}")
-    typer.echo(f"  target:    src/mcp_test_framework/sdet/generated/{slug}/")
+    typer.echo(f"  target:    {out_root / slug}/")
     typer.echo(f"  tools:     {counts['tools']} generated")
     typer.echo(
         f"  degraded:  {counts['degraded_fields']} fields "
