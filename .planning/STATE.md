@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 21.1 Plan 01 complete
-last_updated: "2026-05-14T19:21:18.684Z"
+last_updated: "2026-05-14T19:31:02.360Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 31
-  completed_plans: 28
-  percent: 90
+  completed_plans: 29
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 ## Current Position
 
 Phase: 21.1 (SDET generated output relocation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
         All 5 plans landed: 20-01 (REQ scrub), 20-02 (ROADMAP rewrite), 20-03 (STATE update), 20-04 (tests/sdet cleanup), 20-05 (mock-fixture codegen tests).
         Plan 20-05 added 10 CI-safe mock-fixture codegen integration tests under tests/framework/unit/test_codegen_integration_mock.py (319 lines); all 10 PASS. Satisfies CODEGEN-COVERAGE-01.
@@ -56,6 +56,7 @@ Last activity: 2026-05-14
 | Phase 21 P03 | ~2min | 1 task | 1 file | dual-persona note appended to CLAUDE.md '## What This Project Is' |
 | Phase 21 P04 | ~5min | 1 task | 0 files modified | verification matrix: 16/16 checks PASS (B4 deviation documented; re-scope approved) |
 | Phase 21.1 P01 | 80min | 3 tasks | 17 files |
+| Phase 21.1 P02 | 6min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 18]: Plan 18-08: test_sdet_renderer.py D-11 round-trip pinning uses xml.sax.saxutils.quoteattr for the mcptf_error_raw property value so the model_dump_json(indent=2) string survives XML attribute serialization; json.loads on the recovered string verifies CallToolResult schema keys (isError, content, structuredContent) survived the full pipeline.
 - [Phase 18]: Plan 18-08: indented-JSON grep gate uses 4-space prefix (not 2) because model_dump_json(indent=2) already adds its own 2-space indent and render_debug_appendix adds another 2-space prefix on every dump line -- combined left margin is 4 spaces before inner JSON keys. Test-author error caught during first run; fix is test-side only.
 - [Phase ?]: Phase 21.1 Plan 01: SdetConfig required-no-default on Config; no schema version bump
+- [Phase ?]: Phase 21.1 Plan 02: mcp_session uses spec_from_file_location + submodule_search_locations against cfg.sdet.generated_root; no sys.path mutation, no importlib.import_module at runtime
 
 ### Roadmap Evolution
 
@@ -167,6 +169,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T19:20:54.914Z
+Last session: 2026-05-14T19:30:41.403Z
 Stopped at: Phase 21.1 Plan 01 complete
 Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
