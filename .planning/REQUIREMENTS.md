@@ -60,6 +60,12 @@ Replace manual Claude-client verification of homelab-mcp with automated end-to-e
 | RELOC-03  | Tests that previously imported `mcp_test_framework.sdet.generated.homelab_mcp` are reworked off that path. `tests/framework/unit/test_sdet_fixtures.py` uses a synthetic-mock fixture pattern lifted from `test_codegen_integration_mock.py` (writes a slug dir into `tmp_path`, drives `mcp_session` with a fake client). `tests/framework/unit/test_gen_sdet_classes_cli.py` extends its `_write_config` helper to set `sdet.generated_root` to a `tmp_path` location. `tests/sdet/test_proxmox_vm_lifecycle_readme_sample.py` switches to live regen against the configured `sdet.generated_root` (gated `@pytest.mark.live_homelab`). `tests/framework/unit/test_codegen_integration_mock.py` is unaffected (D-10). |
 | RELOC-04  | `src/mcp_test_framework/sdet/generated/` is deleted from the working tree (56 `homelab_mcp/*.py` files + `homelab_mcp/__init__.py` + the top-level `generated/__init__.py` namespace marker). `pyproject.toml` `[tool.pyright]` `include` and `strict` lists drop the now-extinct subtree. `docs/SDET-AUTHORING.md` (7 hardcoded `sdet/generated` path references) and `README.md:293` (SDET sample import) are rewritten to reference the new config-driven path and recommend the on-disk convention `tests/sdet/_generated/`. |
 
+### SCRUB — src/ requirement-ID leak removal (Phase 22)
+
+| ID            | Description |
+| ------------- | ----------- |
+| SCRUB-SRC-01  | Operator-facing `--help` output and the wider `src/mcp_test_framework/` tree stop leaking internal planning-system provenance. After the scrub: `mcp-test-framework --help` and every subcommand `--help` (`run`, `list-tools`, `version`, `gen-sdet-classes`, `config-init`) show zero matches for the locked regex `(CLI\|PERSONA\|CODEGEN\|SAFE\|RUNNER\|UX\|ISOL\|JUNIT\|SURFACE\|TEST\|CLEAN\|DOC\|UI\|SDET\|STATE\|PREFLIGHT\|SCRUB\|RELOC)-\d+\|\bD-\d+\b`; `grep -rE` of that same regex over `src/mcp_test_framework/` returns zero hits with no allowlist (per Phase 22 CONTEXT.md D-04 — planning IDs are removed, not suppressed via `# noqa`). Phase 17–21.1 unit tests continue to pass (no behavior change). Operator-facing `--help` prose remains at least as informative as the current ID-tagged version (verb + key flags + exit-code semantics preserved). The scrub also removes `Phase NN(.M)?` historical prefixes per CONTEXT.md D-01 as one-time discipline, though that shape is deliberately NOT in the regression regex (CONTEXT.md D-06 — operator-prose false-positive risk). |
+
 ### UI — Domain rendering for SDET runs
 
 | ID    | Description                                                                                                                                                                                                                                                                                                       |
@@ -150,8 +156,9 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | DOC-SDET-01    | Phase 21 | Complete |
 | DOC-SDET-02    | Phase 21 | Complete |
 | DOC-SDET-03    | Phase 21 | Pending  |
+| SCRUB-SRC-01   | Phase 22 | Pending  |
 
-**Total: 26 requirements mapped across 6 phases (17–21.1). Coverage: 26/26 (100%).**
+**Total: 27 requirements mapped across 7 phases (17–22). Coverage: 27/27 (100%).**
 
 ### Phase coverage summary
 
@@ -163,3 +170,4 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | 20    | CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01                       | 3     |
 | 21    | DOC-SDET-01, DOC-SDET-02, DOC-SDET-03                                       | 3     |
 | 21.1  | RELOC-01, RELOC-02, RELOC-03, RELOC-04                                      | 4     |
+| 22    | SCRUB-SRC-01                                                                | 1     |
