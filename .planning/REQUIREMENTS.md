@@ -43,12 +43,13 @@ Replace manual Claude-client verification of homelab-mcp with automated end-to-e
 | STATE-03 | Module-scope state passing pattern documented: tests within a single scenario module share a `scope="module"` fixture, run in file order, and all see the same created state (typed via the response class).                              |
 | STATE-04 | Cross-file ordering supported via pytest-order (or equivalent) when scenarios genuinely span files. Documented as a recipe; framework doesn't ship a custom ordering mechanism.                                                              |
 
-### PREFLIGHT — Conditional execution and environment checks
+### CLEANUP — v1.3 retroactive scope correction (Phase 20)
 
-| ID           | Description                                                                                                                                                                                                                                                              |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PREFLIGHT-01 | `requires_homelab(...)` marker factory exported from `mcp_test_framework.sdet`. Accepts keyword args for each subsystem check (`proxmox=True`, `ollama=False`, etc.). Internally returns `pytest.mark.skipif(...)` with an operator-domain skip reason. |
-| PREFLIGHT-02 | Reachability checks are fast (sub-second) and degrade gracefully — a host that doesn't resolve or refuses connection produces a clean SKIP with the unreachable target named in the skip reason, not a stack trace.                                              |
+| ID                  | Description                                                                                                                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLEANUP-DOGFOOD-01  | SUT-specific dogfood test files removed from `tests/sdet/`; the project's shipped test suite stays SUT-agnostic so CI can run without operator-specific infrastructure (Proxmox, Ansible, etc.).                                  |
+| CODEGEN-COVERAGE-01 | Mock-fixture-driven unit tests verify the codegen pipeline produces correctly-shaped `<ToolName>Params` / `<ToolName>Response` / `_REGISTRY` artifacts for a synthetic tool list (no live MCP, CI-safe).                          |
+| REQ-SCRUB-01        | The two prior Phase 20 preflight requirements (`requires_homelab(...)` marker factory + reachability checks) are removed from REQUIREMENTS.md; "hello-world MCP server for CI-runnable end-to-end coverage" is recorded as a deferred item for a future v1.x phase. |
 
 ### UI — Domain rendering for SDET runs
 
@@ -123,15 +124,16 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | STATE-02       | Phase 19 | Pending  |
 | STATE-03       | Phase 19 | Pending  |
 | STATE-04       | Phase 19 | Pending  |
-| PREFLIGHT-01   | Phase 20 | Pending  |
-| PREFLIGHT-02   | Phase 20 | Pending  |
+| CLEANUP-DOGFOOD-01  | Phase 20 | Pending  |
+| CODEGEN-COVERAGE-01 | Phase 20 | Pending  |
+| REQ-SCRUB-01        | Phase 20 | Pending  |
 | UI-01          | Phase 19 | Pending  |
 | UI-02          | Phase 18 | Complete |
 | DOC-SDET-01    | Phase 21 | Pending  |
 | DOC-SDET-02    | Phase 21 | Pending  |
 | DOC-SDET-03    | Phase 21 | Pending  |
 
-**Total: 21 requirements mapped across 5 phases (17–21). Coverage: 21/21 (100%).**
+**Total: 22 requirements mapped across 5 phases (17–21). Coverage: 22/22 (100%).**
 
 ### Phase coverage summary
 
@@ -140,5 +142,5 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | 17    | CODEGEN-01, CODEGEN-02, CODEGEN-03, CODEGEN-04, CODEGEN-05, CODEGEN-06      | 6     |
 | 18    | SDET-01, SDET-02, SDET-03, SDET-04, UI-02                                   | 5     |
 | 19    | STATE-01, STATE-02, STATE-03, STATE-04, UI-01                               | 5     |
-| 20    | PREFLIGHT-01, PREFLIGHT-02                                                  | 2     |
+| 20    | CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01                       | 3     |
 | 21    | DOC-SDET-01, DOC-SDET-02, DOC-SDET-03                                       | 3     |
