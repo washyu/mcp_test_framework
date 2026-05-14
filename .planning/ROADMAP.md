@@ -150,12 +150,12 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 **Goal:** The framework no longer hardcodes the codegen output path. `sdet.generated_root` becomes a required field in `config.yaml`; both `gen-sdet-classes` (write side) and the `mcp_session` fixture (load side) consume it. The in-tree `src/mcp_test_framework/sdet/generated/` directory (56 homelab-mcp files + namespace markers) is deleted, enforcing SEED-022 structurally — the framework's `src/` tree contains zero SUT-specific code. Three tests are reworked off the deleted import path using a hybrid mock+live strategy; docs + README updated to reflect the new config-driven convention.
 **Requirements**: RELOC-01, RELOC-02, RELOC-03, RELOC-04
 **Depends on:** Phase 21
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 21.1-01-PLAN.md — SdetConfig Pydantic sub-model + Config.sdet required field + example YAMLs (RELOC-01) [wave 1; depends_on: ]
 - [x] 21.1-02-PLAN.md — gen-sdet-classes + mcp_session consume cfg.sdet.generated_root via spec_from_file_location; _tool_factory docstring + pyright pruning (RELOC-02) [wave 2; depends_on: 21.1-01]
-- [ ] 21.1-03-PLAN.md — Rework 3 tests off `mcp_test_framework.sdet.generated.*` via HYBRID strategy (mock for unit, live for README parity) (RELOC-03) [wave 3; depends_on: 21.1-01, 21.1-02]
+- [x] 21.1-03-PLAN.md — Rework 3 tests off `mcp_test_framework.sdet.generated.*` via HYBRID strategy (mock for unit, live for README parity) (RELOC-03) [wave 3; depends_on: 21.1-01, 21.1-02]
 - [ ] 21.1-04-PLAN.md — Delete src/mcp_test_framework/sdet/generated/ tree + sweep 8 docs/SDET-AUTHORING.md path refs + update README sample (RELOC-04) [wave 4; depends_on: 21.1-02, 21.1-03]
 
 ### Phase 22: Scrub requirement-ID leaks from src/
@@ -234,4 +234,4 @@ Plans:
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/4 | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 5/5 | Complete   | 2026-05-14 |
 | 21. SDET authoring docs + README parity | v1.3 | 1/4 | In Progress|  |
-| 21.1. SDET generated output relocation | v1.3 | 2/4 | In Progress|  |
+| 21.1. SDET generated output relocation | v1.3 | 3/4 | In Progress|  |

@@ -143,7 +143,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | REQ-SCRUB-01        | Phase 20 | Pending  |
 | RELOC-01       | Phase 21.1 | Complete |
 | RELOC-02       | Phase 21.1 | Complete |
-| RELOC-03       | Phase 21.1 | Pending  |
+| RELOC-03       | Phase 21.1 | Complete |
 | RELOC-04       | Phase 21.1 | Pending  |
 | UI-01          | Phase 19 | Pending  |
 | UI-02          | Phase 18 | Complete |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 21.1 Plan 01 complete
-last_updated: "2026-05-14T19:31:02.360Z"
+stopped_at: Phase 21.1 Plan 03 complete
+last_updated: "2026-05-14T19:42:09.360Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -26,12 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 ## Current Position
 
 Phase: 21.1 (SDET generated output relocation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
-        All 5 plans landed: 20-01 (REQ scrub), 20-02 (ROADMAP rewrite), 20-03 (STATE update), 20-04 (tests/sdet cleanup), 20-05 (mock-fixture codegen tests).
-        Plan 20-05 added 10 CI-safe mock-fixture codegen integration tests under tests/framework/unit/test_codegen_integration_mock.py (319 lines); all 10 PASS. Satisfies CODEGEN-COVERAGE-01.
-        Two findings still tracked from Phase 19: (1) D-02 CPU-cores bump impossible — RESOLVED-BY-DELETION via 20-04 (Proxmox dogfood file deleted); (2) homelab-mcp UPSTREAM inputSchema bug — still OPEN as upstream fix, not a framework concern.
-Next: Phase verifier pass on Phase 20, then v1.3 close work (Phase 21 docs + Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
+        Plans 21.1-01..03 complete; Plan 04 is the pure-deletion plan (remove src/mcp_test_framework/sdet/generated/ tree). Tests reworked off framework-namespace import in 21.1-03 (HYBRID strategy: mock-based for unit tests, live-regen + module-level skip for README parity scenario).
+        28/28 non-live tests pass under -m "not live_homelab" across the 3 reworked files + test_codegen_integration_mock.py (D-10 byte-for-byte preserved).
+Next: Execute Plan 21.1-04 (delete src/mcp_test_framework/sdet/generated/), then phase verifier on 21.1, then v1.3 close work (Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
 Last activity: 2026-05-14
 
 ## Performance Metrics
@@ -57,6 +56,7 @@ Last activity: 2026-05-14
 | Phase 21 P04 | ~5min | 1 task | 0 files modified | verification matrix: 16/16 checks PASS (B4 deviation documented; re-scope approved) |
 | Phase 21.1 P01 | 80min | 3 tasks | 17 files |
 | Phase 21.1 P02 | 6min | 3 tasks | 6 files |
+| Phase 21.1 P03 | ~6.5min | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -111,6 +111,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 18]: Plan 18-08: indented-JSON grep gate uses 4-space prefix (not 2) because model_dump_json(indent=2) already adds its own 2-space indent and render_debug_appendix adds another 2-space prefix on every dump line -- combined left margin is 4 spaces before inner JSON keys. Test-author error caught during first run; fix is test-side only.
 - [Phase ?]: Phase 21.1 Plan 01: SdetConfig required-no-default on Config; no schema version bump
 - [Phase ?]: Phase 21.1 Plan 02: mcp_session uses spec_from_file_location + submodule_search_locations against cfg.sdet.generated_root; no sys.path mutation, no importlib.import_module at runtime
+- [Phase ?]: Phase 21.1 Plan 03: HYBRID D-09 strategy executed — mock-based for test_sdet_fixtures + test_gen_sdet_classes_cli; live-regen + module-level pytest.skip(allow_module_level=True) for test_proxmox_vm_lifecycle_readme_sample
+- [Phase ?]: Phase 21.1 Plan 03: _run_fixture snapshot extended with _REGISTRIES_snapshot deep copy so post-teardown asserts can verify yield-time registry contents
 
 ### Roadmap Evolution
 
@@ -169,6 +171,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T19:30:41.403Z
+Last session: 2026-05-14T19:42:09.343Z
 Stopped at: Phase 21.1 Plan 01 complete
 Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
