@@ -138,7 +138,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. The README has one SDET scenario sample whose rendered output block matches the runner's emission char-for-char (Phase 16 / SEED-008 doc-mirroring contract); a snippet-correctness test in `tests/framework/` pins the parity against drift.
 **Plans**: 4 plans (3 waves)
   - [x] 21-01-PLAN.md — Author docs/SDET-AUTHORING.md (DOC-SDET-01, DOC-SDET-02) [wave 1; depends_on: ]
-  - [ ] 21-02-PLAN.md — README ## SDET scenarios section with char-for-char snapshot (DOC-SDET-03) [wave 2; depends_on: 21-01]
+  - [x] 21-02-PLAN.md — README ## SDET scenarios section with char-for-char snapshot (DOC-SDET-03) [wave 2; depends_on: 21-01]
   - [ ] 21-03-PLAN.md — CLAUDE.md dual-persona note (DOC-SDET-02) [wave 2; depends_on: 21-01]
   - [ ] 21-04-PLAN.md — End-of-phase verification matrix (DOC-SDET-01, DOC-SDET-02, DOC-SDET-03) [wave 3; depends_on: 21-01, 21-02, 21-03]
 
