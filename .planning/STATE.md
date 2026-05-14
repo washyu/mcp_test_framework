@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 20 context gathered (reframed)
-last_updated: "2026-05-14T04:22:07.135Z"
-last_activity: 2026-05-13 -- Phase 19 complete; (c1) d02-impossible-defer resolution; live verification of structural deliverables
+last_updated: "2026-05-14T04:44:22.431Z"
+last_activity: 2026-05-14 -- Phase 20 planning complete
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 18
+  total_plans: 23
   completed_plans: 18
-  percent: 100
+  percent: 78
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 Phase: 19 (stateful-primitives-domain-ui-integration) — COMPLETE (PASS-WITH-DEFERRALS)
 Plan: 4 of 4 completed
-Status: Ready to execute next phase
+Status: Ready to execute
         Renderer + scenario discovery + module-scope fixture + dogfood_vmid_range knob all verified live against operator's main Proxmox cluster.
         Two findings deferred: (1) D-02 CPU-cores bump impossible via manage_proxmox_vm (lifecycle-action tool only) — defer to Phase 20 substitution decision; (2) homelab-mcp UPSTREAM inputSchema bug (optional fields declared type:string without 'null' but defaulted to null) — file upstream, NOT a framework fix (SEED-022 principle: framework primitives, SDET owns safety; masking it would prevent edge-case testing).
 Next: Phase 20 (PREFLIGHT) — `requires_homelab` marker; record upstream homelab-mcp bug as deferred-items entry.
-Last activity: 2026-05-13 -- Phase 19 complete; (c1) d02-impossible-defer resolution; live verification of structural deliverables
+Last activity: 2026-05-14 -- Phase 20 planning complete
 
 ## Performance Metrics
 
