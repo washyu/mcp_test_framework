@@ -175,7 +175,7 @@ def test_echo_message_params_class_shape(generated: Path) -> None:
     """Required scalar string field; outputSchema declared."""
     mod = _load_generated_module(generated, "echo_message")
     Params = mod.EchoMessageParams
-    assert "message" in Params.model_fields, list(Params.model_fields)
+    assert set(Params.model_fields) == {"message"}, list(Params.model_fields)
     field = Params.model_fields["message"]
     assert field.annotation is str
     assert field.is_required()
@@ -225,6 +225,7 @@ def test_add_numbers_response_is_stub_inheriting_tool_response(generated: Path) 
 def test_ping_with_timeout_params_int_default(generated: Path) -> None:
     mod = _load_generated_module(generated, "ping_with_timeout")
     Params = mod.PingWithTimeoutParams
+    assert set(Params.model_fields) == {"host", "timeout_ms"}, list(Params.model_fields)
     assert Params.model_fields["host"].is_required()
     assert Params.model_fields["host"].annotation is str
     timeout_field = Params.model_fields["timeout_ms"]
