@@ -19,6 +19,20 @@ judge_timeout_seconds: 120
 # Schema version. This release accepts version 2.
 version: 2
 
+# SDET codegen + fixture output path. REQUIRED.
+#
+# The `mcp-test-framework gen-sdet-classes` command writes generated typed
+# classes into <generated_root>/<server_slug>/, and the `mcp_session`
+# pytest fixture loads them from the same path. Recommended convention:
+# `tests/sdet/_generated` (colocated with your tests/sdet/ scenarios, the
+# `_` prefix signals "tool-managed, don't hand-edit"). Pick any path you
+# want -- the framework does not enforce a layout.
+#
+# Non-absolute paths are resolved relative to the current working
+# directory when the config is loaded.
+sdet:
+  generated_root: "tests/sdet/_generated"
+
 # SDET dogfood scenarios use a pinned VMID range to avoid colliding with
 # operator-owned VMs. Override this if your cluster reserves 9990-9999
 # for something else. Names are `mcptf-dogfood-<ISO8601-timestamp>`.
