@@ -290,7 +290,7 @@ import pytest
 import pytest_asyncio
 
 from mcp_test_framework.sdet import ToolCallError, mcp_session, tool
-from mcp_test_framework.sdet.generated.homelab_mcp import (
+from tests.sdet._generated.homelab_mcp import (
     CreateProxmoxVmParams,
     CreateProxmoxVmResponse,
     DeleteProxmoxVmParams,

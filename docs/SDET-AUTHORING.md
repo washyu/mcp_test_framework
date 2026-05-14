@@ -37,11 +37,13 @@ uv run mcp-test-framework gen-sdet-classes
 ```
 
 The generator overwrites ONLY the
-`src/mcp_test_framework/sdet/generated/<server_slug>/` tree — nothing else in
-the working tree is touched. Every generated file carries a `do not
-hand-edit` header at the top; if you need to extend a generated class with a
-helper, subclass it in your own scenario file rather than editing the
-generated source.
+`<sdet.generated_root>/<server_slug>/` tree — where `sdet.generated_root` is
+the required path you set in your `config.yaml`. The recommended convention
+is `tests/sdet/_generated/` (colocated with your `tests/sdet/` scenarios; the
+underscore prefix signals "tool-managed, don't hand-edit"). Every generated
+file carries a `do not hand-edit` header at the top; if you need to extend a
+generated class with a helper, subclass it in your own scenario file rather
+than editing the generated source.
 
 The change-detection signal is your type checker. After a regen, run
 `mypy` or `pyright` over `tests/sdet/`. Drift between your scenario code and
@@ -51,22 +53,50 @@ renamed `.data["vmid"]` access fails on the new response shape. The
 typecheck failure tells you exactly where the contract moved.
 
 The import surface is the stable contract across regens. Import paths
-(`from mcp_test_framework.sdet.generated.<server_slug> import <ClassName>`)
-do not change when the schema underneath does; only the internal field set
-of each class changes. Pin your imports against the import surface, and let
-the type checker tell you which call sites need adjustment.
+(`from tests.sdet._generated.<server_slug> import <ClassName>` if you adopt
+the recommended `sdet.generated_root: tests/sdet/_generated` convention — see
+"Importing generated Params and Response classes" below for the layout
+mechanics) do not change when the schema underneath does; only the internal
+field set of each class changes. Pin your imports against the import
+surface, and let the type checker tell you which call sites need adjustment.
+
+## Configuring the generated-classes path
+
+The framework reads where to write generated SDET classes from
+`sdet.generated_root` in your `config.yaml`. This field is required; the
+framework refuses to silently invent a path to write Python code into or
+load Python code from. Recommended convention:
+
+```yaml
+sdet:
+  generated_root: "tests/sdet/_generated"
+```
+
+Non-absolute paths resolve relative to the current working directory at
+config load time. The framework recommends colocating generated classes
+with your `tests/sdet/` scenarios under an underscore-prefixed
+`_generated/` directory (the underscore signals "tool-managed, don't
+hand-edit"). To import those classes from your test files via the
+recommended `tests.sdet._generated.<slug>` path, drop an empty
+`__init__.py` into both `tests/sdet/_generated/` and your operator's own
+`tests/__init__.py` / `tests/sdet/__init__.py` so the path resolves as a
+Python package.
 
 ## Importing generated Params and Response classes
 
 The SDET surface is two namespaces. The first is
-`mcp_test_framework.sdet`, which exposes the runtime symbols
+`mcp_test_framework.sdet`, which exposes the framework's runtime symbols
 (`mcp_session`, `tool`, `ToolCallError`). The second is the per-server
-generated module under `mcp_test_framework.sdet.generated.<server_slug>`,
-which exposes one `Params` and one `Response` class per discovered tool.
+generated module under your operator-configured `sdet.generated_root` — by
+convention this is `tests/sdet/_generated/<server_slug>/`, importable as
+`tests.sdet._generated.<server_slug>` once you make `tests/sdet/_generated/`
+a package in your own test tree (drop an empty `__init__.py` there). The
+framework no longer writes generated code inside its own `src/` tree
+(Phase 21.1 RELOC-04); the operator controls the location.
 
 ```python
 from mcp_test_framework.sdet import mcp_session, tool, ToolCallError
-from mcp_test_framework.sdet.generated.homelab_mcp import (
+from tests.sdet._generated.homelab_mcp import (
     CreateProxmoxVmParams,
     CreateProxmoxVmResponse,
 )
@@ -103,7 +133,7 @@ generated registry) and the `tool("name")` factory (which returns a typed
 ```python
 import pytest
 from mcp_test_framework.sdet import mcp_session, tool
-from mcp_test_framework.sdet.generated.homelab_mcp import CreateProxmoxVmParams
+from tests.sdet._generated.homelab_mcp import CreateProxmoxVmParams
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -141,7 +171,7 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 from mcp_test_framework.sdet import mcp_session, tool
-from mcp_test_framework.sdet.generated.homelab_mcp import (
+from tests.sdet._generated.homelab_mcp import (
     CreateProxmoxVmParams,
     CreateProxmoxVmResponse,
     DeleteProxmoxVmParams,
@@ -234,7 +264,7 @@ The escape hatch is a per-scenario subclass with `extra="allow"`:
 
 ```python
 from pydantic import ConfigDict
-from mcp_test_framework.sdet.generated.homelab_mcp import ManageProxmoxVmParams
+from tests.sdet._generated.homelab_mcp import ManageProxmoxVmParams
 
 
 class _CpuBumpManageVmParams(ManageProxmoxVmParams):
@@ -457,4 +487,4 @@ in the section above.
 
 - `docs/EXTENDING.md` — operator-side knobs (rubrics, judge backend, env passthrough).
 - `README.md` — operator quickstart and the `## SDET scenarios` sample.
-- Generated module: `src/mcp_test_framework/sdet/generated/<server_slug>/`.
+- Generated module: `<sdet.generated_root>/<server_slug>/` (e.g. `tests/sdet/_generated/<server_slug>/` under the recommended convention).

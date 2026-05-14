@@ -15,9 +15,10 @@ then uses importlib to load the generated modules and asserts:
 CI-safe: pure-data, no live MCP, no subprocess. Locks the codegen contract
 against silent regressions.
 
-Does NOT touch src/mcp_test_framework/sdet/generated/homelab_mcp/ -- that
-tree contains committed artifacts regenerated externally via
-`mcp-test-framework gen-sdet-classes` against a live homelab-mcp.
+Operates entirely under tmp_path. Does NOT touch any operator-managed
+generated tree at ``cfg.sdet.generated_root`` (Phase 21.1 RELOC-04 removed
+the in-tree ``src/`` generated artifacts; the operator now controls the
+location via ``sdet.generated_root`` in their ``config.yaml``).
 """
 from __future__ import annotations
 
