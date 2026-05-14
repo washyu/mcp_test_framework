@@ -16,6 +16,8 @@ This repo is a greenfield Python project scaffolded with `uv`. Only `main.py` (a
 
 The framework is deliberately narrow for the MVP — see the "Out of Scope" and "Future Work" sections of the spec before suggesting generalizations.
 
+v1.3 added the **SDET** persona as a second first-class user alongside the operator. The operator runs the contract pass (schema + description + output checks); the SDET authors stateful scenarios under `tests/sdet/` that exercise the MCP server end-to-end. Both personas share the same CLI surface — SDET adds the `--sdet` flag, the `mcp_test_framework.sdet` import surface (`mcp_session`, `tool()`, `ToolCallError`), and the `tests/sdet/` discovery scope. See [`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md) for the authoring walkthrough.
+
 ## Tooling
 
 - Python **3.14** (pinned in `.python-version` and `requires-python` in `pyproject.toml`)
