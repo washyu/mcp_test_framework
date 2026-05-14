@@ -1,14 +1,12 @@
-"""Slug + identifier helpers for the Phase 17 codegen.
+"""Slug + identifier helpers for the SDET codegen.
 
-Per Phase 17 CONTEXT.md decisions:
-  - D-05: server_slug(name) normalizes serverInfo.name from the MCP initialize
-    handshake. Rule: lowercase -> non-[a-z0-9] to underscore -> collapse runs
-    of underscores -> strip leading/trailing underscores. Errors loud on empty
-    or all-non-identifier input (callers in cli.py map this to an operator
-    error per the FileNotFoundError pattern at cli.py:672-690).
-  - Claude's Discretion (PascalCase helper): pascal_case + module_name handle
-    tool-name -> class-name and tool-name -> file-name conversions with
-    keyword guards (Pitfall 2 in 17-RESEARCH.md).
+  - ``server_slug(name)`` normalizes ``serverInfo.name`` from the MCP
+    ``initialize`` handshake. Rule: lowercase -> non-[a-z0-9] to underscore
+    -> collapse runs of underscores -> strip leading/trailing underscores.
+    Errors loud on empty or all-non-identifier input (callers in cli.py map
+    this to an operator error).
+  - ``pascal_case`` and ``module_name`` handle tool-name -> class-name and
+    tool-name -> file-name conversions with keyword guards.
 
 Pure stdlib (re + keyword). No external deps.
 """

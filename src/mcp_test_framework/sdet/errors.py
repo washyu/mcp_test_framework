@@ -1,30 +1,31 @@
-"""ToolCallError -- typed exception for MCP tool isError=True responses (UI-02).
+"""ToolCallError -- typed exception for MCP tool ``isError=True`` responses.
 
-Per Phase 18 CONTEXT.md decisions:
-  - D-07: plain Exception subclass (NOT a Pydantic model) for traceback-friendly
-    pytest integration and the standard `except ToolCallError as e:` idiom. Plain
-    Exception keeps the runtime overhead near zero and avoids surprising
-    interactions with pytest's traceback machinery. `.raw` is a live
-    `mcp.types.CallToolResult` (not a Pydantic clone).
-  - D-08: strict heuristic chain for code/message extraction, in order:
-      1. `raw.structuredContent` dict -> read "code" / "message" string keys.
-      2. First TextContent.text -> `json.loads(...)` -> if it parses to a dict,
-         read "code" / "message" string keys.
-      3. else: `message = concat(TextContent.text)`, `code = None`.
+Design choices:
+  - Plain ``Exception`` subclass (NOT a Pydantic model) for traceback-friendly
+    pytest integration and the standard ``except ToolCallError as e:`` idiom.
+    Plain Exception keeps the runtime overhead near zero and avoids
+    surprising interactions with pytest's traceback machinery. ``.raw`` is a
+    live ``mcp.types.CallToolResult`` (not a Pydantic clone).
+  - Strict heuristic chain for code/message extraction, in order:
+      1. ``raw.structuredContent`` dict -> read "code" / "message" string keys.
+      2. First TextContent.text -> ``json.loads(...)`` -> if it parses to a
+         dict, read "code" / "message" string keys.
+      3. else: ``message = concat(TextContent.text)``, ``code = None``.
     Only "code" and "message" are recognized -- the recognized key set is
     strictly those two keys; alternative names are NOT accepted, and there is
     NO recursive walk into nested dicts.
-    Non-string `code` values are coerced via `str(...)` (so a server returning
-    `code: 404` becomes `"404"`); non-string `message` values fall through to
-    the next step (the dict is treated as not-a-match, not a partial match).
+    Non-string ``code`` values are coerced via ``str(...)`` (so a server
+    returning ``code: 404`` becomes ``"404"``); non-string ``message`` values
+    fall through to the next step (the dict is treated as not-a-match, not a
+    partial match).
 
-Pitfall 7 (17-RESEARCH.md): `CallToolResult.content` is heterogeneous
-(`TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource`).
-Iteration MUST filter on `isinstance(block, TextContent)` -- never
-`getattr(block, "text")` naively, which would AttributeError on
-`ImageContent` / `AudioContent` / `ResourceLink` / `EmbeddedResource`.
+Pitfall: ``CallToolResult.content`` is heterogeneous (``TextContent |
+ImageContent | AudioContent | ResourceLink | EmbeddedResource``). Iteration
+MUST filter on ``isinstance(block, TextContent)`` -- never
+``getattr(block, "text")`` naively, which would AttributeError on
+``ImageContent`` / ``AudioContent`` / ``ResourceLink`` / ``EmbeddedResource``.
 
-This module is pyright-strict-clean per Phase 17 CODEGEN-04 D-04.
+This module is pyright-strict-clean.
 """
 from __future__ import annotations
 
@@ -64,11 +65,17 @@ class ToolCallError(Exception):
 
 
 def _extract_code_message(raw: CallToolResult) -> tuple[str | None, str]:
-    """D-08 heuristic chain. Returns (code, message).
+    """Strict heuristic chain. Returns (code, message).
 
     Strict key set: only "code" and "message" are recognized. No synonyms,
     no recursive walk. Non-string `code` coerced via str(); non-string
     `message` falls through to the next step.
+
+    Step order (ORDER is a regression-pinned invariant):
+      1. ``raw.structuredContent`` dict -> read "code" / "message" string keys.
+      2. First TextContent JSON -> if it parses to a dict, read
+         "code" / "message" string keys.
+      3. concat fallback: ``message = concat(TextContent.text)``, ``code = None``.
     """
     # Step 1: structuredContent dict
     sc = getattr(raw, "structuredContent", None)
