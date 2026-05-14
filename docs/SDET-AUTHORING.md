@@ -324,7 +324,99 @@ async def test_drive(provisioned_vm):
 
 ## Skipping when dependencies are unreachable
 
-<!-- TASK 3 fills the skip recipe here -->
+The framework owns no probe primitives. Whether a scenario should run
+against the current environment is the SDET's call, not the framework's:
+the author defines a `_probe()` callable, wires it into
+`@pytest.mark.skipif`, and the scenario SKIPs when the probe returns
+`False`. This is the SEED-022 principle — framework primitives; SDET owns
+safety — recorded in the in-repo memory file
+`project_framework_primitives_sdet_safety_principle.md`. A framework that
+shipped reachability helpers for "proxmox", "ollama", or "ssh" would have
+to keep growing to match every SDET's infrastructure; keeping `_probe()`
+author-defined keeps that pressure where it belongs.
+
+The canonical recipe is an env-var-gated TCP reachability probe:
+
+```python
+import os
+import socket
+import pytest
+
+def _probe() -> bool:
+    """Return True iff Proxmox is reachable, else False."""
+    host = os.environ.get("MCPTF_DOGFOOD_PROXMOX_HOST")
+    if not host:
+        return False
+    try:
+        with socket.create_connection((host, 22), timeout=2):
+            return True
+    except OSError:
+        return False
+
+@pytest.mark.skipif(
+    not _probe(),
+    reason="Proxmox host unreachable (set MCPTF_DOGFOOD_PROXMOX_HOST)",
+)
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_returns_pending_vm(proxmox_vm_lifecycle):
+    ...
+```
+
+### Reason-string convention
+
+Reason strings MUST name the missing dependency in operator-domain terms
+AND the env var the operator sets to enable the test. SKIP rows under the
+framework's default operator output (`_render_per_tool_rows`) surface the
+reason string directly — consistent phrasing keeps the operator-facing
+output readable across many scenarios in the same suite. Two examples:
+
+- `reason="Proxmox host unreachable (set MCPTF_DOGFOOD_PROXMOX_HOST)"`
+- `reason="Ollama judge offline (set MCPTF_OLLAMA_HOST and start the daemon)"`
+
+Both name the dependency in operator language ("Proxmox host", "Ollama
+judge") and the env var to set, so an operator reading the SKIP row in the
+test summary knows exactly what to change to opt in.
+
+### Other probe shapes
+
+For tools where the wire call itself is cheap (no slow handshake, no
+expensive setup), an env-var presence check is enough — skip the TCP probe
+entirely:
+
+```python
+def _probe() -> bool:
+    return bool(os.environ.get("MCPTF_DOGFOOD_PROXMOX_HOST"))
+```
+
+If you want to gate on whether the MCP server itself advertises the tool
+you intend to call (the server may have stopped exposing it across
+versions), probe the live capability surface via `mcp_session`:
+
+```python
+async def _probe(mcp_session) -> bool:
+    """Skip unless the target MCP server actually advertises the tool."""
+    tools = await mcp_session.list_tools()
+    return any(t.name == "create_proxmox_vm" for t in tools)
+```
+
+This shape does not wire directly into `@pytest.mark.skipif`, because the
+marker evaluates at collection time — before `mcp_session` has been set
+up. The practical pattern is to call the capability probe inside fixture
+setup and `pytest.skip(reason=...)` from there:
+
+```python
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
+async def proxmox_vm_lifecycle(mcp_session):
+    if not await _probe(mcp_session):
+        pytest.skip("create_proxmox_vm not advertised by the server")
+    # ... rest of fixture ...
+```
+
+The hello-world MCP server fixture planned in the next section will let
+many of today's infrastructure-bound scenarios run unconditionally in CI,
+which means fewer `_probe()` callables overall. Until then,
+author-defined probes are the canonical way to keep scenarios honest in
+both live and CI environments.
 
 ## Failure handling: ToolCallError
 
