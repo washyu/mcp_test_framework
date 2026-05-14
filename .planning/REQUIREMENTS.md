@@ -144,7 +144,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | RELOC-01       | Phase 21.1 | Complete |
 | RELOC-02       | Phase 21.1 | Complete |
 | RELOC-03       | Phase 21.1 | Complete |
-| RELOC-04       | Phase 21.1 | Pending  |
+| RELOC-04       | Phase 21.1 | Complete |
 | UI-01          | Phase 19 | Pending  |
 | UI-02          | Phase 18 | Complete |
 | DOC-SDET-01    | Phase 21 | Complete |

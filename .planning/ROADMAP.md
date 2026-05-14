@@ -56,7 +56,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 - [x] **Phase 20: v1.3 scope correction — dogfood cleanup + codegen coverage** — delete SUT-specific dogfood from `tests/sdet/`; replace PREFLIGHT-01/02 with mock-fixture codegen unit tests under `tests/framework/unit/`; rewrite REQUIREMENTS rows and this roadmap entry to match the reframed scope (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01)
  (completed 2026-05-14)
 - [x] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03) (completed 2026-05-14, PASS-WITH-DEVIATIONS — Plan 21-02 re-scoped at human-verify checkpoint to embed FAIL output as the README sample; upstream homelab-mcp inputSchema bug surfaced on `create_proxmox_vm`, exposing the framework-side serializer fix scoped for Phase 24)
-- [ ] **Phase 21.1: SDET generated output relocation** — make codegen output config-driven via `sdet.generated_root` in `config.yaml`; delete in-tree `src/mcp_test_framework/sdet/generated/` (56 homelab_mcp files + namespace markers); rework 3 tests off the deleted import path; update SDET-AUTHORING.md + README sample (RELOC-01..04) (INSERTED 2026-05-14)
+- [x] **Phase 21.1: SDET generated output relocation** — make codegen output config-driven via `sdet.generated_root` in `config.yaml`; delete in-tree `src/mcp_test_framework/sdet/generated/` (56 homelab_mcp files + namespace markers); rework 3 tests off the deleted import path; update SDET-AUTHORING.md + README sample (RELOC-01..04) (INSERTED 2026-05-14) (completed 2026-05-14)
 - [ ] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01)
 - [ ] **Phase 23: Test suite debt cleanup** — clear pre-existing `tests/framework/` failures discovered during Phase 20 UAT: config schema v1→v2 mismatches, `parents[2]` path resolution breakage after the Phase 15 folder split, missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc, README line-104 doc drift; closes 11 fails + 1 error so v1.3 close ships a green framework suite
 - [ ] **Phase 24: Tool call serializer omits unset optional params** — switch `tool().call()` serialization from `model_dump(mode="json")` to `model_dump(mode="json", exclude_unset=True)` so optionally-nullable fields aren't sent as `null` when the SDET never set them; preserves SEED-022 (explicit `cdrom=None` still serializes); softens [docs/SDET-AUTHORING.md](docs/SDET-AUTHORING.md) inputSchema-workaround section; re-captures Plan 21-02 README sample as PASS
@@ -150,13 +150,13 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 **Goal:** The framework no longer hardcodes the codegen output path. `sdet.generated_root` becomes a required field in `config.yaml`; both `gen-sdet-classes` (write side) and the `mcp_session` fixture (load side) consume it. The in-tree `src/mcp_test_framework/sdet/generated/` directory (56 homelab-mcp files + namespace markers) is deleted, enforcing SEED-022 structurally — the framework's `src/` tree contains zero SUT-specific code. Three tests are reworked off the deleted import path using a hybrid mock+live strategy; docs + README updated to reflect the new config-driven convention.
 **Requirements**: RELOC-01, RELOC-02, RELOC-03, RELOC-04
 **Depends on:** Phase 21
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 21.1-01-PLAN.md — SdetConfig Pydantic sub-model + Config.sdet required field + example YAMLs (RELOC-01) [wave 1; depends_on: ]
 - [x] 21.1-02-PLAN.md — gen-sdet-classes + mcp_session consume cfg.sdet.generated_root via spec_from_file_location; _tool_factory docstring + pyright pruning (RELOC-02) [wave 2; depends_on: 21.1-01]
 - [x] 21.1-03-PLAN.md — Rework 3 tests off `mcp_test_framework.sdet.generated.*` via HYBRID strategy (mock for unit, live for README parity) (RELOC-03) [wave 3; depends_on: 21.1-01, 21.1-02]
-- [ ] 21.1-04-PLAN.md — Delete src/mcp_test_framework/sdet/generated/ tree + sweep 8 docs/SDET-AUTHORING.md path refs + update README sample (RELOC-04) [wave 4; depends_on: 21.1-02, 21.1-03]
+- [x] 21.1-04-PLAN.md — Delete src/mcp_test_framework/sdet/generated/ tree + sweep 8 docs/SDET-AUTHORING.md path refs + update README sample (RELOC-04) [wave 4; depends_on: 21.1-02, 21.1-03]
 
 ### Phase 22: Scrub requirement-ID leaks from src/
 
@@ -234,4 +234,4 @@ Plans:
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/4 | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 5/5 | Complete   | 2026-05-14 |
 | 21. SDET authoring docs + README parity | v1.3 | 1/4 | In Progress|  |
-| 21.1. SDET generated output relocation | v1.3 | 3/4 | In Progress|  |
+| 21.1. SDET generated output relocation | v1.3 | 4/4 | Complete   | 2026-05-14 |

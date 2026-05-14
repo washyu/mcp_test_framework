@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: executing
-stopped_at: Phase 21.1 Plan 03 complete
-last_updated: "2026-05-14T19:42:09.360Z"
+status: verifying
+stopped_at: Phase 21.1 Plan 04 complete — phase ready for verification
+last_updated: "2026-05-14T20:07:08.687Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 9
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 31
-  completed_plans: 30
-  percent: 97
+  completed_plans: 31
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,13 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 ## Current Position
 
-Phase: 21.1 (SDET generated output relocation) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-        Plans 21.1-01..03 complete; Plan 04 is the pure-deletion plan (remove src/mcp_test_framework/sdet/generated/ tree). Tests reworked off framework-namespace import in 21.1-03 (HYBRID strategy: mock-based for unit tests, live-regen + module-level skip for README parity scenario).
-        28/28 non-live tests pass under -m "not live_homelab" across the 3 reworked files + test_codegen_integration_mock.py (D-10 byte-for-byte preserved).
-Next: Execute Plan 21.1-04 (delete src/mcp_test_framework/sdet/generated/), then phase verifier on 21.1, then v1.3 close work (Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
+Phase: 21.1 (SDET generated output relocation) — READY FOR VERIFICATION
+Plan: 4 of 4 complete
+Status: Phase complete — ready for verifier
+        Plan 04 deletion landed in atomic commit aebed8e: src/mcp_test_framework/sdet/generated/ tree fully removed (60 git-tracked files deleted); docs/SDET-AUTHORING.md swept (8 sites + 1 new "Configuring the generated-classes path" subsection); README.md SDET sample import block rewritten to tests.sdet._generated.homelab_mcp; test_codegen_integration_mock.py stale docstring updated.
+        Framework src/ now contains zero SUT-specific code — SEED-022 structurally enforced.
+        Framework test suite matches Plan 02 baseline (13 failed + 1 error, all pre-existing Phase 23 debt; no new failures attributable to Plan 04).
+Next: Run phase verifier on Phase 21.1, then v1.3 close work (Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
 Last activity: 2026-05-14
 
 ## Performance Metrics
@@ -57,6 +58,7 @@ Last activity: 2026-05-14
 | Phase 21.1 P01 | 80min | 3 tasks | 17 files |
 | Phase 21.1 P02 | 6min | 3 tasks | 6 files |
 | Phase 21.1 P03 | ~6.5min | 4 tasks | 3 files |
+| Phase 21.1 P04 | ~5min | 4 tasks | 63 files |
 
 ## Accumulated Context
 
@@ -113,6 +115,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 21.1 Plan 02: mcp_session uses spec_from_file_location + submodule_search_locations against cfg.sdet.generated_root; no sys.path mutation, no importlib.import_module at runtime
 - [Phase ?]: Phase 21.1 Plan 03: HYBRID D-09 strategy executed — mock-based for test_sdet_fixtures + test_gen_sdet_classes_cli; live-regen + module-level pytest.skip(allow_module_level=True) for test_proxmox_vm_lifecycle_readme_sample
 - [Phase ?]: Phase 21.1 Plan 03: _run_fixture snapshot extended with _REGISTRIES_snapshot deep copy so post-teardown asserts can verify yield-time registry contents
+- [Phase ?]: Phase 21.1 Plan 04: clean-break deletion of src/mcp_test_framework/sdet/generated/ tree (60 tracked files); single atomic commit for deletion + docs sweep per CONTEXT.md Claude's Discretion
+- [Phase ?]: Phase 21.1 Plan 04: D-10 byte-for-byte invariant deliberately relaxed for test_codegen_integration_mock.py docstring (Plan 03 pre-authorized); 3 literal references retained (session.py history breadcrumb + 2 negative-assertion test strings)
 
 ### Roadmap Evolution
 
@@ -171,6 +175,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T19:42:09.343Z
-Stopped at: Phase 21.1 Plan 01 complete
-Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
+Last session: 2026-05-14T20:07:08.687Z
+Stopped at: Phase 21.1 Plan 04 complete — phase ready for verification
+Resume next: run phase verifier on Phase 21.1; then proceed with Phase 22 (src/ requirement-ID scrub) per v1.3 close roadmap
