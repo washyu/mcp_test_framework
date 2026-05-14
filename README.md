@@ -257,6 +257,179 @@ The same reasoning is recorded in the JUnit XML's `<failure message="…">`.
 Either tweak the tool's description upstream, or skip the tool in your config
 (per the "Per-tool configuration" section above).
 
+## SDET scenarios
+
+Beyond the contract pass, SDETs author stateful scenarios under `tests/sdet/` --
+create resources, verify shape, tear down. Each scenario module renders as a
+per-tool group with nested rows under the same domain UI the contract pass
+uses. The sample below runs against a live Proxmox cluster (gated by
+`MCPTF_DOGFOOD_PROXMOX_HOST`) and is shown here mid-failure: the upstream
+`homelab-mcp` `manage_proxmox_vm`-family `inputSchema` reports `type: "string"`
+on optional fields and defaults them to `null` in the same schema -- the
+framework surfaces that contract bug as a real test failure instead of masking
+it (SEED-022). The `_CpuBumpManageVmParams(extra="allow")` workaround pattern
+is documented in [`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md). Run
+scenarios with `mcp-test-framework run --sdet`.
+
+<!-- mirrors _runner.py output — re-run the framework when output format changes (Phase 21 D-14) -->
+
+```python
+# tests/sdet/test_proxmox_vm_lifecycle.py
+"""SDET sample: 2-test VM-lifecycle scenario against a live Proxmox cluster.
+
+Requires MCPTF_DOGFOOD_PROXMOX_HOST. See docs/SDET-AUTHORING.md for the full
+walkthrough (module-scope fixtures, cross-file ordering, conditional skip
+recipe, inputSchema workaround).
+"""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+
+import pytest
+import pytest_asyncio
+
+from mcp_test_framework.sdet import ToolCallError, mcp_session, tool
+from mcp_test_framework.sdet.generated.homelab_mcp import (
+    CreateProxmoxVmParams,
+    CreateProxmoxVmResponse,
+    DeleteProxmoxVmParams,
+)
+
+
+@dataclass
+class ProxmoxVmLifecycleState:
+    created: CreateProxmoxVmResponse
+
+
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
+async def proxmox_vm_lifecycle(mcp_session):
+    host = os.environ["MCPTF_DOGFOOD_PROXMOX_HOST"]
+    node = os.environ.get("MCPTF_DOGFOOD_PROXMOX_NODE", "pve")
+    vmid = 9990  # pick a free VMID in your range; see docs/SDET-AUTHORING.md
+
+    created = await tool("create_proxmox_vm").call(
+        CreateProxmoxVmParams(host=host, name="mcptf-sample", node=node, vmid=vmid, cores=1)
+    )
+    state = ProxmoxVmLifecycleState(created=created)
+    try:
+        yield state
+    finally:
+        try:
+            await tool("delete_proxmox_vm").call(
+                DeleteProxmoxVmParams(node=node, vmid=vmid, host=host)
+            )
+        except ToolCallError:
+            pass  # teardown is best-effort
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_returns_pending_vm(proxmox_vm_lifecycle):
+    state = proxmox_vm_lifecycle
+    assert state.created.is_error is False
+    assert isinstance((state.created.data or {}).get("vmid"), int)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_returns_ok(proxmox_vm_lifecycle):
+    vmid = (proxmox_vm_lifecycle.created.data or {}).get("vmid")
+    node = os.environ.get("MCPTF_DOGFOOD_PROXMOX_NODE", "pve")
+    host = os.environ["MCPTF_DOGFOOD_PROXMOX_HOST"]
+    result = await tool("delete_proxmox_vm").call(
+        DeleteProxmoxVmParams(node=node, vmid=vmid, host=host)
+    )
+    assert result.is_error is False
+```
+
+```text
+========================================
+MCP Test Framework (SDET)
+========================================
+MCP server:  uvx homelab-mcp
+Discovered:  1 scenarios
+Running:      1  (proxmox_vm_lifecycle)
+Skipping:     0  (use --explain to list)
+Judges:      (none — SDET scope)
+
+skipped:
+  analyze_network_topology                 – SKIP — not selected in config
+  bulk_discover_and_map                    – SKIP — not selected in config
+  check_ansible_service                    – SKIP — not selected in config
+  check_service_requirements               – SKIP — not selected in config
+  clone_proxmox_vm                         – SKIP — not selected in config
+  control_vm                               – SKIP — not selected in config
+  create_infrastructure_backup             – SKIP — not selected in config
+  create_proxmox_lxc                       – SKIP — not selected in config
+  create_proxmox_vm                        – SKIP — not selected in config
+  decommission_device                      – SKIP — not selected in config
+  decommission_device_preview              – SKIP — not selected in config
+  delete_proxmox_vm                        – SKIP — not selected in config
+  delete_proxmox_vm_preview                – SKIP — not selected in config
+  deploy_infrastructure                    – SKIP — not selected in config
+  deploy_vm                                – SKIP — not selected in config
+  destroy_terraform_service                – SKIP — not selected in config
+  destroy_terraform_service_preview        – SKIP — not selected in config
+  discover_and_map                         – SKIP — not selected in config
+  get_device_changes                       – SKIP — not selected in config
+  get_network_sitemap                      – SKIP — not selected in config
+  get_proxmox_node_status                  – SKIP — not selected in config
+  get_proxmox_script_info                  – SKIP — not selected in config
+  get_proxmox_vm_status                    – SKIP — not selected in config
+  get_service_info                         – SKIP — not selected in config
+  get_service_status                       – SKIP — not selected in config
+  get_vm_logs                              – SKIP — not selected in config
+  get_vm_status                            – SKIP — not selected in config
+  install_service                          – SKIP — not selected in config
+  list_available_services                  – SKIP — not selected in config
+  list_keyring_credentials                 – SKIP — not selected in config
+  list_proxmox_resources                   – SKIP — not selected in config
+  list_registered_servers                  – SKIP — not selected in config
+  list_vms                                 – SKIP — not selected in config
+  manage_proxmox_vm                        – SKIP — not selected in config
+  plan_terraform_service                   – SKIP — not selected in config
+  purge_devices                            – SKIP — not selected in config
+  purge_devices_preview                    – SKIP — not selected in config
+  purge_failed_discoveries                 – SKIP — not selected in config
+  refresh_terraform_service                – SKIP — not selected in config
+  register_server                          – SKIP — not selected in config
+  remove_device                            – SKIP — not selected in config
+  remove_device_preview                    – SKIP — not selected in config
+  remove_vm                                – SKIP — not selected in config
+  remove_vm_preview                        – SKIP — not selected in config
+  rollback_infrastructure_changes          – SKIP — not selected in config
+  rollback_infrastructure_changes_preview  – SKIP — not selected in config
+  run_ansible_playbook                     – SKIP — not selected in config
+  scale_services                           – SKIP — not selected in config
+  scan_infrastructure_drift                – SKIP — not selected in config
+  search_proxmox_scripts                   – SKIP — not selected in config
+  ssh_discover                             – SKIP — not selected in config
+  ssh_execute_command                      – SKIP — not selected in config
+  start_interactive_shell                  – SKIP — not selected in config
+  suggest_deployments                      – SKIP — not selected in config
+  update_device_config                     – SKIP — not selected in config
+  update_device_fingerprint                – SKIP — not selected in config
+  update_device_fingerprint_preview        – SKIP — not selected in config
+  validate_infrastructure_changes          – SKIP — not selected in config
+proxmox_vm_lifecycle
+  ✗ create_returns_pending_vm — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
+  ✗ delete_returns_ok — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
+
+Result: 0 PASS / 2 FAIL / 58 SKIP  in 6.2s
+```
+
+The two `✗` rows above are the framework doing its job: a real upstream
+contract bug surfaced as a failing test, with the `ToolCallError` reason
+quoted verbatim on the row. See
+[`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md) for the full authoring
+walkthrough -- module-scope fixtures, cross-file ordering, the conditional
+skip recipe for scenarios that require live infrastructure, and the
+`_CpuBumpManageVmParams(extra='allow')` workaround for the inputSchema bug
+shown above.
+
+Default `mcp-test-framework run` collects only `tests/contract/`; the
+`--sdet` flag opts the SDET scope into the run. See [`## Commands`](#commands)
+above for full flag composition.
+
 ## Isolation guarantee
 
 Test runs do not mutate `~/.homelab_mcp/` real-state files. The framework spawns the MCP subprocess with `HOME` and `USERPROFILE` overridden to a per-session temporary directory, so the server reads/writes its state inside the tempdir and never touches your real-state files.
