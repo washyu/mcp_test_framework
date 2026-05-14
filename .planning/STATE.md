@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 20 planned (reframed scope: cleanup + mock-fixture codegen tests)
-last_updated: "2026-05-14T04:51:05.856Z"
-last_activity: 2026-05-13 -- Phase 20 reframed; PLAN files written for cleanup + mock-fixture codegen coverage; src/ untouched
+stopped_at: Phase 20 planned (reframed scope)
+last_updated: "2026-05-14T04:56:40.016Z"
+last_activity: 2026-05-14 -- Phase 20 execution started
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 23
-  completed_plans: 18
-  percent: 78
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 20 — preflight-conditional-skip (next)
+**Current focus:** Phase 20 — preflight-conditional-skip
 
 ## Current Position
 
-Phase: 19 (stateful-primitives-domain-ui-integration) — COMPLETE (PASS-WITH-DEFERRALS)
-Plan: 4 of 4 completed
-Status: Ready to execute
+Phase: 20 (preflight-conditional-skip) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 20
         Renderer + scenario discovery + module-scope fixture + dogfood_vmid_range knob all verified live against operator's main Proxmox cluster.
         Two findings deferred: (1) D-02 CPU-cores bump impossible via manage_proxmox_vm (lifecycle-action tool only) — defer to Phase 20 substitution decision; (2) homelab-mcp UPSTREAM inputSchema bug (optional fields declared type:string without 'null' but defaulted to null) — file upstream, NOT a framework fix (SEED-022 principle: framework primitives, SDET owns safety; masking it would prevent edge-case testing).
 Next: Phase 20 (scope correction) — execute the four PLAN files written 2026-05-13 (REQUIREMENTS scrub, ROADMAP rewrite, STATE update [this plan], tests/sdet cleanup, mock-fixture codegen tests).
-Last activity: 2026-05-13 -- Phase 20 reframed; PLAN files written for cleanup + mock-fixture codegen coverage; src/ untouched
+Last activity: 2026-05-14 -- Phase 20 execution started
 
 ## Performance Metrics
 
