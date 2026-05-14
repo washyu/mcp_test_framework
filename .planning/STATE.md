@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: executing
-stopped_at: Phase 19 context gathered
-last_updated: "2026-05-13T19:06:38.125Z"
-last_activity: 2026-05-13 -- Phase 19 execution started
+status: ready
+stopped_at: Phase 19 complete (PASS-WITH-DEFERRALS)
+last_updated: "2026-05-13T20:00:00.000Z"
+last_activity: 2026-05-13 -- Phase 19 complete; (c1) d02-impossible-defer; structural deliverables verified live
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 18
-  completed_plans: 14
-  percent: 78
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 19 — stateful-primitives-domain-ui-integration
+**Current focus:** Phase 20 — preflight-conditional-skip (next)
 
 ## Current Position
 
-Phase: 19 (stateful-primitives-domain-ui-integration) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 19
-        76/76 new tests pass; 111/111 prior tests still pass; public SDET surface frozen at 4 names.
-Next: Phase 19 (STATE + UI-01) — stateful primitives + first VM-lifecycle dogfood scenario.
-Last activity: 2026-05-13 -- Phase 19 execution started
+Phase: 19 (stateful-primitives-domain-ui-integration) — COMPLETE (PASS-WITH-DEFERRALS)
+Plan: 4 of 4 completed
+Status: Ready to execute next phase
+        Renderer + scenario discovery + module-scope fixture + dogfood_vmid_range knob all verified live against operator's main Proxmox cluster.
+        Two findings deferred to Phase 20: (1) D-02 CPU-cores bump impossible via manage_proxmox_vm (lifecycle-action tool only), (2) framework None-serialization bug in tool().call().
+Next: Phase 20 (PREFLIGHT) — `requires_homelab` marker + the two deferred fixes from Phase 19.
+Last activity: 2026-05-13 -- Phase 19 complete; (c1) d02-impossible-defer resolution; live verification of structural deliverables
 
 ## Performance Metrics
 
