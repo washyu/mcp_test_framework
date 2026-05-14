@@ -140,7 +140,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   - [x] 21-01-PLAN.md — Author docs/SDET-AUTHORING.md (DOC-SDET-01, DOC-SDET-02) [wave 1; depends_on: ]
   - [x] 21-02-PLAN.md — README ## SDET scenarios section with char-for-char snapshot (DOC-SDET-03) [wave 2; depends_on: 21-01]
   - [x] 21-03-PLAN.md — CLAUDE.md dual-persona note (DOC-SDET-02) [wave 2; depends_on: 21-01]
-  - [ ] 21-04-PLAN.md — End-of-phase verification matrix (DOC-SDET-01, DOC-SDET-02, DOC-SDET-03) [wave 3; depends_on: 21-01, 21-02, 21-03]
+  - [x] 21-04-PLAN.md — End-of-phase verification matrix (DOC-SDET-01, DOC-SDET-02, DOC-SDET-03) [wave 3; depends_on: 21-01, 21-02, 21-03]
 
 ## Progress
 
