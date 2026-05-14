@@ -162,7 +162,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 17. Schema-driven codegen surface | v1.3 | 6/6 | Complete   | 2026-05-13 |
 | 18. SDET test surface + typed errors | v1.3 | 8/8 | Complete | 2026-05-13 |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/4 | Not started | — |
-| 20. Preflight + conditional skip | v1.3 | 0/? | Not started | — |
+| 20. Preflight + conditional skip | v1.3 | 0/5 | Planned    |  |
 | 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |
 
 ### Phase 22: Scrub requirement-ID leaks from src/
@@ -182,7 +182,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. All Phase 17 unit tests still pass after the scrub (no behavior changes — pure documentation/comment edits)
   4. `mcp-test-framework --help` and each subcommand `--help` still describe the command's purpose clearly (the prose is at least as informative as the current ID-tagged version)
 
-**Plans:** 6/8 plans executed
+**Plans:** 0/5 plans executed
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 22 to break down)
