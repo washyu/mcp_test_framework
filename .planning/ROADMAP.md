@@ -53,7 +53,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
  (completed 2026-05-13)
 - [x] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02) (completed 2026-05-13)
 - [x] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01) (completed 2026-05-13, PASS-WITH-DEFERRALS — D-02 CPU-cores bump deferred to Phase 20; upstream homelab-mcp inputSchema bug filed against the server, NOT a framework fix per SEED-022)
-- [ ] **Phase 20: Preflight + conditional skip** — `requires_homelab(...)` marker factory with fast, graceful reachability checks (PREFLIGHT-01..02)
+- [ ] **Phase 20: v1.3 scope correction — dogfood cleanup + codegen coverage** — delete SUT-specific dogfood from `tests/sdet/`; replace PREFLIGHT-01/02 with mock-fixture codegen unit tests under `tests/framework/unit/`; rewrite REQUIREMENTS rows and this roadmap entry to match the reframed scope (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01)
 - [ ] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03)
 - [ ] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01)
 
@@ -111,15 +111,21 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   - [ ] 19-04-PLAN.md — VM-lifecycle dogfood scenario (STATE-01/03/04 + STATE-04 pytest-order recipe) [wave 2; depends_on: 19-02, 19-03]
 **UI hint**: yes
 
-### Phase 20: Preflight + conditional skip
-**Goal**: An SDET decorating a scenario module with `requires_homelab(proxmox=True, ollama=False, ...)` gets a fast, graceful SKIP on hosts where the named subsystem isn't reachable — with the unreachable target named in the skip reason and zero stack traces.
-**Depends on**: Phase 18 (exports from the `mcp_test_framework.sdet` namespace)
-**Requirements**: PREFLIGHT-01, PREFLIGHT-02
+### Phase 20: v1.3 scope correction — dogfood cleanup + codegen coverage
+**Goal**: v1.3's PREFLIGHT requirements as originally written (`requires_homelab(...)` marker factory) violate the framework-primitives principle (SEED-022) by baking SUT-specific subsystem knowledge into the framework API surface. This phase retroactively corrects v1.3: delete the SUT-specific Proxmox dogfood from `tests/sdet/`, drop PREFLIGHT-01/02 from REQUIREMENTS.md, and replace the killed coverage with mock-fixture-driven unit tests that verify the codegen pipeline shape against a synthetic tool list (no live MCP, CI-safe). Zero `src/` framework changes.
+**Depends on**: Phase 19 (the dogfood file deleted here was authored in Phase 19; the codegen surface tested here is owned by Phase 17)
+**Requirements**: CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01
 **Success Criteria** (what must be TRUE):
-  1. `from mcp_test_framework.sdet import requires_homelab` is importable; applying `@requires_homelab(proxmox=True)` to a module/class/function under `tests/sdet/` produces a clean SKIP when Proxmox is unreachable, naming the host that failed reachability.
-  2. Reachability checks for each supported subsystem (Proxmox, Ollama, MCP server) return in sub-second wall-clock time on an unreachable host (no long TCP-connect or HTTP timeout); a refused-connection or DNS-failure path produces a clean SKIP, not a stack trace.
-  3. The VM-lifecycle dogfood scenario from Phase 19, when run on a host with no Proxmox, produces a clean SKIP block with the unreachable target named — not a green run, not a stack trace, not a misleading FAIL.
-**Plans**: TBD
+  1. `tests/sdet/test_proxmox_vm_lifecycle.py` is removed from the working tree (no archive, no `@pytest.mark.skip`, no comment-out). `tests/sdet/test_basic_call.py` disposition decided and applied (planner picks per CONTEXT.md D-06).
+  2. PREFLIGHT-01 and PREFLIGHT-02 no longer appear anywhere in `.planning/REQUIREMENTS.md`; three new requirement IDs (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01) are added to a new CLEANUP requirement group, the Traceability Table, and the Phase coverage summary table; v1.3 total requirements count is internally consistent (22).
+  3. New mock-fixture-driven unit tests under `tests/framework/unit/` feed a hardcoded synthetic tool list (covering required scalar + optional-with-default + array + integer-with-default + outputSchema-declared + outputSchema-omitted branches) through the codegen pipeline into a temp directory, then `importlib.import_module` introspects the generated artifacts and asserts: `<ToolName>Params` Pydantic class shape; `<ToolName>Response` inherits `ToolResponse` and exposes `.raw` / `.data` / `.text` / `.is_error`; `_REGISTRY` tuple shape; module imports cleanly. Does NOT touch `src/mcp_test_framework/sdet/generated/homelab_mcp/`.
+  4. `.planning/STATE.md` reflects: Phase 19 deferred D-02 marked Resolved-by-deletion (Phase 20); the reframe recorded under Decisions; upstream homelab-mcp inputSchema bug deferred-items entry untouched.
+**Plans**: 5 plans (2 waves)
+  - [ ] 20-01-requirements-scrub-PLAN.md — Remove PREFLIGHT-01/02 from REQUIREMENTS.md; add CLEANUP-DOGFOOD-01 / CODEGEN-COVERAGE-01 / REQ-SCRUB-01 to a new CLEANUP requirement group; update Traceability Table and Phase coverage summary; total goes 21->22 (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01) [wave 1; depends_on: ]
+  - [ ] 20-02-roadmap-rewrite-PLAN.md — Rewrite ROADMAP.md Phase 20 milestone bullet and Phase Details block to reflect the reframed scope (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01) [wave 1; depends_on: ]
+  - [ ] 20-03-state-update-PLAN.md — STATE.md: record reframe under Decisions; mark Phase 19 D-02 Resolved-by-deletion; add hello-world MCP deferred-items entry; preserve upstream-fix inputSchema row (REQ-SCRUB-01) [wave 1; depends_on: ]
+  - [ ] 20-04-tests-sdet-cleanup-PLAN.md — Delete tests/sdet/test_proxmox_vm_lifecycle.py (D-04) and tests/sdet/test_basic_call.py (D-06 option c); preserve __init__.py + conftest.py (CLEANUP-DOGFOOD-01) [wave 1; depends_on: ]
+  - [ ] 20-05-codegen-mock-fixture-tests-PLAN.md — Add tests/framework/unit/test_codegen_integration_mock.py with synthetic 3-tool fixture driven through codegen pipeline + importlib introspection (CODEGEN-COVERAGE-01) [wave 2; depends_on: 20-01]
 
 ### Phase 21: SDET authoring docs + README parity
 **Goal**: A new SDET arriving at the repo finds a step-by-step authoring walkthrough using the VM-lifecycle scenario as the worked example, understands the codegen regeneration workflow, and sees one scenario sample in the README whose output is char-for-char identical to what the runner emits.
