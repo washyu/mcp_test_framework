@@ -302,19 +302,33 @@ def test_every_response_class_exposes_tool_response_surface(generated: Path) -> 
         assert {"is_error", "text", "data"}.issubset(computed), (tool_name, computed)
 
 
-# --- Test 7: counts return value pinned ------------------------------------
+# --- Test 7: degradation counter increments on unsupported schema shapes ---
 
-def test_generate_counts_no_degraded_fields(tmp_path: Path) -> None:
-    """The synthetic fixture is hand-crafted to use ONLY codegen-supported
-    JSON Schema shapes. If a future change degrades any of these fields,
-    this test fails loudly -- and the new degradation should be either
-    fixed in _codegen.py or added to the synthetic fixture's known-degraded
-    set with an explicit assertion."""
+def test_generate_counts_reports_degraded_fields(tmp_path: Path) -> None:
+    """A schema with an enum field must increment ``degraded_fields``.
+
+    The ``generated`` fixture already locks the *clean* direction (every test
+    that uses it asserts ``degraded_fields == 0`` on a synthetic fixture
+    hand-crafted to avoid degradation triggers). This test locks the *inverse*
+    direction: feed codegen a known-degraded shape (enum, per D-02 / _codegen.py
+    line 212) and confirm the counter actually increments. Without this test
+    a regression that silently stopped incrementing ``degraded_fields`` would
+    pass every other test in this module."""
+    degraded_tool = Tool(
+        name="enum_tool",
+        description="One enum field.",
+        inputSchema={
+            "type": "object",
+            "properties": {"mode": {"type": "string", "enum": ["a", "b"]}},
+            "required": ["mode"],
+        },
+        outputSchema=None,
+    )
     counts = generate(
         server_name=_SYNTHETIC_SERVER_NAME,
         server_version=_SYNTHETIC_SERVER_VERSION,
-        tools=_synthetic_tools(),
+        tools=[degraded_tool],
         out_root=tmp_path,
         timestamp=_FIXED_TS,
     )
-    assert counts == {"tools": 3, "degraded_fields": 0}
+    assert counts == {"tools": 1, "degraded_fields": 1}
