@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 20 planned (reframed scope)
-last_updated: "2026-05-14T04:56:40.016Z"
-last_activity: 2026-05-14 -- Phase 20 execution started
+stopped_at: Phase 20 complete (5/5 plans summarized, including 20-05 mock-fixture codegen tests)
+last_updated: "2026-05-14T05:28:44.087Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 22
-  percent: 96
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -25,13 +25,14 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 ## Current Position
 
-Phase: 20 (preflight-conditional-skip) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 20
-        Renderer + scenario discovery + module-scope fixture + dogfood_vmid_range knob all verified live against operator's main Proxmox cluster.
-        Two findings deferred: (1) D-02 CPU-cores bump impossible via manage_proxmox_vm (lifecycle-action tool only) — defer to Phase 20 substitution decision; (2) homelab-mcp UPSTREAM inputSchema bug (optional fields declared type:string without 'null' but defaulted to null) — file upstream, NOT a framework fix (SEED-022 principle: framework primitives, SDET owns safety; masking it would prevent edge-case testing).
-Next: Phase 20 (scope correction) — execute the four PLAN files written 2026-05-13 (REQUIREMENTS scrub, ROADMAP rewrite, STATE update [this plan], tests/sdet cleanup, mock-fixture codegen tests).
-Last activity: 2026-05-14 -- Phase 20 execution started
+Phase: 20 (preflight-conditional-skip) — COMPLETE (5/5 plans summarized)
+Plan: 5 of 5
+Status: Phase 20 complete — awaiting phase verifier.
+        All 5 plans landed: 20-01 (REQ scrub), 20-02 (ROADMAP rewrite), 20-03 (STATE update), 20-04 (tests/sdet cleanup), 20-05 (mock-fixture codegen tests).
+        Plan 20-05 added 10 CI-safe mock-fixture codegen integration tests under tests/framework/unit/test_codegen_integration_mock.py (319 lines); all 10 PASS. Satisfies CODEGEN-COVERAGE-01.
+        Two findings still tracked from Phase 19: (1) D-02 CPU-cores bump impossible — RESOLVED-BY-DELETION via 20-04 (Proxmox dogfood file deleted); (2) homelab-mcp UPSTREAM inputSchema bug — still OPEN as upstream fix, not a framework concern.
+Next: Phase verifier pass on Phase 20, then v1.3 close work (Phase 21 docs + Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
+Last activity: 2026-05-14 -- Phase 20 Plan 05 complete (commit 8980f5c)
 
 ## Performance Metrics
 
@@ -49,6 +50,7 @@ Last activity: 2026-05-14 -- Phase 20 execution started
 | Phase 18 P04 | 51 | 1 tasks | 1 files |
 | Phase 18 P07 | ~1500 | 3 tasks | 4 files |
 | Phase 18 P08 | ~1500 | 4 tasks | 4 files | 50 tests added; Task 5 no-op (pre-satisfied by 18-02) |
+| Phase 20 P20-05 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -156,6 +158,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T04:51:05.856Z
-Stopped at: Phase 20 planned (reframed scope)
+Last session: 2026-05-14T05:28:44.079Z
+Stopped at: Phase 20 complete (5/5 plans summarized, including 20-05 mock-fixture codegen tests)
 Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
