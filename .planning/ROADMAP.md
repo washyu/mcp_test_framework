@@ -175,10 +175,13 @@ Plans:
   3. All Phase 17 unit tests still pass after the scrub (no behavior changes — pure documentation/comment edits)
   4. `mcp-test-framework --help` and each subcommand `--help` still describe the command's purpose clearly (the prose is at least as informative as the current ID-tagged version)
 
-**Plans:** 1/4 plans executed
+**Plans:** 0/4 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 22 to break down)
+- [ ] 22-01-PLAN.md — Formalize SCRUB-SRC-01 + scrub cli.py Typer docstrings and 24 ID hits (SCRUB-SRC-01) [wave 1; depends_on: ]
+- [ ] 22-02-PLAN.md — Scrub src/mcp_test_framework/sdet/ package (7 files, ~67 ID hits) (SCRUB-SRC-01) [wave 1; depends_on: ]
+- [ ] 22-03-PLAN.md — Scrub remaining src/ modules (_runner.py, _isolation.py, fixtures.py, config.py, models.py, schema_validator.py, mcp_client.py, judge_protocol.py, ollama_judge.py, rubrics.py) (SCRUB-SRC-01) [wave 1; depends_on: ]
+- [ ] 22-04-PLAN.md — D-05 regression test (tests/framework/unit/test_no_planning_ids_in_src.py) + final phase-wide grep gate (SCRUB-SRC-01) [wave 2; depends_on: 22-01, 22-02, 22-03]
 
 ### Phase 23: Test suite debt cleanup
 
