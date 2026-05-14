@@ -53,7 +53,8 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
  (completed 2026-05-13)
 - [x] **Phase 18: SDET test surface + typed errors** — `tests/sdet/` discovery scope, `mcp_session` + `tool(name)` fixtures, `--sdet` flag, `ToolCallError` (SDET-01..04, UI-02) (completed 2026-05-13)
 - [x] **Phase 19: Stateful primitives + domain UI integration** — yield-fixture cleanup contract, module-scope state passing, cross-file ordering recipe, scenario rendering through `_render_per_tool_rows`, VM-lifecycle dogfood scenario (STATE-01..04, UI-01) (completed 2026-05-13, PASS-WITH-DEFERRALS — D-02 CPU-cores bump deferred to Phase 20; upstream homelab-mcp inputSchema bug filed against the server, NOT a framework fix per SEED-022)
-- [x] **Phase 20: v1.3 scope correction — dogfood cleanup + codegen coverage** — delete SUT-specific dogfood from `tests/sdet/`; replace PREFLIGHT-01/02 with mock-fixture codegen unit tests under `tests/framework/unit/`; rewrite REQUIREMENTS rows and this roadmap entry to match the reframed scope (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01) (completed 2026-05-14)
+- [x] **Phase 20: v1.3 scope correction — dogfood cleanup + codegen coverage** — delete SUT-specific dogfood from `tests/sdet/`; replace PREFLIGHT-01/02 with mock-fixture codegen unit tests under `tests/framework/unit/`; rewrite REQUIREMENTS rows and this roadmap entry to match the reframed scope (CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01)
+ (completed 2026-05-14)
 - [ ] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03)
 - [ ] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01)
 
@@ -135,7 +136,11 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   1. `docs/SDET-AUTHORING.md` exists, uses the VM-lifecycle scenario as its worked example, and covers: fixture patterns (`mcp_session`, `tool()`), module-scope state passing, `requires_homelab` preflight, response-typing degradation for `outputSchema`-undeclared tools, and the cleanup-on-failure contract.
   2. The codegen regeneration workflow is documented (when to regen, what gets overwritten, mypy/pyright as the change-detection signal, import-surface stability contract); CLAUDE.md updated to note the dual operator+SDET persona.
   3. The README has one SDET scenario sample whose rendered output block matches the runner's emission char-for-char (Phase 16 / SEED-008 doc-mirroring contract); a snippet-correctness test in `tests/framework/` pins the parity against drift.
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+  - [ ] 21-01-PLAN.md — Author docs/SDET-AUTHORING.md (DOC-SDET-01, DOC-SDET-02) [wave 1; depends_on: ]
+  - [ ] 21-02-PLAN.md — README ## SDET scenarios section with char-for-char snapshot (DOC-SDET-03) [wave 2; depends_on: 21-01]
+  - [ ] 21-03-PLAN.md — CLAUDE.md dual-persona note (DOC-SDET-02) [wave 2; depends_on: 21-01]
+  - [ ] 21-04-PLAN.md — End-of-phase verification matrix (DOC-SDET-01, DOC-SDET-02, DOC-SDET-03) [wave 3; depends_on: 21-01, 21-02, 21-03]
 
 ## Progress
 
@@ -163,7 +168,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 | 18. SDET test surface + typed errors | v1.3 | 8/8 | Complete | 2026-05-13 |
 | 19. Stateful primitives + domain UI integration | v1.3 | 0/4 | Not started | — |
 | 20. Preflight + conditional skip | v1.3 | 5/5 | Complete   | 2026-05-14 |
-| 21. SDET authoring docs + README parity | v1.3 | 0/? | Not started | — |
+| 21. SDET authoring docs + README parity | v1.3 | 0/4 | Not started | — |
 
 ### Phase 22: Scrub requirement-ID leaks from src/
 
