@@ -33,7 +33,7 @@ decisions:
   - "type: ignore[arg-type] suppressions on vmid=data.get('vmid') calls -- expected from untyped response .data dict"
   - "Generated files (src/.../generated/homelab_mcp/) copied to worktree as they are untracked in main repo"
   - "Task 2 resolved as (c1) d02-impossible-defer (2026-05-13): live manage_proxmox_vm.action is type:string enum [start/stop/shutdown/reboot/reset/suspend/resume]; no CPU-cores modify path exists in homelab-mcp 1.7.0 -- D-02 is unsatisfiable, deferred to Phase 20"
-  - "Live run also surfaced framework-level None-serialization bug: tool().call() does model_dump(mode='json') without exclude_none=True, so codegen Optional-string defaults (cdrom/iso) hit the wire as null and fail homelab-mcp type:string validators -- deferred to Phase 20 as a sub-plan"
+  - "Live run also surfaced UPSTREAM homelab-mcp inputSchema bug (NOT a framework bug): server declares optional fields as type:string without 'null' but defaults them to null in the same schema -- self-contradictory. Framework deliberately does NOT add exclude_none=True (SEED-022: framework primitives, SDET owns safety; masking upstream bugs would prevent edge-case testing). File against homelab-mcp; Phase 20 records as deferred upstream-fix item, not a framework sub-plan."
 metrics:
   duration: "~20min (Task 1) + ~30min Task 2 live-run + checkpoint resolution"
   completed: "2026-05-13"
@@ -168,14 +168,20 @@ Result: 2 PASS / 3 FAIL / 58 SKIP  in 6.3s
 
 **Finding 1 — D-02 CPU-cores bump is impossible via `manage_proxmox_vm`.** Live `list-tools` JSON confirms `manage_proxmox_vm.action` is `type: string` with enum `[start, stop, shutdown, reboot, reset, suspend, resume]` — it is a **lifecycle action tool**, not a config-modify tool. There is no CPU-cores update path through this tool. The plan's first-cut `action={"type":"config","cores":2}` was wrong by construction. CPU bump would require either (a) a different tool that does not exist in homelab-mcp 1.7.0's surface, or (b) homelab-mcp adding a config-modify tool. Until then, the modify-step test is fundamentally unsatisfiable — substitution to a different attribute is explicitly prohibited by T-19-04-07.
 
-**Finding 2 — Framework-level None-serialization bug (orthogonal to D-02).** `tool().call()` serializes via `params.model_dump(mode="json")` without `exclude_none=True`. Codegen produces `cdrom: str | None = None` and `iso: str | None = None` for `create_proxmox_vm` (and similar Optional-string fields on other tools). These serialize to wire JSON `null`, which homelab-mcp rejects under `type: string` (not `["string","null"]`) — producing the `Input validation error: None is not of type 'string'` observed on all three create/modify/delete attempts.
+**Finding 2 — Upstream homelab-mcp inputSchema bug (NOT a framework bug; orthogonal to D-02).** Operator analysis (2026-05-13): the Proxmox REST contract only requires `vmid` (node is path-scoped). homelab-mcp's inputSchema declares optional fields with `type: string` (without `"null"`) AND defaults them to null in the same schema — that is self-contradictory. The server should either declare `type: ["string", "null"]` for those fields, or strip null-valued keys from its inbound payload before running its own jsonschema validator.
+
+Evidence: `tool().call()` serializes via `params.model_dump(mode="json")`. Codegen produces `cdrom: str | None = None` and `iso: str | None = None` for `create_proxmox_vm` (and similar Optional-string fields on other tools). These serialize to wire JSON `null`, and homelab-mcp's own jsonschema check then rejects the call with `Input validation error: None is not of type 'string'`.
+
+**Framework does NOT fix this** — adding `exclude_none=True` would mask upstream schema bugs and prevent SDETs from testing the server's null-handling edge cases. This is the SEED-022 principle: framework primitives; SDET owns safety. The framework's role is to surface upstream contract violations as test failures, not to paper over them. The fix belongs in homelab-mcp.
+
+Phase 20 should record this as a `deferred-items` upstream-fix entry against homelab-mcp, not as a framework sub-plan.
 
 ### Phase 20 (PREFLIGHT) handoff for live verification
 
 When Phase 20 ships, the following items must close before live `proxmox_vm_lifecycle` can pass:
 
 1. **`requires_homelab(proxmox=True)`** — already planned in Phase 20 scope. Cleanly SKIPs the scenario when `MCPTF_DOGFOOD_PROXMOX_HOST` is unset; replaces today's fail-loud `RuntimeError`.
-2. **None-serialization fix** — choice between (a) framework-level `exclude_none=True` in `tool().call()` serialization, or (b) codegen change so non-nullable optional string fields don't default to `None`. Both have trade-offs; pick one as a Phase 20 sub-plan.
+2. **Upstream homelab-mcp inputSchema fix** — file against homelab-mcp (NOT a framework sub-plan). The server's inputSchema is self-contradictory: optional fields declared `type: string` (without `"null"`) but defaulted to null in the same schema. Server should either declare `type: ["string","null"]` or strip null-valued keys from inbound payloads before its own jsonschema check. The framework deliberately does NOT add `exclude_none=True` (would mask the bug and prevent SDETs from testing server-side null handling — SEED-022 principle).
 3. **D-02 substitution decision** — either drop the modify step from the scenario entirely (lifecycle-only dogfood is still valuable for STATE-01/03/04), or wait for homelab-mcp to add a config-modify tool. T-19-04-07 forbids silently substituting a different attribute; explicit CONTEXT.md addendum required if D-02 is removed.
 
 The Phase 20 plan should reference this SUMMARY directly for the inputSchema attached above and the verbatim live-run output.
