@@ -1,23 +1,23 @@
-"""Session-scoped pytest-asyncio fixtures + _preflight gate (Phase 4 FIX-01/02/03).
+"""Session-scoped pytest-asyncio fixtures + ``_preflight`` gate.
 
 Registered via tests/conftest.py:
     pytest_plugins = ["mcp_test_framework.fixtures"]
 
-All fixtures are session-scoped (loop_scope="session" for async ones, matching
-the pyproject.toml lock `asyncio_default_fixture_loop_scope = "session"`).
-mcp_client and judge own their I/O lifecycle through AsyncExitStack so the
-reverse-order unwind happens in the SAME task that did __aenter__
-(PITFALLS Pitfall 1).
+All fixtures are session-scoped (``loop_scope="session"`` for async ones,
+matching the pyproject.toml lock
+``asyncio_default_fixture_loop_scope = "session"``). ``mcp_client`` and
+``judge`` own their I/O lifecycle through ``AsyncExitStack`` so the
+reverse-order unwind happens in the SAME task that did ``__aenter__``.
 
-_preflight is autouse + session-scoped: it runs once before any test and
-calls pytest.exit(reason, returncode=2) if Ollama is unreachable, the
+``_preflight`` is autouse + session-scoped: it runs once before any test and
+calls ``pytest.exit(reason, returncode=2)`` if Ollama is unreachable, the
 configured model is missing, or the MCP server command does not resolve.
-returncode=2 distinguishes preflight-abort from pytest's regular pass/fail
-(0/1) so a future CI can branch on it.
+``returncode=2`` distinguishes preflight-abort from pytest's regular
+pass/fail (0/1) so a future CI can branch on it.
 
-The judge fixture is type-annotated against the Judge Protocol (not
-OllamaJudge concrete class) -- D-layout-2 / SEED-001 enabler. The fixture
-body internally instantiates OllamaJudge; tests use `judge: Judge`.
+The ``judge`` fixture is type-annotated against the ``Judge`` Protocol (not
+``OllamaJudge`` concrete class) so swapping in a different judge backend is
+a one-fixture-body change. Tests use ``judge: Judge``.
 """
 from __future__ import annotations
 
@@ -88,20 +88,21 @@ def _pytest_exit_operator_tone(
 
 @pytest.fixture(scope="session")
 def config() -> Config:
-    """Load YAML config once per session (Phase 13 precedence: init kwarg > MCPTF_CONFIG_FILE path-pointer > YAML > defaults).
+    """Load YAML config once per session.
 
-    Under `mcp-test-framework run`, the CLI resolver (`cli.py:_load_config`)
-    writes the resolved YAML path to `MCPTF_CONFIG_FILE` before launching
-    pytest.main(). This bare `Config()` then picks up that path via the
-    fallback in `Config.settings_customise_sources` (Phase 13 review
-    CR-01 fix). SAFE-05 is preserved: env vars do NOT inject scalar
-    config values -- `MCPTF_CONFIG_FILE` is a path pointer only.
+    Precedence: init kwarg > ``MCPTF_CONFIG_FILE`` path-pointer > YAML > defaults.
+
+    Under ``mcp-test-framework run``, the CLI resolver (``cli.py:_load_config``)
+    writes the resolved YAML path to ``MCPTF_CONFIG_FILE`` before launching
+    ``pytest.main()``. This bare ``Config()`` then picks up that path via the
+    fallback in ``Config.settings_customise_sources``. Env vars do NOT inject
+    scalar config values -- ``MCPTF_CONFIG_FILE`` is a path pointer only.
     """
     return Config()
 
 
 # ---------------------------------------------------------------------------
-# _preflight -- autouse session gate (FIX-02; D-preflight-1..4)
+# _preflight -- autouse session gate
 # ---------------------------------------------------------------------------
 
 
@@ -111,27 +112,26 @@ def config() -> Config:
 # preflight so it runs cleanly on a machine with no homelab-mcp / Ollama
 # configured.
 #
-# Kept in sync with the Phase 18 renderer's scope discrimination
-# (tests/contract vs tests/sdet) — single source of truth for live scopes.
+# Kept in sync with the renderer's scope discrimination (tests/contract
+# vs tests/sdet) -- single source of truth for live scopes.
 _LIVE_PREFIXES: tuple[str, ...] = ("tests/contract/", "tests/sdet/")
 
 
 def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
     """Return True iff any collected item is under a live-MCP scope.
 
-    Live-MCP scopes (`tests/contract/`, `tests/sdet/`) call into the real
-    homelab-mcp subprocess and Ollama HTTP API; everything else
-    (`tests/framework/...`) is pure-data and must not be gated by the
+    Live-MCP scopes (``tests/contract/``, ``tests/sdet/``) call into the
+    real homelab-mcp subprocess and Ollama HTTP API; everything else
+    (``tests/framework/...``) is pure-data and must not be gated by the
     autouse preflight fixture.
 
-    Pre-Phase-15 this keyed on `tests/unit/`, a prefix that no longer
-    exists in the current layout (the Phase 15 reorg moved unit tests
-    to `tests/framework/unit/`). The stale check always returned True
-    and forced operators to either set `MCPTF_CONFIG_FILE` or pass
-    `--noconftest` to run framework-only suites. Quick-task 260513-chh
-    inverts the predicate to a live-scope allowlist (Option B from the
-    originating todo) so the preflight gate keys on "does this item
-    need a live MCP server?" rather than on a stale unit-test prefix.
+    Historical note: an earlier version keyed on ``tests/unit/``, a prefix
+    that no longer exists in the current layout. The stale check always
+    returned True and forced operators to either set ``MCPTF_CONFIG_FILE``
+    or pass ``--noconftest`` to run framework-only suites. The predicate
+    was inverted to a live-scope allowlist so the preflight gate keys on
+    "does this item need a live MCP server?" rather than on a stale
+    unit-test prefix.
     """
     items = getattr(request.session, "items", []) or []
     if not items:
@@ -145,37 +145,38 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
 
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
 async def _preflight(request: pytest.FixtureRequest):
-    """Three pre-test checks; pytest.exit(returncode=2) on any failure.
+    """Three pre-test checks; ``pytest.exit(returncode=2)`` on any failure.
 
-    Recommended order (CONTEXT D-discretion, cheapest first):
+    Order (cheapest first):
       1. shutil.which(mcp_server.command) -- local FS lookup, no network.
       2. Ollama GET /api/tags -- single HTTP call with 10s connect timeout.
       3. MCP brief McpTestClient session -- single subprocess spawn + list_tools.
       4. Target tool membership -- already in step 3's list_tools result.
 
     Each failure path emits a structured single-line diagnostic naming the
-    failed precondition AND the configured value (D-preflight-4). No ERROR
-    cascade across 10 tests (Pitfall 3 mitigation).
+    failed precondition AND the configured value (no ERROR cascade across
+    every parametrized test).
 
-    NO LLM warmup -- deferred per CONTEXT Deferred Ideas. Cold-start cost is
-    paid by TEST-05 within the locked 120s httpx.Timeout.
+    No LLM warmup is performed -- cold-start cost is paid within the locked
+    120s httpx.Timeout the first time a judge call fires.
 
-    The session-scope guard `_session_needs_preflight` short-circuits when
-    no items under live-MCP scopes (`tests/contract/`, `tests/sdet/`) are
-    collected -- framework self-tests under `tests/framework/...` have no
-    MCP/Ollama dependency and must not be gated by integration
+    The session-scope guard ``_session_needs_preflight`` short-circuits when
+    no items under live-MCP scopes (``tests/contract/``, ``tests/sdet/``)
+    are collected -- framework self-tests under ``tests/framework/...`` have
+    no MCP/Ollama dependency and must not be gated by integration
     preconditions.
 
-    Phase 21.1 RELOC-01 (Rule 3 deviation, plan 21.1-01): the `config`
-    fixture is requested *lazily* via ``request.getfixturevalue`` AFTER
-    the live-MCP scope check, instead of as a direct parameter. With
-    `sdet.generated_root` now required on Config, a bare ``Config()``
-    constructed for framework-only test sessions (no MCPTF_CONFIG_FILE
-    set) would fail with the SAFE-03 missing-required-field error before
-    the short-circuit could run. Fetching the fixture only inside the
-    live-MCP branch preserves the SAFE-03 behavior where it matters
-    (operator-facing live runs) while keeping framework self-tests green
-    without requiring every framework test to set MCPTF_CONFIG_FILE.
+    The ``config`` fixture is requested *lazily* via
+    ``request.getfixturevalue`` AFTER the live-MCP scope check, instead of
+    as a direct parameter. With ``sdet.generated_root`` now required on
+    Config, a bare ``Config()`` constructed for framework-only test
+    sessions (no ``MCPTF_CONFIG_FILE`` set) would fail with the canonical
+    missing-required-field error (see docs/ERROR-STYLE.md) before the
+    short-circuit could run. Fetching the fixture only inside the
+    live-MCP branch preserves the missing-config fail-loud behavior where
+    it matters (operator-facing live runs) while keeping framework
+    self-tests green without requiring every framework test to set
+    ``MCPTF_CONFIG_FILE``.
     """
     if not _session_needs_preflight(request):
         yield
@@ -185,9 +186,9 @@ async def _preflight(request: pytest.FixtureRequest):
 
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
-        # Quick-task 260507-j6i: enrich the bare "not found on PATH" with a
-        # hint pointing users at MCPTF_CONFIG_FILE / config.example.yaml.
-        # Keep in sync with tests/conftest.py:_resolve_tool_names (same hint).
+        # Enrich the bare "not found on PATH" with a hint pointing users at
+        # MCPTF_CONFIG_FILE / config.example.yaml. Keep in sync with
+        # tests/conftest.py:_resolve_tool_names (same hint).
         pytest.exit(
             f"MCP command {config.mcp_server.command!r} not found on PATH"
             f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
@@ -278,10 +279,10 @@ async def _preflight(request: pytest.FixtureRequest):
             f"MCP handshake with {config.mcp_server.command!r} failed: "
             f"{exc.__class__.__name__}: {exc}"
         )
-        # Quick-task 260507-j6i: same MCPTF_CONFIG_FILE / config.example.yaml
-        # hint as Check 1 above and tests/conftest.py:_resolve_tool_names, in
-        # the rare case Check 1's shutil.which passed but McpTestClient's
-        # belt-and-suspenders re-check raised FileNotFoundError anyway.
+        # Same MCPTF_CONFIG_FILE / config.example.yaml hint as Check 1 above
+        # and tests/conftest.py:_resolve_tool_names, in the rare case Check 1's
+        # shutil.which passed but McpTestClient's belt-and-suspenders re-check
+        # raised FileNotFoundError anyway.
         if isinstance(exc, FileNotFoundError) and str(exc).startswith(
             "MCP server command not on PATH:"
         ):
@@ -294,9 +295,9 @@ async def _preflight(request: pytest.FixtureRequest):
             )
         pytest.exit(msg, returncode=2)
 
-    # Phase 08 D-14 / D-18: unknown tool names in `config.tools` -> session-start
-    # warning (NOT load-time error, NOT a hard fail). The discovered list isn't
-    # known until the MCP handshake above runs, so this check lives here.
+    # Unknown tool names in `config.tools` -> session-start warning (NOT a
+    # load-time error, NOT a hard fail). The discovered list isn't known
+    # until the MCP handshake above runs, so this check lives here.
     discovered_names = {t.name for t in tools}
     for unknown_name in sorted(set(config.tools) - discovered_names):
         warnings.warn(
@@ -308,14 +309,14 @@ async def _preflight(request: pytest.FixtureRequest):
 
     # All preflight checks passed; the brief MCP session has been closed by
     # AsyncExitStack on context-manager exit. The mcp_client fixture below
-    # respawns its own long-lived session (D-preflight-2). Yield with no
-    # value -- autouse fixtures need not yield a value.
+    # respawns its own long-lived session. Yield with no value -- autouse
+    # fixtures need not yield a value.
     yield
 
 
 # ---------------------------------------------------------------------------
-# _isolated_home -- session-scoped per-run tempdir for HOME/USERPROFILE redirect
-# (Phase 06 ISOL-05; D-12 fixture shape, D-14 single source of truth, D-15 cleanup)
+# _isolated_home -- session-scoped per-run tempdir for HOME/USERPROFILE redirect.
+# Single source of truth for the isolation tempdir; cleanup at session exit.
 # ---------------------------------------------------------------------------
 
 
@@ -323,22 +324,21 @@ async def _preflight(request: pytest.FixtureRequest):
 async def _isolated_home():
     """Per-session tempdir owning the HOME/USERPROFILE redirect target.
 
-    Single source of truth for the isolation tempdir (D-14). Plan 06-03's
-    ISOL-03 verification test depends on this fixture directly to read the
-    redirected `.homelab_mcp/` subdirectory without reaching into mcp_client
-    internals (D-13). Future Phase 07/08 fixtures that need isolation
-    guarantees depend on the same fixture -- no duplicate tempdir creation.
+    Single source of truth for the isolation tempdir. Verification tests
+    that read the redirected ``.homelab_mcp/`` subdirectory depend on this
+    fixture directly rather than reaching into ``mcp_client`` internals.
+    Future fixtures that need isolation guarantees depend on the same
+    fixture -- no duplicate tempdir creation.
 
-    Lifecycle owned via AsyncExitStack -- cleanup is automatic on session
-    exit (D-15). tempfile.TemporaryDirectory is a SYNC context manager, so
-    we use stack.enter_context (not enter_async_context). This is safe with
-    respect to the Phase 04.1 invariant ("no anyio cancel scope across the
-    yield") because TemporaryDirectory is stdlib sync -- it opens no anyio
-    cancel scope.
+    Lifecycle owned via ``AsyncExitStack`` -- cleanup is automatic on
+    session exit. ``tempfile.TemporaryDirectory`` is a SYNC context
+    manager, so we use ``stack.enter_context`` (not
+    ``enter_async_context``). This is safe with respect to the
+    "no anyio cancel scope across the yield" invariant because
+    ``TemporaryDirectory`` is stdlib sync -- it opens no anyio cancel scope.
 
-    Tempdir prefix `mcp-test-fw-` per CONTEXT.md <specifics> -- orphaned
-    tempdirs (should ISOL-05 cleanup ever fail) are debuggable from
-    `dir %TEMP%` output.
+    Tempdir prefix ``mcp-test-fw-`` so orphaned tempdirs (should cleanup
+    ever fail) are debuggable from ``dir %TEMP%`` output.
     """
     async with AsyncExitStack() as stack:
         tmpdir = stack.enter_context(
@@ -348,9 +348,7 @@ async def _isolated_home():
 
 
 # ---------------------------------------------------------------------------
-# mcp_client -- session-scoped, pure-asyncio driver + anyio owner task
-# (Phase 04.1 DEF-04-03-B follow-up; resolves debug session
-# fixture-teardown-cancel-scope)
+# mcp_client -- session-scoped, pure-asyncio driver + anyio owner task.
 # ---------------------------------------------------------------------------
 
 
@@ -359,8 +357,8 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
-    the failure mode of the prior owner-task + outer ``anyio.create_task_group``
-    rewrite (DEF-04-03-B; debug session fixture-teardown-cancel-scope):
+    the failure mode of a prior owner-task + outer ``anyio.create_task_group``
+    rewrite (the debug-session fixture-teardown-cancel-scope failure):
     pytest-asyncio's session-scoped finalizer drives the generator's
     ``__anext__`` from a different asyncio.Task than the one that ran setup,
     and any anyio CancelScope spanning the yield is task-pinned to the setup
@@ -389,7 +387,7 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
     params = StdioServerParameters(
         command=config.mcp_server.command,
         args=config.mcp_server.args,
-        # ISOL-02 / ISOL-07 -- Phase 06 (D-14: shared tempdir)
+        # Allowlisted env + HOME redirect to the shared isolation tempdir.
         env=_build_isolated_env(_isolated_home),
     )
     loop = asyncio.get_running_loop()
@@ -406,10 +404,10 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
                 try:
                     with anyio.fail_after(config.mcp_server.timeout_seconds):
                         init_result = await session.initialize()
-                    # Phase 18 SDET-03 (Plan 03 Rule 3): capture serverInfo
-                    # so the mcp_session fixture can derive the generated-
-                    # module slug. The mcp SDK discards InitializeResult
-                    # after caching _server_capabilities only.
+                    # Capture serverInfo so the SDET ``mcp_session`` fixture
+                    # can derive the generated-module slug. The mcp SDK
+                    # discards ``InitializeResult`` after caching
+                    # ``_server_capabilities`` only.
                     client = McpTestClient._wrap(
                         session,
                         config.mcp_server.timeout_seconds,
@@ -450,17 +448,17 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
 
 
 # ---------------------------------------------------------------------------
-# judge -- session-scoped, type-annotated against Judge Protocol (FIX-01; D-layout-2)
+# judge -- session-scoped, type-annotated against Judge Protocol
 # ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def judge(config: Config, _preflight) -> Judge:
-    """Long-lived OllamaJudge instance, exposed to tests as Judge Protocol.
+    """Long-lived ``OllamaJudge`` instance, exposed to tests as ``Judge`` Protocol.
 
-    Internal instantiation of OllamaJudge stays in this fixture body so
-    swapping in AgenticJudge (SEED-001) post-MVP is a one-fixture-body
-    change. Tests annotate `judge: Judge`, never `judge: OllamaJudge`.
+    Internal instantiation of ``OllamaJudge`` stays in this fixture body so
+    swapping in a different judge backend is a one-fixture-body change.
+    Tests annotate ``judge: Judge``, never ``judge: OllamaJudge``.
     """
     async with AsyncExitStack() as stack:
         instance = await stack.enter_async_context(
@@ -474,7 +472,7 @@ async def judge(config: Config, _preflight) -> Judge:
 
 
 # ---------------------------------------------------------------------------
-# target_tool -- session-scoped, defense-in-depth membership (FIX-03; Pattern D)
+# target_tool -- session-scoped, defense-in-depth membership
 # ---------------------------------------------------------------------------
 
 
@@ -484,42 +482,44 @@ async def target_tool(
     mcp_client: McpTestClient,
     _preflight,
 ):
-    """Resolve target tool by name (parametrized indirectly via tests/conftest.py).
+    """Resolve target tool by name (parametrized indirectly via ``tests/conftest.py``).
 
-    The pytest_generate_tests hook in tests/conftest.py populates request.param
-    with each discovered tool name. Test IDs render as test_<name>[<tool_name>]
-    uniformly across the allowlist's selected tools (Phase 13 SAFE-01).
-    Indirect parametrize on a session-scoped fixture
-    creates one fixture instance per request.param value within session scope;
-    mcp_client (also session-scoped) is shared -- ONE long-lived MCP session.
+    The ``pytest_generate_tests`` hook in ``tests/conftest.py`` populates
+    ``request.param`` with each discovered tool name. Test IDs render as
+    ``test_<name>[<tool_name>]`` uniformly across the allowlist's selected
+    tools.
+
+    Indirect parametrize on a session-scoped fixture creates one fixture
+    instance per ``request.param`` value within session scope; ``mcp_client``
+    (also session-scoped) is shared -- ONE long-lived MCP session.
     """
     return await mcp_client.get_tool(request.param)
 
 
 # ---------------------------------------------------------------------------
-# tool_config -- per-test ToolConfig resolution (Phase 08 D-04 / TOOLCFG-06)
+# tool_config -- per-test ToolConfig resolution
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def tool_config(config: Config, target_tool) -> ToolConfig:
-    """Resolve `config.tools.get(target_tool.name, ToolConfig())` per test.
+    """Resolve ``config.tools.get(target_tool.name, ToolConfig())`` per test.
 
     Default (function) scope is intentional: the fixture must reflect the
-    per-test parametrized `target_tool.name` -- a session-scoped fixture
+    per-test parametrized ``target_tool.name`` -- a session-scoped fixture
     would freeze on the first parameter and serve a stale entry to other
     parametrized cases.
 
-    Tools with no `tools.<name>` entry receive a default `ToolConfig()`
-    (TOOLCFG-06: skip=False, call_arguments={}, judges=None -> all rubrics).
-    Sync fixture (no async resources) -- safe under Phase 04.1 cancel-scope
+    Tools with no ``tools.<name>`` entry receive a default ``ToolConfig()``
+    (``skip=False``, ``call_arguments={}``, ``judges=None`` -> all rubrics).
+    Sync fixture (no async resources) -- safe under the cancel-scope
     invariant; no anyio scope is opened across yield.
     """
     return config.tools.get(target_tool.name, ToolConfig())
 
 
 # ---------------------------------------------------------------------------
-# Three rubric fixtures -- sync, session-scoped (D-rubrics-1; Pattern E)
+# Three rubric fixtures -- sync, session-scoped
 # ---------------------------------------------------------------------------
 
 
