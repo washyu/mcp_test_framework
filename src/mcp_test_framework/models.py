@@ -19,6 +19,7 @@ See plan-checker iter 1 BLOCKER #1 (resolved Option A) in 01-02-PLAN.md.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import (
@@ -183,3 +184,56 @@ class HomelabConfig(BaseModel):
     model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
 
     proxmox: HomelabProxmoxConfig = Field(default_factory=HomelabProxmoxConfig)
+
+
+class SdetConfig(BaseModel):
+    """SDET codegen + fixture surface knobs (Phase 21.1 RELOC-01).
+
+    Currently exposes only ``generated_root`` -- the on-disk directory the
+    framework writes generated SDET classes into (via ``gen-sdet-classes``)
+    and loads them from (via the ``mcp_session`` fixture). The field is
+    REQUIRED with no default: the framework refuses to silently invent a
+    path to write Python code into or load Python code from, matching the
+    Phase 13 SAFE-03 fail-loud posture on config absence.
+
+    No env routing (mirrors HomelabProxmoxConfig per Phase 13 D-07): no
+    ``validation_alias=AliasChoices(...)``. ``MCPTF_GENERATED_ROOT`` is
+    deliberately NOT a recognized env var -- one source of truth is
+    ``config.yaml`` (Phase 21.1 D-02).
+
+    Path resolution: if the value is not absolute, it is interpreted
+    relative to the current working directory at the time the config is
+    loaded. Matches the existing convention used for ``MCPTF_CONFIG_FILE``
+    path resolution. Operators using a worktree should set an absolute
+    path or change directory before invoking the CLI.
+    """
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
+
+    generated_root: Path = Field(
+        ...,
+        description=(
+            "On-disk directory the framework writes generated SDET classes "
+            "into and loads them from. REQUIRED -- the framework will not "
+            "silently invent a path. Recommended convention: "
+            "tests/sdet/_generated/ (the framework recommends this in docs "
+            "but does not enforce it)."
+        ),
+    )
+
+    @field_validator("generated_root", mode="before")
+    @classmethod
+    def _reject_empty_generated_root(cls, v: object) -> object:
+        """RELOC-01: reject empty-string values explicitly so the SAFE-03
+        error path distinguishes 'forgot to set the key' (missing) from
+        'set the key to nothing' (invalid value). Both end up as exit 2
+        operator-tone errors, but the field-validator path lets the operator
+        see which mistake they made.
+        """
+        if isinstance(v, str) and v.strip() == "":
+            raise ValueError(
+                "sdet.generated_root must not be an empty string; "
+                "set it to a directory path such as 'tests/sdet/_generated' "
+                "or remove the key entirely to get the missing-required-field error"
+            )
+        return v
