@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 ## Current Position
 
 Phase: 21 (SDET Authoring Docs README Parity) — EXECUTING
-Plan: 3 of 4
-Status: Plan 21-02 complete (re-scoped at human-verify checkpoint to embed FAIL output as the README sample; live Proxmox run surfaced the upstream inputSchema bug on create_proxmox_vm — Phase 19-04's "create is safe" prediction did not hold). Ready to execute Plan 21-03 (CLAUDE.md persona note).
+Plan: 4 of 4
+Status: Plans 21-01, 21-02, 21-03 complete. Ready to execute Plan 21-04 (end-of-phase verification sweep).
         All 5 plans landed: 20-01 (REQ scrub), 20-02 (ROADMAP rewrite), 20-03 (STATE update), 20-04 (tests/sdet cleanup), 20-05 (mock-fixture codegen tests).
         Plan 20-05 added 10 CI-safe mock-fixture codegen integration tests under tests/framework/unit/test_codegen_integration_mock.py (319 lines); all 10 PASS. Satisfies CODEGEN-COVERAGE-01.
         Two findings still tracked from Phase 19: (1) D-02 CPU-cores bump impossible — RESOLVED-BY-DELETION via 20-04 (Proxmox dogfood file deleted); (2) homelab-mcp UPSTREAM inputSchema bug — still OPEN as upstream fix, not a framework concern.
@@ -53,6 +53,7 @@ Last activity: 2026-05-14
 | Phase 20 P20-05 | 2min | 1 tasks | 1 files |
 | Phase 21 P01 | ~20min | 4 tasks | 2 files |
 | Phase 21 P02 | ~25min | 4 tasks (Task 2 re-scoped) | 1 modified, 1 deleted | embedded FAIL output as README sample (operator decision at human-verify checkpoint) |
+| Phase 21 P03 | ~2min | 1 task | 1 file | dual-persona note appended to CLAUDE.md '## What This Project Is' |
 
 ## Accumulated Context
 
