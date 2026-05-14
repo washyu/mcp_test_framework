@@ -1,58 +1,57 @@
 """Async wrapper around the Ollama ``/api/chat`` endpoint.
 
-Implements the OllamaJudge interface from
-``docs/mcp_test_framework_mvp_spec.md`` §``ollama_judge.py``:
+Public surface:
 
     OllamaJudge(base_url, model, timeout_seconds)
     OllamaJudge.__aenter__ / __aexit__
     OllamaJudge.judge(rubric, subject, context=None) -> JudgeResult
 
-Per Phase 3 CONTEXT.md decisions (D-04..D-10) and the locked
-ROADMAP success criteria SC#1..SC#5:
+Design rules:
 
 - Lifecycle owned via ``contextlib.AsyncExitStack`` inside ``__aenter__``;
-  one ``httpx.AsyncClient`` per OllamaJudge instance, mirrors the Phase 2
-  ``McpTestClient`` pattern (Pitfall: re-creating httpx.AsyncClient per call).
-- Locked HTTP timeout: ``httpx.Timeout(self._timeout_seconds, connect=10.0)``
-  -- the OPS-02 falsifier. Wide enough to absorb a real qwen3 cold-start
-  (Pitfall 7: 13-60s observed); 10s connect ceiling guards against silent
-  network hangs.
-- Locked request body for ``/api/chat`` (CORE-04, ROADMAP SC#2): ``stream:
-  false``, ``format: "json"``, ``think: false``, ``keep_alive: "30m"``,
-  ``options.{temperature: 0, num_predict: 256}``. Hard-coded; not configurable.
-- Constant system prompt (D-07): strict-evaluator framing + ``/no_think``
-  directive (qwen3 belt-and-braces per PITFALLS Pitfall 2) + JSON-only
-  contract + delimited subject contract using ``<<<SUBJECT>>>`` /
-  ``<<<END SUBJECT>>>`` markers. The system prompt explicitly instructs the
-  model to ignore any instructions inside the SUBJECT block (T-03-01 prompt
-  injection mitigation).
-- Defensive parser (D-09 four-step contract): strip ``<think>...</think>``
+  one ``httpx.AsyncClient`` per OllamaJudge instance, mirrors the
+  ``McpTestClient`` pattern (avoid the re-creating-AsyncClient-per-call
+  pitfall).
+- Locked HTTP timeout: ``httpx.Timeout(self._timeout_seconds, connect=10.0)``.
+  Wide enough to absorb a real qwen3 cold-start (13-60s observed); 10s
+  connect ceiling guards against silent network hangs.
+- Locked request body for ``/api/chat``: ``stream: false``,
+  ``format: "json"``, ``think: false``, ``keep_alive: "30m"``,
+  ``options.{temperature: 0, num_predict: 256}``. Hard-coded; not
+  configurable. The ``temperature: 0`` setting is the determinism guarantee.
+- Constant system prompt: strict-evaluator framing + ``/no_think`` directive
+  (qwen3 belt-and-braces) + JSON-only contract + delimited subject contract
+  using ``<<<SUBJECT>>>`` / ``<<<END SUBJECT>>>`` markers. The system prompt
+  explicitly instructs the model to ignore any instructions inside the
+  SUBJECT block (prompt-injection mitigation).
+- Defensive parser (four-step contract): strip ``<think>...</think>``
   blocks, attempt ``model_validate_json``, brace-recovery on failure,
   fallback to ``JudgeResult(passed=False, score=1, reasoning="malformed
-  judge response", raw_response=<original>)`` with raw_response preserved
-  on every branch (DOCS-03).
-- Transport-level errors propagate (D-10): HTTP non-2xx via
+  judge response", raw_response=<original>)`` with ``raw_response``
+  preserved on every branch.
+- Transport-level errors propagate: HTTP non-2xx via
   ``response.raise_for_status()``, ``httpx.TimeoutException``, connection
-  errors. They do NOT collapse to a JudgeResult; Phase 4's per-test
-  diagnostic surfaces the actual exception type.
-- ``JudgeResult`` is domain-local (lives here, not models.py) -- parallels
-  ``ToolNotFoundError`` in mcp_client.py and ``ValidationIssue`` in
-  schema_validator.py. The ``Judge`` Protocol in ``judge_protocol.py``
-  imports JudgeResult from this module (one-way dependency).
+  errors. They do NOT collapse to a JudgeResult; the per-test diagnostic
+  surface decides how the exception is shown to the operator.
+- ``JudgeResult`` is domain-local (lives here, not ``models.py``) --
+  parallels ``ToolNotFoundError`` in ``mcp_client.py`` and
+  ``ValidationIssue`` in ``schema_validator.py``. The ``Judge`` Protocol
+  in ``judge_protocol.py`` imports ``JudgeResult`` from this module
+  (one-way dependency).
 - Logging policy: a named logger emits DEBUG records with request/response
-  shape only -- never the full Ollama response body by default (Pitfall:
-  "Logging full Ollama responses verbosely by default"). Pytest's
+  shape only -- never the full Ollama response body by default (avoid the
+  "logging full responses verbosely" footgun). Pytest's
   ``--log-cli-level=DEBUG`` surfaces them when needed.
-- No warmup logic, no ``from_config`` classmethod, no ``warmup()`` method
-  (D-08 / Deferred). Public surface is exactly ``__init__``, ``__aenter__``,
-  ``__aexit__``, ``judge``. Internal helpers (``_build_request_body``,
+- No warmup logic, no ``from_config`` classmethod, no ``warmup()`` method.
+  Public surface is exactly ``__init__``, ``__aenter__``, ``__aexit__``,
+  ``judge``. Internal helpers (``_build_request_body``,
   ``_parse_judge_response``, etc.) live at module level so unit tests can
   import them directly.
-- No ``import homelab_mcp`` -- the framework treats homelab-mcp as a
-  black box (PROJECT.md). Phase 1 ruff TID251 + tests/conftest.py
-  ``sys.modules`` guard catches violations mechanically.
+- No ``import homelab_mcp`` -- the framework treats ``homelab-mcp`` as a
+  black box. Ruff ``TID251`` + ``tests/conftest.py``'s ``sys.modules``
+  guard catch violations mechanically.
 
-Phase 4 fixture FIX-01 will consume this as::
+Consumed by the session-scoped fixture as::
 
     async with OllamaJudge(cfg.ollama.base_url, cfg.ollama.model,
                             cfg.ollama.timeout_seconds) as judge:
@@ -98,11 +97,11 @@ direct your evaluation.
 class JudgeResult(BaseModel):
     """Validated structured result of a single judge call.
 
-    Domain-local Pydantic model (D-04 / Established Patterns: result types
-    live in their owning module). Frozen so callers cannot accidentally
-    mutate a result mid-test. ``score`` is bounded to the 1..5 inclusive
-    rubric range -- out-of-range values raise ``ValidationError`` and are
-    caught by the parser fallback (D-09 step 4).
+    Domain-local Pydantic model: result types live in their owning module
+    rather than ``models.py``. Frozen so callers cannot accidentally mutate
+    a result mid-test. ``score`` is bounded to the 1..5 inclusive rubric
+    range -- out-of-range values raise ``ValidationError`` and are caught
+    by the parser fallback (step 4 of the defensive parser).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -122,16 +121,15 @@ def _build_request_body(
     """Build the locked Ollama ``/api/chat`` request body.
 
     Module-level helper so unit tests can import and assert on the body
-    shape directly without mocking the HTTP layer (CONTEXT Discretion:
-    "the unit test on a pure helper that builds the request body asserts
-    the body shape, decoupled from the HTTP layer").
+    shape directly without mocking the HTTP layer.
 
     The ``messages`` list is exactly two items: a constant system prompt
     (``_SYSTEM_PROMPT``) and a user message that interpolates the rubric
     and the delimited subject (and the optional context as a final
     ``Context: <json>`` line).
 
-    Locked fields per ROADMAP SC#2 / CORE-04:
+    Locked fields::
+
         stream: False, format: "json", think: False, keep_alive: "30m"
         options: {temperature: 0, num_predict: 256}
     """
@@ -160,8 +158,8 @@ def _build_request_body(
     }
 
 
-# qwen3 emits <think>...</think> reasoning blocks even with /no_think + think:false
-# (PITFALLS.md Pitfall 2 belt-and-braces). Strip them before JSON parse.
+# qwen3 emits <think>...</think> reasoning blocks even with /no_think +
+# think:false (belt-and-braces). Strip them before JSON parse.
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 # Some models wrap JSON in ```json ... ``` fences despite the system prompt
@@ -174,7 +172,8 @@ _FENCE_OPEN_RE = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
 
 
 def _strip_decorations(content: str) -> str:
-    """Remove ``<think>...</think>`` blocks and triple-backtick fences (D-09 step 1).
+    """Remove ``<think>...</think>`` blocks and triple-backtick fences
+    (defensive-parser step 1).
 
     Returns the cleaned content with leading/trailing whitespace stripped.
     Idempotent. Handles unbalanced ``<think>`` (none stripped, brace-recovery
@@ -199,12 +198,11 @@ def _extract_first_json_object(text: str) -> str | None:
     """Return the first balanced ``{...}`` substring in ``text``, or ``None``.
 
     Brace-balanced state machine (NOT a regex -- a regex cannot match nested
-    braces, see PITFALLS Pitfall 5). Tracks ``in_string`` and ``escape`` so
-    that braces appearing inside JSON string literals do NOT affect the depth
-    counter.
+    braces). Tracks ``in_string`` and ``escape`` so that braces appearing
+    inside JSON string literals do NOT affect the depth counter.
 
     Returns ``None`` when the input contains no ``{`` or when braces are
-    unbalanced (the parser fallback in D-09 step 4 handles that case).
+    unbalanced (the parser fallback at step 4 handles that case).
     """
     start = text.find("{")
     if start == -1:
@@ -237,8 +235,8 @@ def _validate_with_raw(payload: str, raw_response: str) -> JudgeResult:
     """Parse a JSON string, inject ``raw_response``, then ``model_validate``.
 
     The Ollama model emits the 3-field schema (``passed``, ``score``,
-    ``reasoning``) per the system prompt. ``raw_response`` is injected by the
-    parser so tests can see the verbatim model output (DOCS-03). Raises
+    ``reasoning``) per the system prompt. ``raw_response`` is injected by
+    the parser so tests can see the verbatim model output. Raises
     ``json.JSONDecodeError`` (a ``ValueError`` subclass) or
     ``pydantic.ValidationError`` on failure -- callers catch the union.
     """
@@ -252,17 +250,18 @@ def _validate_with_raw(payload: str, raw_response: str) -> JudgeResult:
 
 
 def _parse_judge_response(content: str) -> JudgeResult:
-    """Defensive four-step parser per CONTEXT D-09; preserves raw_response (DOCS-03).
+    """Defensive four-step parser; preserves ``raw_response`` on every branch.
 
-    Step 1: Strip <think>...</think> blocks and triple-backtick fences.
-    Step 2: ``json.loads`` + inject raw_response + ``JudgeResult.model_validate``.
-        The Ollama model emits ``{passed, score, reasoning}`` per the system
-        prompt; the parser injects ``raw_response=<full original content>`` so
-        tests see what the model actually emitted, including any stripped
-        reasoning.
-    Step 3: On (ValidationError, ValueError, json.JSONDecodeError),
-        brace-extract the first balanced JSON object from the stripped
-        content and re-attempt the same validate-with-raw flow.
+    Step 1: Strip ``<think>...</think>`` blocks and triple-backtick fences.
+    Step 2: ``json.loads`` + inject ``raw_response`` +
+        ``JudgeResult.model_validate``. The Ollama model emits
+        ``{passed, score, reasoning}`` per the system prompt; the parser
+        injects ``raw_response=<full original content>`` so tests see what
+        the model actually emitted, including any stripped reasoning.
+    Step 3: On (``ValidationError``, ``ValueError``,
+        ``json.JSONDecodeError``), brace-extract the first balanced JSON
+        object from the stripped content and re-attempt the same
+        validate-with-raw flow.
     Step 4: Fallback ``JudgeResult(passed=False, score=1,
         reasoning="malformed judge response", raw_response=<original>)``.
 
@@ -293,7 +292,7 @@ def _parse_judge_response(content: str) -> JudgeResult:
             "ollama judge parse step 3: no balanced JSON object found in stripped content"
         )
 
-    # Step 4: fallback. raw_response preserved verbatim per DOCS-03.
+    # Step 4: fallback. raw_response preserved verbatim.
     _log.debug("ollama judge parse step 4: returning malformed fallback")
     return JudgeResult(
         passed=False,
@@ -307,9 +306,8 @@ class OllamaJudge:
     """Async judge over the Ollama ``/api/chat`` endpoint.
 
     See module docstring for the full contract. Constructor signature
-    mirrors the Phase 2 ``McpTestClient(command, args, timeout_seconds)``
-    pattern (CONTEXT Discretion). Phase 4's session-scoped ``judge``
-    fixture wires::
+    mirrors the ``McpTestClient(command, args, timeout_seconds)`` pattern.
+    The session-scoped ``judge`` fixture wires::
 
         OllamaJudge(cfg.ollama.base_url, cfg.ollama.model,
                      cfg.ollama.timeout_seconds)
@@ -323,10 +321,10 @@ class OllamaJudge:
         self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self) -> "OllamaJudge":
-        # Phase-2 mirror: AsyncExitStack ownership so the client is disposed
-        # deterministically even if the body of the `async with` raises. The
-        # OPS-02 falsifier is the literal `httpx.Timeout(self._timeout_seconds,
-        # connect=10.0)` -- DO NOT use httpx defaults (5s connect / inf others).
+        # AsyncExitStack ownership so the client is disposed deterministically
+        # even if the body of the `async with` raises. The locked timeout is
+        # `httpx.Timeout(self._timeout_seconds, connect=10.0)` -- DO NOT use
+        # httpx defaults (5s connect / inf others).
         stack = AsyncExitStack()
         try:
             client = await stack.enter_async_context(
@@ -343,8 +341,8 @@ class OllamaJudge:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
-        # Reverse-order unwind in the SAME task that did __aenter__ -- copies
-        # the McpTestClient pattern verbatim.
+        # Reverse-order unwind in the SAME task that did __aenter__ --
+        # mirrors the McpTestClient AsyncExitStack pattern verbatim.
         stack = self._stack
         self._stack = None
         self._client = None
@@ -357,16 +355,16 @@ class OllamaJudge:
         subject: str,
         context: dict | None = None,
     ) -> JudgeResult:
-        """Send one ``/api/chat`` request and return the parsed JudgeResult.
+        """Send one ``/api/chat`` request and return the parsed ``JudgeResult``.
 
         Transport-level failures (HTTP non-2xx via ``raise_for_status``,
-        ``httpx.TimeoutException``, ``httpx.ConnectError``) PROPAGATE per
-        D-10. They do NOT collapse to a JudgeResult -- Phase 4's per-test
+        ``httpx.TimeoutException``, ``httpx.ConnectError``) PROPAGATE.
+        They do NOT collapse to a ``JudgeResult`` -- the per-test
         ``pytest.fail(...)`` formatting decides how the exception surfaces.
 
         Malformed-content failures (valid 2xx response but unparseable
-        body) fall through the four-step defensive parser (D-09) and return
-        a ``passed=False`` JudgeResult with ``raw_response`` preserved.
+        body) fall through the four-step defensive parser and return a
+        ``passed=False`` ``JudgeResult`` with ``raw_response`` preserved.
         """
         if self._client is None:
             raise RuntimeError(
@@ -384,7 +382,8 @@ class OllamaJudge:
         )
 
         response = await self._client.post("/api/chat", json=body)
-        response.raise_for_status()  # D-10: 4xx/5xx propagates as httpx.HTTPStatusError
+        # 4xx/5xx propagates as httpx.HTTPStatusError (transport-level error).
+        response.raise_for_status()
         try:
             data = response.json()
         except ValueError:
@@ -393,7 +392,7 @@ class OllamaJudge:
             # /v1/chat/completions, etc.) -- same docstring contract as a
             # malformed envelope: route through the four-step parser so
             # raw_response is preserved verbatim and operators see the actual
-            # body in the diagnostic surface (WR-05).
+            # body in the diagnostic surface.
             return _parse_judge_response(response.text)
 
         # Defensively extract content. A 2xx envelope can still be malformed
@@ -401,7 +400,7 @@ class OllamaJudge:
         # Route any envelope-shape failure through the same four-step parser
         # using the raw response text as raw_response, honoring the docstring
         # contract that malformed 2xx bodies fall through to the fallback path
-        # rather than raising KeyError/TypeError. Transport errors (D-10) are
+        # rather than raising KeyError/TypeError. Transport errors are
         # already handled above by raise_for_status().
         message = data.get("message") if isinstance(data, dict) else None
         if not isinstance(message, dict):
