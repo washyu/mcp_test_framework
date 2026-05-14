@@ -320,6 +320,7 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
 
 - [`docs/mcp_test_framework_mvp_spec.md`](docs/mcp_test_framework_mvp_spec.md) -- authoritative design spec
 - [`docs/EXTENDING.md`](docs/EXTENDING.md) -- add a new rubric, swap the judge backend
+- [`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md) -- author SDET scenarios: codegen regen, module-scope fixtures, cross-file ordering, conditional skip recipe.
 - [`.planning/PROJECT.md`](.planning/PROJECT.md) -- project mission, constraints, key decisions
 - [`docs/EXTENDING.md#add-a-new-mcp-tool-target`](docs/EXTENDING.md#add-a-new-mcp-tool-target) -- add a new MCP tool target via per-tool config (no code changes)
 - [`config.example.yaml`](config.example.yaml) — starter template with placeholder names and three pattern variations.
