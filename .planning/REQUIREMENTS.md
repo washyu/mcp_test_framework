@@ -51,6 +51,15 @@ Replace manual Claude-client verification of homelab-mcp with automated end-to-e
 | CODEGEN-COVERAGE-01 | Mock-fixture-driven unit tests verify the codegen pipeline produces correctly-shaped `<ToolName>Params` / `<ToolName>Response` / `_REGISTRY` artifacts for a synthetic tool list (no live MCP, CI-safe).                          |
 | REQ-SCRUB-01        | The two prior Phase 20 preflight requirements (`requires_homelab(...)` marker factory + reachability checks) are removed from REQUIREMENTS.md; "hello-world MCP server for CI-runnable end-to-end coverage" is recorded as a deferred item for a future v1.x phase. |
 
+### RELOC — SDET generated output relocation (Phase 21.1, INSERTED 2026-05-14)
+
+| ID        | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RELOC-01  | The output root for generated SDET classes is read from `config.yaml` (`sdet.generated_root`). The field is **required** on the v2 schema — no default, no env-var override, no CLI flag override. Missing or empty value triggers a SAFE-03-style operator-tone error via the existing `_emit_operator_error_for_validation` mapper (Pydantic "missing required field" branch). `config.example.yaml` and `examples/homelab-mcp.yaml` include the new key.                                                            |
+| RELOC-02  | The `gen-sdet-classes` CLI command writes to `cfg.sdet.generated_root / <slug>/` (3 sites: `out_root` derivation at cli.py:995, docstring at cli.py:932, error detail at cli.py:981, success echo at cli.py:1018). The `mcp_session` pytest fixture loads the generated `__init__.py` via `importlib.util.spec_from_file_location` with `submodule_search_locations` against `cfg.sdet.generated_root / <slug> / __init__.py` — no `sys.path` mutation, no `importlib.import_module` against a package path. The `_tool_factory.py:21` docstring no longer references the old hardcoded module path. |
+| RELOC-03  | Tests that previously imported `mcp_test_framework.sdet.generated.homelab_mcp` are reworked off that path. `tests/framework/unit/test_sdet_fixtures.py` uses a synthetic-mock fixture pattern lifted from `test_codegen_integration_mock.py` (writes a slug dir into `tmp_path`, drives `mcp_session` with a fake client). `tests/framework/unit/test_gen_sdet_classes_cli.py` extends its `_write_config` helper to set `sdet.generated_root` to a `tmp_path` location. `tests/sdet/test_proxmox_vm_lifecycle_readme_sample.py` switches to live regen against the configured `sdet.generated_root` (gated `@pytest.mark.live_homelab`). `tests/framework/unit/test_codegen_integration_mock.py` is unaffected (D-10). |
+| RELOC-04  | `src/mcp_test_framework/sdet/generated/` is deleted from the working tree (56 `homelab_mcp/*.py` files + `homelab_mcp/__init__.py` + the top-level `generated/__init__.py` namespace marker). `pyproject.toml` `[tool.pyright]` `include` and `strict` lists drop the now-extinct subtree. `docs/SDET-AUTHORING.md` (7 hardcoded `sdet/generated` path references) and `README.md:293` (SDET sample import) are rewritten to reference the new config-driven path and recommend the on-disk convention `tests/sdet/_generated/`. |
+
 ### UI — Domain rendering for SDET runs
 
 | ID    | Description                                                                                                                                                                                                                                                                                                       |
@@ -84,6 +93,8 @@ The milestone is **shippable** when ALL of these are true:
 
 7. Docs updated: `docs/SDET-AUTHORING.md` exists; README has a scenario sample section; CLAUDE.md notes the dual operator+SDET persona.
 
+8. **Phase 21.1 added 2026-05-14:** generated SDET classes no longer live under `src/mcp_test_framework/sdet/generated/`. Output path is operator-controlled via `sdet.generated_root` in `config.yaml`; the framework reads from the configured path and never writes inside its own `src/` tree. SEED-022 (framework primitives only; no SUT code in `src/`) is enforced structurally.
+
 ## Out of Scope (explicit, not silent)
 
 - **Library mode / pytest plugin delivery** (SEED-015) — deferred to v1.4. The SDET surface stabilizes on the CLI model first.
@@ -94,6 +105,8 @@ The milestone is **shippable** when ALL of these are true:
 - **`judges_only: true` per-tool config flag** — flagged as a useful Phase-17-area discussion topic but not committed. May land if a clean implementation surfaces during planning; otherwise carries to v1.4.
 - **Multi-server SDET scenarios** — one MCP server per run remains the contract. Multi-server is post-v2.
 - **Random / adversarial parameter fuzzing** — anti-vision per PROJECT.md. Agent-realistic-mistake fuzz lives in SEED-003 (v1.5).
+- **SEED-023 SDET→test-code rename** — deferred to v1.4. Phase 21.1 keeps the `sdet` namespace name; only the `generated/` subtree relocates.
+- **CLI `--out` override and `MCPTF_GENERATED_ROOT` env var for `sdet.generated_root`** — explicitly rejected at Phase 21.1 D-02. One source of truth.
 
 ## Open Design Questions for Phase Planning
 
@@ -101,6 +114,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 
 - **CLI surface for `gen-sdet-classes`:** subcommand or `mcp-test-framework codegen sdet`? Decide during the codegen phase.
 - **Generated file location:** `src/mcp_test_framework/sdet/generated/<server_slug>/` (in-tree, importable) vs `tests/sdet/generated/` (test-tree, gitignored). Probably in-tree because it's importable; revisit.
+  - **Resolved Phase 21.1 (RELOC-01..04):** location is operator-controlled via `sdet.generated_root` config; framework recommends `tests/sdet/_generated/` in docs but does not enforce.
 - **Server-slug derivation:** server name from config? hostname? a config-set slug? Needs to be stable across regens.
 - **`requires_homelab` location:** module-level export vs `mcp_test_framework.sdet.markers.requires_homelab`? Decide during preflight phase.
 - **`tool("name")` builder vs `Tool.create_vm.call(...)` attribute access:** ergonomics call. Stringly-typed access is simpler; attribute access gives IDE completion on tool names. Probably ship both, but lock the recommended idiom.
@@ -127,13 +141,17 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | CLEANUP-DOGFOOD-01  | Phase 20 | Pending  |
 | CODEGEN-COVERAGE-01 | Phase 20 | Pending  |
 | REQ-SCRUB-01        | Phase 20 | Pending  |
+| RELOC-01       | Phase 21.1 | Pending  |
+| RELOC-02       | Phase 21.1 | Pending  |
+| RELOC-03       | Phase 21.1 | Pending  |
+| RELOC-04       | Phase 21.1 | Pending  |
 | UI-01          | Phase 19 | Pending  |
 | UI-02          | Phase 18 | Complete |
 | DOC-SDET-01    | Phase 21 | Complete |
 | DOC-SDET-02    | Phase 21 | Complete |
 | DOC-SDET-03    | Phase 21 | Pending  |
 
-**Total: 22 requirements mapped across 5 phases (17–21). Coverage: 22/22 (100%).**
+**Total: 26 requirements mapped across 6 phases (17–21.1). Coverage: 26/26 (100%).**
 
 ### Phase coverage summary
 
@@ -144,3 +162,4 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | 19    | STATE-01, STATE-02, STATE-03, STATE-04, UI-01                               | 5     |
 | 20    | CLEANUP-DOGFOOD-01, CODEGEN-COVERAGE-01, REQ-SCRUB-01                       | 3     |
 | 21    | DOC-SDET-01, DOC-SDET-02, DOC-SDET-03                                       | 3     |
+| 21.1  | RELOC-01, RELOC-02, RELOC-03, RELOC-04                                      | 4     |
