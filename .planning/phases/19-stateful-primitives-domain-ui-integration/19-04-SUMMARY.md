@@ -32,10 +32,12 @@ decisions:
   - "First-cut CPU-bump action shape: action={'type': 'config', 'cores': 2} -- live smoke test deferred to Task 2 checkpoint"
   - "type: ignore[arg-type] suppressions on vmid=data.get('vmid') calls -- expected from untyped response .data dict"
   - "Generated files (src/.../generated/homelab_mcp/) copied to worktree as they are untracked in main repo"
+  - "Task 2 resolved as (c1) d02-impossible-defer (2026-05-13): live manage_proxmox_vm.action is type:string enum [start/stop/shutdown/reboot/reset/suspend/resume]; no CPU-cores modify path exists in homelab-mcp 1.7.0 -- D-02 is unsatisfiable, deferred to Phase 20"
+  - "Live run also surfaced framework-level None-serialization bug: tool().call() does model_dump(mode='json') without exclude_none=True, so codegen Optional-string defaults (cdrom/iso) hit the wire as null and fail homelab-mcp type:string validators -- deferred to Phase 20 as a sub-plan"
 metrics:
-  duration: "~20min (Task 1)"
-  completed: "2026-05-14"
-  tasks_completed: 1
+  duration: "~20min (Task 1) + ~30min Task 2 live-run + checkpoint resolution"
+  completed: "2026-05-13"
+  tasks_completed: 2
   files_modified: 2
 ---
 
@@ -127,22 +129,56 @@ All 38 acceptance gates passed.
 
 Pre-suppressions, there were 3 expected errors from `data.get("vmid")` returning `Any | None` where `int` is required (in `_CpuBumpManageVmParams(vmid=vmid)`, `GetProxmoxVmStatusParams(vmid=vmid)`, `DeleteProxmoxVmParams(vmid=vmid)`). These are the expected `typing.Any` propagation errors from untyped `.data` dict access on `ToolResponse` subclasses. Suppressed with `# type: ignore[arg-type]` — no semantic impact.
 
-## Task 2 Checkpoint: AWAITING OPERATOR DECISION
+## Task 2 Checkpoint: RESOLVED — option (c1) d02-impossible-defer
 
-**Task 2 is a blocking `checkpoint:decision` gate.** The plan requires explicit selection of one of:
+**Operator decision (2026-05-13):** live verification deferred to Phase 20 after the live run surfaced two distinct, real findings. Structural deliverables (renderer + scenario discovery + recipe + config knob) all verified end-to-end via the live run output.
 
-- **(a) live-verified** — operator runs `uv run mcp-test-framework run --sdet` against Proxmox-reachable environment and pastes the rendered output block from CONTEXT.md lines 178-183
-- **(b) defer-phase-20** — operator confirms no Proxmox available; plan completes with collectible-but-not-live status
-- **(c1) d02-impossible-defer** — Task 1's smoke-test of `action={"type": "config", "cores": 2}` was rejected by the live manage_proxmox_vm schema; defer to Phase 20
-- **(c2) d02-impossible-substitute** — executor attaches live inputSchema; user locks a substitute attribute in CONTEXT.md addendum BEFORE test file is updated
+### Live run result (against operator's main Proxmox cluster)
 
-The expected live output block (CONTEXT.md lines 178-183) for option (a) is:
 ```
+========================================
+MCP Test Framework (SDET)
+========================================
+MCP server:  uvx homelab-mcp
+Discovered:  2 scenarios
+Running:      2  (basic_call, proxmox_vm_lifecycle)
+Skipping:     0  (use --explain to list)
+Judges:      (none — SDET scope)
+...
+basic_call
+  ✓ basic_tool_round_trip
+  ✓ invalid_params_caught_before_wire
 proxmox_vm_lifecycle
-  ✓ create_returns_pending_vm
-  ✓ modify_accepts_cpu_increase
-  ✓ delete_returns_ok
+  ✗ create_returns_pending_vm — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
+  ✗ delete_returns_ok — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
+  ✗ modify_accepts_cpu_increase — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
+
+Result: 2 PASS / 3 FAIL / 58 SKIP  in 6.3s
 ```
+
+### What the live run verified (structural deliverables — UI-01 + STATE-03/04)
+
+- ✓ Scenario discovery: `Discovered: 2 scenarios` includes `proxmox_vm_lifecycle`.
+- ✓ Renderer integration (UI-01, Plan 19-03): the `proxmox_vm_lifecycle` block renders as a bare group header with three nested per-test rows (`✗ create_returns_pending_vm — …`), matching the CONTEXT.md `<specifics>` lines 178-183 shape exactly (just with `✗` + error-tail in place of `✓`).
+- ✓ Module-scope fixture wiring (STATE-03): module-scope fixture setup-failure correctly propagates to all three consumers as `failed on setup with …` — fixture is genuinely module-scoped.
+- ✓ Config knob (Plan 19-02): `dogfood_vmid_range` is read at fixture-setup time without error.
+- ✓ Black-box rule preserved: failures are surfaced as `ToolCallError` from the SDET surface, never from `homelab-mcp` source imports.
+
+### What the live run surfaced (deferred to Phase 20)
+
+**Finding 1 — D-02 CPU-cores bump is impossible via `manage_proxmox_vm`.** Live `list-tools` JSON confirms `manage_proxmox_vm.action` is `type: string` with enum `[start, stop, shutdown, reboot, reset, suspend, resume]` — it is a **lifecycle action tool**, not a config-modify tool. There is no CPU-cores update path through this tool. The plan's first-cut `action={"type":"config","cores":2}` was wrong by construction. CPU bump would require either (a) a different tool that does not exist in homelab-mcp 1.7.0's surface, or (b) homelab-mcp adding a config-modify tool. Until then, the modify-step test is fundamentally unsatisfiable — substitution to a different attribute is explicitly prohibited by T-19-04-07.
+
+**Finding 2 — Framework-level None-serialization bug (orthogonal to D-02).** `tool().call()` serializes via `params.model_dump(mode="json")` without `exclude_none=True`. Codegen produces `cdrom: str | None = None` and `iso: str | None = None` for `create_proxmox_vm` (and similar Optional-string fields on other tools). These serialize to wire JSON `null`, which homelab-mcp rejects under `type: string` (not `["string","null"]`) — producing the `Input validation error: None is not of type 'string'` observed on all three create/modify/delete attempts.
+
+### Phase 20 (PREFLIGHT) handoff for live verification
+
+When Phase 20 ships, the following items must close before live `proxmox_vm_lifecycle` can pass:
+
+1. **`requires_homelab(proxmox=True)`** — already planned in Phase 20 scope. Cleanly SKIPs the scenario when `MCPTF_DOGFOOD_PROXMOX_HOST` is unset; replaces today's fail-loud `RuntimeError`.
+2. **None-serialization fix** — choice between (a) framework-level `exclude_none=True` in `tool().call()` serialization, or (b) codegen change so non-nullable optional string fields don't default to `None`. Both have trade-offs; pick one as a Phase 20 sub-plan.
+3. **D-02 substitution decision** — either drop the modify step from the scenario entirely (lifecycle-only dogfood is still valuable for STATE-01/03/04), or wait for homelab-mcp to add a config-modify tool. T-19-04-07 forbids silently substituting a different attribute; explicit CONTEXT.md addendum required if D-02 is removed.
+
+The Phase 20 plan should reference this SUMMARY directly for the inputSchema attached above and the verbatim live-run output.
 
 ## Deviations from Plan
 
