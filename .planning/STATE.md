@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 20 context gathered (reframed)
-last_updated: "2026-05-14T04:44:22.431Z"
-last_activity: 2026-05-14 -- Phase 20 planning complete
+stopped_at: Phase 20 planned (reframed scope: cleanup + mock-fixture codegen tests)
+last_updated: "2026-05-14T04:51:05.856Z"
+last_activity: 2026-05-13 -- Phase 20 reframed; PLAN files written for cleanup + mock-fixture codegen coverage; src/ untouched
 progress:
   total_phases: 6
   completed_phases: 3
@@ -30,8 +30,8 @@ Plan: 4 of 4 completed
 Status: Ready to execute
         Renderer + scenario discovery + module-scope fixture + dogfood_vmid_range knob all verified live against operator's main Proxmox cluster.
         Two findings deferred: (1) D-02 CPU-cores bump impossible via manage_proxmox_vm (lifecycle-action tool only) — defer to Phase 20 substitution decision; (2) homelab-mcp UPSTREAM inputSchema bug (optional fields declared type:string without 'null' but defaulted to null) — file upstream, NOT a framework fix (SEED-022 principle: framework primitives, SDET owns safety; masking it would prevent edge-case testing).
-Next: Phase 20 (PREFLIGHT) — `requires_homelab` marker; record upstream homelab-mcp bug as deferred-items entry.
-Last activity: 2026-05-14 -- Phase 20 planning complete
+Next: Phase 20 (scope correction) — execute the four PLAN files written 2026-05-13 (REQUIREMENTS scrub, ROADMAP rewrite, STATE update [this plan], tests/sdet cleanup, mock-fixture codegen tests).
+Last activity: 2026-05-13 -- Phase 20 reframed; PLAN files written for cleanup + mock-fixture codegen coverage; src/ untouched
 
 ## Performance Metrics
 
@@ -77,6 +77,14 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **5 phases for 21 reqs.** Comparable density to v1.0 (5 reqs/phase) and v1.2 (6 reqs/phase). v1.3 = 4.2 reqs/phase, slightly lower density because Phase 20 is intentionally small (2 reqs) and Phase 21 is a 3-req doc capstone. No phase is a "feature half".
 - **Granularity = coarse (per config.json).** Each phase delivers a coherent SDET- or operator-perceivable capability; no phase is splittable without losing coherence. Phase 17 (codegen) is the technically heaviest single chunk because the codegen library choice + Pydantic-from-JSON-Schema + idempotent regen + ToolResponse uniformity are all interlocking.
 - **Carry-forward debt:** Phase 13 + 14 live-stack UATs from v1.2 will close opportunistically during v1.3 — the SDET runs against live homelab-mcp + Proxmox + Ollama are the same live-stack exercise those UATs were waiting on. Phase 16 D-11 `--debug` per-judge breakdown remains deferred to v1.5 (cohort with SEED-003); v1.3 does NOT pick it up.
+
+**v1.3 mid-flight reframe (Phase 20 discuss-phase, 2026-05-13):**
+
+- **Phase 20 pivots from PREFLIGHT to scope correction.** Original Phase 20 goal ("`requires_homelab(...)` marker factory") was rejected during discuss-phase as a violation of the framework-primitives principle (SEED-022) — it bakes SUT-specific subsystem knowledge (`proxmox=`, `ollama=`) into the framework's API surface. The framework wraps tool calls (params/body/results) and nothing else; reachability checks belong to the SDET's test code via stock `@pytest.mark.skipif(not _probe(), reason=...)`.
+- **Three Phase 20 deliverables replace the killed work.** (1) Delete `tests/sdet/test_proxmox_vm_lifecycle.py` outright — the Phase 19 dogfood is SUT-aware and can't run in CI without operator-specific Proxmox creds; the architectural patterns survive in Phase 19's CONTEXT/SUMMARY artifacts for Phase 21 docs to lift. (2) Drop PREFLIGHT-01/02 from REQUIREMENTS.md; replace with CLEANUP-DOGFOOD-01 + CODEGEN-COVERAGE-01 + REQ-SCRUB-01 reflecting the actual deliverables. (3) Add mock-fixture-driven codegen unit tests under `tests/framework/unit/` that feed a synthetic tool list through the codegen pipeline and assert the generated Params/Response/registry artifacts have the correct shape — pure-data, no live MCP, CI-safe.
+- **Zero `src/` changes.** The reframe's load-bearing claim is that if the framework had to grow new code to satisfy `requires_homelab`, the requirement was wrong — not the implementation. Phase 20 ships only test-suite + planning-doc edits.
+- **Hello-world MCP server for CI deferred.** A tiny in-tree MCP server with hand-crafted tools (covers required/optional params, scalars/arrays, declared/undeclared outputSchema) would let CI run a real end-to-end "every discovered tool gets wrapped" pass. User explicitly said "out of scope for now" but flagged the need — captured as a deferred item (see Deferred Items table).
+- **v1.3 REQ count goes 21 → 22 (not 19 as the user initially estimated).** PREFLIGHT-01/02 removed (−2), but three new IDs added (+3). Phase coverage summary table reflects the net change.
 
 **v1.2 plan-checks (preserved from v1.2 milestone):**
 
@@ -143,9 +151,11 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 | live-uat | Phase 14 live-stack UAT (test_runner_live_smoke.py + visual domain UI checks) | Open — closes opportunistically during v1.3 | v1.2 close (2026-05-12) |
 | docs-polish | EXTENDING.md WR-01: line-range citation `_isolation.py:33-36` should be `36-39` (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
 | docs-polish | EXTENDING.md IN-01: "five entries" framing for `_PASSTHROUGH_ALLOWLIST` (4-tuple + separate `_MCP_PREFIX`) (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
+| seed-defer | Hello-world MCP server for CI/CD coverage — tiny in-tree MCP with hand-crafted tools (required/optional params, scalars/arrays, declared/undeclared outputSchema) lets CI run a real end-to-end "every discovered tool gets wrapped" pass without operator infrastructure. | Open — future v1.x phase | Phase 20 reframe (2026-05-13) |
+| deferred-resolved | Phase 19 D-02 (CPU-cores bump impossible via `manage_proxmox_vm` lifecycle-action-only tool) — defer to Phase 20 substitution decision | Resolved-by-deletion (Phase 20) — the dogfood file hosting the substitution was deleted in Phase 20 per D-04; no substitution needed | v1.3 Phase 19 close → resolved Phase 20 (2026-05-13) |
 
 ## Session Continuity
 
-Last session: 2026-05-14T04:22:07.116Z
-Stopped at: Phase 20 context gathered (reframed)
-Resume next: `/gsd-execute-phase 18` to pick up Plan 18-08 (framework self-tests / composition matrix)
+Last session: 2026-05-14T04:51:05.856Z
+Stopped at: Phase 20 planned (reframed scope)
+Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
