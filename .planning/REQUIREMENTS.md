@@ -141,7 +141,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | CLEANUP-DOGFOOD-01  | Phase 20 | Pending  |
 | CODEGEN-COVERAGE-01 | Phase 20 | Pending  |
 | REQ-SCRUB-01        | Phase 20 | Pending  |
-| RELOC-01       | Phase 21.1 | Pending  |
+| RELOC-01       | Phase 21.1 | Complete |
 | RELOC-02       | Phase 21.1 | Pending  |
 | RELOC-03       | Phase 21.1 | Pending  |
 | RELOC-04       | Phase 21.1 | Pending  |

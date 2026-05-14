@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 21.1 context gathered
-last_updated: "2026-05-14T18:51:15.175Z"
-last_activity: 2026-05-14 -- Phase 21.1 planning complete
+stopped_at: Phase 21.1 Plan 01 complete
+last_updated: "2026-05-14T19:21:18.684Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 31
-  completed_plans: 27
-  percent: 87
+  completed_plans: 28
+  percent: 90
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 21 — SDET Authoring Docs README Parity
+**Current focus:** Phase 21.1 — SDET generated output relocation
 
 ## Current Position
 
-Phase: 21 (SDET Authoring Docs README Parity) — EXECUTION COMPLETE (pending gsd-verifier)
-Plan: 4 of 4 — all complete
+Phase: 21.1 (SDET generated output relocation) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
         All 5 plans landed: 20-01 (REQ scrub), 20-02 (ROADMAP rewrite), 20-03 (STATE update), 20-04 (tests/sdet cleanup), 20-05 (mock-fixture codegen tests).
         Plan 20-05 added 10 CI-safe mock-fixture codegen integration tests under tests/framework/unit/test_codegen_integration_mock.py (319 lines); all 10 PASS. Satisfies CODEGEN-COVERAGE-01.
         Two findings still tracked from Phase 19: (1) D-02 CPU-cores bump impossible — RESOLVED-BY-DELETION via 20-04 (Proxmox dogfood file deleted); (2) homelab-mcp UPSTREAM inputSchema bug — still OPEN as upstream fix, not a framework concern.
 Next: Phase verifier pass on Phase 20, then v1.3 close work (Phase 21 docs + Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
-Last activity: 2026-05-14 -- Phase 21.1 planning complete
+Last activity: 2026-05-14
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Last activity: 2026-05-14 -- Phase 21.1 planning complete
 | Phase 21 P02 | ~25min | 4 tasks (Task 2 re-scoped) | 1 modified, 1 deleted | embedded FAIL output as README sample (operator decision at human-verify checkpoint) |
 | Phase 21 P03 | ~2min | 1 task | 1 file | dual-persona note appended to CLAUDE.md '## What This Project Is' |
 | Phase 21 P04 | ~5min | 1 task | 0 files modified | verification matrix: 16/16 checks PASS (B4 deviation documented; re-scope approved) |
+| Phase 21.1 P01 | 80min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 18]: Plan 18-08 framework self-tests: Task 5 (test_tool_factory.py update) was a documented no-op -- Plan 18-02 already deleted the NotImplementedError test, added test_call_raises_runtime_error_when_no_active_client, and extended _reset_module_state to save/restore _ACTIVE_CLIENT. All Task 5 acceptance criteria pre-satisfied by commit 0cec347.
 - [Phase 18]: Plan 18-08: test_sdet_renderer.py D-11 round-trip pinning uses xml.sax.saxutils.quoteattr for the mcptf_error_raw property value so the model_dump_json(indent=2) string survives XML attribute serialization; json.loads on the recovered string verifies CallToolResult schema keys (isError, content, structuredContent) survived the full pipeline.
 - [Phase 18]: Plan 18-08: indented-JSON grep gate uses 4-space prefix (not 2) because model_dump_json(indent=2) already adds its own 2-space indent and render_debug_appendix adds another 2-space prefix on every dump line -- combined left margin is 4 spaces before inner JSON keys. Test-author error caught during first run; fix is test-side only.
+- [Phase ?]: Phase 21.1 Plan 01: SdetConfig required-no-default on Config; no schema version bump
 
 ### Roadmap Evolution
 
@@ -165,6 +167,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-14T17:30:36.263Z
-Stopped at: Phase 21.1 context gathered
+Last session: 2026-05-14T19:20:54.914Z
+Stopped at: Phase 21.1 Plan 01 complete
 Resume next: `/gsd-execute-phase 20` to run the reframed cleanup + mock-fixture codegen plans
