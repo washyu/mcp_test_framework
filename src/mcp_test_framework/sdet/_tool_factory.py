@@ -17,11 +17,12 @@ Phase 18 SDET-03 (this module's current state):
     fixture body (sibling to `_ACTIVE_SLUG`).
 
 The module-level _REGISTRIES + _ACTIVE_SLUG + _ACTIVE_CLIENT slots are
-populated by Phase 18's ``mcp_session`` fixture: the fixture imports
-``mcp_test_framework.sdet.generated.<slug>``, reads its ``_REGISTRY`` attr,
-inserts it into ``_REGISTRIES[slug]``, sets ``_ACTIVE_SLUG = slug`` and
-``_ACTIVE_CLIENT = <client>``, then yields. On teardown the fixture restores
-the previous state.
+populated by Phase 18's ``mcp_session`` fixture: the fixture loads the
+generated ``__init__.py`` from the operator-configured ``sdet.generated_root``
+(Phase 21.1 RELOC-02) via ``importlib.util.spec_from_file_location``, reads
+its ``_REGISTRY`` attr, inserts it into ``_REGISTRIES[slug]``, sets
+``_ACTIVE_SLUG = slug`` and ``_ACTIVE_CLIENT = <client>``, then yields. On
+teardown the fixture restores the previous state.
 
 Why the seam was shipped in Phase 17 (and not rolled into Phase 18):
   - The generated ``generated/<slug>/__init__.py`` writes ``_REGISTRY`` entries

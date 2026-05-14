@@ -74,12 +74,15 @@ select = ["E", "F", "I", "TID"]
 # 17-RESEARCH.md). When/if the whole codebase is brought under pyright,
 # expand `include` and `strict`.
 [tool.pyright]
+# Phase 21.1 RELOC-04: `src/mcp_test_framework/sdet/generated` removed --
+# generated SDET classes now live at the operator-configured
+# `sdet.generated_root` (typically outside `src/`). Type-checking generated
+# output is the operator's responsibility (point their own pyright config
+# at the configured path if they want strict coverage).
 include = [
-    "src/mcp_test_framework/sdet/generated",
     "src/mcp_test_framework/sdet/response.py",
 ]
 strict = [
-    "src/mcp_test_framework/sdet/generated",
     "src/mcp_test_framework/sdet/response.py",
 ]
 reportMissingTypeStubs = false
