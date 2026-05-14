@@ -186,3 +186,13 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 22 to break down)
+
+### Phase 23: Test suite debt cleanup
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 23 to break down)

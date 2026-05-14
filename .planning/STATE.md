@@ -107,6 +107,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 ### Roadmap Evolution
 
 - 2026-05-13: Phase 22 added — scrub requirement-ID leaks from `src/` (5 user-visible CLI docstrings + 58 internal references). Surfaced during Phase 17 live UAT when `mcp-test-framework --help` exposed `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style tags. Source-code analog of the v1.2 doc scrub. v1.3 milestone range extended from Phases 17–21 to Phases 17–22.
+- 2026-05-13: Phase 23 added — test suite debt cleanup. Surfaced during Phase 20 UAT: `uv run pytest tests/framework/` returns 11 failed + 1 error, all pre-existing at baseline `cfb04f2`. Four categories: (1) Config schema v1→v2 mismatch — 4 tests in `test_tool_config.py`/`test_homelab_config.py` still expect `version=1`; (2) `parents[2]` path resolution broken after Phase 15-01 folder split (`2e74967`) — 5 tests in `test_cli_errors.py`/`test_migration_doc.py` resolve repo root to `tests/`; (3) missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc; (4) README line 104 bare `mcp-test-framework run --explain` doc drift; plus 1 environmental ERROR (`homelab-mcp` not on PATH). Gate before v1.3 milestone close so debt does not carry forward. v1.3 milestone range extended from Phases 17–22 to Phases 17–23.
 
 ### Blockers/Concerns
 
