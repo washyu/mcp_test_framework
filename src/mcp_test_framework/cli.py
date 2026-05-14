@@ -1,28 +1,31 @@
-"""Typer CLI surface (`run` / `list-tools` / `version`).
+"""Typer CLI surface (`run` / `list-tools` / `version` / `gen-sdet-classes` / `config-init`).
 
-Implements the CLI from docs/mcp_test_framework_mvp_spec.md §CLI:
+Implements the CLI surface documented in docs/mcp_test_framework_mvp_spec.md §CLI:
 
-    run [--config PATH] [-- pytest args]   -- D-cli-flags-1..3
-    list-tools [--config PATH] [--json]    -- D-list-1..4 / D-teardown-1..3
-    version                                -- CLI-03
+    run [--config PATH] [-- pytest args]
+    list-tools [--config PATH] [--json]
+    version
+    gen-sdet-classes [--config PATH]
+    config-init [--output PATH] [--force] [--command CMD] [--arg ARG]...
 
-Per Phase 5 CONTEXT.md decisions (revised in Phase 13 D-01/D-03):
-- `_load_config(path)` helper resolves the YAML path
+Behavior contracts encoded in this module:
+
+- `_load_config(path)` resolves the YAML path
   (--config > MCPTF_CONFIG_FILE > ./config.yaml) and passes it as a
-  `yaml_file` kwarg to Config(). It also writes the resolved path to
-  MCPTF_CONFIG_FILE so the in-process pytest session's bare Config()
+  `yaml_file` kwarg to Config(). It also writes the resolved path back
+  to MCPTF_CONFIG_FILE so the in-process pytest session's bare Config()
   picks up the same source. ValidationError is mapped to typer.Exit via
   `_emit_operator_error_for_validation` -- it does NOT propagate.
-- `run` (Phase 14 D-01) invokes pytest as a child subprocess via the
-  Phase 14 runner module. _load_config is the pre-flight gate on BOTH
-  default and --raw paths (D-03/D-11). pytest's own SIGINT handling +
-  Phase 04.1's AsyncExitStack-owned mcp_client fixture cover OPS-03 for
-  the run path; the wrapper does not catch KeyboardInterrupt.
-- `list-tools` (Plan 03) body uses asyncio.Runner + AsyncExitStack-owned
-  McpTestClient (Phase 04.1 same-task lifecycle -- avoids the cancel-scope
-  teardown bug; Pitfall 1 mitigation reused).
-- `version` reads importlib.metadata.version("mvp-test-framework"), falls back
-  to the package __version__ constant on PackageNotFoundError.
+- `run` invokes pytest as a child subprocess via the runner module
+  (`mcp_test_framework._runner`). `_load_config` is the pre-flight gate
+  on BOTH default and --raw paths. pytest's own SIGINT handling plus
+  the AsyncExitStack-owned `mcp_client` fixture cover SIGINT for the
+  run path; the wrapper does not catch KeyboardInterrupt.
+- `list-tools` uses `asyncio.Runner` + AsyncExitStack-owned
+  `McpTestClient` so `__aexit__` runs in the same task that did
+  `__aenter__` -- this avoids the cancel-scope teardown bug.
+- `version` reads `importlib.metadata.version("mvp-test-framework")` and
+  falls back to the package `__version__` constant on PackageNotFoundError.
 
 Distribution-name vs package-name discrepancy:
     pyproject.toml [project] name = "mvp-test-framework"   <-- metadata.version() arg
@@ -51,14 +54,14 @@ from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
 from mcp_test_framework.models import SdetConfig
 
-# Phase 21.1 RELOC-01 (Rule 3 deviation, plan 21.1-01): the bootstrap
-# paths used by `list-tools` / `config-init` under ``allow_missing=True``
-# fall back to ``Config(sdet=_BOOTSTRAP_SDET_STUB)`` so the framework can
-# emit a starter scaffold from an unconfigured directory. The stub value
-# matches the convention emitted by ``_format_tools_yaml_scaffold`` so an
-# operator who saves the scaffold and re-runs gets a self-consistent path.
-# This stub is NEVER reachable from operator-supplied YAML: the path
-# remains required for any loaded config.
+# Bootstrap stub: the paths used by `list-tools` / `config-init` under
+# ``allow_missing=True`` fall back to ``Config(sdet=_BOOTSTRAP_SDET_STUB)``
+# so the framework can emit a starter scaffold from an unconfigured
+# directory. The stub value matches the convention emitted by
+# ``_format_tools_yaml_scaffold`` so an operator who saves the scaffold
+# and re-runs gets a self-consistent path. This stub is NEVER reachable
+# from operator-supplied YAML: ``sdet.generated_root`` remains a required
+# field for any loaded config.
 _BOOTSTRAP_SDET_STUB = SdetConfig(generated_root=Path("tests/sdet/_generated"))
 
 app = typer.Typer(
@@ -76,16 +79,15 @@ def _main() -> None:
     Without an explicit callback, Typer collapses an app with exactly one
     `@app.command()` into a single-command app -- `mcp-test-framework version`
     would then be parsed as an unexpected positional arg. This empty callback
-    keeps the subcommand surface stable across Plan 05-01 (one command),
-    Plan 05-02 (two commands), and Plan 05-03 (three commands).
+    keeps the subcommand surface stable as commands are added or removed.
     """
     return None
 
 
-# Re-exported from _runner.py (Phase 14 D-01); cli.py keeps the public symbol
-# so existing test imports `from mcp_test_framework.cli import _emit_operator_error`
-# continue working after the helper moved out of this module to avoid the
-# cli.py <-> _runner.py circular-import that Phase 14 would otherwise create.
+# Re-exported from _runner.py; cli.py keeps the public symbol so existing
+# test imports `from mcp_test_framework.cli import _emit_operator_error`
+# continue working. The helper lives in _runner.py to avoid a
+# cli.py <-> _runner.py circular import.
 from mcp_test_framework._runner import _emit_operator_error  # noqa: E402
 
 
@@ -95,24 +97,23 @@ def _emit_operator_error_for_validation(
     """Map pydantic.ValidationError -> operator-tone error per docs/ERROR-STYLE.md.
 
     Mapping rules:
-    - version mismatch (config version N not supported by this build, expected 1)
-        -> "config file uses an older format" framing (forward-compat with SAFE-06
-           reference message in docs/ERROR-STYLE.md, but Phase 12 still accepts v1
-           and rejects v2+; the message names the actual mismatch).
+    - version mismatch (config version N not supported by this build) ->
+        "config file uses an older format" framing. The current build
+        accepts version 2 and rejects v1; the message names the actual
+        mismatch and points at the migration walkthrough.
     - missing required field -> point at config.example.yaml
     - other validation errors -> generic detail block with the field path
 
     Function never returns; every branch calls _emit_operator_error which raises.
     """
     errors = exc.errors()
-    # Phase 21.1 RELOC-01 (Rule 1 deviation): with `sdet` now required on
-    # Config, a v1 YAML missing the `sdet` block produces TWO Pydantic
-    # errors -- the v1 version-mismatch AND the missing-sdet field. Order
-    # of `errors[0]` is implementation-defined and would silently shift the
-    # rendered SAFE-06 message to the SAFE-03 missing-required-field path,
-    # breaking the locked v1 migration error. Scan ALL errors and prefer
-    # the version-mismatch first so SAFE-06 stays load-bearing for v1
-    # operators upgrading.
+    # With `sdet` required on Config, a v1 YAML missing the `sdet` block
+    # produces TWO Pydantic errors -- the v1 version-mismatch AND the
+    # missing-sdet field. Order of `errors[0]` is implementation-defined
+    # and would silently shift the rendered v1-migration message to the
+    # missing-required-field path, breaking the locked migration error
+    # text. Scan ALL errors and prefer the version-mismatch first so the
+    # v1 -> v2 migration message stays load-bearing for operators upgrading.
     version_err = next(
         (
             e
@@ -128,9 +129,9 @@ def _emit_operator_error_for_validation(
     msg = primary.get("msg", "")
 
     def _scrub_pydantic_jargon(raw: str) -> str:
-        # Strip pydantic v2's "Value error, " / "Assertion failed, " prefixes
-        # and the v1 "value_error" type-string. ERROR-STYLE.md rule 1 forbids
-        # leaking pydantic-internal jargon into operator-facing output.
+        # Strip pydantic v2's "Value error, " / "Assertion failed, " prefixes.
+        # docs/ERROR-STYLE.md rule 1 forbids leaking pydantic-internal jargon
+        # into operator-facing output.
         cleaned = raw
         for prefix in ("Value error, ", "Assertion failed, "):
             if cleaned.startswith(prefix):
@@ -139,10 +140,10 @@ def _emit_operator_error_for_validation(
         return cleaned
 
     if loc == "version" and "not supported by this build" in msg:
-        # Phase 13 D-08: LOCKED SAFE-06 message body, copied verbatim from
-        # docs/ERROR-STYLE.md:57-73. Source-text regression at
-        # tests/unit/test_error_style.py::test_error_style_safe_06_body_matches_cli_wiring
-        # pins the substrings; do not reword.
+        # Locked v1 -> v2 migration message -- the canonical text lives in
+        # docs/ERROR-STYLE.md and is pinned by a source-text regression test
+        # under tests/unit/test_error_style.py. Do not reword: keep this
+        # body in sync with the ERROR-STYLE.md spec if you edit it.
         _emit_operator_error(
             summary=f"config file uses an older format: {source}",
             detail=[
@@ -176,7 +177,7 @@ def _emit_operator_error_for_validation(
                 "`mcp-test-framework config-init -o config.yaml`"
             ),
         )
-    # Generic fallback -- still operator-tone, no pydantic-internal terms.
+    # Generic fallback -- operator-tone, no pydantic-internal terms.
     field_summary = ", ".join(
         ".".join(str(p) for p in e.get("loc", ())) for e in errors
     ) or "(unknown field)"
@@ -199,24 +200,24 @@ def _emit_operator_error_for_validation(
 def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | None:
     """Resolve the YAML config path and load Config().
 
-    Precedence (Phase 13 D-01):
+    Precedence:
         --config PATH > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
 
-    The resolved path is passed to Config() as a `yaml_file` kwarg
-    (Phase 13 D-03); settings_customise_sources reads it from
-    init_settings.init_kwargs -- not from os.environ. ValidationError
-    is mapped through _emit_operator_error_for_validation per
-    docs/ERROR-STYLE.md (PERSONA-03).
+    The resolved path is passed to Config() as a `yaml_file` kwarg;
+    settings_customise_sources reads it from init_settings.init_kwargs --
+    not from os.environ. ValidationError is mapped through
+    `_emit_operator_error_for_validation` per docs/ERROR-STYLE.md.
 
     Args:
         path: Value of --config (None when the operator did not pass it).
         allow_missing: When True (used by `config-init` and `list-tools`),
             the "nothing found" branch returns None instead of raising
-            SAFE-03. This is the bootstrap path: SAFE-03's recovery
-            command (`config-init -o config.yaml`) must itself run from
-            an unconfigured directory. An explicit-but-broken --config
-            or MCPTF_CONFIG_FILE STILL raises (typo, not bootstrap).
-            Defaults to False; only `run` keeps the SAFE-03 surface.
+            the no-config-found operator error. This is the bootstrap
+            path: the recovery command (`config-init -o config.yaml`)
+            must itself run from an unconfigured directory. An
+            explicit-but-broken --config or MCPTF_CONFIG_FILE STILL
+            raises (typo, not bootstrap). Defaults to False; only `run`
+            keeps the strict no-config surface.
 
     Returns:
         A Config instance, or None when allow_missing=True and no config
@@ -271,7 +272,7 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
     # Branch 4: nothing found.
     if resolved is None:
         if allow_missing:
-            # Bootstrap path: config-init / list-tools may run from an
+            # Bootstrap path: config-init and list-tools may run from an
             # unconfigured directory. Caller constructs a default Config().
             return None
         _emit_operator_error(
@@ -288,12 +289,13 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
         )
 
     # Load with the resolved path as an explicit kwarg.
-    # Phase 13 review CR-01/CR-02: also export MCPTF_CONFIG_FILE so the
-    # in-process pytest session spawned by `run()` -- which constructs a
-    # bare `Config()` inside fixtures + conftest + reporter -- picks up
-    # the same resolved YAML path via the env-var fallback in
-    # `Config.settings_customise_sources`. SAFE-05 is preserved: the env
-    # var is a PATH POINTER, not a scalar-value source.
+    # Also export MCPTF_CONFIG_FILE so the in-process pytest session
+    # spawned by `run()` -- which constructs a bare `Config()` inside
+    # fixtures, conftest, and the reporter -- picks up the same resolved
+    # YAML path via the env-var fallback in
+    # `Config.settings_customise_sources`. The env var is a PATH POINTER,
+    # not a scalar-value source -- the source-precedence contract in
+    # docs/ERROR-STYLE.md is preserved.
     os.environ["MCPTF_CONFIG_FILE"] = str(resolved)
     try:
         return Config(yaml_file=str(resolved))
@@ -301,26 +303,25 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
         _emit_operator_error_for_validation(exc, source=source_label)
 
 
-# Re-exported from _runner.py (Phase 14 D-01); cli.py keeps the public symbol
-# so existing test imports `from mcp_test_framework.cli import _build_pytest_args`
-# continue working. The helper builds the argv passed to the subprocess pytest
-# (Phase 14 D-01) -- in v1.1 it built argv for the in-process pytest entry point.
+# Re-exported from _runner.py; cli.py keeps the public symbol so existing
+# test imports `from mcp_test_framework.cli import _build_pytest_args`
+# continue working. The helper builds the argv passed to the subprocess
+# pytest run.
 from mcp_test_framework._runner import _build_pytest_args  # noqa: E402
 
 
 def _discover_tools_for_run(cfg: Config) -> list[str]:
     """One-shot MCP handshake to learn what tools the server advertises.
 
-    Phase 14 Plan 03 / D-claude bullet 5 option (a): the wrapper runs OUTSIDE
-    pytest, so the in-pytest `_DISCOVERED_TOOL_NAMES` cache (now hosted on
-    `mcp_test_framework._runner` after Plan 05's plugin removal) is unreachable
-    from this process. Instead we re-discover here before launching the
-    subprocess.
+    The `run` wrapper executes OUTSIDE pytest, so the in-pytest
+    `_DISCOVERED_TOOL_NAMES` cache (hosted on `mcp_test_framework._runner`)
+    is unreachable from this process. Instead we re-discover here before
+    launching the subprocess.
 
-    Mirrors the AsyncExitStack pattern from cli.py:list_tools (Phase 04.1
-    same-task lifecycle -- avoids the cancel-scope teardown bug).
+    Mirrors the AsyncExitStack pattern from `list_tools` -- the same-task
+    lifecycle avoids the cancel-scope teardown bug.
 
-    On failure: surface via _emit_operator_error so config errors stay
+    On failure: surface via `_emit_operator_error` so config errors stay
     operator-tone and exit 2. Matches list-tools failure-mode parity.
     """
     async def _do_discover() -> list[str]:
@@ -356,7 +357,7 @@ def _discover_tools_for_run(cfg: Config) -> list[str]:
         )
     except KeyboardInterrupt:
         # Mirror list_tools: explicit typer.Exit(130) so SIGINT is uniform
-        # across POSIX/Windows console-script wrappers (D-15 / Phase 04.1).
+        # across POSIX/Windows console-script wrappers.
         raise typer.Exit(code=130)
     except Exception as exc:  # noqa: BLE001 -- defensive catchall
         _emit_operator_error(
@@ -457,48 +458,48 @@ def run(
         help="Args after `--` are forwarded to pytest.",
     ),
 ) -> None:
-    """Run the test suite (CLI-01) wrapped around a subprocess pytest.
+    """Run the test suite wrapped around a subprocess pytest.
 
-    Phase 14 D-01/D-02/D-03/D-11/D-15: pytest runs as a child subprocess
-    via the Phase 14 runner module -- the in-process pytest entry
-    point is no longer used in the wrapper. `_load_config` is the
-    pre-flight gate on BOTH default
-    and --raw paths (SAFE-03 cannot be bypassed via --raw).
+    pytest runs as a child subprocess via the runner module
+    (`mcp_test_framework._runner`); the in-process pytest entry point
+    is not used by the wrapper. The config pre-flight gate runs on
+    BOTH the default and --raw paths -- the no-config-found error
+    cannot be bypassed via --raw.
 
-    Default mode: wrapper-side MCP discovery + subprocess pytest + internal
-    tempfile JUnit XML capture + XML parse + domain UI render. Plan 14-03
-    landed the renderer; the Plan 01 transitional verbatim-stdout echo is
-    now replaced by `_runner.render_domain_ui(parsed, ctx)`.
+    Default mode: wrapper-side MCP discovery + subprocess pytest +
+    internal tempfile JUnit XML capture + XML parse + domain UI render.
 
     Raw mode (--raw): subprocess only, no tempfile, no capture, no domain
-    UI, no discovery. Operator-supplied --junit-xml=PATH still flows through
-    pytest via `_build_pytest_args` (Phase 09 D-01a precedence preserved).
+    UI, no discovery. Operator-supplied --junit-xml=PATH still flows
+    through pytest via the runner's `_build_pytest_args`.
 
-    Exit-code mapping (Phase 14 D-15):
+    Exit-code mapping:
       - pytest 0 -> exit 0
       - pytest 1 -> exit 1 (test failures)
-      - pytest 2 -> exit 2 (collection/usage error)
+      - pytest 2 -> exit 2 (collection / usage error)
       - pytest 5 -> exit 0 with "no tests collected" warning on stderr
       - SIGINT propagates naturally to exit 130 (KeyboardInterrupt not caught)
 
-    The `addopts = "-m 'not live_homelab and not live_ollama'"` contract
-    from pyproject.toml stays in effect inside the subprocess -- `run`
-    MUST NOT pass an explicit `-m` flag (D-markers-3 / Phase 4 contract).
+    The marker contract from pyproject.toml
+    (`addopts = "-m 'not live_homelab and not live_ollama'"`) stays in
+    effect inside the subprocess -- `run` MUST NOT pass an explicit `-m`
+    flag.
     """
-    # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): reconfigure sys.stdout
-    # to utf-8 with errors='replace' BEFORE any rendering or any _load_config
-    # error path. On Windows the default console code page is cp1252 which
-    # cannot encode the renderer's U+2717 (✗) / U+2714 (✓) / U+2013 (–) /
-    # U+2014 (—) glyphs -- without this reconfigure _render_per_tool_rows
-    # raises UnicodeEncodeError mid-render and the operator never sees the
+    # Reconfigure sys.stdout to utf-8 with errors='replace' BEFORE any
+    # rendering or any _load_config error path. On Windows the default
+    # console code page is cp1252, which cannot encode the renderer's
+    # U+2717 (✗) / U+2714 (✓) / U+2013 (–) / U+2014 (—) glyphs --
+    # without this reconfigure, _render_per_tool_rows raises
+    # UnicodeEncodeError mid-render and the operator never sees the
     # `Result:` summary line.
     #
-    # Guarded with hasattr() so test environments that wrap sys.stdout without
-    # implementing reconfigure() (e.g. pytest's capsys wrapper) don't crash on
-    # the missing method. errors='replace' is the deliberate trade-off: on
-    # truly hostile streams (no utf-8 capability AND no reconfigure support)
-    # the operator still sees the row with `?` in place of glyphs rather than
-    # a crash. This is the graceful-degradation contract from the plan.
+    # Guarded with hasattr() so test environments that wrap sys.stdout
+    # without implementing reconfigure() (e.g. pytest's capsys wrapper)
+    # don't crash on the missing method. errors='replace' is the
+    # deliberate trade-off: on truly hostile streams (no utf-8 capability
+    # AND no reconfigure support) the operator still sees the row with
+    # `?` in place of glyphs rather than a crash -- graceful degradation
+    # over hard failure.
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -519,10 +520,10 @@ def run(
     # success or raises typer.Exit -- safe to treat cfg as Config below.
 
     if raw:
-        # D-11: raw mode -- no tempfile, no capture, no render, no discovery.
-        # Operator junit_xml (if any) still flows through _build_pytest_args
-        # inside the runner so RUNNER-05 is preserved.
-        # --raw bypasses domain UI entirely; -q and --debug do not apply.
+        # Raw mode: no tempfile, no capture, no render, no discovery.
+        # Operator-supplied junit_xml (if any) still flows through
+        # `_build_pytest_args` inside the runner. --raw bypasses the
+        # domain UI entirely; -q and --debug do not apply.
         rc, _tmp, _stdout, _stderr = _runner.run_pytest_subprocess(
             junit_xml=junit_xml,
             pytest_args=pytest_args,
@@ -535,25 +536,23 @@ def run(
             typer.echo(warning, err=True)
         raise typer.Exit(code=mapped)
 
-    # Plan 03 RENDERER: replace Plan 01 transitional echo with discover +
-    # parse + render. Discovery runs BEFORE the subprocess so the header's
-    # Skipping count includes state-(a) unlisted tools (which won't appear
-    # in the JUnit XML at all).
+    # Default mode: discover + parse + render. Discovery runs BEFORE the
+    # subprocess so the header's Skipping count includes unlisted tools
+    # (which would not appear in the JUnit XML at all).
     discovered_tools = _discover_tools_for_run(cfg)
 
-    # Phase 16 D-01: build RenderContext BEFORE the subprocess so the
-    # pre-run digest can render. total_planned_cases is set from
-    # running × CASES_PER_CONTRACT_TOOL pre-run; the post-run code below
-    # rebuilds ctx with parsed.total_cases for the summary line's count
-    # source. The pre-run digest computes its "Test plan" line from the
-    # running set × constant, not from this field.
+    # Build RenderContext BEFORE the subprocess so the pre-run digest
+    # can render. The pre-run digest computes its "Test plan" line from
+    # the running tool set × the cases-per-tool constant; the post-run
+    # code below rebuilds ctx with parsed.total_cases for the summary
+    # line's count source.
     server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
     # Judges: derive from the union of every configured tool's `judges`
-    # list, de-duplicated and sorted. ToolConfig.judges semantics per
-    # TOOLCFG-06 (models.py:98): None default => run ALL rubrics; []
-    # => explicit opt-out; subset => literal. The helper honors this
-    # three-way contract; a prior loop using `or []` silently collapsed
-    # None to [] and produced an empty union (16-VERIFICATION.md gap G-1).
+    # list, de-duplicated and sorted. ToolConfig.judges has a three-way
+    # contract (see models.py): None default => run ALL rubrics; []
+    # => explicit opt-out; subset => literal. The helper honors this; a
+    # prior loop using `or []` silently collapsed None to [] and produced
+    # an empty union.
     judges = _runner._compose_judges_from_tool_configs(cfg.tools)
 
     pre_run_ctx = _runner.RenderContext(
@@ -564,20 +563,21 @@ def run(
         total_planned_cases=0,  # post-parse ctx below carries parsed.total_cases
     )
 
-    # Phase 16 D-09: pre-run digest + --explain expansion BOTH gate on
-    # `not quiet`. -q wins over --explain per D-08 / UX-05.
-    # `with_framework=` flows into the digest so the "+ framework self-tests"
-    # continuation line emits inline (no awkward blank gap).
-    # `explain=` suppresses the "(use --explain to list)" hint when the list
-    # is rendered inline right below.
+    # Pre-run digest + --explain expansion BOTH gate on `not quiet`.
+    # -q wins over --explain. `with_framework=` flows into the digest so
+    # the "+ framework self-tests" continuation line emits inline (no
+    # awkward blank gap). `explain=` suppresses the
+    # "(use --explain to list)" hint when the list is rendered inline
+    # right below.
     if not quiet:
         if sdet:
-            # Phase 18 D-06: scenario-aware digest under --sdet.
-            # Fresh sdet-only RenderContext -- only server_cmd is consumed by
-            # the scenario digest; contract-scope discovered_tools /
-            # tools_config / judges fields have no meaning under SDET scope
-            # (pytest_generate_tests parametrize does NOT run under --sdet
-            # because pytest only discovers tests/sdet, not tests/contract).
+            # Scenario-aware digest under --sdet. Fresh sdet-only
+            # RenderContext -- only server_cmd is consumed by the
+            # scenario digest; contract-scope discovered_tools /
+            # tools_config / judges fields have no meaning under SDET
+            # scope (pytest_generate_tests parametrize does NOT run
+            # under --sdet because pytest only discovers tests/sdet, not
+            # tests/contract).
             sdet_ctx = _runner.RenderContext(server_cmd=pre_run_ctx.server_cmd)
             scenarios, skipped_scenarios = _runner._collect_sdet_scenarios(sdet_ctx)
             _runner._render_scenario_pre_run_digest(
@@ -604,13 +604,14 @@ def run(
         sdet=sdet,
     )
     try:
-        # D-16: if subprocess crashed before writing the tempfile, surface a
+        # If the subprocess crashed before writing the tempfile, surface a
         # domain-shaped error pointing at --raw for raw pytest output.
-        # _dispatch_default_mode_or_error returns silently when the tempfile
-        # is present, and calls _emit_operator_error (typer.Exit) otherwise.
+        # `_dispatch_default_mode_or_error` returns silently when the
+        # tempfile is present, and calls `_emit_operator_error`
+        # (typer.Exit) otherwise.
         _runner._dispatch_default_mode_or_error(tmp_xml, rc, captured_stderr)
 
-        # Phase 14 D-16: JUnit XML parse error -> exit 2 via operator-tone.
+        # JUnit XML parse error -> exit 2 via operator-tone message.
         try:
             parsed = _runner.parse_junit_xml(tmp_xml)
         except ET.ParseError as exc:
@@ -626,9 +627,9 @@ def run(
                 ),
             )
 
-        # Phase 16: rebuild ctx with the real total_planned_cases for the
-        # post-run summary. discovered_tools / tools_config / judges /
-        # server_cmd are unchanged from pre_run_ctx.
+        # Rebuild ctx with the real total_planned_cases for the post-run
+        # summary. discovered_tools / tools_config / judges / server_cmd
+        # are unchanged from pre_run_ctx.
         ctx = _runner.RenderContext(
             server_cmd=server_cmd,
             discovered_tools=discovered_tools,
@@ -636,25 +637,26 @@ def run(
             judges=judges,
             total_planned_cases=parsed.total_cases,
         )
-        # Phase 14 D-12/D-13: verbosity ladder.
-        # -q (quiet) swaps render_domain_ui -> render_summary_only.
-        # --debug appends raw pytest output AFTER whichever rung above ran.
+        # Verbosity ladder:
+        #   -q (quiet) swaps render_domain_ui -> render_summary_only.
+        #   --debug appends raw pytest output AFTER whichever rung above
+        #     ran.
         # The two flags are orthogonal: `-q --debug` means
-        # "summary line, then appendix" -- D-13 invariant (each rung adds
-        # info; none re-shapes the layer below).
+        # "summary line, then appendix". Invariant: each rung adds info;
+        # none re-shapes the layer below.
         if quiet:
             _runner.render_summary_only(parsed, ctx)
         else:
             _runner.render_domain_ui(parsed, ctx)
 
         if debug:
-            # D-13: --debug appends AFTER whatever the lower rung rendered.
-            # Default UI shape unchanged; --debug only adds info.
-            # Phase 18 D-11: pass xml_path so the appendix can scan for
-            # ToolCallError-attached mcptf_error_* user_properties and emit
-            # the `--- ToolCallError dump ---` block BEFORE raw pytest output.
-            # When no such properties are present, the appendix is
-            # byte-identical to the Phase 14 baseline (D-13 invariant).
+            # --debug appends AFTER whatever the lower rung rendered. The
+            # default UI shape is unchanged; --debug only adds info.
+            # `xml_path` is passed so the appendix can scan for
+            # ToolCallError-attached `mcptf_error_*` user_properties and
+            # emit a `--- ToolCallError dump ---` block BEFORE raw pytest
+            # output. When no such properties are present, the appendix
+            # is byte-identical to the no-ToolCallError baseline.
             _runner.render_debug_appendix(
                 captured_stdout, captured_stderr, parsed,
                 xml_path=tmp_xml,
@@ -695,7 +697,7 @@ def list_tools(
         help="Substring filter on tool name (case-insensitive).",
     ),
 ) -> None:
-    """List tools exposed by the configured MCP server (CLI-02 / PERSONA-02).
+    """List tools exposed by the configured MCP server.
 
     Default render (per tool):
         <name>(<param>: <type>, *, <kw>: <type> = <default>)
@@ -704,22 +706,22 @@ def list_tools(
     --full adds the wrapped full description + per-parameter descriptions
     (still human-readable, not raw JSON; use --json for machine output).
     --name PATTERN narrows to tools whose name contains PATTERN
-    (case-insensitive substring match). --name composes with --full
-    and --json. --json output is unchanged from v1.1 except for the
-    --name filter applied before serialization. Passing --full alongside
-    --json is a no-op (JSON output is already complete).
+    (case-insensitive substring match). --name composes with --full and
+    --json. --json output is the full MCP tool record set, filtered by
+    --name when supplied. Passing --full alongside --json is a no-op
+    (JSON output is already complete).
 
-    Body uses asyncio.Runner + AsyncExitStack-owned McpTestClient
-    (D-teardown-1). KeyboardInterrupt propagates through the runner,
-    __aexit__ runs in the same task that did __aenter__,
-    stdio_client._terminate_process_tree kills the subprocess, exit code
-    130 with no message printed (D-teardown-3).
+    Body uses `asyncio.Runner` + AsyncExitStack-owned `McpTestClient`:
+    KeyboardInterrupt propagates through the runner, `__aexit__` runs in
+    the same task that did `__aenter__`, the stdio transport kills the
+    subprocess on teardown, and the wrapper exits with code 130 (no
+    message printed).
 
-    From a directory with no config (no --config, no MCPTF_CONFIG_FILE, no
-    ./config.yaml), `list-tools` uses framework defaults rather than failing
-    loud. SAFE-03 fail-loud applies to `run` only -- `list-tools` is
-    deliberately bootstrap-friendly so an operator can probe a server
-    before opting tools in.
+    From a directory with no config (no --config, no MCPTF_CONFIG_FILE,
+    no ./config.yaml), `list-tools` uses framework defaults rather than
+    failing loud. The fail-loud no-config error applies to `run` only --
+    `list-tools` is deliberately bootstrap-friendly so an operator can
+    probe a server before opting tools in.
     """
     cfg = _load_config(config, allow_missing=True)
     if cfg is None:
@@ -755,8 +757,8 @@ def list_tools(
         )
 
     if as_json:
-        # JSON path: --name filter applied; --full is ignored (D-07 orthogonality).
-        # Output is byte-identical to v1.1 except for the optional name filter.
+        # JSON path: --name filter applied; --full is ignored (the two
+        # flags are orthogonal -- JSON output is already complete).
         if name is not None:
             needle = name.lower()
             filtered = [t for t in tools if needle in t.name.lower()]
@@ -813,15 +815,16 @@ def config_init(
     Discovers tools via the same isolation-aware seam used by `run` and
     `list-tools` (`McpTestClient.__aenter__`), then emits a YAML
     document containing `version: 2` and a `tools:` block with one
-    commented entry per discovered tool. The scaffold is a no-op
-    passthrough by default -- uncomment and edit individual fields to
-    opt a tool into skip / judges / args.
+    entry per discovered tool (each marked `skip: true` by default --
+    review each entry and remove `skip` to opt a tool into the test
+    surface).
 
     Output:
       - default: stdout
       - --output PATH: write to file (refuses to overwrite without --force)
 
-    Override flags (bootstrap a fresh checkout without a pre-existing config.yaml):
+    Override flags (bootstrap a fresh checkout without a pre-existing
+    config.yaml):
       - --command CMD: override mcp_server.command for this invocation only
       - --arg ARG: append to mcp_server.args; repeat for each arg
 
@@ -868,10 +871,10 @@ def config_init(
         # uniformly across POSIX/Windows console-script wrappers.
         raise typer.Exit(code=130)
     except FileNotFoundError as exc:
-        # Fallback scaffold: if --output was given, write a runnable shell
-        # so the operator's recovery path is "edit and re-run", not
-        # "hand-write a config from scratch". stdout mode skips this --
-        # the operator can't edit stdout.
+        # Fallback scaffold: if --output was given, write a runnable
+        # shell so the operator's recovery path is "edit and re-run",
+        # not "hand-write a config from scratch". stdout mode skips this
+        # -- the operator can't edit stdout.
         if output is not None:
             fallback_body = _format_tools_yaml_scaffold([])
             # The mcp_server block in the scaffold below shows the framework
@@ -935,7 +938,7 @@ def config_init(
 
 @app.command()
 def version() -> None:
-    """Print the package version (CLI-03)."""
+    """Print the package version."""
     try:
         v = metadata.version("mvp-test-framework")  # distribution name, NOT importable package
     except metadata.PackageNotFoundError:
@@ -954,14 +957,14 @@ def gen_sdet_classes(
         ),
     ),
 ) -> None:
-    """Generate typed Pydantic Params/Response classes for every tool (CODEGEN-01).
+    """Generate typed Pydantic Params/Response classes for every tool.
 
     Introspects the configured MCP server via list_tools and writes
-    <sdet.generated_root>/<server_slug>/<tool>.py for every tool advertised,
-    where `sdet.generated_root` is the required path declared in your
-    config.yaml. Wipe-and-write: rerunning replaces the directory wholesale.
-    Honors --config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud
-    (Phase 13 SAFE-01..07).
+    `<sdet.generated_root>/<server_slug>/<tool>.py` for every tool the
+    server advertises, where `sdet.generated_root` is the required path
+    declared in your config.yaml. Wipe-and-write: rerunning replaces
+    the directory wholesale. Honors the standard config-source
+    precedence: --config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
 
     Exit codes:
       0   success
@@ -969,7 +972,7 @@ def gen_sdet_classes(
           invalid tool schema
       130 SIGINT during MCP handshake / list_tools
     """
-    cfg = _load_config(config)  # strict; SAFE-03 fires on absent config
+    cfg = _load_config(config)  # strict; fail-loud on absent config
     assert cfg is not None, "_load_config(strict) must return Config or raise"
     try:
         with asyncio.Runner() as runner:
@@ -999,7 +1002,8 @@ def gen_sdet_classes(
 
     server_name = (getattr(server_info, "name", "") or "").strip()
     if not server_name:
-        # D-05 loud-fail with operator-tone error.
+        # Loud-fail with operator-tone error: gen-sdet-classes needs a
+        # non-empty server name to derive the output directory.
         _emit_operator_error(
             summary="gen-sdet-classes: server identification failed",
             detail=[
@@ -1021,10 +1025,9 @@ def gen_sdet_classes(
     from mcp_test_framework.sdet import _codegen
     from mcp_test_framework.sdet._slugs import server_slug
 
-    # Phase 21.1 RELOC-02: out_root is config-driven; the framework never
-    # writes generated Python code inside its own `src/` tree. Resolution
-    # is relative to CWD when not absolute (matches MCPTF_CONFIG_FILE
-    # precedent).
+    # `out_root` is config-driven; the framework never writes generated
+    # Python code inside its own `src/` tree. Relative paths are
+    # resolved against CWD (mirrors the MCPTF_CONFIG_FILE convention).
     out_root = cfg.sdet.generated_root
     if not out_root.is_absolute():
         out_root = Path.cwd() / out_root
@@ -1058,7 +1061,7 @@ def gen_sdet_classes(
     )
 
 
-# WR-01: serializes concurrent _run_codegen_handshake calls in the same
+# Serializes concurrent _run_codegen_handshake calls in the same
 # process. The class-level monkey-patch of ClientSession.initialize is
 # process-global, so two concurrent handshakes would corrupt each other's
 # `holder` capture and race the `finally` restoration. asyncio.Lock is
@@ -1070,38 +1073,38 @@ _codegen_handshake_lock = asyncio.Lock()
 async def _run_codegen_handshake(cfg: Config) -> tuple[object, list[Tool]]:
     """Open one-shot McpTestClient; return (serverInfo, tools) for gen-sdet-classes.
 
-    Phase 17 LOCKED constraint: ``mcp_client.py`` is not modified
-    (CONTEXT.md "Hard dependencies"). To read serverInfo without modifying
-    the LOCKED file we patch ``ClientSession.initialize`` at the class level
-    for the duration of ``McpTestClient.__aenter__``: the patched method
-    delegates to the real one, then stores the result in a thread-local
-    holder. ``McpTestClient.__aenter__`` calls ``await session.initialize()``
-    internally; after entry returns, we read the captured InitializeResult
-    and restore the original method.
+    ``mcp_client.py`` is intentionally not modified by this helper. To
+    read serverInfo without touching that file we patch
+    ``ClientSession.initialize`` at the class level for the duration of
+    ``McpTestClient.__aenter__``: the patched method delegates to the
+    real one, then stores the result in a holder dict.
+    ``McpTestClient.__aenter__`` calls ``await session.initialize()``
+    internally; after entry returns, we read the captured
+    InitializeResult and restore the original method.
 
-    Rationale for class-level monkey-patch over the plan's stated
-    ``session._initialize_result`` access:
-      - mcp 1.27.0's ClientSession does NOT store the InitializeResult as
-        a private attribute (verified via inspect.getsource at plan-execute
-        time). Only ``_server_capabilities`` is cached; ``serverInfo`` is
-        only available via the return value of ``initialize()``.
+    Rationale for the class-level monkey-patch over reading
+    ``session._initialize_result`` directly:
+      - mcp 1.27.0's ClientSession does NOT store the InitializeResult
+        as a private attribute (verified via inspect.getsource). Only
+        ``_server_capabilities`` is cached; ``serverInfo`` is only
+        available via the return value of ``initialize()``.
       - Re-invoking ``session.initialize()`` after McpTestClient has
         already initialized would re-send the protocol handshake, which
         is not spec-compliant.
       - The class-level patch is scoped to a single ``async with`` block
-        and is reverted in the ``finally``; it does not leak across calls.
+        and is reverted in the ``finally``; it does not leak across
+        calls.
 
-    If mcp 2.x exposes a public ``server_info`` accessor on ClientSession,
-    this helper should switch to it (delete the patch); the Plan 17-05
-    typecheck pass will surface that opportunity.
+    If a future mcp release exposes a public ``server_info`` accessor on
+    ClientSession, this helper should switch to it (delete the patch).
 
-    WR-01: the class-level patch is process-global -- concurrent calls in
-    the same process would corrupt each other's ``holder`` capture and
-    race the ``finally`` restoration. The ``_codegen_handshake_lock``
-    below serializes the patched window so at most one handshake holds
-    the patch at a time. Single-CLI-invocation callers are unaffected;
-    future in-process / parallel test callers get linear queueing instead
-    of silent corruption.
+    Concurrency: the class-level patch is process-global -- concurrent
+    calls in the same process would corrupt each other's ``holder``
+    capture and race the ``finally`` restoration. The
+    ``_codegen_handshake_lock`` module-level lock serializes the patched
+    window so at most one handshake holds the patch at a time.
+    Single-CLI-invocation callers are unaffected; future in-process /
+    parallel callers get linear queueing instead of silent corruption.
     """
     from mcp import ClientSession
 
@@ -1127,8 +1130,8 @@ async def _run_codegen_handshake(cfg: Config) -> tuple[object, list[Tool]]:
                 init_result = holder.get("result")
                 if init_result is None:
                     # Defensive: McpTestClient.__aenter__ always calls
-                    # session.initialize() (mcp_client.py:170-171); a missing
-                    # capture means the SDK changed under us.
+                    # session.initialize(); a missing capture means the
+                    # mcp SDK contract changed under us.
                     raise RuntimeError(
                         "ClientSession.initialize was not invoked during "
                         "McpTestClient.__aenter__; mcp SDK contract changed "
@@ -1146,9 +1149,13 @@ async def _list_tools_async(cfg: Config) -> list[Tool]:
 
     AsyncExitStack is technically redundant with the single-context
     `async with McpTestClient(...)` form, but it is used anyway to:
-    (1) future-proof against adding a second resource (e.g., a logger handle),
-    (2) explicitly mirror the Phase 04.1 ownership lesson,
-    (3) keep __aexit__ semantics identical regardless of how many resources land.
+    (1) future-proof against adding a second resource (e.g., a logger
+        handle),
+    (2) keep the same-task __aenter__/__aexit__ ownership pattern
+        explicit (avoids the cancel-scope teardown bug if a second
+        resource is added later),
+    (3) keep __aexit__ semantics identical regardless of how many
+        resources land.
     """
     async with AsyncExitStack() as stack:
         client = await stack.enter_async_context(
@@ -1221,12 +1228,12 @@ def _format_tools_text(
 ) -> str:
     """Human-readable render: name + signature + description per tool.
 
-    Default (D-05): name(signature) + 1-line truncated description.
-    --full (D-06): name(signature) + wrapped full description +
-                   per-parameter descriptions from inputSchema.
-    --name PATTERN (D-08): substring filter applied post-sort, pre-render.
+    Default: name(signature) + 1-line truncated description.
+    --full:  name(signature) + wrapped full description + per-parameter
+             descriptions from inputSchema.
+    --name PATTERN: substring filter applied post-sort, pre-render.
 
-    Sort: alphabetical by name (D-09 / preserves D-list-4 contract).
+    Sort: alphabetical by name.
     Width: shutil.get_terminal_size with 80-col fallback.
     """
     width = max(40, shutil.get_terminal_size((80, 20)).columns)
@@ -1282,10 +1289,10 @@ def _format_tools_text(
 def _format_tools_json(tools: list[Tool]) -> str:
     """Full MCP tool record per tool: {name, description, inputSchema, outputSchema}.
 
-    Sorted alphabetically by name (D-list-4). Trailing newline so the
-    output composes with shell pipelines. No `default=` fallback: MCP
-    tool schemas are JSON Schema documents and MUST be JSON-serializable
-    by contract. If `json.dumps` raises `TypeError` here, that is the
+    Sorted alphabetically by name. Trailing newline so the output
+    composes with shell pipelines. No `default=` fallback: MCP tool
+    schemas are JSON Schema documents and MUST be JSON-serializable by
+    contract. If `json.dumps` raises `TypeError` here, that is the
     correct signal that the SDK or schema is malformed.
     """
     sorted_tools = sorted(tools, key=lambda t: t.name)
@@ -1317,19 +1324,20 @@ def _yaml_key(name: str) -> str:
 
 
 def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
-    """Hand-format a complete self-contained YAML scaffold (CLEAN-05).
+    """Hand-format a complete self-contained YAML scaffold.
 
-    Output shape (locked in docs/ERROR-STYLE.md / CLEAN-05 acceptance):
-    - Top-level `ollama:`, `mcp_server:`, `judge_timeout_seconds:`, `version:`,
-      `tools:` blocks all populated.
-    - `version: 2` literal (this release's accepted version).
-    - Every discovered tool emitted as `<name>: { skip: true, skip_reason: ... }`
-      with the name passed through `_yaml_key` for defensive YAML quoting.
-    - No `target:` block (the field is leaving in a future schema bump).
-    - All string scalars JSON-quoted via `json.dumps` (avoids YAML scalar
-      ambiguity for values containing colons, hashes, or quotes).
+    Output shape (the operator-facing scaffold contract -- see
+    docs/ERROR-STYLE.md for the surrounding error-message style guide):
+    - Top-level `ollama:`, `mcp_server:`, `judge_timeout_seconds:`,
+      `version:`, `sdet:`, and `tools:` blocks all populated.
+    - `version: 2` literal (this release's accepted schema version).
+    - Every discovered tool emitted as
+      `<name>: { skip: true, skip_reason: ... }` with the name passed
+      through `_yaml_key` for defensive YAML quoting.
+    - All string scalars JSON-quoted via `json.dumps` (avoids YAML
+      scalar ambiguity for values containing colons, hashes, or quotes).
 
-    Tools sorted alphabetically (preserves the v1.1 D-list-4 contract).
+    Tools sorted alphabetically.
     """
     sorted_tools = sorted(tools, key=lambda t: t.name)
     skip_reason = "review and remove skip to enable"
