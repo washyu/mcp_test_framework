@@ -78,6 +78,7 @@ Other test frameworks measure proxies for agent-usability ("is this schema valid
 | Production monitoring | Different lifecycle — we're shift-left; monitoring is shift-right |
 | Security scanner | Black-box info envelope: can't tell whether a JSON value is sensitive without reading server source |
 | Random adversarial fuzzer | Out of scope. *Agent-realistic-mistake* fuzz IS in scope (see #3 above) |
+| SUT-aware framework features | The framework is a **generic MCP test framework** — `homelab-mcp` is the dogfood SUT, not a feature target. Framework `src/` and shipped `tests/` stay SUT-agnostic; no homelab-, Proxmox-, Ansible-, or other SUT-specific code/tests/decorators (e.g. `requires_homelab(proxmox=...)`) ever land in the framework itself. SUT-specific reachability, fixtures, and scenarios live in the SDET's own test code via stock pytest primitives (`@pytest.mark.skipif`, conftest helpers). When future milestones surface "the framework should know about &lt;subsystem X&gt;," that's the violation — re-scope to a generic primitive or push into the SDET-side recipe. *Locked Phase 20 (v1.3) after PREFLIGHT-01/02 reframe.* |
 
 ### Cost model: local-first, hosted opt-in via OpenAI-compatible API
 
