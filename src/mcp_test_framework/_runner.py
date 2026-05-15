@@ -1,29 +1,29 @@
 """Subprocess pytest dispatch + tempfile JUnit XML capture + exit-code mapping.
 
-Phase 14 contract (cites Phase 14 D-01..D-16 and Phase 09 OUTPUT-01):
-  - D-01: pytest runs as a child subprocess via [sys.executable, '-m', 'pytest', ...];
-          the in-process pytest entry point is forbidden in the wrapper to
-          keep the wrapper process decoupled from pytest's plugin globals.
-  - D-02: default mode allocates an internal tempfile JUnit XML; operator
-          --junit-xml=PATH is honored via a post-subprocess shutil.copy fan-out
-          (NOT via a second pytest --junitxml argument, so the wrapper owns the
-          tempfile exclusively for parsing).
-  - D-03/D-11: the cli.py:run pre-flight gate (_load_config) is the caller's
-          responsibility on BOTH default and --raw paths; this module assumes
-          the gate has already fired.
-  - D-15: pytest exit code mapping (0->0, 1->1, 2->2, 5->0+"no tests collected"
-          warning; other codes pass through). KeyboardInterrupt is NEVER caught
-          here -- SIGINT propagates so Typer's standalone_mode emits 130.
-  - D-16: if pytest exits without writing the tempfile, callers should invoke
-          _dispatch_default_mode_or_error to surface an operator-tone diagnostic.
-  - Phase 09 OUTPUT-01 (RUNNER-05 preservation): operator --junit-xml=PATH
-          continues to receive a valid JUnit XML.
+Runner contract:
+  - pytest runs as a child subprocess via ``[sys.executable, '-m', 'pytest', ...]``.
+    The in-process pytest entry point is forbidden in the wrapper to keep the
+    wrapper process decoupled from pytest's plugin globals.
+  - Default mode allocates an internal tempfile JUnit XML; an operator-supplied
+    ``--junit-xml=PATH`` is honored via a post-subprocess ``shutil.copy`` fan-out
+    (not via a second ``pytest --junitxml`` argument, so the wrapper owns the
+    tempfile exclusively for parsing).
+  - The ``cli.py:run`` pre-flight gate (``_load_config``) is the caller's
+    responsibility on both default and ``--raw`` paths; this module assumes
+    the gate has already fired.
+  - Pytest exit code mapping: ``0 -> 0``, ``1 -> 1``, ``2 -> 2``,
+    ``5 -> 0 + "no tests collected" warning``; other codes pass through.
+    ``KeyboardInterrupt`` is NEVER caught here -- SIGINT propagates so
+    Typer's ``standalone_mode`` emits 130.
+  - If pytest exits without writing the tempfile, callers should invoke
+    ``_dispatch_default_mode_or_error`` to surface an operator-tone diagnostic.
+  - Operator ``--junit-xml=PATH`` continues to receive a valid JUnit XML.
 
-This module also hosts _build_pytest_args and _emit_operator_error -- they
-moved here from cli.py (Phase 14 D-01) to avoid a circular import (cli.py
-imports _runner; _runner needs the helpers). cli.py re-exports both symbols
-so existing tests that `from mcp_test_framework.cli import _build_pytest_args`
-keep working.
+This module also hosts ``_build_pytest_args`` and ``_emit_operator_error`` --
+they were moved here from ``cli.py`` to avoid a circular import (``cli.py``
+imports ``_runner``; ``_runner`` needs the helpers). ``cli.py`` re-exports both
+symbols so existing tests that ``from mcp_test_framework.cli import
+_build_pytest_args`` keep working.
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ from .rubrics import RUBRIC_IDS
 
 
 # ===========================================================================
-# Helpers promoted from cli.py (Phase 14 D-01 -- avoid circular import)
+# Helpers promoted from cli.py (kept here to avoid a circular import)
 # ===========================================================================
 
 
@@ -55,7 +55,7 @@ def _emit_operator_error(
     *,
     exit_code: int = 2,
 ) -> typing.NoReturn:
-    """Render an operator-grade error and exit (citation: docs/ERROR-STYLE.md).
+    """Render an operator-grade error and exit (see docs/ERROR-STYLE.md).
 
     This function never returns; it raises typer.Exit internally. Callers
     MUST NOT prefix calls with `raise`.
@@ -85,36 +85,36 @@ def _build_pytest_args(
     with_framework: bool = False,
     sdet: bool = False,
 ) -> list[str]:
-    """Translate `--junit-xml=PATH` (Phase 09 D-01b public spelling) into pytest's
-    `--junitxml=PATH` (no-dash internal spelling) and assemble the argv passed to
-    ``pytest`` (in v1.1 to the in-process entry point; in Phase 14 to the subprocess
-    argv after `[sys.executable, '-m', 'pytest']`).
+    """Translate the public ``--junit-xml=PATH`` spelling into pytest's
+    ``--junitxml=PATH`` (no-dash internal spelling) and assemble the argv
+    passed to ``pytest`` (in the subprocess argv after
+    ``[sys.executable, '-m', 'pytest']``).
 
-    D-01a precedence: the explicit flag is inserted BEFORE the passthrough
-    forwarded args so a later passthrough ``--junitxml=...`` (after ``--``)
-    wins under pytest's last-occurrence argparse rule. The helper does NOT
-    de-duplicate or validate paths -- pytest's own argument handling is the
-    single source of truth.
+    Precedence: the explicit flag is inserted BEFORE the passthrough forwarded
+    args so a later passthrough ``--junitxml=...`` (after ``--``) wins under
+    pytest's last-occurrence argparse rule. The helper does NOT de-duplicate
+    or validate paths -- pytest's own argument handling is the single source
+    of truth.
 
-    Phase 15 D-03: scope is operator-default ``tests/contract`` only;
-    ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
-    ``--with-framework`` is a superset matching the pre-split
-    ``pytest tests/`` collection.
-
-    Phase 18 D-04 / D-05: ``sdet=True`` SWAPS the operator-surface scope from
-    ``tests/contract`` to ``tests/sdet`` (not additive); ``with_framework=True``
-    remains ALWAYS additive on top of whichever scope is active. ``--sdet`` is
-    wrapper-owned and never reaches pytest's argv (Phase 16 D-07 pattern).
+    Scope rules:
+      - Operator-default scope is ``tests/contract`` only.
+      - ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
+        ``--with-framework`` is a superset matching the pre-split
+        ``pytest tests/`` collection.
+      - ``sdet=True`` SWAPS the operator-surface scope from ``tests/contract``
+        to ``tests/sdet`` (not additive); ``with_framework=True`` remains
+        ALWAYS additive on top of whichever scope is active. ``--sdet`` is
+        wrapper-owned and never reaches pytest's argv.
     """
     forwarded = list(pytest_args or [])
     if sdet:
-        # Phase 18 D-04: --sdet SWAPS the operator-surface scope (NOT additive).
+        # --sdet SWAPS the operator-surface scope (NOT additive).
         args: list[str] = ["tests/sdet"]
     else:
         args = ["tests/contract"]
     if with_framework:
-        # Phase 15 + Phase 18 D-05: --with-framework is ALWAYS additive on top
-        # of whichever operator-surface scope is active.
+        # --with-framework is ALWAYS additive on top of whichever
+        # operator-surface scope is active.
         args.append("tests/framework")
     if junit_xml is not None:
         args.append(f"--junitxml={junit_xml}")
@@ -123,17 +123,18 @@ def _build_pytest_args(
 
 
 # ===========================================================================
-# Exit-code mapping (Phase 14 D-15)
+# Exit-code mapping
 # ===========================================================================
 
 
 def _map_exit_code(pytest_rc: int) -> tuple[int, str | None]:
-    """Phase 14 D-15: pytest 0->0, 1->1, 2->2, 5->0 (with warning).
+    """Map pytest's exit codes: ``0 -> 0``, ``1 -> 1``, ``2 -> 2``,
+    ``5 -> 0 (with "no tests collected" warning)``.
 
-    Other codes pass through unchanged. Returns (mapped_code, optional_warning).
-    SIGINT (130) is never seen here under normal flow -- KeyboardInterrupt is
-    not caught by run_pytest_subprocess. The 130 pass-through is defensive
-    only (e.g., a subprocess that catches its own SIGINT and exits 130).
+    Other codes pass through unchanged. Returns ``(mapped_code, optional_warning)``.
+    SIGINT (130) is never seen here under normal flow -- ``KeyboardInterrupt``
+    is not caught by ``run_pytest_subprocess``. The 130 pass-through is
+    defensive only (e.g., a subprocess that catches its own SIGINT and exits 130).
     """
     if pytest_rc == 5:
         return (0, "no tests collected")
@@ -141,7 +142,7 @@ def _map_exit_code(pytest_rc: int) -> tuple[int, str | None]:
 
 
 # ===========================================================================
-# Subprocess dispatch (Phase 14 D-01 / D-02 / D-11 / D-15)
+# Subprocess dispatch
 # ===========================================================================
 
 
@@ -177,25 +178,24 @@ def run_pytest_subprocess(
                 *_build_pytest_args(junit_xml, pytest_args)]
         No internal tempfile. No capture (stdout/stderr inherit so operator
         sees raw output live). Operator-supplied --junit-xml=PATH still
-        flows through _build_pytest_args (Phase 09 D-01a).
+        flows through _build_pytest_args.
       - check=False.
       - Returns (exit_code, None, "", "") -- caller does not render.
 
     Does NOT catch KeyboardInterrupt: SIGINT propagates so Typer emits 130
-    (Phase 14 D-15 / Phase 04.1 AsyncExitStack contract).
+    (AsyncExitStack teardown contract).
     """
     if raw:
-        # D-11: raw mode -- no internal tempfile, no capture.
+        # Raw mode -- no internal tempfile, no capture.
         inner_args = _build_pytest_args(
             junit_xml, pytest_args, with_framework=with_framework, sdet=sdet
         )
         argv = [sys.executable, "-m", "pytest", *inner_args]
-        # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): force the child
-        # pytest to WRITE utf-8 bytes even on Windows (where the default code
-        # page is cp1252 and would otherwise leak bytes like 0x97 -- cp1252
-        # em-dash -- into the inherited stdout). The parent's sys.stdout has
-        # already been reconfigured to utf-8 by cli.run before reaching here,
-        # so the child inherits a utf-8-capable fd.
+        # Force the child pytest to WRITE utf-8 bytes even on Windows (where
+        # the default code page is cp1252 and would otherwise leak bytes like
+        # 0x97 -- cp1252 em-dash -- into the inherited stdout). The parent's
+        # sys.stdout has already been reconfigured to utf-8 by cli.run before
+        # reaching here, so the child inherits a utf-8-capable fd.
         child_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
         proc = subprocess.run(argv, check=False, env=child_env)
         return (proc.returncode, None, "", "")
@@ -207,7 +207,7 @@ def run_pytest_subprocess(
     tmp = Path(handle.name)
     handle.close()
     # Remove the empty zero-byte placeholder so a "no XML written" condition
-    # (D-16) is detectable via .exists() / size checks after subprocess exits.
+    # is detectable via .exists() / size checks after subprocess exits.
     # On Windows the file was created but is empty; pytest will overwrite it
     # with its real JUnit body. If pytest crashes before writing, we want
     # _dispatch_default_mode_or_error to fire.
@@ -228,14 +228,15 @@ def run_pytest_subprocess(
         *inner_args,
         f"--junitxml={tmp}",
     ]
-    # Phase 14 gap-closure (GAP 1 from 14-HUMAN-UAT.md): two-sided encoding hygiene.
-    # - PYTHONIOENCODING in the child env forces pytest to WRITE utf-8 bytes even
-    #   on Windows (where the default code page is cp1252 and would otherwise leak
-    #   bytes like 0x97 -- cp1252 em-dash -- into the captured stdout, causing the
-    #   parent's utf-8 decoder to raise UnicodeDecodeError mid-capture).
-    # - errors="replace" on the parent decode is a belt-and-suspenders fallback so
-    #   a stray non-utf-8 byte never raises mid-capture -- it is replaced with
-    #   U+FFFD and the renderer still gets a complete string to work with.
+    # Two-sided encoding hygiene:
+    # - PYTHONIOENCODING in the child env forces pytest to WRITE utf-8 bytes
+    #   even on Windows (where the default code page is cp1252 and would
+    #   otherwise leak bytes like 0x97 -- cp1252 em-dash -- into the captured
+    #   stdout, causing the parent's utf-8 decoder to raise UnicodeDecodeError
+    #   mid-capture).
+    # - errors="replace" on the parent decode is a belt-and-suspenders fallback
+    #   so a stray non-utf-8 byte never raises mid-capture -- it is replaced
+    #   with U+FFFD and the renderer still gets a complete string to work with.
     child_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     proc = subprocess.run(
         argv,
@@ -266,7 +267,7 @@ def run_pytest_subprocess(
 
 
 # ===========================================================================
-# D-16: domain-shaped error for "pytest exited without producing JUnit XML"
+# Domain-shaped error for "pytest exited without producing JUnit XML"
 # ===========================================================================
 
 
@@ -275,16 +276,15 @@ def _dispatch_default_mode_or_error(
     exit_code: int,
     captured_stderr: str,
 ) -> None:
-    """Phase 14 D-16: if pytest crashed before writing the tempfile, surface
-    a domain-shaped error pointing the operator at --debug / --raw for raw
-    pytest output.
+    """If pytest crashed before writing the tempfile, surface a domain-shaped
+    error pointing the operator at ``--debug`` / ``--raw`` for raw pytest output.
 
     Only fires when the tempfile path is missing/empty AND pytest exited
     non-zero -- a clean exit with no XML (e.g., pytest 5 + no XML emission
-    on some plugin combos) is mapped by _map_exit_code instead.
+    on some plugin combos) is mapped by ``_map_exit_code`` instead.
 
-    Calls _emit_operator_error which raises typer.Exit(2); never returns
-    when fired. Returns None silently when the tempfile is present.
+    Calls ``_emit_operator_error`` which raises ``typer.Exit(2)``; never
+    returns when fired. Returns ``None`` silently when the tempfile is present.
     """
     if tmp_path is not None and tmp_path.exists():
         return
@@ -307,24 +307,25 @@ def _dispatch_default_mode_or_error(
 
 
 # ===========================================================================
-# Phase 14 Plan 02: JUnit XML parser + domain model
+# JUnit XML parser + domain model
 # ===========================================================================
 #
-# Ported from the v1.1 in-pytest reporter plugin (deleted in Plan 14-05)
-# adapted to read JUnit XML elements rather than pytest report objects.
-# Pins Phase 09 D-03 (any-fail-wins) + D-05 (skip-reason dedup+cap) + Phase 13
-# D-12 (locked skip-reason constants). Tests pin both constants verbatim in
-# tests/unit/test_runner_parser.py::test_runner_skip_reason_constants_locked.
+# Adapted from the legacy in-pytest reporter plugin to read JUnit XML elements
+# rather than pytest report objects. Implements any-fail-wins aggregation plus
+# the skip-reason dedup+cap at 3 with a trailing ``... (N more)`` suffix.
+# Locked skip-reason constants below are pinned verbatim by
+# tests/framework/unit/test_runner_parser.py::test_runner_skip_reason_constants_locked
+# -- keep in sync if you edit them.
 # ===========================================================================
 
 _SKIP_REASON_CAP: int = 3
 
-# Phase 13 D-12 / SAFE-01: two distinct skip-reason strings for opt-in
-# tool selection. Module-level constants so they cannot drift silently.
+# Locked skip-reason constants for opt-in tool selection. Module-level
+# constants so they cannot drift silently. Tests pin both verbatim.
 _REASON_NOT_SELECTED = "not selected in config"        # state (a): unlisted
 _REASON_EXPLICIT_DEFAULT = "explicit skip in config"   # state (c): default
 
-# Phase 16 D-03: pre-run "Test plan" multiplier. Pinned by
+# Pre-run "Test plan" multiplier. Pinned by
 # tests/framework/unit/test_runner_pre_run_digest.py::test_cases_per_contract_tool_constant_locked
 # AND by tests/framework/unit/test_runner_pre_run_digest.py::test_cases_per_contract_tool_matches_actual_parametrize_count
 # (which AST-counts test_* funcs in tests/contract/test_mcp_tool_contract.py).
@@ -333,13 +334,13 @@ CASES_PER_CONTRACT_TOOL: int = 10
 
 
 def _extract_tool_name(nodeid_or_name: str) -> str | None:
-    """Return tool name from `[<tool>]` parametrize suffix, or None.
+    """Return tool name from ``[<tool>]`` parametrize suffix, or None.
 
-    Ported from the v1.1 plugin's _extract_tool_name (Phase 09 D-02a). Works on
-    both pytest ``report.nodeid`` (``<file>::<test>[<tool>]``) and JUnit XML
-    ``<testcase name="test_x[<tool>]">`` -- the bracket grammar is identical.
+    Works on both pytest ``report.nodeid`` (``<file>::<test>[<tool>]``) and
+    JUnit XML ``<testcase name="test_x[<tool>]">`` -- the bracket grammar is
+    identical.
 
-    rindex picks the LAST ``[...]`` so nested suffixes (defensive against
+    ``rindex`` picks the LAST ``[...]`` so nested suffixes (defensive against
     future parametrize layering) resolve to the innermost token.
     """
     if "[" not in nodeid_or_name or not nodeid_or_name.endswith("]"):
@@ -351,9 +352,8 @@ def _strip_pytest_skipped_prefix(text: str | None) -> str | None:
     """Strip pytest's ``Skipped: `` prefix that wraps operator-supplied
     ``pytest.skip(reason=...)`` strings in ``<skipped message="...">`` attrs.
 
-    Ported from the v1.1 plugin's ``_extract_skip_reason`` prefix-strip half
-    (Phase 09 D-05a). Returns ``None`` for ``None`` input so callers can chain
-    without adding their own None-guard.
+    Returns ``None`` for ``None`` input so callers can chain without adding
+    their own None-guard.
     """
     if text is None:
         return None
@@ -362,11 +362,10 @@ def _strip_pytest_skipped_prefix(text: str | None) -> str | None:
 
 
 def _format_skip_reasons(reasons: list[str]) -> str:
-    """Phase 09 D-05: dedup + cap at 3 + ``... (N more)``.
+    """Dedup + cap at 3 + trailing ``... (N more)``.
 
-    Ported verbatim from the v1.1 plugin's ``_format_skip_reasons``. Callers
-    are responsible for de-duplication on insertion (the parser already does
-    this); this helper only handles the join + cap rendering.
+    Callers are responsible for de-duplication on insertion (the parser
+    already does this); this helper only handles the join + cap rendering.
     """
     if not reasons:
         return ""
@@ -377,7 +376,7 @@ def _format_skip_reasons(reasons: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Domain model (consumed by the renderer in Plan 14-03)
+# Domain model (consumed by the renderer)
 # ---------------------------------------------------------------------------
 #
 # Stdlib dataclasses, no pydantic -- this is an internal seam between the
@@ -394,14 +393,15 @@ class ToolVerdict:
 
     Fields:
       name: the parametrize-id suffix (e.g. "list_registered_servers").
-      verdict: PASS / FAIL / SKIP per Phase 09 D-03 (any-fail-wins).
-      failure_message: the <failure message="..."> attribute (D-08 surface;
-        NOT the long traceback body -- that lives in failure_body and is
-        gated to --debug in Plan 14-04).
-      failure_body: the <failure>/<error> element text. Reserved for --debug.
+      verdict: PASS / FAIL / SKIP under the any-fail-wins rule.
+      failure_message: the ``<failure message="...">`` attribute (operator
+        surface; NOT the long traceback body -- that lives in failure_body
+        and is gated to ``--debug``).
+      failure_body: the ``<failure>``/``<error>`` element text. Reserved
+        for ``--debug``.
       skip_reasons: de-duplicated list after the ``Skipped: `` prefix-strip.
-      case_count: total number of <testcase> elements that contributed.
-      duration: sum of <testcase time="..."> across this tool's cases.
+      case_count: total number of ``<testcase>`` elements that contributed.
+      duration: sum of ``<testcase time="...">`` across this tool's cases.
     """
 
     name: str
@@ -417,10 +417,10 @@ class ToolVerdict:
 class ParsedRun:
     """Top-level parse result.
 
-    ``per_tool`` is keyed by extracted parametrize-id (Phase 07 ``ids=names``).
+    ``per_tool`` is keyed by extracted parametrize-id.
     ``total_time`` comes from ``<testsuite time="...">``.
     ``total_cases`` / ``total_failures`` / ``total_skipped`` / ``total_errors``
-    come from ``<testsuite>`` attributes (D-08 surface for the summary line).
+    come from ``<testsuite>`` attributes (operator surface for the summary line).
     """
 
     per_tool: dict[str, ToolVerdict] = field(default_factory=dict)
@@ -437,12 +437,11 @@ class ParsedRun:
 
 
 def parse_junit_xml(xml_path: Path) -> ParsedRun:
-    """Parse a pytest JUnit XML file into a ParsedRun domain model.
+    """Parse a pytest JUnit XML file into a ``ParsedRun`` domain model.
 
-    Phase 14 D-02/D-05/D-08/D-09. Stdlib ``xml.etree.ElementTree`` only --
-    no new runtime dependency.
+    Stdlib ``xml.etree.ElementTree`` only -- no new runtime dependency.
 
-    Aggregation (Phase 09 D-03 any-fail-wins, ported from the v1.1 plugin):
+    Aggregation (any-fail-wins):
       1. <testcase> with <failure> or <error> child -> verdict = FAIL (sticky)
       2. else passed (no child elements)            -> verdict = PASS unless
                                                        FAIL already set
@@ -455,7 +454,7 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
 
     Raises:
         xml.etree.ElementTree.ParseError on malformed XML (caller catches and
-        surfaces via D-16 in the cli.py wrapper).
+        surfaces via ``_dispatch_default_mode_or_error`` in the cli.py wrapper).
     """
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -496,8 +495,7 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             # use the test function name (also `test_` stripped) as the
             # row label. Synthetic key shape `<group>::<row_label>`
             # keeps the parser->renderer dataclass surface frozen
-            # (mirrors the Phase 18 Plan 06 "Strategy 1" lock -- no new
-            # ToolVerdict fields).
+            # (no new ToolVerdict fields).
             classname = tc.get("classname", "")
             if classname.startswith("tests.sdet.test_"):
                 group = classname.rsplit(".", 1)[-1].removeprefix("test_")
@@ -520,18 +518,18 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
         skipped = tc.find("skipped")
 
         if failure is not None or error is not None:
-            # D-03 rule 1: any failed/error -> FAIL (sticky).
+            # Any failed/error -> FAIL (sticky).
             bucket.verdict = "FAIL"
             elem = failure if failure is not None else error
-            # Phase 18 D-09: ToolCallError-attached JUnit properties (set by
-            # tests/sdet/conftest.py:pytest_exception_interact -- see Plan
-            # 18-07 Task 2) win over the raw <failure message="..."> attr
-            # when present. The third property `mcptf_error_raw` carries the
+            # ToolCallError-attached JUnit properties (set by
+            # tests/sdet/conftest.py:pytest_exception_interact) win over the
+            # raw <failure message="..."> attr when present. The third
+            # property `mcptf_error_raw` carries the
             # CallToolResult.model_dump_json(indent=2) string and is consumed
             # by the --debug appendix builder via a second XML pass
             # (_extract_tool_call_errors_from_xml). No new ToolVerdict fields
             # are added: the appendix re-parses the XML rather than threading
-            # the dump string through the dataclass (Strategy 1).
+            # the dump string through the dataclass.
             props = tc.find("properties")
             prop_msg: str | None = None
             if props is not None:
@@ -545,7 +543,7 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
                     elif n == "mcptf_error_message":
                         msg_field = v
                 if msg_field is not None:
-                    # D-10: "[code] message" when code present; else bare.
+                    # "[code] message" when code present; else bare.
                     prop_msg = f"[{code}] {msg_field}" if code else msg_field
 
             msg = elem.get("message")
@@ -559,7 +557,7 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             continue
 
         if skipped is not None:
-            # D-03 rule 3: SKIP sticks only if nothing else ever set verdict.
+            # SKIP sticks only if nothing else ever set verdict.
             reason = _strip_pytest_skipped_prefix(skipped.get("message"))
             if reason and reason not in bucket.skip_reasons:
                 bucket.skip_reasons.append(reason)
@@ -569,7 +567,7 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             continue
 
         # No failure / error / skipped child -> PASS case.
-        # D-03 rule 2: PASS sets verdict unless FAIL already sticky.
+        # PASS sets verdict unless FAIL already sticky.
         _has_pass[tool] = True
         if bucket.verdict != "FAIL":
             bucket.verdict = "PASS"
@@ -578,23 +576,20 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
 
 
 # ===========================================================================
-# Phase 14 Plan 03: Domain UI renderer
+# Domain UI renderer
 # ===========================================================================
 #
-# Consumes ParsedRun (Plan 14-02) plus a RenderContext (non-XML metadata from
-# cli.py:run) and emits the operator-facing header / per-tool rows / summary
-# line described in SEED-011 §2 and Phase 14 D-04..D-09.
+# Consumes ParsedRun plus a RenderContext (non-XML metadata from cli.py:run)
+# and emits the operator-facing header / per-tool rows / summary line.
 #
-# Architectural shift vs the v1.1 in-pytest plugin: the state-(a)/(c) skip
-# composer is now a PURE FUNCTION (_compose_unparametrized_skips_from_config)
-# that takes discovered_tools as an argument rather than reading a module
-# global off the deleted plugin. The wrapper runs outside the pytest process
-# and cannot reach the in-pytest cache; it performs its own discovery call
-# before launching the subprocess.
+# Architectural note: the state-(a)/(c) skip composer is a PURE FUNCTION
+# (_compose_unparametrized_skips_from_config) that takes discovered_tools as
+# an argument rather than reading a module global off the deleted plugin.
+# The wrapper runs outside the pytest process and cannot reach the in-pytest
+# cache; it performs its own discovery call before launching the subprocess.
 #
-# Em-dash U+2014 ("—") appears verbatim in this source file -- locked at
-# Phase 09 SC-3 and the v1.1 reporter tests (Plan 14 Plans 02-03 re-pin via
-# tests/test_runner_renderer.py).
+# Em-dash U+2014 ("—") appears verbatim in this source file -- the locked
+# separator is re-pinned by tests/test_runner_renderer.py.
 # ===========================================================================
 
 
@@ -602,12 +597,12 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
 class RenderContext:
     """Non-XML data the renderer needs.
 
-    Phase 14 D-07: header inputs come from the resolved Config (server cmd,
-    judges) and a wrapper-side discovery call (discovered tool list).
-    Phase 14 D-09: total_planned_cases is the count of <testcase> elements
-    we EXPECT (typically discovered-and-allowed tools * cases per tool);
-    today this equals `parsed.total_cases` for the header's "Test plan: N
-    contract cases" line, since pytest's collected count IS the plan.
+    Header inputs come from the resolved Config (server cmd, judges) and a
+    wrapper-side discovery call (discovered tool list). ``total_planned_cases``
+    is the count of ``<testcase>`` elements we EXPECT (typically
+    discovered-and-allowed tools * cases per tool); today this equals
+    ``parsed.total_cases`` for the header's "Test plan: N contract cases"
+    line, since pytest's collected count IS the plan.
     """
 
     server_cmd: str
@@ -622,8 +617,7 @@ def _compose_unparametrized_skips_from_config(
     tools_config: dict,
     ran_tools: set[str],
 ) -> dict[str, str]:
-    """Phase 13 D-12/D-13 + Phase 14: state-(a)/(c) SKIP rows the wrapper
-    composes outside the pytest process.
+    """State-(a)/(c) SKIP rows the wrapper composes outside the pytest process.
 
     Inputs:
       - discovered_tools: tools the MCP server advertises (from wrapper-side discovery).
@@ -640,11 +634,10 @@ def _compose_unparametrized_skips_from_config(
                somehow didn't run -- defensive)
                -> _REASON_NOT_SELECTED
 
-    Architectural shift vs the v1.1 in-pytest composer: this function is
-    PURE -- discovered_tools is an argument, not a module global. The
-    wrapper rediscovers tools before launching pytest (cli.py:
-    _discover_tools_for_run) because the in-pytest cache lives in another
-    process.
+    Architectural note: this function is PURE -- discovered_tools is an
+    argument, not a module global. The wrapper rediscovers tools before
+    launching pytest (cli.py:_discover_tools_for_run) because the in-pytest
+    cache lives in another process.
     """
     result: dict[str, str] = {}
     for name in discovered_tools:
@@ -663,16 +656,16 @@ def _compose_pre_run_skip_reasons(
     discovered_tools: list[str],
     tools_config: dict,
 ) -> dict[str, str]:
-    """Phase 16 D-05/D-14: pre-run skip-reason map for `--explain`.
+    """Pre-run skip-reason map for ``--explain``.
 
     Pre-run wrapper that exposes ONLY state-(a) unlisted + state-(c) explicit
     skips. State-(b) tools (listed AND skip=False) are running pre-run and
     must NOT appear in the skip-explain output. The post-run composer's
-    defensive `skip=False -> _REASON_NOT_SELECTED` fallback is correct for
+    defensive ``skip=False -> _REASON_NOT_SELECTED`` fallback is correct for
     post-run (a state-b tool that produced no testcase is anomalous) but
     incorrect pre-run (state-b is the running set).
 
-    Returns: {tool_name: reason_string} for state-(a)/(c) skips only.
+    Returns: ``{tool_name: reason_string}`` for state-(a)/(c) skips only.
     """
     # Compute the running set (state-b: in config AND skip != True), then
     # delegate to the post-run composer with ran_tools=<running>. This filters
@@ -689,18 +682,18 @@ def _compose_pre_run_skip_reasons(
 
 
 def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
-    """Phase 16 plan 05: build the digest's `Judges:` union, honoring TOOLCFG-06.
+    """Build the digest's ``Judges:`` union, honoring ToolConfig.judges semantics.
 
-    ToolConfig.judges semantics (locked at models.py:98 + contract gates at
-    tests/contract/test_mcp_tool_contract.py:124,154,185):
+    ToolConfig.judges semantics (locked at models.py + contract gates at
+    tests/contract/test_mcp_tool_contract.py):
       - None  (default, unset)      -> run ALL rubrics in RUBRIC_IDS
       - []    (explicit empty list) -> explicit opt-out, run no rubrics on this tool
       - [...] (subset list)         -> run literally these rubrics
 
-    The pre-run digest must reflect what will actually execute. Pre-plan-05,
-    cli.py's union loop used `getattr(tool_cfg, "judges", []) or []`, which
-    silently collapsed the None default to [] and produced an empty union
-    even when every tool was running all three rubrics at runtime.
+    The pre-run digest must reflect what will actually execute. An earlier
+    union loop used ``getattr(tool_cfg, "judges", []) or []``, which silently
+    collapsed the None default to ``[]`` and produced an empty union even
+    when every tool was running all three rubrics at runtime.
 
     Returns: sorted list of rubric IDs that will fire for at least one
     configured tool. Empty list iff every tool explicitly opts out via [].
@@ -709,19 +702,19 @@ def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
     for tool_cfg in tools_config.values():
         declared = getattr(tool_cfg, "judges", None)
         if declared is None:
-            judges_set.update(RUBRIC_IDS)  # TOOLCFG-06: None = run all rubrics
+            judges_set.update(RUBRIC_IDS)  # None default = run all rubrics
         else:
             judges_set.update(declared)    # [] is a no-op; subset passes through
     return sorted(judges_set)
 
 
 # ---------------------------------------------------------------------------
-# ANSI guard helpers (D-06: codes only when stdout is a TTY)
+# ANSI guard helpers (codes only when stdout is a TTY)
 # ---------------------------------------------------------------------------
 
 
 def _ansi_enabled(file) -> bool:
-    """Phase 14 D-06: ANSI codes only when file is a TTY. Piped output stays plain."""
+    """ANSI codes only when ``file`` is a TTY. Piped output stays plain."""
     return hasattr(file, "isatty") and file.isatty()
 
 
@@ -738,12 +731,12 @@ def _dim(s: str, file) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Header (SEED-011 §2 mockup -- verbatim shape for v1.2)
+# Header (verbatim shape for the v1.2 mockup)
 # ---------------------------------------------------------------------------
 
 
 def _render_header(ctx: RenderContext, parsed: ParsedRun, file=None) -> None:
-    """SEED-011 §2 mockup -- verbatim shape for v1.2.
+    """Verbatim shape for the v1.2 mockup.
 
     Lines (exact order):
       ========================================
@@ -756,9 +749,9 @@ def _render_header(ctx: RenderContext, parsed: ParsedRun, file=None) -> None:
       Judges:      {comma-joined}
       Test plan:   {C} contract cases
 
-    `file=None` defaults to sys.stdout resolved at call-time so pytest
-    `capsys` capture works (capsys replaces sys.stdout per-test; a
-    `file=sys.stdout` default would capture the pre-test stdout at function
+    ``file=None`` defaults to ``sys.stdout`` resolved at call-time so pytest
+    ``capsys`` capture works (capsys replaces sys.stdout per-test; a
+    ``file=sys.stdout`` default would capture the pre-test stdout at function
     definition time and bypass the fixture).
     """
     if file is None:
@@ -783,7 +776,7 @@ def _render_header(ctx: RenderContext, parsed: ParsedRun, file=None) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 16 D-01: Pre-run digest — moves SEED-011 §2 header to BEFORE pytest.
+# Pre-run digest -- emitted BEFORE pytest runs.
 # ---------------------------------------------------------------------------
 
 
@@ -793,9 +786,9 @@ def _render_pre_run_digest(
     explain: bool = False,
     file=None,
 ) -> None:
-    """Phase 16 D-01/D-03/D-04/D-12: pre-run digest emitted before pytest runs.
+    """Pre-run digest emitted before pytest runs.
 
-    Lines (exact order, ≤ 10 total in default mode; up to 11 with with_framework=True):
+    Lines (exact order, <= 10 total in default mode; up to 11 with with_framework=True):
       ========================================
       MCP Test Framework
       ========================================
@@ -808,16 +801,16 @@ def _render_pre_run_digest(
                    + framework self-tests        [only if with_framework=True]
       (blank line)
 
-    `file=None` -> sys.stdout at call-time (capsys-friendly; see _render_header
-    docstring for the rationale).
+    ``file=None`` -> ``sys.stdout`` at call-time (capsys-friendly; see
+    ``_render_header`` docstring for the rationale).
 
-    D-04: two buckets only — Running and Skipping. The Phase 13 state-(a) /
-    state-(c) distinction is visible in --explain output, not here.
-    D-12: digest height ≤ 10 lines regardless of N (the Skipping list is
-    NEVER inline-expanded here — `--explain` is the expansion surface).
+    Two buckets only -- Running and Skipping. The state-(a) / state-(c)
+    distinction is visible in ``--explain`` output, not here. Digest height
+    remains <= 10 lines regardless of N (the Skipping list is NEVER
+    inline-expanded here -- ``--explain`` is the expansion surface).
 
-    Running list is derived from `ctx.discovered_tools` filtered by
-    `ctx.tools_config` (state-b: listed AND not skip:true). This matches
+    Running list is derived from ``ctx.discovered_tools`` filtered by
+    ``ctx.tools_config`` (state-b: listed AND not skip:true). This matches
     the runtime selection logic in tests/conftest.py without re-importing it.
     """
     if file is None:
@@ -843,18 +836,18 @@ def _render_pre_run_digest(
     print(f"MCP server:  {ctx.server_cmd}", file=file)
     print(f"Discovered:  {discovered_n} tools", file=file)
     print(f"Running:     {running_n:>2}  ({running_text})", file=file)
-    # REVISION: omit "(use --explain to list)" hint when explain=True (the
-    # explain block renders right below, so the hint would lie).
+    # Omit "(use --explain to list)" hint when explain=True (the explain block
+    # renders right below, so the hint would lie).
     if explain:
         print(f"Skipping:    {skipping_n:>2}", file=file)
     else:
         print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
     print(f"Judges:      {judges_text}", file=file)
     print(f"Test plan:   {planned_cases} contract cases", file=file)
-    # REVISION: --with-framework suffix emits IMMEDIATELY after Test plan line,
-    # BEFORE the trailing blank, as a continuation line. 13-space indent matches
-    # the label column width so "+ framework self-tests" visually hangs under
-    # the contract-cases value.
+    # --with-framework suffix emits IMMEDIATELY after Test plan line, BEFORE
+    # the trailing blank, as a continuation line. 13-space indent matches
+    # the label column width so "+ framework self-tests" visually hangs
+    # under the contract-cases value.
     if with_framework:
         print("             + framework self-tests", file=file)
     print("", file=file)  # blank line before next section
@@ -868,16 +861,16 @@ def _render_scenario_pre_run_digest(
     explain: bool = False,
     file=None,
 ) -> None:
-    """Phase 18 D-06: scenario-aware variant of _render_pre_run_digest.
+    """Scenario-aware variant of ``_render_pre_run_digest``.
 
-    Buckets are scenario MODULE stems (tests/sdet/test_proxmox_vm_lifecycle.py
-    -> 'proxmox_vm_lifecycle'). Same line-budget as _render_pre_run_digest
-    (<= 10 lines). Em-dash separator U+2014 reused per Phase 16 / Phase 09
-    SC-3 lock.
+    Buckets are scenario MODULE stems (``tests/sdet/test_proxmox_vm_lifecycle.py``
+    -> ``'proxmox_vm_lifecycle'``). Same line-budget as
+    ``_render_pre_run_digest`` (<= 10 lines). The em-dash separator U+2014
+    is the locked rendering character; do not substitute an ASCII hyphen.
 
     The em-dash literal U+2014 appears in:
       1. judges_text = "(none — SDET scope)"   -- signals no Ollama grading
-      2. The --explain expansion line          -- matches Phase 09 SC-3 lock
+      2. The --explain expansion line          -- matches the locked separator
 
     Args:
         ctx: shared RenderContext (server_cmd field consumed).
@@ -918,15 +911,15 @@ def _render_scenario_pre_run_digest(
 def _collect_sdet_scenarios(
     ctx: "RenderContext",
 ) -> tuple[list[str], dict[str, str]]:
-    """Phase 18 D-06 helper: enumerate scenario module stems under tests/sdet/.
+    """Enumerate scenario module stems under ``tests/sdet/``.
 
-    Phase 19 will extend this with preflight-skip detection (PREFLIGHT-01..02
-    skipped scenarios feed the skipped_scenarios return dict). Phase 18 ships
-    the discovery side only; skipped dict is always empty in this phase.
+    The discovery side ships scenario stems; preflight-skip detection (for
+    scenarios skipped by env-reachability probes) is a future extension.
+    For now the skipped dict is always empty.
 
-    The `ctx` parameter is currently unused but kept on the signature so
-    Phase 19 can read RenderContext-carried scenario-skip state without a
-    breaking API change.
+    The ``ctx`` parameter is currently unused but kept on the signature so
+    a future revision can read RenderContext-carried scenario-skip state
+    without a breaking API change.
 
     Returns:
         (scenario_stems: list[str] sorted alphabetically, skipped: dict[str, str])
@@ -941,23 +934,24 @@ def _collect_sdet_scenarios(
 
 
 def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
-    """Phase 16 D-05/D-13: `--explain` expansion of the digest's Skipping hint.
+    """``--explain`` expansion of the digest's Skipping hint.
 
     Lines (alphabetical order):
       Skipping (N):
         <tool>  — <reason>      [N times, sorted alphabetically]
       (blank line)
 
-    Reasons sourced from `_compose_pre_run_skip_reasons` (Phase 14's pure
-    composer called with `ran_tools=set()` since pytest hasn't run yet).
+    Reasons sourced from ``_compose_pre_run_skip_reasons`` (the pure composer
+    called with ``ran_tools=set()`` since pytest hasn't run yet).
 
-    Format invariants (D-13, grep-able at N=70):
+    Format invariants (grep-able at N=70):
       - One tool per line, no wrapping.
-      - U+2014 em-dash separator (matches Phase 09 SC-3 / Phase 14 _render_per_tool_rows).
+      - U+2014 em-dash separator (matches the locked separator in
+        ``_render_per_tool_rows``).
       - Tool name left-justified to width(longest skipped tool name) for visual scan.
-      - Output footprint ≤ N+2 lines (header + N tool lines + 1 trailing blank).
+      - Output footprint <= N+2 lines (header + N tool lines + 1 trailing blank).
 
-    `file=None` -> sys.stdout at call-time (capsys-friendly).
+    ``file=None`` -> ``sys.stdout`` at call-time (capsys-friendly).
     """
     if file is None:
         file = sys.stdout
@@ -980,7 +974,7 @@ def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Per-tool rows (Phase 09 CD-03 ordering, D-08 reasoning, em-dash separator)
+# Per-tool rows (ordering: FAIL -> SKIP -> PASS; em-dash separator)
 # ---------------------------------------------------------------------------
 
 
@@ -989,13 +983,18 @@ def _render_per_tool_rows(
     unparam_skips: dict[str, str],
     file=None,
 ) -> None:
-    """Phase 09 CD-03: FAIL -> SKIP -> PASS, alphabetical within each.
-    Phase 14 D-08: FAIL row appends `failure_message` after em-dash.
-    Phase 19: scenario keys carry '::' (e.g. 'group::row_label') and
-    render as a bare group header followed by indented per-test rows;
-    these keys are excluded from the contract `name_width` ljust.
+    """Render per-tool rows.
+
+    Ordering: FAIL -> SKIP -> PASS, alphabetical within each. The FAIL row
+    appends ``failure_message`` after the em-dash separator.
+
+    Scenario keys carry ``'::'`` (e.g. ``'group::row_label'``) and render as
+    a bare group header followed by indented per-test rows; these keys are
+    excluded from the contract ``name_width`` ljust.
+
     Em-dash separator = U+2014 (literal '—'), not ASCII hyphen.
-    `file=None` -> sys.stdout at call time (capsys-friendly).
+
+    ``file=None`` -> ``sys.stdout`` at call time (capsys-friendly).
     """
     if file is None:
         file = sys.stdout
@@ -1009,7 +1008,7 @@ def _render_per_tool_rows(
         group, _, row_label = k.partition("::")
         scenario_entries.setdefault(group, []).append((row_label, v))
 
-    # -- Contract block (BYTE-IDENTICAL to pre-Phase-19 behavior when no scenarios) --
+    # -- Contract block (BYTE-IDENTICAL when no scenarios are present) --
     fails = sorted(t for t, v in contract_per_tool.items() if v.verdict == "FAIL")
     skips_xml = {t for t, v in contract_per_tool.items() if v.verdict == "SKIP"}
     passes = sorted(t for t, v in contract_per_tool.items() if v.verdict == "PASS")
@@ -1026,7 +1025,7 @@ def _render_per_tool_rows(
             v = contract_per_tool[tool]
             tag = _red("FAIL", file)
             if v.failure_message:
-                # U+2014 em-dash; matches Phase 09 SC-3 (locked separator).
+                # U+2014 em-dash; locked separator.
                 print(f"  {tool.ljust(name_width)}  ✗ {tag} — {v.failure_message}", file=file)
             else:
                 print(f"  {tool.ljust(name_width)}  ✗ {tag}", file=file)
@@ -1050,7 +1049,7 @@ def _render_per_tool_rows(
             tag = _green("PASS", file)
             print(f"  {tool.ljust(name_width)}  ✓ {tag}", file=file)
 
-    # -- Scenario blocks (Phase 19) --
+    # -- Scenario blocks --
     # Bare group header, indented per-test rows (glyph + row_label;
     # NO tag word). FAIL rows append em-dash + failure_message; SKIP
     # rows append em-dash + reasons. Groups and rows sorted alphabetically.
@@ -1061,7 +1060,7 @@ def _render_per_tool_rows(
                 print(f"  ✓ {row_label}", file=file)
             elif v.verdict == "FAIL":
                 if v.failure_message:
-                    # U+2014 em-dash; Phase 09 SC-3 (locked separator).
+                    # U+2014 em-dash; locked separator.
                     print(f"  ✗ {row_label} — {v.failure_message}", file=file)
                 else:
                     print(f"  ✗ {row_label}", file=file)
@@ -1083,12 +1082,13 @@ def _render_summary_line(
     unparam_skips: dict[str, str],
     file=None,
 ) -> None:
-    """SEED-011 §2: `Result: N PASS / M FAIL  in T.Ts`.
+    """Render the summary line: ``Result: N PASS / M FAIL  in T.Ts``.
 
     Skip count includes state-(a)/(c) composer entries so the summary line
-    agrees with the per-tool rows (must_haves truth: 'discovered/running/
-    skipping counts agree with what the runner actually executes').
-    `file=None` -> sys.stdout at call time (capsys-friendly).
+    agrees with the per-tool rows (discovered / running / skipping counts
+    agree with what the runner actually executes).
+
+    ``file=None`` -> ``sys.stdout`` at call time (capsys-friendly).
     """
     if file is None:
         file = sys.stdout
@@ -1113,13 +1113,13 @@ def render_domain_ui(
     ctx: RenderContext,
     file=None,
 ) -> None:
-    """Top-level renderer. Phase 14 D-04 (batch render) + D-06 (stdlib + ANSI).
+    """Top-level renderer (batch render, stdlib + ANSI guard).
 
-    Order: per-tool rows -> summary line. (Header moved pre-run to
-    _render_pre_run_digest per Phase 16 D-01.)
-    State-(a)/(c) SKIP rows merge with XML-derived SKIPs via
-    _compose_unparametrized_skips_from_config.
-    `file=None` -> sys.stdout at call time (capsys-friendly).
+    Order: per-tool rows -> summary line. (The header was moved pre-run to
+    ``_render_pre_run_digest``.) State-(a)/(c) SKIP rows merge with
+    XML-derived SKIPs via ``_compose_unparametrized_skips_from_config``.
+
+    ``file=None`` -> ``sys.stdout`` at call time (capsys-friendly).
     """
     if file is None:
         file = sys.stdout
@@ -1132,17 +1132,17 @@ def render_domain_ui(
 
 
 # ===========================================================================
-# Phase 14 Plan 04: verbosity ladder helpers (D-12 / D-13)
+# Verbosity ladder helpers
 # ===========================================================================
 #
 # Two orthogonal renderers extending render_domain_ui:
-#   - render_summary_only: D-12 `-q` -- prints only the summary line.
-#   - render_debug_appendix: D-13 `--debug` -- printed AFTER whatever the
+#   - render_summary_only: `-q` -- prints only the summary line.
+#   - render_debug_appendix: `--debug` -- printed AFTER whatever the
 #     default/quiet rung produced. Default UI shape unchanged regardless
-#     of --debug (D-13 invariant: each rung adds info; none re-shapes
-#     the layer below).
+#     of --debug (invariant: each rung adds info; none re-shapes the layer
+#     below).
 #
-# The `--explain` flag is DELIBERATELY ABSENT here (D-14: Phase 16 owns it).
+# `--explain` is owned by the cli wrapper, not this module.
 # ===========================================================================
 
 
@@ -1151,13 +1151,13 @@ def render_summary_only(
     ctx: RenderContext,
     file=None,
 ) -> None:
-    """Phase 14 D-12: `-q` / `--quiet` -- summary line only.
+    """``-q`` / ``--quiet`` -- summary line only.
 
-    No header, no per-tool rows. Same summary content as render_domain_ui's
-    last line, including state-(a)/(c) SKIP count contribution so the
-    quiet-mode summary agrees with the default-mode summary.
+    No header, no per-tool rows. Same summary content as the last line of
+    ``render_domain_ui``, including state-(a)/(c) SKIP count contribution
+    so the quiet-mode summary agrees with the default-mode summary.
 
-    `file=None` -> sys.stdout at call time (capsys-friendly), matching
+    ``file=None`` -> ``sys.stdout`` at call time (capsys-friendly), matching
     the other renderers in this module.
     """
     if file is None:
@@ -1171,13 +1171,14 @@ def render_summary_only(
 
 @dataclass(frozen=True)
 class _ToolCallErrorRecord:
-    """Phase 18 D-11 appendix record. tool/code/message/raw all reconstructed
-    from JUnit user_properties (set by tests/sdet/conftest.py:
-    pytest_exception_interact -- see Plan 18-07 Task 2).
+    """``--debug`` appendix record. tool/code/message/raw are all reconstructed
+    from JUnit user_properties (set by
+    ``tests/sdet/conftest.py:pytest_exception_interact``).
 
-    raw carries the CallToolResult.model_dump_json(indent=2) string that
-    pytest_exception_interact emits as the `mcptf_error_raw` property. Empty
-    string when the test did not raise ToolCallError, OR when exc.raw was None.
+    ``raw`` carries the ``CallToolResult.model_dump_json(indent=2)`` string
+    that ``pytest_exception_interact`` emits as the ``mcptf_error_raw``
+    property. Empty string when the test did not raise ``ToolCallError``, OR
+    when ``exc.raw`` was None.
     """
 
     tool: str
@@ -1187,20 +1188,21 @@ class _ToolCallErrorRecord:
 
 
 def _extract_tool_call_errors_from_xml(xml_path: Path) -> list[_ToolCallErrorRecord]:
-    """Phase 18 D-11: scan a JUnit XML file for ToolCallError-attached
-    testcases (testcases with mcptf_error_message user_property -- code/raw
-    optional). Returns one record per such testcase. Returns [] when none
-    present (D-13 invariant: --debug appendix unchanged when no ToolCallError
-    failures occurred).
+    """Scan a JUnit XML file for ``ToolCallError``-attached testcases.
 
-    Reads ALL THREE user_properties emitted by Plan 18-07's
-    pytest_exception_interact:
+    Testcases with ``mcptf_error_message`` user_property are picked up; code
+    and raw are optional. Returns one record per such testcase. Returns
+    ``[]`` when none are present (invariant: ``--debug`` appendix unchanged
+    when no ``ToolCallError`` failures occurred).
+
+    Reads ALL THREE user_properties emitted by
+    ``pytest_exception_interact``:
       - mcptf_error_code    -> .code  (None if missing or value="")
       - mcptf_error_message -> .message (required -- testcase skipped if absent)
       - mcptf_error_raw     -> .raw  (""  if missing or exc.raw was None;
                                        otherwise the CallToolResult JSON dump)
 
-    Strategy 1: re-parse the XML here (vs threading dump strings through
+    The XML is re-parsed here (rather than threading dump strings through
     ToolVerdict) so the dataclass surface stays unchanged. O(N) extra pass
     is negligible at MVP scale.
     """
@@ -1227,7 +1229,7 @@ def _extract_tool_call_errors_from_xml(xml_path: Path) -> list[_ToolCallErrorRec
             elif n == "mcptf_error_message":
                 message = v
             elif n == "mcptf_error_raw":
-                # D-11: full CallToolResult.model_dump_json(indent=2) string.
+                # Full CallToolResult.model_dump_json(indent=2) string.
                 # Empty value means exc.raw was None -- render as "(none)".
                 raw_dump = v
         if message is None:
@@ -1246,7 +1248,7 @@ def render_debug_appendix(
     file=None,
     xml_path: Path | None = None,
 ) -> None:
-    """Phase 14 D-13: `--debug` -- appended AFTER the domain UI.
+    """``--debug`` -- appended AFTER the domain UI.
 
     Order (only printed if non-empty):
       --- raw pytest output ---
@@ -1257,30 +1259,31 @@ def render_debug_appendix(
       {tool_name}:
         {failure_body indented by 2 spaces}
 
-    Default UI must be UNCHANGED whether --debug is passed or not (D-13
-    invariant: each rung adds info; none re-shapes the layer below).
+    Default UI must be UNCHANGED whether ``--debug`` is passed or not
+    (invariant: each rung adds info; none re-shapes the layer below).
 
-    The `--- raw pytest output ---` separator string is grep-able
+    The ``--- raw pytest output ---`` separator string is grep-able
     regression-pin material; do not reword.
 
-    Phase 18 D-11: when `xml_path` is provided AND the JUnit XML carries
-    ToolCallError-attached testcases (mcptf_error_* user_properties set by
-    tests/sdet/conftest.py:pytest_exception_interact), a `--- ToolCallError
-    dump ---` block is emitted BEFORE `--- raw pytest output ---` for each
-    such testcase. When `xml_path` is None or the XML lacks those
-    properties, the appendix is byte-identical to the Phase 14 baseline
-    (D-13 invariant: each rung adds info; none re-shapes the layer below).
+    When ``xml_path`` is provided AND the JUnit XML carries
+    ``ToolCallError``-attached testcases (``mcptf_error_*`` user_properties
+    set by ``tests/sdet/conftest.py:pytest_exception_interact``), a
+    ``--- ToolCallError dump ---`` block is emitted BEFORE
+    ``--- raw pytest output ---`` for each such testcase. When ``xml_path``
+    is None or the XML lacks those properties, the appendix is byte-identical
+    to the legacy baseline (invariant: each rung adds info; none re-shapes
+    the layer below).
     """
     if file is None:
         file = sys.stdout
 
-    # Phase 18 D-11: ToolCallError dump block emits BEFORE raw pytest output
-    # so operators get a parseable summary they can grep first. The raw:
-    # section carries the full CallToolResult.model_dump_json(indent=2) string
-    # emitted by Plan 18-07's pytest_exception_interact as the
-    # mcptf_error_raw property. When xml_path is absent (legacy callers) or
-    # no ToolCallError-attached testcases are present, this block emits
-    # zero bytes -- D-13 invariant preserved.
+    # ToolCallError dump block emits BEFORE raw pytest output so operators
+    # get a parseable summary they can grep first. The `raw:` section carries
+    # the full CallToolResult.model_dump_json(indent=2) string emitted by
+    # pytest_exception_interact as the mcptf_error_raw property. When
+    # xml_path is absent (legacy callers) or no ToolCallError-attached
+    # testcases are present, this block emits zero bytes -- appendix-shape
+    # invariant preserved.
     if xml_path is not None:
         tool_call_errors = _extract_tool_call_errors_from_xml(xml_path)
         for err in tool_call_errors:
@@ -1289,18 +1292,16 @@ def render_debug_appendix(
             print(f"code: {err.code or '(none)'}", file=file)
             print(f"message: {err.message}", file=file)
             if err.raw:
-                # D-11: render the indented JSON dump. Each line of the dump
-                # (which already comes back from model_dump_json(indent=2)
-                # with its own 2-space internal indent) gets an ADDITIONAL
-                # 2-space prefix so the appendix layout matches CONTEXT.md
-                # lines 129-130.
+                # Render the indented JSON dump. Each line of the dump (which
+                # already comes back from model_dump_json(indent=2) with its
+                # own 2-space internal indent) gets an ADDITIONAL 2-space
+                # prefix so the appendix layout matches the contract.
                 print("raw:", file=file)
                 for line in err.raw.splitlines():
                     print(f"  {line}", file=file)
             else:
                 # exc.raw was None OR mcptf_error_raw property absent --
-                # explicit sentinel per CONTEXT.md "raw: <CallToolResult.
-                # model_dump_json>" contract; no fallback workaround
+                # explicit sentinel: "raw: (none)". No fallback workaround
                 # because the dump is supposed to traverse the JUnit cycle.
                 print("raw: (none)", file=file)
             print("---", file=file)
@@ -1335,33 +1336,32 @@ def render_debug_appendix(
 
 
 # ===========================================================================
-# Phase 14 Plan 05: in-pytest discovery cache (migrated from the deleted
-# v1.1 reporter plugin).
+# In-pytest discovery cache (used by tests/conftest.py during parametrize)
 # ===========================================================================
 #
 # This cache lives in `_runner` (a real importable module under src/) rather
 # than `tests/conftest.py` because `tests/` is NOT a Python package (no
-# `tests/__init__.py`). Surviving Phase 13 SAFE-01 allowlist unit tests need
-# to patch this cache via a real import path:
+# `tests/__init__.py`). Surviving allowlist unit tests need to patch this
+# cache via a real import path:
 #
 #     from mcp_test_framework import _runner as _r
 #     _r._DISCOVERED_TOOL_NAMES = ["alpha", "beta"]
 #
 # This cache is SEPARATE from the wrapper-side discovery in
 # `cli.py:_discover_tools_for_run`. The TWO-cache architecture is intentional
-# for v1.2 (each discovery costs <1s); consolidation is a v1.3 candidate.
-# The wrapper cache lives only on the RenderContext; this cache lives at
-# module scope because `pytest_generate_tests` in conftest needs to read
-# it across multiple parametrize calls within a single pytest session.
+# (each discovery costs <1s); consolidation is a future-work candidate. The
+# wrapper cache lives only on the RenderContext; this cache lives at module
+# scope because `pytest_generate_tests` in conftest needs to read it across
+# multiple parametrize calls within a single pytest session.
 # ===========================================================================
 
 _DISCOVERED_TOOL_NAMES: "list[str] | None" = None
 
 
 def _set_discovered_tool_names(names: list[str]) -> None:
-    """Phase 14 Plan 05: helper for `tests/conftest.py:_resolve_tool_names` to
-    populate the in-pytest discovery cache without using a `global` declaration
-    at the call site. Tests can patch the cache directly via
-    `_runner._DISCOVERED_TOOL_NAMES = [...]`."""
+    """Helper for ``tests/conftest.py:_resolve_tool_names`` to populate the
+    in-pytest discovery cache without using a ``global`` declaration at the
+    call site. Tests can patch the cache directly via
+    ``_runner._DISCOVERED_TOOL_NAMES = [...]``."""
     global _DISCOVERED_TOOL_NAMES
     _DISCOVERED_TOOL_NAMES = list(names)

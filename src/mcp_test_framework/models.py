@@ -1,20 +1,20 @@
 """Cross-cutting Pydantic config sub-models.
 
-Per CONTEXT.md D-02: only ``Config`` and its sub-models live here. Domain models
+Only ``Config`` and its sub-models live here. Domain models
 (``ValidationIssue``, ``JudgeResult``) stay in their owning modules.
 
-Each sub-model is independently frozen via ``ConfigDict(frozen=True)`` (Assumption A5
-in 01-RESEARCH.md: ``frozen=True`` on a parent ``BaseSettings`` does NOT propagate to
-nested ``BaseModel`` fields, so each nested model needs its own marker).
+Each sub-model is independently frozen via ``ConfigDict(frozen=True)``:
+``frozen=True`` on a parent ``BaseSettings`` does NOT propagate to nested
+``BaseModel`` fields, so each nested model needs its own marker.
 
-Each spec env-var-mapped field carries an explicit
-``validation_alias=AliasChoices(<bare env name>, <field name>)`` annotation so that
-bare env names (per CONTEXT.md "Env var naming convention" lock -- ``OLLAMA_BASE_URL``
-etc.) route to the correct sub-model field WITHOUT relying on ``env_nested_delimiter``
-(which would force ``OLLAMA__BASE_URL`` instead). The field name is included as a
-second alias choice -- with ``populate_by_name=True`` enabled -- so YAML overlays
-(emitted as ``ollama.base_url`` etc.) and init kwargs continue to populate the model.
-See plan-checker iter 1 BLOCKER #1 (resolved Option A) in 01-02-PLAN.md.
+Each env-var-mapped field carries an explicit
+``validation_alias=AliasChoices(<bare env name>, <field name>)`` annotation
+so that bare env names (e.g. ``OLLAMA_BASE_URL``) route to the correct
+sub-model field WITHOUT relying on ``env_nested_delimiter`` (which would
+force ``OLLAMA__BASE_URL`` instead). The field name is included as a second
+alias choice -- with ``populate_by_name=True`` enabled -- so YAML overlays
+(emitted as ``ollama.base_url`` etc.) and init kwargs continue to populate
+the model.
 """
 
 from __future__ import annotations
@@ -75,20 +75,20 @@ class McpServerConfig(BaseModel):
 
 
 class ToolConfig(BaseModel):
-    """Per-tool config registry entry (TOOLCFG-01..07; Phase 08 D-01/D-04/D-05).
+    """Per-tool config registry entry.
 
-    Keyed off tool name in `Config.tools: dict[str, ToolConfig]`. Tools with no
-    entry use defaults (TOOLCFG-06). `extra="forbid"` makes typos (e.g. `srtip:`
-    instead of `skip:`) fail at load time per TOOLCFG-05 / D-15.
+    Keyed off tool name in ``Config.tools: dict[str, ToolConfig]``. Tools
+    with no entry use defaults. ``extra="forbid"`` makes typos (e.g.
+    ``srtip:`` instead of ``skip:``) fail at load time.
 
-    `setup` and `depends_on` are reserved Optional fields (TOOLCFG-03 / D-06):
-    typed in the model so SEED-004 / v1.5+ stateful-testing can light them up
-    additively without a schema migration. They are ignored at runtime in v1.1.
+    ``setup`` and ``depends_on`` are reserved ``Optional`` fields: typed in
+    the model so stateful-testing extensions can light them up additively
+    without a schema migration. They are ignored at runtime today.
 
-    NOT env-routable (D-19): no `validation_alias=AliasChoices(...)` on any
-    field. The dynamic `dict[str, ToolConfig]` shape doesn't generalize cleanly
-    through `_BareNameNestedEnvSource`, and YAML/init are sufficient for the
-    use case.
+    NOT env-routable: no ``validation_alias=AliasChoices(...)`` on any
+    field. The dynamic ``dict[str, ToolConfig]`` shape doesn't generalize
+    cleanly through a bare-env-name source, and YAML/init are sufficient
+    for the use case.
     """
 
     model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
@@ -97,40 +97,41 @@ class ToolConfig(BaseModel):
     skip_reason: Optional[str] = None
     call_arguments: dict[str, Any] = Field(default_factory=dict)
     judges: Optional[list[str]] = None
-    setup: Optional[Any] = None  # reserved per TOOLCFG-03 / D-06; runtime no-op in v1.1
-    depends_on: Optional[list[str]] = None  # reserved per TOOLCFG-03 / D-06
+    setup: Optional[Any] = None  # reserved; runtime no-op
+    depends_on: Optional[list[str]] = None  # reserved; runtime no-op
 
     @field_validator("judges", mode="after")
     @classmethod
     def _validate_judge_ids(cls, v: Optional[list[str]]) -> Optional[list[str]]:
-        """Each judge ID must resolve against the rubric registry (D-17 / TOOLCFG-04).
+        """Each judge ID must resolve against the rubric registry.
 
-        None (default) is permitted -- means "run all available rubrics" per
-        TOOLCFG-06. Empty list [] is also permitted -- means "explicit opt-out,
-        run no rubrics on this tool" (D-07: empty-vs-None semantic is meaningful).
+        None (default) is permitted -- means "run all available rubrics".
+        Empty list ``[]`` is also permitted -- means "explicit opt-out, run
+        no rubrics on this tool". The empty-vs-None distinction is
+        meaningful and tested.
         """
         if v is None:
             return v
         for rubric_id in v:
             if rubric_id not in RUBRIC_IDS:
-                # Delegate to resolve_rubric_id for the canonical error message
-                # (single source per CD-03).
+                # Delegate to resolve_rubric_id for the canonical error
+                # message (single source).
                 resolve_rubric_id(rubric_id)
         return v
 
     @model_validator(mode="after")
     def _skip_requires_reason(self) -> "ToolConfig":
-        """skip=True MUST come with non-empty skip_reason (D-16 / TOOLCFG-07).
+        """``skip=True`` MUST come with non-empty ``skip_reason``.
 
-        TOOLCFG-07 demands the reason surface in pytest output via
-        `pytest.skip(reason=...)`. An empty/whitespace-only reason defeats that
-        requirement at the source, so we raise at load time rather than letting
-        a silent skip propagate.
+        The reason surfaces in pytest output via ``pytest.skip(reason=...)``.
+        An empty/whitespace-only reason defeats that requirement at the
+        source, so we raise at load time rather than letting a silent skip
+        propagate.
         """
         if self.skip and not (self.skip_reason and self.skip_reason.strip()):
             raise ValueError(
                 "skip=True requires a non-empty skip_reason "
-                "(TOOLCFG-07: the reason surfaces in pytest skip output)"
+                "(the reason surfaces in pytest skip output)"
             )
         return self
 
@@ -144,7 +145,7 @@ class HomelabProxmoxConfig(BaseModel):
     Override in ``config.yaml`` if your cluster reserves 9990-9999 for
     something else.
 
-    Not env-routable (mirrors ToolConfig per Phase 13 D-07): no
+    Not env-routable (mirrors ToolConfig): no
     ``validation_alias=AliasChoices(...)``. ``extra="forbid"`` makes
     typos (e.g. ``dogfood_vmd_range``) fail loudly at config load.
     """
@@ -187,19 +188,19 @@ class HomelabConfig(BaseModel):
 
 
 class SdetConfig(BaseModel):
-    """SDET codegen + fixture surface knobs (Phase 21.1 RELOC-01).
+    """SDET codegen + fixture surface knobs.
 
     Currently exposes only ``generated_root`` -- the on-disk directory the
     framework writes generated SDET classes into (via ``gen-sdet-classes``)
     and loads them from (via the ``mcp_session`` fixture). The field is
     REQUIRED with no default: the framework refuses to silently invent a
     path to write Python code into or load Python code from, matching the
-    Phase 13 SAFE-03 fail-loud posture on config absence.
+    fail-loud posture on config absence (see docs/ERROR-STYLE.md).
 
-    No env routing (mirrors HomelabProxmoxConfig per Phase 13 D-07): no
+    No env routing (mirrors HomelabProxmoxConfig): no
     ``validation_alias=AliasChoices(...)``. ``MCPTF_GENERATED_ROOT`` is
     deliberately NOT a recognized env var -- one source of truth is
-    ``config.yaml`` (Phase 21.1 D-02).
+    ``config.yaml``.
 
     Path resolution: if the value is not absolute, it is interpreted
     relative to the current working directory at the time the config is
@@ -224,11 +225,11 @@ class SdetConfig(BaseModel):
     @field_validator("generated_root", mode="before")
     @classmethod
     def _reject_empty_generated_root(cls, v: object) -> object:
-        """RELOC-01: reject empty-string values explicitly so the SAFE-03
-        error path distinguishes 'forgot to set the key' (missing) from
-        'set the key to nothing' (invalid value). Both end up as exit 2
-        operator-tone errors, but the field-validator path lets the operator
-        see which mistake they made.
+        """Reject empty-string values explicitly so the operator-tone error
+        path distinguishes 'forgot to set the key' (missing) from 'set the
+        key to nothing' (invalid value). Both end up as exit 2 operator-tone
+        errors (see docs/ERROR-STYLE.md), but the field-validator path lets
+        the operator see which mistake they made.
         """
         if isinstance(v, str) and v.strip() == "":
             raise ValueError(

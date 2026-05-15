@@ -1,25 +1,24 @@
 """Top-level layered configuration via pydantic-settings.
 
-Precedence (Phase 13 D-05):
+Precedence:
 
     CLI/init kwargs (yaml_file=PATH) > MCPTF_CONFIG_FILE (path pointer)
     > YAML overlay at the resolved PATH > defaults
 
-The resolver in `cli.py:_load_config` (Phase 13 D-03) passes the resolved
-YAML path as an explicit `yaml_file` kwarg to `Config(...)`. The custom
-`settings_customise_sources` below reads that kwarg from `init_settings`
-and hands it to `YamlConfigSettingsSource`. `MCPTF_CONFIG_FILE` is read
-as a PATH POINTER only -- a fallback for cases where `Config()` is
+The resolver in ``cli.py:_load_config`` passes the resolved YAML path as an
+explicit ``yaml_file`` kwarg to ``Config(...)``. The custom
+``settings_customise_sources`` below reads that kwarg from ``init_settings``
+and hands it to ``YamlConfigSettingsSource``. ``MCPTF_CONFIG_FILE`` is read
+as a PATH POINTER only -- a fallback for cases where ``Config()`` is
 instantiated without the kwarg (notably the in-process pytest session
-launched by `pytest.main` from `cli.py:run`). It NEVER injects scalar
-values into the model (SAFE-05 preserved): it only directs the YAML
-loader to a file. `--config` and `./config.yaml` autodiscovery are
-resolved in `cli.py` BEFORE `Config(...)` is constructed.
+launched by ``pytest.main`` from ``cli.py:run``). Env vars NEVER inject
+scalar values into the model; they only direct the YAML loader to a file.
+``--config`` and ``./config.yaml`` autodiscovery are resolved in ``cli.py``
+BEFORE ``Config(...)`` is constructed.
 
-`.env` is dead-letter for the framework's config layer (Phase 13 D-07).
-Sub-model `validation_alias=AliasChoices(...)` declarations on
-`OllamaConfig` etc. survive only for YAML-key matching; the env-routing
-role is gone (D-05).
+``.env`` is dead-letter for the framework's config layer. Sub-model
+``validation_alias=AliasChoices(...)`` declarations on ``OllamaConfig`` etc.
+survive only for YAML-key matching; the env-routing role is gone.
 """
 
 from __future__ import annotations
@@ -55,26 +54,26 @@ class Config(BaseSettings):
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     mcp_server: McpServerConfig = Field(default_factory=McpServerConfig)
     homelab: HomelabConfig = Field(default_factory=HomelabConfig)
-    # Phase 21.1 RELOC-01: REQUIRED -- no default. Missing key triggers the
-    # SAFE-03 operator-tone error via _emit_operator_error_for_validation's
-    # `missing` branch (cli.py:137-150). One source of truth -- no env var,
-    # no CLI flag override (Phase 21.1 D-02).
+    # ``sdet`` is REQUIRED -- no default. Missing key triggers the canonical
+    # missing-required-field operator-tone error (see docs/ERROR-STYLE.md)
+    # via ``_emit_operator_error_for_validation``'s ``missing`` branch in
+    # ``cli.py``. One source of truth -- no env var, no CLI flag override.
     sdet: SdetConfig
 
     judge_timeout_seconds: int = 120
 
-    # Phase 13 D-08: v2 schema. Plan 13-02 flipped from v1.
     version: int = 2
 
-    # Phase 08 D-01 / TOOLCFG-01: per-tool registry. Plan 13-03 will flip
-    # the runtime semantics from opt-out to opt-in.
+    # Per-tool registry. Runtime semantics are opt-in: only tools listed
+    # here (with ``skip != True``) participate in the contract pass.
     tools: dict[str, ToolConfig] = Field(default_factory=dict)
 
     @field_validator("version", mode="after")
     @classmethod
     def _validate_version(cls, v: int) -> int:
-        """Phase 13 D-08: only `2` is accepted; v1 configs raise so cli.py's
-        operator-error mapper can render the SAFE-06 ERROR-STYLE message."""
+        """Only ``2`` is accepted; v1 configs raise so ``cli.py``'s
+        operator-error mapper can render the canonical version-mismatch
+        error message (see docs/ERROR-STYLE.md)."""
         if v != 2:
             raise ValueError(
                 f"config version {v} not supported by this build, expected 2"
@@ -90,26 +89,26 @@ class Config(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,  # noqa: ARG003
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Phase 13 D-05: collapse the source pipeline to
-        init_kwargs -> YAML -> defaults. env_settings and dotenv_settings
-        are accepted as parameters (pydantic-settings calls us with them)
-        but intentionally dropped from the returned tuple.
+        """Collapse the source pipeline to ``init_kwargs -> YAML -> defaults``.
 
-        The resolver in cli.py:_load_config passes the resolved YAML
-        path as `Config(yaml_file=str(path))`. We pop `yaml_file` from
-        init_settings.init_kwargs BEFORE the YAML source is constructed
-        so it does not reach the model validator (Config has
-        `extra="forbid"` and no `yaml_file` field, so leaving it in
-        the init_kwargs would raise `ExtraForbidden`).
+        ``env_settings`` and ``dotenv_settings`` are accepted as parameters
+        (pydantic-settings calls us with them) but intentionally dropped
+        from the returned tuple.
+
+        The resolver in ``cli.py:_load_config`` passes the resolved YAML
+        path as ``Config(yaml_file=str(path))``. We pop ``yaml_file`` from
+        ``init_settings.init_kwargs`` BEFORE the YAML source is constructed
+        so it does not reach the model validator (``Config`` has
+        ``extra="forbid"`` and no ``yaml_file`` field, so leaving it in
+        the init_kwargs would raise ``ExtraForbidden``).
         """
-        # Locked pop pattern (D-03, revision iteration 1 probe-verified).
+        # Locked pop pattern (probe-verified).
         yaml_file = init_settings.init_kwargs.pop("yaml_file", None)
-        # IPC fallback (Phase 13 review CR-01/CR-02): when no explicit
-        # yaml_file kwarg is given, fall back to MCPTF_CONFIG_FILE so the
-        # in-process pytest session spawned by `cli.py:run` picks up the
-        # operator's resolved path. SAFE-05 is preserved because this env
-        # var is a PATH POINTER, not a value source -- it can only direct
-        # the YAML loader to a file, never inject scalar config values.
+        # IPC fallback: when no explicit ``yaml_file`` kwarg is given, fall
+        # back to ``MCPTF_CONFIG_FILE`` so the in-process pytest session
+        # spawned by ``cli.py:run`` picks up the operator's resolved path.
+        # This env var is a PATH POINTER, not a value source -- it can only
+        # direct the YAML loader to a file, never inject scalar config values.
         if yaml_file is None:
             yaml_file = os.environ.get("MCPTF_CONFIG_FILE")
         sources: list[PydanticBaseSettingsSource] = [init_settings]

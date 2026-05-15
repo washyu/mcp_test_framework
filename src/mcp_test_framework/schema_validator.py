@@ -1,7 +1,6 @@
 """Pure-data schema validator for MCP tool schemas.
 
-Implements the 7 deterministic structural checks from
-docs/mcp_test_framework_mvp_spec.md §schema_validator.py:
+Implements 7 deterministic structural checks from the MVP spec:
 
     1. Tool name is non-empty.
     2. Tool description is non-empty.
@@ -12,20 +11,19 @@ docs/mcp_test_framework_mvp_spec.md §schema_validator.py:
     6. Every property has a non-empty description.
     7. Every property declares one of {type, oneOf, anyOf}.
 
-Per CONTEXT.md decisions (D-01..D-05):
-- All issues carry severity="error" -- there is no "warning" tier in the MVP
-  output. The Literal["error"] typing keeps adding "warning" later a typed
-  schema migration (D-02).
-- ValidationIssue.path is a JSON-Pointer string (RFC 6901), e.g.
-  "/inputSchema/properties/foo/description". This matches jsonschema's
-  absolute_path representation, NOT JSONPath (json_path); see RESEARCH.md
-  Pitfall 2.
-- Phase 4 TEST-02 will assert validate_tool_schema(target_tool) == [] -- the
-  empty list is the contract for "structurally valid".
+Design rules:
+- All issues carry ``severity="error"`` -- there is no "warning" tier in the
+  MVP output. The ``Literal["error"]`` typing keeps adding "warning" later
+  a typed schema migration.
+- ``ValidationIssue.path`` is a JSON-Pointer string (RFC 6901), e.g.
+  ``"/inputSchema/properties/foo/description"``. This matches jsonschema's
+  ``absolute_path`` representation, NOT JSONPath (``json_path``).
+- The empty list is the contract for "structurally valid" -- the contract
+  pass asserts ``validate_tool_schema(target_tool) == []``.
 
 This module is pure-data: no I/O, no subprocess, no network. It accepts an
-mcp.types.Tool instance (the SDK's pydantic model) and returns a list of
-ValidationIssue records.
+``mcp.types.Tool`` instance (the SDK's pydantic model) and returns a list of
+``ValidationIssue`` records.
 """
 from __future__ import annotations
 
@@ -39,10 +37,10 @@ from pydantic import BaseModel
 class ValidationIssue(BaseModel):
     """A single structural-validation finding for an MCP tool schema.
 
-    severity is typed Literal["error"] (not bare str) so that adding a
-    "warning" tier post-MVP becomes a typed schema migration -- per D-02
-    in 01-CONTEXT.md. The field has NO default -- callers must construct
-    severity explicitly to honor that forward-compat intent.
+    ``severity`` is typed ``Literal["error"]`` (not bare ``str``) so that
+    adding a "warning" tier post-MVP becomes a typed schema migration. The
+    field has NO default -- callers must construct severity explicitly to
+    honor that forward-compat intent.
     """
 
     severity: Literal["error"]
@@ -57,13 +55,13 @@ def _pointer_from_deque(absolute_path: Any) -> str:
     escape sequences "~0" (for "~") and "~1" (for "/") are applied to each
     component. Returns the empty string for an empty deque (root pointer).
 
-    NOTE: validate_tool_schema does not currently use this helper because
-    the 7 structural checks are hand-coded (not iter_errors-driven), so the
-    paths are constructed inline with literal f-strings. This helper is
-    retained because RESEARCH Pattern 4 specifies it as the canonical way
-    to convert jsonschema's path output -- if a future check switches to
-    iter_errors, it can use this helper directly without re-deriving the
-    RFC 6901 escaping.
+    NOTE: ``validate_tool_schema`` does not currently use this helper
+    because the 7 structural checks are hand-coded (not
+    ``iter_errors``-driven), so the paths are constructed inline with
+    literal f-strings. This helper is retained as the canonical way to
+    convert jsonschema's path output -- if a future check switches to
+    ``iter_errors``, it can use this helper directly without re-deriving
+    the RFC 6901 escaping.
     """
     if not absolute_path:
         return ""
@@ -76,9 +74,9 @@ def validate_tool_schema(tool: Tool) -> list[ValidationIssue]:
 
     Returns an empty list iff the tool's schema is structurally valid.
     Never raises on a malformed tool -- malformed schemas surface as
-    ValidationIssue entries.
+    ``ValidationIssue`` entries.
 
-    Phase 4 TEST-02 will assert validate_tool_schema(target_tool) == [].
+    The contract pass asserts ``validate_tool_schema(target_tool) == []``.
     """
     issues: list[ValidationIssue] = []
 
@@ -119,8 +117,8 @@ def validate_tool_schema(tool: Tool) -> list[ValidationIssue]:
     # Check 3b: inputSchema is itself a valid JSON Schema document.
     # validator_for auto-detects the draft via $schema; falls back to
     # Draft202012Validator (the MCP-native dialect) when $schema is absent.
-    # Per RESEARCH Pitfall 2: Draft202012Validator is the FALLBACK default,
-    # NOT a hardcoded choice -- validator_for is what actually runs.
+    # Draft202012Validator is the FALLBACK default, NOT a hardcoded choice
+    # -- validator_for is what actually runs.
     validator_cls = validator_for(schema, default=Draft202012Validator)
     try:
         validator_cls.check_schema(schema)
@@ -162,9 +160,9 @@ def validate_tool_schema(tool: Tool) -> list[ValidationIssue]:
             )
 
     # Checks 6 + 7: per-property description AND (type | oneOf | anyOf).
-    # D-04: both checks are errors, not warnings. D-05: TEST-02 (full sweep)
-    # and Phase 4 TEST-04 (focused diagnostic) intentionally overlap on
-    # these checks -- do NOT deduplicate or weaken them.
+    # Both checks emit errors, not warnings. The full-sweep and focused-
+    # diagnostic tests intentionally overlap on these checks -- do NOT
+    # deduplicate or weaken them.
     for prop_name, prop_schema in properties.items():
         if not isinstance(prop_schema, dict):
             issues.append(
