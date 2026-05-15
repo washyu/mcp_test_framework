@@ -2,38 +2,33 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: milestone_complete
+status: completed
 stopped_at: Plan 24-02 partial (live capture deferred via regen-failed contract)
-last_updated: "2026-05-15T16:23:12.385Z"
-last_activity: 2026-05-15 -- Phase 24 Plan 24-02 partial (live capture deferred)
+last_updated: "2026-05-15T20:23:04.221Z"
+last_activity: 2026-05-15
 progress:
   total_phases: 9
-  completed_phases: 10
+  completed_phases: 9
   total_plans: 42
   completed_plans: 42
-  percent: 111
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
+See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close)
 
-**Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 24 — tool-call-serializer-omits-unset-optional-params-exclude-uns
+**Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
+**Current focus:** Planning next milestone (v1.4) — candidate cohort xdist parallelism + library mode + OpenAI-compat judge backend.
 
 ## Current Position
 
-Phase: 24
-Plan: Not started
-Status: Milestone complete
-        Plan 23-04 close-gate re-run: `uv run pytest tests/framework/ --tb=no -q` exits 0 with 575 passed / 1 skipped / 17 deselected / 2 xfailed in 15.19s (failed==0, errored==0).
-        D-02 invariant verified end-to-end: `git diff --stat 8d269ef..HEAD -- src/mcp_test_framework/` is empty across the entire phase (Plans 01/02/03 + recovery commit 24434f7).
-        Trend: 12 failed + 1 error → 0 failed + 0 errored (net −12/−1).
-        Wave 1 plans (23-01/02/03) merged into main (commits 5033f70, 71ed299, e457c6f); D-07 catch-up patch in 24434f7 closed two residuals (test_tool_config.py:364 stale import + test_isolation.py missing live_homelab marker).
-Next: Plan 24-03 (Phase 24 final plan); v1.3 close push per `project_v1_3_close_push_and_scrub.md` once Phase 24 lands.
-Last activity: 2026-05-15
+Milestone: v1.3 closed 2026-05-15.
+Status: Milestone complete. 9 phases / 42 plans / 29 reqs shipped; 27 satisfied + 2 partial-by-design (operator-approved live-UAT). Framework suite green at 578 passed.
+Next: `/gsd-new-milestone` to scope v1.4. Carry-forward debt (live-UAT items, v1.2 verification gaps, 20 dormant seeds) tracked in Deferred Items section.
+Last activity: 2026-05-15 (v1.3 close)
 
 ## Performance Metrics
 
@@ -182,6 +177,21 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 | seed-defer | Hello-world MCP server for CI/CD coverage — tiny in-tree MCP with hand-crafted tools (required/optional params, scalars/arrays, declared/undeclared outputSchema) lets CI run a real end-to-end "every discovered tool gets wrapped" pass without operator infrastructure. | Open — future v1.x phase | Phase 20 reframe (2026-05-13) |
 | deferred-resolved | Phase 19 D-02 (CPU-cores bump impossible via `manage_proxmox_vm` lifecycle-action-only tool) — defer to Phase 20 substitution decision | Resolved-by-deletion (Phase 20) — the dogfood file hosting the substitution was deleted in Phase 20 per D-04; no substitution needed | v1.3 Phase 19 close → resolved Phase 20 (2026-05-13) |
 | live-uat | README §`## SDET scenarios` PASS-sample re-capture (Plan 24-02 Task 3a/3b) — Proxmox credential keyring is not reachable from the agent's PowerShell session even after `MCPTF_DOGFOOD_PROXMOX_HOST=192.168.10.20` is set; homelab-mcp reports `No Proxmox credentials found for 192.168.10.20`. The README §`## SDET scenarios` snapshot still shows the pre-Phase-24 FAIL output even though the framework default no longer triggers it; intro paragraph (L266-L272) and post-snapshot framing paragraph (L420-L427) remain in their pre-Plan-24-02 state. Tasks 1+2 of Plan 24-02 committed (SERIALIZER-DOC-01 row + SDET-AUTHORING soften). Re-snapshot manually when running in an operator shell that has keyring access — see Phase 21 D-14 manual-snapshot precedent. | Open — manual UAT | Phase 24 Plan 24-02 close (2026-05-15) |
+
+### Acknowledged at v1.3 milestone close (2026-05-15)
+
+Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| uat | Phase 18 18-UAT.md — 7 pending scenarios (testing status); SDET surface UAT not fully exercised against live homelab-mcp | Open — closes opportunistically against live homelab-mcp | v1.3 close (2026-05-15) |
+| verification | Phase 13 13-VERIFICATION.md — `human_needed` (v1.2 carryover) | Open — pre-existing v1.2 deferral | v1.3 close (2026-05-15) |
+| verification | Phase 14 14-VERIFICATION.md — `human_needed` (v1.2 carryover) | Open — pre-existing v1.2 deferral | v1.3 close (2026-05-15) |
+| verification | Phase 17 17-VERIFICATION.md — `human_needed` (live homelab-mcp at ~70 tools + `uv run pyright` on real generated dir) | Open — closes alongside other v1.3 live-UAT items | v1.3 close (2026-05-15) |
+| quick_task | 260508-p0b-fix-v1-1-skip-doesnt-filter-parametrize — quick-task file missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
+| quick_task | 260512-dcs-flip-example-config-version-1-to-2-close — quick-task file missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
+| quick_task | 260513-chh-fix-session-needs-preflight-nodeid-path — quick-task file missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
+| seed | 18 dormant seeds (SEED-001/002/003/005/006/007/008/009/012/013/015/016/017/018/021/023) + 2 active-but-already-shipped (SEED-010 absorbed Phase 15, SEED-011 absorbed Phase 14) | Backlog parking lot — re-triage at /gsd-new-milestone | v1.3 close (2026-05-15) |
 
 ## Session Continuity
 

@@ -1,5 +1,29 @@
 # Milestones — mcp_test_framework
 
+## v1.3 Homelab Scenario Testing (Shipped: 2026-05-15)
+
+**Phases completed:** 9 phases, 42 plans, 62 tasks
+
+**Key accomplishments:**
+
+- Found during:
+- File modified:
+- Closed the renderer side of Phase 18 by hooking the JUnit XML parser to ToolCallError-attached user_properties (D-09 / D-10), shipping the SDET-flavored pre-run digest with cli.py dispatch (D-06), and adding the structured `--- ToolCallError dump ---` block to the `--debug` appendix (D-11). Strategy 1: zero ToolVerdict surface change -- the D-11 appendix re-parses the XML rather than threading dump strings through the dataclass.
+- Shipped the `tests/sdet/` scaffolding (package marker + SDET-only conftest with the D-09 / D-11 `pytest_exception_interact` hook + 2 end-to-end sanity tests) and the unit-test harness pinning the hook's strict-ToolCallError discipline. The live `uv run pytest tests/sdet/test_basic_call.py` exits 0 (2/2) against `uvx homelab-mcp`, proving the whole Phase 18 surface composes end-to-end through the public `mcp_test_framework.sdet` barrel.
+- Pinned every Phase 18 decision (D-01 through D-11, plus Plan 18-04's `__all__` contract) with framework self-tests under `tests/framework/unit/`. Four-file deliverable: two new files (`test_tool_call_error.py`, `test_sdet_renderer.py`) and two extended files (`test_sdet_fixtures.py`, `test_sdet_cli.py`). Task 5 (update `test_tool_factory.py`) was a no-op because Plan 18-02 had already replaced the `NotImplementedError` test with the new `_ACTIVE_CLIENT`-based contract.
+- 1. [Rule 1 - Bug] Ballot-x glyph (`✗`) violated zero-emoji constraint
+- SdetConfig sub-model with required `generated_root: Path` lands on top-level Config as a no-default field; missing key routes through the existing SAFE-03 mapper with no new code path; both example YAMLs and the config-init scaffold ship the new key with the recommended `tests/sdet/_generated` convention.
+- `gen-sdet-classes` and `mcp_session` both consume `cfg.sdet.generated_root` directly; the fixture's load mechanism switches from `importlib.import_module` against the framework namespace to `importlib.util.spec_from_file_location` with `submodule_search_locations` against the on-disk slug dir. The framework no longer requires generated code to live under its own `src/` tree.
+- Three tests reworked off the `mcp_test_framework.sdet.generated.homelab_mcp` import path using the D-09 HYBRID strategy: synthetic codegen + spec-loader for the two unit-test files; live-regen + on-disk spec-loader (with collection-safe module skip) for the README parity scenario. After this plan ships, nothing under `tests/` imports from the in-tree `src/mcp_test_framework/sdet/generated/` package — Plan 04 can delete that tree safely.
+- `src/mcp_test_framework/sdet/generated/` is gone from the working tree and the git index. The framework's `src/` tree now contains zero SUT-specific code; SEED-022 is structurally enforced. Phase 21.1 capstone delivered in one atomic commit: 60 deletions + 3 doc/test-docstring updates + 1 new docs subsection guiding operators through the new config setup.
+- Operator-facing `--help` and the `src/mcp_test_framework/cli.py` source stop leaking internal planning-system provenance — 52 ID hits and 37 `Phase NN` prefixes scrubbed down to zero, all five Typer command docstrings still operator-readable.
+- Phase 23 close-gate is GREEN. `uv run pytest tests/framework/ --tb=no -q` exits 0 with `575 passed, 1 skipped, 17 deselected, 2 xfailed in 15.19s` — failed==0 and errored==0 (D-07/D-08 satisfied). Zero `src/mcp_test_framework/` changes across the entire phase (D-02 invariant holds end-to-end). v1.3 close inherits a green framework suite.
+- `tool().call()` now uses `model_dump(mode='json', exclude_unset=True)` so SDET-omitted optional fields stay off the MCP wire while explicit `field=None` still flows `null` (SEED-022 user-intent discriminator preserved); locked by three new payload-asserting unit tests + a renamed kwargs-spy test.
+- `docs/SDET-AUTHORING.md` §`## The inputSchema workaround` framing softened (the `_CpuBumpManageVmParams(extra='allow')` pattern is now documented as the explicit-null-test escape hatch only, not the always-needed default for Proxmox calls); SERIALIZER-DOC-01 row added to REQUIREMENTS.md. The README §`## SDET scenarios` PASS-sample re-capture (Tasks 3a/3b) is deferred to a manual UAT via the plan's `regen-failed` partial-completion contract — Proxmox keyring credentials are unreachable from the agent shell that runs under this executor.
+- Split STATE.md L155 `homelab-mcp inputSchema` Deferred Items row into Row A (Resolved, framework-side fix shipped Phase 24) + Row B (Open, narrower-scope upstream bug residue) so the audit trail records the partial resolution without erasing what remains.
+
+---
+
 ## v1.2 — Operator-First Design
 
 **Shipped:** 2026-05-12
@@ -24,6 +48,7 @@
 **v1.2 thesis validated:** An operator with no framework internals knowledge can `cd <my-mcp-project> && mcp-test-framework config-init -o config.yaml && (edit allowlist) && mcp-test-framework run` and get a clean domain-language experience start to finish.
 
 **Carry-forward debt:**
+
 - Phase 13: live-stack UAT — E2E run with real MCP server + v2 config; migration doc walkthrough (needs `homelab-mcp` on PATH).
 - Phase 14: live-stack UAT — `test_runner_live_smoke.py` with `-m live_homelab` + visual domain UI checks (needs live MCP + Ollama).
 - Phase 16: D-11 `--debug` per-judge breakdown block deferred to v1.3 per CONTEXT.md.
