@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Completed 24-01-PLAN.md (Plan 1 of 3)
-last_updated: "2026-05-15T15:53:37.746Z"
-last_activity: 2026-05-15
+stopped_at: Plan 24-02 partial (live capture deferred via regen-failed contract)
+last_updated: "2026-05-15T16:16:53Z"
+last_activity: 2026-05-15 -- Phase 24 Plan 24-02 partial (live capture deferred)
 progress:
   total_phases: 9
   completed_phases: 8
@@ -26,14 +26,14 @@ See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 ## Current Position
 
 Phase: 24 (tool-call-serializer-omits-unset-optional-params-exclude-uns) — EXECUTING
-Plan: 2 of 3
-Status: Ready to execute
+Plan: 24-02 partial
+Status: Plan 24-02 Task 3a/3b deferred via regen-failed contract — keyring isolation prevents live Proxmox capture from agent shell. Manual UAT pending; tracked in Deferred Items.
         Plan 23-04 close-gate re-run: `uv run pytest tests/framework/ --tb=no -q` exits 0 with 575 passed / 1 skipped / 17 deselected / 2 xfailed in 15.19s (failed==0, errored==0).
         D-02 invariant verified end-to-end: `git diff --stat 8d269ef..HEAD -- src/mcp_test_framework/` is empty across the entire phase (Plans 01/02/03 + recovery commit 24434f7).
         Trend: 12 failed + 1 error → 0 failed + 0 errored (net −12/−1).
         Wave 1 plans (23-01/02/03) merged into main (commits 5033f70, 71ed299, e457c6f); D-07 catch-up patch in 24434f7 closed two residuals (test_tool_config.py:364 stale import + test_isolation.py missing live_homelab marker).
-Next: Phase 24 — `tool().call()` serializer `exclude_unset=True` fix; v1.3 close push per `project_v1_3_close_push_and_scrub.md` once Phase 24 lands.
-Last activity: 2026-05-15
+Next: Plan 24-03 (Phase 24 final plan); v1.3 close push per `project_v1_3_close_push_and_scrub.md` once Phase 24 lands.
+Last activity: 2026-05-15 -- Phase 24 Plan 24-02 partial (live capture deferred)
 
 ## Performance Metrics
 
@@ -179,9 +179,10 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 | docs-polish | EXTENDING.md IN-01: "five entries" framing for `_PASSTHROUGH_ALLOWLIST` (4-tuple + separate `_MCP_PREFIX`) (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
 | seed-defer | Hello-world MCP server for CI/CD coverage — tiny in-tree MCP with hand-crafted tools (required/optional params, scalars/arrays, declared/undeclared outputSchema) lets CI run a real end-to-end "every discovered tool gets wrapped" pass without operator infrastructure. | Open — future v1.x phase | Phase 20 reframe (2026-05-13) |
 | deferred-resolved | Phase 19 D-02 (CPU-cores bump impossible via `manage_proxmox_vm` lifecycle-action-only tool) — defer to Phase 20 substitution decision | Resolved-by-deletion (Phase 20) — the dogfood file hosting the substitution was deleted in Phase 20 per D-04; no substitution needed | v1.3 Phase 19 close → resolved Phase 20 (2026-05-13) |
+| live-uat | README §`## SDET scenarios` PASS-sample re-capture (Plan 24-02 Task 3a/3b) — Proxmox credential keyring is not reachable from the agent's PowerShell session even after `MCPTF_DOGFOOD_PROXMOX_HOST=192.168.10.20` is set; homelab-mcp reports `No Proxmox credentials found for 192.168.10.20`. The README §`## SDET scenarios` snapshot still shows the pre-Phase-24 FAIL output even though the framework default no longer triggers it; intro paragraph (L266-L272) and post-snapshot framing paragraph (L420-L427) remain in their pre-Plan-24-02 state. Tasks 1+2 of Plan 24-02 committed (SERIALIZER-DOC-01 row + SDET-AUTHORING soften). Re-snapshot manually when running in an operator shell that has keyring access — see Phase 21 D-14 manual-snapshot precedent. | Open — manual UAT | Phase 24 Plan 24-02 close (2026-05-15) |
 
 ## Session Continuity
 
-Last session: 2026-05-15T15:53:37.737Z
-Stopped at: Completed 24-01-PLAN.md (Plan 1 of 3)
-Resume next: run phase verifier on Phase 21.1; then proceed with Phase 22 (src/ requirement-ID scrub) per v1.3 close roadmap
+Last session: 2026-05-15T16:16:53Z
+Stopped at: Plan 24-02 partial (live capture deferred via regen-failed contract)
+Resume next: proceed to Plan 24-03 (final plan of Phase 24); manual UAT for README PASS-sample re-capture deferred to operator shell with keyring access (see Deferred Items)
