@@ -59,7 +59,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 - [x] **Phase 21.1: SDET generated output relocation** — make codegen output config-driven via `sdet.generated_root` in `config.yaml`; delete in-tree `src/mcp_test_framework/sdet/generated/` (56 homelab_mcp files + namespace markers); rework 3 tests off the deleted import path; update SDET-AUTHORING.md + README sample (RELOC-01..04) (INSERTED 2026-05-14) (completed 2026-05-14)
 - [x] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01) (completed 2026-05-15)
 - [x] **Phase 23: Test suite debt cleanup** — clear pre-existing `tests/framework/` failures discovered during Phase 20 UAT: config schema v1→v2 mismatches, `parents[2]` path resolution breakage after the Phase 15 folder split, missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc, README line-104 doc drift; closed 12 fails + 1 error so v1.3 close ships a green framework suite (completed 2026-05-15, GREEN — close-gate `uv run pytest tests/framework/ --tb=no -q` exits 0 with 575 passed / 1 skipped / 17 deselected / 2 xfailed)
-- [ ] **Phase 24: Tool call serializer omits unset optional params** — switch `tool().call()` serialization from `model_dump(mode="json")` to `model_dump(mode="json", exclude_unset=True)` so optionally-nullable fields aren't sent as `null` when the SDET never set them; preserves SEED-022 (explicit `cdrom=None` still serializes); softens [docs/SDET-AUTHORING.md](docs/SDET-AUTHORING.md) inputSchema-workaround section; re-captures Plan 21-02 README sample as PASS
+- [x] **Phase 24: Tool call serializer omits unset optional params** — switch `tool().call()` serialization from `model_dump(mode="json")` to `model_dump(mode="json", exclude_unset=True)` so optionally-nullable fields aren't sent as `null` when the SDET never set them; preserves SEED-022 (explicit `cdrom=None` still serializes); softens [docs/SDET-AUTHORING.md](docs/SDET-AUTHORING.md) inputSchema-workaround section; re-captures Plan 21-02 README sample as PASS (completed 2026-05-15)
 
 ## Phase Details
 
@@ -208,12 +208,12 @@ Plans:
   - `docs/SDET-AUTHORING.md` — soften `## The inputSchema workaround` section. `_CpuBumpManageVmParams(extra="allow")` pattern reduces from "always needed" to "needed only when you want to send `null` explicitly."
   - `README.md` — re-capture the `## SDET scenarios` snapshot (currently FAIL output per Plan 21-02 re-scope); the deleted `tests/sdet/test_proxmox_vm_lifecycle_readme_sample.py` may need temporary resurrection for the re-capture, matching the Plan 21-02 D-14 manual-snapshot pattern.
   - `.planning/STATE.md` Deferred Items — re-scope the `homelab-mcp inputSchema` entry (framework-side default behavior is fixed; explicit null-testing remains an SDET-owned action).
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 24-01-PLAN.md — Serializer change at _tool_factory.py:99 + 3 new payload tests + renamed kwargs-spy test + SERIALIZER-01 row (Wave 1)
 - [x] 24-02-PLAN.md — Soften docs/SDET-AUTHORING.md inputSchema-workaround framing + re-capture README PASS sample + SERIALIZER-DOC-01 row (Wave 2; depends_on: 24-01)
-- [ ] 24-03-PLAN.md — Split STATE.md Deferred Items L155 into Row A (Resolved, framework-side) + Row B (Open, upstream-fix) (Wave 2; depends_on: 24-01)
+- [x] 24-03-PLAN.md — Split STATE.md Deferred Items L155 into Row A (Resolved, framework-side) + Row B (Open, upstream-fix) (Wave 2; depends_on: 24-01)
 
 ## Progress
 
