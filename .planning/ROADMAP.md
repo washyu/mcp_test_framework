@@ -58,7 +58,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 - [x] **Phase 21: SDET authoring docs + README parity** — `docs/SDET-AUTHORING.md` walkthrough, codegen regen workflow, README scenario sample with char-for-char renderer parity, CLAUDE.md dual-persona note (DOC-SDET-01..03) (completed 2026-05-14, PASS-WITH-DEVIATIONS — Plan 21-02 re-scoped at human-verify checkpoint to embed FAIL output as the README sample; upstream homelab-mcp inputSchema bug surfaced on `create_proxmox_vm`, exposing the framework-side serializer fix scoped for Phase 24)
 - [x] **Phase 21.1: SDET generated output relocation** — make codegen output config-driven via `sdet.generated_root` in `config.yaml`; delete in-tree `src/mcp_test_framework/sdet/generated/` (56 homelab_mcp files + namespace markers); rework 3 tests off the deleted import path; update SDET-AUTHORING.md + README sample (RELOC-01..04) (INSERTED 2026-05-14) (completed 2026-05-14)
 - [x] **Phase 22: Scrub requirement-ID leaks from src/** — remove `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style requirement IDs from operator-facing CLI docstrings (5 commands surface them via `--help`) and from 58 internal references across `src/mcp_test_framework/`; source-code analog of v1.2 doc scrub (SCRUB-SRC-01) (completed 2026-05-15)
-- [ ] **Phase 23: Test suite debt cleanup** — clear pre-existing `tests/framework/` failures discovered during Phase 20 UAT: config schema v1→v2 mismatches, `parents[2]` path resolution breakage after the Phase 15 folder split, missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc, README line-104 doc drift; closes 11 fails + 1 error so v1.3 close ships a green framework suite
+- [x] **Phase 23: Test suite debt cleanup** — clear pre-existing `tests/framework/` failures discovered during Phase 20 UAT: config schema v1→v2 mismatches, `parents[2]` path resolution breakage after the Phase 15 folder split, missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc, README line-104 doc drift; closed 12 fails + 1 error so v1.3 close ships a green framework suite (completed 2026-05-15, GREEN — close-gate `uv run pytest tests/framework/ --tb=no -q` exits 0 with 575 passed / 1 skipped / 17 deselected / 2 xfailed)
 - [ ] **Phase 24: Tool call serializer omits unset optional params** — switch `tool().call()` serialization from `model_dump(mode="json")` to `model_dump(mode="json", exclude_unset=True)` so optionally-nullable fields aren't sent as `null` when the SDET never set them; preserves SEED-022 (explicit `cdrom=None` still serializes); softens [docs/SDET-AUTHORING.md](docs/SDET-AUTHORING.md) inputSchema-workaround section; re-captures Plan 21-02 README sample as PASS
 
 ## Phase Details
@@ -188,13 +188,13 @@ Plans:
 **Goal:** Restore `tests/framework/` to a green run so v1.3 closes with no carried-over test debt — three independent root-cause clusters (Config v2 sdet-required propagation, parents[N] depth bumps post Phase 15 folder split, README content drift against the doc-scrub close-gate) are fixed in test-side code and operator-facing docs without modifying `src/mcp_test_framework/`.
 **Requirements**: None (bottom-up debt cleanup; close-gate is D-07/D-08: `uv run pytest tests/framework/ --tb=no -q` exits 0 with failed==0 and errored==0)
 **Depends on:** Phase 22
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
 - [x] 23-01-PLAN.md — Cluster A: Config(sdet=_SDET_STUB) propagation + tests/framework/conftest.py override (D-01, D-02, D-03)
 - [x] 23-02-PLAN.md — Cluster B: parents[2] → parents[3] mechanical bump at 2 sites (D-04)
 - [x] 23-03-PLAN.md — Cluster C: README --config pairing + banned-token semantic rewrite (D-05, D-06)
-- [ ] 23-04-PLAN.md — Close gate: full tests/framework/ green-run assertion (D-07, D-08) [wave 2; depends_on: 23-01, 23-02, 23-03]
+- [x] 23-04-PLAN.md — Close gate: full tests/framework/ green-run assertion (D-07, D-08) [wave 2; depends_on: 23-01, 23-02, 23-03]
 
 ### Phase 24: Tool call serializer omits unset optional params (exclude_unset)
 
