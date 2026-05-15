@@ -1,187 +1,270 @@
-# Stack Research — MCP Test Framework
+# STACK Research: v1.4 Library Mode Delivery
 
-**Domain:** Python pytest-based integration test framework for MCP servers, with Ollama LLM-as-judge
-**Researched:** 2026-05-04
-**Python target:** 3.14 (pinned in `.python-version` and `pyproject.toml`)
-**Overall confidence:** HIGH for core stack, MEDIUM for two judgement-call swaps (config, CLI)
+**Project:** mcp_test_framework
+**Mode:** Ecosystem / additive-stack
+**Researched:** 2026-05-15
+**Overall confidence:** HIGH
 
-## TL;DR — Validation of the Spec
+## Executive Summary
 
-The spec's eight-package list (`mcp`, `pytest`, `pytest-asyncio`, `httpx`, `pydantic`, `pyyaml`, `python-dotenv`, `jsonschema`) is **substantially correct for May 2026** — every choice is current, maintained, and Python 3.14-compatible. Two refinements are recommended:
+The library-mode pivot for v1.4 is well-served by the **existing v1.3 stack**. The only material additions are **two zero-line packaging changes** (`[project.entry-points.pytest11]` declaration + a hatchling-targets verification) and **one runtime conditional dependency** consideration around how `register()` injects parametrized tests. No new third-party libraries are strictly required; the pytest API surface (entry-point discovery, `pytest_generate_tests`, `pytest_collection_modifyitems`, `pytest_runtest_logreport`, `TerminalReporter` hooks) is fully sufficient. **All v1.3 dep pins remain valid**; `pytest-asyncio 1.x` and `pytest 9.x` are the exact versions needed.
 
-1. **Replace `python-dotenv` + `pyyaml` + a hand-rolled config loader with `pydantic-settings` (with the `[yaml]` extra).** It already ships with first-class `YamlConfigSettingsSource`, env precedence, and `.env` support — exactly the layered config the spec describes — and `pydantic-settings` is *already* a transitive dependency of `mcp`. This eliminates `python-dotenv` as a direct dep, keeps `pyyaml` (still needed by the YAML source), and removes a non-trivial slice of `config.py` you'd otherwise hand-write.
-2. **Adopt `typer` for the CLI rather than raw `argparse`.** The spec doesn't pick a CLI lib. `typer` is *already* a transitive dependency of `mcp` (under its `[cli]` extra), is the de facto modern Python CLI library in 2026, and aligns naturally with type hints + Pydantic models you already use elsewhere. See "CLI" section below for the full rationale vs Click.
+The key insight from surveying pytest's own ecosystem (`pytest-playwright`, `pytest-httpx`, `pytest-asyncio` itself, `pytest-bdd`): **none of them ship a `register()`-style runtime-injection API**. They all rely on (a) entry-point auto-loaded fixtures + hooks and (b) operator-side `pytest.mark.parametrize` decoration. The `register()` shape in SEED-015 is closer to **`pytest-factoryboy.register()`** — which is the one solid precedent and gives you a concrete pattern to crib (it dynamically injects fixtures into the calling module's namespace using `sys._getframe(1).f_globals`).
 
-Everything else in the spec — strict-mode `pytest-asyncio`, raw `httpx` to call Ollama (not the `ollama` Python client), `jsonschema` Draft 2020-12, single-shot judge with `format: json` — is the correct 2026 choice and should be kept as-is.
+The biggest decision is **NOT a library choice** — it's the mechanism for "how does `register()` inject parametrized tests into the caller's conftest." Recommended answer below: a hybrid of (1) pytest plugin entry-point auto-loads fixtures + the framework's `pytest_generate_tests` and (2) `register()` populates a module-global "plan" that the entry-point-loaded `pytest_collection_modifyitems` reads. This avoids both `eval`-style code-gen and `sys._getframe` namespace-mutation hacks.
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Framework (NO CHANGES — all v1.3 pins valid)
 
-| Technology | Version (latest as of May 2026) | Purpose | Why Recommended |
-|------------|---------------------------------|---------|-----------------|
-| **Python** | 3.14.4 | Runtime | Pinned by project; full release, EOL 2030-10-31; native `asyncio.timeout` (3.11+), PEP 695 generics, faster interp |
-| **uv** | 0.11.x | Project + venv + lockfile manager | Already chosen by project; 10–100× faster than pip, deterministic `uv.lock`, single-binary, `uv run` wraps the CLI cleanly |
-| **mcp** (Python SDK) | 1.27.0 | Official MCP client over stdio | The only authoritative MCP client for Python; spec mandates `stdio_client` context manager (no raw `subprocess.Popen`); session model (`ClientSession`) handles MCP handshake, tool listing, and `call_tool` natively |
-| **pytest** | 9.0.3 | Test runner | The pytest 9.x line is the current major; full 3.14 classifier; project's spec hard-requires pytest as the test surface |
-| **pytest-asyncio** | 1.3.0 | Async test integration | The 1.x stable line; **strict mode is now the default** (matches spec); requires explicit `@pytest.mark.asyncio` and `@pytest_asyncio.fixture` (matches spec's reuse model); supports session-scoped event loops needed for the long-lived `mcp_client` fixture |
-| **httpx** | 0.28.1 | Async HTTP client to Ollama | Async-first, `httpx.Timeout`-friendly, already a transitive dep of `mcp`; preferred over `aiohttp` for new code in 2026 (cleaner API, sync+async parity, better timeout primitives) |
-| **pydantic** | 2.13.3 | Data models (`JudgeResult`, `ValidationIssue`, config) | v2 is the only supported line; classifies 3.14; required by `mcp` (`>=2.11,<3`) so already pinned in deptree; gives you `BaseModel.model_validate_json` for cheap, safe parsing of Ollama's JSON output |
-| **pydantic-settings** | 2.14.0 | Layered config (env → .env → YAML → CLI override) | **Replaces `python-dotenv` + hand-rolled YAML overlay.** Built-in `YamlConfigSettingsSource`, dotenv loader, env-var loader, and explicit `settings_customise_sources` precedence — exactly the precedence the spec describes ("env first, YAML overlays, CLI overrides"). Already a transitive dep of `mcp`. |
-| **jsonschema** | 4.26.0 | Validate MCP tool `inputSchema`/`outputSchema` and tool responses | The reference Python implementation; ship Draft 2020-12 (`Draft202012Validator`) which is what MCP tool schemas use; `iter_errors()` gives you all errors at once (perfect for the spec's `validate_tool_schema → list[ValidationIssue]`); already a transitive dep of `mcp` |
-| **PyYAML** | 6.0.3 | YAML parsing (under `pydantic-settings[yaml]`) | Universal, stable; only included because `YamlConfigSettingsSource` requires it. Use `yaml.safe_load` semantics (`pydantic-settings` does this for you). |
-| **typer** | 0.25.1 | CLI framework (`mcp-test-framework run/list-tools/version`) | Click-based but type-hint-driven — your handlers are plain typed functions; pydantic-friendly; auto-generates `--help`; already a transitive dep of `mcp` (under `[cli]` extra). See "CLI" section. |
+| Technology | Current Pin | v1.4 Action | Why |
+|------------|-------------|-------------|-----|
+| Python | 3.14 | Keep | No change; pytest 9.0.3 + pytest-asyncio 1.x both target Python ≥3.10 |
+| pytest | `>=9.0` | Keep | Latest stable is 9.0.3 (verified PyPI 2026-05-15). 9.x is the right line for plugin authors — `pytest_runtest_logreport`/`TerminalReporter` API stable across 8.x→9.x. **Confidence: HIGH** |
+| pytest-asyncio | `>=1.3` | Keep | Latest stable is 1.1.0+ (1.x line); declares `pytest<10,>=8.2` so it's pytest-9 compatible. The `loop_scope="session"` parameter on `@pytest_asyncio.fixture` and `@pytest.mark.asyncio` is the stable API library mode will inherit through fixtures. **Confidence: HIGH** |
+| mcp[cli] | `>=1.27` | Keep | The `[cli]` extra continues to pull `typer` transitively (CLI demotes to optional but stays — no need to drop the extra) |
+| pydantic | `>=2.13,<3` | Keep | Required by `mcp` + needed for `register()` kwargs validation (Pydantic v2 dataclass / `BaseModel` shape — same as `Config`) |
+| pydantic-settings[yaml] | `>=2.14` | Keep | Library mode bypasses most YAML loading (operator passes kwargs to `register()`), but the YAML path remains for `mcp-test-framework run` (CLI demotes-but-stays). Drop is not justified. |
+| jsonschema | `>=4.26` | Keep | `Draft202012Validator` continues to drive contract tests after extraction |
+| httpx | (transitive via mcp) | Keep transitive | Ollama judge still uses it; library mode doesn't change the judge path |
 
-### Supporting Libraries (transitive — do not declare directly)
+### Build / Distribution
 
-These come in via `mcp` and `pydantic-settings`. Listed for awareness, not for pinning:
+| Technology | Current | v1.4 Action | Why |
+|------------|---------|-------------|-----|
+| hatchling | (build backend) | **Verify wheel discoverability** | Hatchling 1.29.0 latest (2026-02-23, PyPI verified). `[tool.hatch.build.targets.wheel] packages = ["src/mcp_test_framework"]` is already correct; just confirm `mcp_test_framework/contracts/` makes it into the wheel after the move from `tests/contract/`. **No build-system change needed.** |
+| uv | 0.11.x | Keep | `uv build` produces the sdist+wheel; `uv publish` (PEP 740) for PyPI when v1.4 ships. No version bump needed. |
+| `[project.entry-points.pytest11]` | **NOT YET DECLARED** | **ADD** | Single biggest packaging change. See "Pytest Plugin Entry-Point" section below. |
 
-| Library | Why it's there | Action |
-|---------|---------------|--------|
-| `anyio>=4.5` | `mcp`'s async runtime abstraction (powers `stdio_client`) | Don't declare directly. If you ever want trio support, use `pytest-asyncio`'s anyio integration; but for MVP stick to plain asyncio. |
-| `httpx-sse`, `sse-starlette`, `starlette`, `uvicorn`, `python-multipart` | `mcp`'s server-side / SSE transport plumbing | Ignored — stdio-only is the MVP scope. |
-| `typing-extensions`, `typing-inspection` | Pydantic v2 runtime needs | No action. |
-| `pyjwt[crypto]`, `pywin32` | Auth / Windows compat in `mcp` | No action. |
+### NEW Library Surfaces (zero new external deps; all stdlib / existing-stack)
 
-### Development Tools
+| Surface | Mechanism | Why |
+|---------|-----------|-----|
+| `mcp_test_framework.contracts.register()` | Stdlib `inspect` + module-global plan list | Operator calls in their `conftest.py`; plan is a list-of-dataclasses populated at conftest-collection time. NOT `sys._getframe` namespace mutation — see "register() injection pattern" below. |
+| Auto-loaded fixtures | `[project.entry-points.pytest11]` | Replaces the manual `pytest_plugins = ["mcp_test_framework.fixtures"]` line in `tests/conftest.py`; once entry-point declared, fixtures auto-discover in operator's pytest run. |
+| Domain UI reporter plugin | `pytest_runtest_logreport` + `TerminalReporter` | Replaces the current `cli.py:run` JUnit-XML post-pass. See "Reporter plugin" section. Opt-in via a pytest CLI flag (`--mcp-domain-ui`) or `pyproject.toml` setting. |
+| `mcp_test_framework.test_code` (renamed from `.sdet`) | Pure import-path rename | SEED-023. No new library; just a package rename + import-rewrites + planning-ID scrub for the new term. |
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| `ruff` | Linter + formatter | The 2026 standard for Python lint+format; replaces black + isort + flake8. Add as `[tool.uv]`-managed dev dep. |
-| `mypy` *or* `pyright` | Optional type checker | Not strictly required for MVP; `pyright` ships as a binary, faster on watch mode. Defer to Phase 2 if at all. |
+## Pytest Plugin Entry-Point (the single load-bearing packaging change)
 
-## Installation
-
-```bash
-# All declared dependencies for the MVP
-uv add \
-  "mcp>=1.27" \
-  "pytest>=9.0" \
-  "pytest-asyncio>=1.3" \
-  "httpx>=0.28" \
-  "pydantic>=2.13,<3" \
-  "pydantic-settings[yaml]>=2.14" \
-  "jsonschema>=4.26" \
-  "typer>=0.25"
-
-# The system-under-test (per spec)
-uv add "homelab-mcp>=1.7"
-
-# Dev / lint
-uv add --dev "ruff>=0.8"
-```
-
-Notes:
-- `pydantic-settings[yaml]` pulls `pyyaml` automatically — **do not declare `pyyaml` directly.**
-- **Drop `python-dotenv` from the spec's dep list** — `pydantic-settings` has a built-in dotenv source.
-- Lower bounds (`>=`) are intentional — `uv.lock` will pin exact versions for reproducibility.
-
-## Alternatives Considered
-
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| `httpx` for Ollama calls | `ollama` (official Python client, v0.6.2) | If you want auto-typed `ChatResponse`, function-calling helpers, and Pydantic-schema-as-`format=` shorthand. **Skipped for MVP** because: (1) spec explicitly says "Ollama via `/api/chat`" and one HTTP `POST` is trivial in `httpx`, (2) keeps the judge backend swappable later (post-MVP "pluggable judge backends"), (3) avoids one more dep. Reconsider if you adopt the official client's structured-output ergonomics. |
-| `httpx` async client | `aiohttp` 3.x | Only if you already have an `aiohttp`-based codebase. For new 2026 code, `httpx` wins on API ergonomics and sync/async parity. |
-| `pydantic-settings` + YAML | Hand-rolled `config.py` (env vars + `yaml.safe_load` overlay) | If you have an unusual precedence rule or want zero Pydantic in your config layer. The spec's described precedence ("env first, YAML overlays, CLI overrides") is precisely what `pydantic-settings` ships out of the box, so hand-rolling is strictly more code and more bugs. |
-| `typer` | `click` (8.3.3) | If you're allergic to magic decorator-and-type-hint frameworks and prefer explicit `@click.option(...)` everywhere. Click is the foundation `typer` is built on; both are fine. Typer wins on signal-to-noise for short CLIs like this (3 commands). |
-| `typer` | `argparse` (stdlib) | If you want zero CLI deps. For this project: not worth the verbosity — `mcp` already pulls `typer` transitively under `[cli]`, so it's effectively free. |
-| `jsonschema` | `fastjsonschema` (2.21.2), `jsonschema-rs` (0.46.4) | If schema validation becomes a hot path. `fastjsonschema` compiles schemas to Python code; `jsonschema-rs` is a Rust binding. Neither is justified at MVP scale (one schema, validated once per test run). `jsonschema` is also already a transitive dep of `mcp`. |
-| `pytest-asyncio` strict | `anyio` pytest plugin | If you target `trio` *and* `asyncio`. You don't — Ollama's HTTP layer and `mcp`'s `stdio_client` are both used over asyncio in this project. Stick with `pytest-asyncio` strict. |
-
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `python-dotenv` as a direct dep | Redundant — `pydantic-settings` has a built-in dotenv source with the same precedence semantics; declaring it directly creates two ways to load `.env` and risks drift between them | `pydantic-settings`'s `model_config = SettingsConfigDict(env_file=".env")` |
-| Raw `subprocess.Popen` to launch the MCP server | Bypasses MCP handshake, session lifecycle, and stdio framing; spec explicitly forbids this | `mcp.client.stdio.stdio_client` context manager + `ClientSession` |
-| `requests` (sync) for Ollama | Sync HTTP inside an async test will block the event loop; Ollama judge calls can take 30s+ and would freeze concurrent fixtures | `httpx.AsyncClient` |
-| `pytest-asyncio` `auto` mode | Spec mandates strict mode; auto mode collides with other async plugins and obscures which tests are actually async | `asyncio_mode = "strict"` (which is now the default in 1.x) |
-| `unittest`-style `IsolatedAsyncioTestCase` | Doesn't compose with pytest fixtures; loses the `mcp_client`/`judge`/`target_tool` session-scoped fixture story | `pytest-asyncio` markers |
-| `pyyaml` declared at top level | Indirect through `pydantic-settings[yaml]`; declaring twice can cause version conflicts later | Use the `[yaml]` extra |
-| Pydantic v1 | EOL; doesn't classify 3.14; `mcp` requires `pydantic>=2.11,<3` | Pydantic v2 (already required by `mcp`) |
-| `aiohttp.ClientSession` for Ollama | Heavier API surface, weaker timeout primitives, no sync parity for ad-hoc scripts | `httpx.AsyncClient` |
-| `setuptools` / `setup.py` | Project already uses `pyproject.toml` + `uv`; mixing build backends is a footgun | `hatchling` (pyproject default with `uv init`) or whatever `uv init` produced — leave as-is |
-
-## CLI: Typer vs Click vs argparse
-
-The spec describes `mcp-test-framework run [--config PATH] [-k EXPRESSION] [-v]`, `list-tools`, and `version`. Three commands, a handful of flags, all of which need to forward to pytest cleanly.
-
-- **argparse** — works, no deps. Verbose for 3 subcommands; you'll hand-write `subparsers` boilerplate. Shipping the version of pytest invocation that handles `-k`, `-v`, *and* arbitrary pytest passthrough means a manual `parser.parse_known_args()` + forwarding step.
-- **Click** (8.3.3) — battle-tested, decorator-based, mature. Excellent. Slightly more verbose than typer.
-- **Typer** (0.25.1) — Click underneath, but command signatures are plain typed functions. `def run(config: Path | None = None, k: str | None = None, verbose: bool = False)` becomes a complete CLI command. Auto-rendered `--help`. Already a transitive dep of `mcp`'s `[cli]` extra.
-
-**Recommendation: Typer.** With three small commands, the typer boilerplate is essentially zero and the type hints serve double duty as both CLI definition and signature documentation. Click is a perfectly fine alternative if you'd rather avoid the implicit "this type hint becomes a CLI flag" magic. **Avoid argparse** — for three subcommands with passthrough you'll hand-write more code than typer + click combined.
-
-## Pytest-asyncio Configuration (specific to this project)
-
-Add to `pyproject.toml` to silence the `asyncio_default_fixture_loop_scope` deprecation warning and to lock in the spec's strict mode:
+**Pyproject.toml addition** (canonical 2026 pattern — well-established since PEP 621, used by `pytest-asyncio`, `pytest-playwright`, `pytest-httpx`, `pytest-xdist`):
 
 ```toml
-[tool.pytest.ini_options]
-asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope = "session"
-testpaths = ["tests"]
+[project.entry-points.pytest11]
+mcp_test_framework = "mcp_test_framework.fixtures"
+# Optional: separate entry for the domain-UI reporter so operators can
+# enable/disable it independently of the contract-test fixtures.
+mcp_test_framework_reporter = "mcp_test_framework.reporter"
 ```
 
-**Why session-scoped:** the spec's `mcp_client`, `judge`, and `target_tool` fixtures are session-scoped (one MCP subprocess for the whole run, one Ollama HTTP client). Without `asyncio_default_fixture_loop_scope = "session"` you'll either get a deprecation warning (current behavior) or, in a future pytest-asyncio version when the default flips to `"function"`, your session-scoped async fixtures will be re-created per test — defeating the whole point.
+**Why this exact shape:**
 
-## Ollama Judge Call: Confirmed `format: json` Is Correct
+1. **`pytest11`** is the historical entry-point group name pytest scans at startup; pytest discovers anything registered there via `importlib.metadata.entry_points()` and treats the pointed-at module as a plugin (its hook functions auto-register).
+2. **One entry per plugin module**, value is `"<dotted-import-path>"` (no `:function` suffix — pytest imports the module and inspects it for hook functions; you don't point at a specific function). Confirmed pattern from `pytest-asyncio`'s own setup, `pytest-playwright`'s plugin.
+3. **Naming convention** is `<distribution-name> = "<importable.module>"`. Your distribution name is `mvp-test-framework` (per pyproject.toml `[project] name`), so technically `mvp_test_framework = "..."` would be the conformist key — BUT pytest does not care about the LHS key as long as it's unique; the RHS is what matters. Pick whatever reads cleanly.
+4. **Two entries is the right shape** for v1.4 because the SEED-015 design treats the reporter plugin as **opt-in**. Pytest 9.x supports entry-point-loaded plugins being disabled at runtime via `-p no:<plugin_name>`; if both fixtures and the reporter come from the same entry, you can't disable just one. (Note: pytest's plugin-name internally derives from the LHS key.)
 
-Per Ollama's `/api/chat` contract (verified via official docs):
+**Pitfall:** Hatchling needs to **include** `src/mcp_test_framework/contracts/` and `src/mcp_test_framework/reporter.py` in the wheel. Your existing `[tool.hatch.build.targets.wheel] packages = ["src/mcp_test_framework"]` does this correctly (the whole package tree ships) — but verify post-move with `uv build && unzip -l dist/*.whl | grep contracts/`. **Confidence: HIGH** (this is the standard hatchling pattern; the v1.3 code already proves the package shape works).
 
-```json
-{
-  "model": "qwen3.6:latest",
-  "messages": [
-    {"role": "system", "content": "<judge prompt>"},
-    {"role": "user", "content": "<rubric + subject>"}
-  ],
-  "stream": false,
-  "format": "json",
-  "options": {"temperature": 0}
-}
+## `register()` Injection Pattern (the critical design decision)
+
+**The wrong patterns (what NOT to do):**
+
+| Anti-pattern | Why bad |
+|-------------|---------|
+| `sys._getframe(1).f_globals[test_name] = lambda ...` namespace mutation | Couples to caller's module structure; debugger / coverage / `--collect-only` show synthesized tests with confusing source locations; pytest's collection cache can't invalidate properly across runs. |
+| `exec()` / `eval()` of a generated test source string | Same problems plus a security / lint smell. No upside. |
+| Decorating a class on the fly inside `register()` and shoving it into the caller's globals | Same problems as #1. |
+| Manually adding to `pytest_collect_modifyitems` from the consumer side | Defeats the "three lines in conftest" UX. |
+
+**The recommended pattern (precedent: pytest-asyncio's own collection plugin):**
+
+```python
+# src/mcp_test_framework/contracts/__init__.py
+_REGISTERED_PLANS: list[ContractPlan] = []
+
+def register(*, server_command, tools, judge, ...) -> None:
+    """Called from operator's conftest.py at collection time."""
+    plan = ContractPlan(...)  # Pydantic-validated kwargs
+    _REGISTERED_PLANS.append(plan)
+    # ALSO write to a session-scoped pytest cache via the plugin hook
+    # so reloads / pytest -k filters interact correctly.
 ```
 
-- `stream: false` — single response object (matches spec).
-- `format: "json"` — Ollama-side JSON-mode constraint; the model is grammar-forced to produce valid JSON. Combined with Pydantic `JudgeResult.model_validate_json(response["message"]["content"])` this gives you robust structured output. The spec's "fall back to a failure result with the raw response on parse error" pattern is correct because even with `format: json` the model can produce a JSON object with the *wrong shape* (e.g., `score: "high"` instead of `score: 4`).
-- **Optional upgrade (future):** Ollama also accepts a JSON Schema as the value of `format`. You can pass `JudgeResult.model_json_schema()` to constrain not just "valid JSON" but "exact shape." Recommended deferred to a Plant-Seed milestone — for MVP, `"json"` + Pydantic-validate is simpler and matches the spec verbatim.
-- `options.temperature: 0` (strongly recommended addition to spec) — judges should be near-deterministic; temperature 0 reduces flakiness without affecting the rubric's integrity.
+```python
+# src/mcp_test_framework/contracts/_plugin.py  (loaded via pytest11 entry-point)
+def pytest_generate_tests(metafunc):
+    """Parametrize tests in mcp_test_framework.contracts._test_module."""
+    if metafunc.module is _test_module and "target_tool" in metafunc.fixturenames:
+        # union of tools from all registered plans
+        names = sorted({t for plan in _REGISTERED_PLANS for t in plan.tools})
+        metafunc.parametrize("target_tool", names, indirect=True)
 
-## Version Compatibility
+def pytest_collection_modifyitems(config, items):
+    """Inject the contract-test module's test items into the session."""
+    if not _REGISTERED_PLANS:
+        return
+    # Use config.pluginmanager to add the synthetic module
+    ...
+```
 
-| Package | Compatible With | Notes |
+**Why this works:**
+
+1. **The contract-test module ships with the package** — it's `src/mcp_test_framework/contracts/_test_module.py` (rename of today's `tests/contract/test_mcp_tool_contract.py`). It's NEVER discovered by the operator's pytest filesystem walk (lives in `site-packages/`); it's INJECTED by the framework's plugin into the collection.
+2. **`pytest_collection_modifyitems`** is the canonical hook for injecting test items that don't come from filesystem discovery. Pytest 9.x supports this verbatim from 8.x and earlier — stable API. **Confidence: HIGH**.
+3. **`pytest_generate_tests`** parametrizes the synthetic test module against the registered tools. This is exactly what your v1.3 `tests/conftest.py` does today against `target_tool` — port the logic verbatim.
+4. **No `sys._getframe` magic**; no `exec`; no namespace mutation in the operator's conftest. The operator's conftest just calls `register()`, which appends to a module-global. The plugin (auto-loaded via entry-point) does all the actual work at collection time.
+
+**Reference: `pytest-factoryboy`** uses exactly this `register()` shape and is the closest existing-ecosystem precedent. Its source is worth a one-time read during phase planning. **Confidence: MEDIUM-HIGH** (pattern is well-established; the exact `pytest_collection_modifyitems` hook for module injection is a touch more advanced than typical plugin code but documented).
+
+## Reporter Plugin (replacing the JUnit XML post-pass)
+
+The v1.3 `_runner.py` parses JUnit XML AFTER the subprocess exits. For library mode, the operator runs `pytest` directly — there is no subprocess, no JUnit XML capture by the wrapper. The domain UI must attach to **pytest's own live event stream**.
+
+**Recommended hooks (all stdlib pytest, no new deps):**
+
+| Hook | Purpose | Confidence |
+|------|---------|-----------|
+| `pytest_runtest_logreport(report)` | Called per-test-phase (setup/call/teardown) with a `TestReport` object carrying `nodeid`, `outcome`, `longrepr`, `duration`. **This is the primary live-event seam.** Use it to build the same `ParsedRun` / `ToolVerdict` domain model the JUnit parser builds today — just from `TestReport` objects instead of XML. | HIGH |
+| `pytest_sessionstart(session)` | Emit the pre-run digest (Header / Discovered / Running / Skipping / Test plan). Replaces `cli.py:run`'s pre-subprocess digest. | HIGH |
+| `pytest_collection_finish(session)` | Alternative seam for the pre-run digest if you want post-collection counts (more accurate than pre-collection). | HIGH |
+| `pytest_terminal_summary(terminalreporter, exitstatus, config)` | Emit the per-tool rows + summary line at session end. Operator sees domain UI inside pytest's native flow, not in a wrapper. | HIGH |
+| `pytest_addoption(parser)` | Declare the `--mcp-domain-ui` opt-in flag (and `--mcp-explain`, etc.). | HIGH |
+| `pytest_configure(config)` | Read the flag, register/unregister the reporter sub-plugin. Standard gate pattern. | HIGH |
+
+**Critical reference:** `pytest-html` does exactly this — entry-point plugin, listens to `pytest_runtest_logreport` for every test, builds a domain model, emits the report at `pytest_sessionfinish`. **`pytest-html` is the textbook pytest-reporter-plugin reference**; the v1.4 reporter can crib its architecture. **Confidence: HIGH**.
+
+**The renderer code stays identical** — `_render_per_tool_rows`, `_render_summary_line`, `_render_pre_run_digest` already take a `ParsedRun` + `RenderContext`. Library mode just builds those objects from live `TestReport` events instead of JUnit XML. **This is a refactor, not a rewrite.**
+
+**Pitfall:** Pytest's `TerminalReporter` already owns the terminal at `pytest_terminal_summary`; print after the pytest summary or use `terminalreporter.write_line(...)`. Don't try to suppress pytest's own summary — operators want it.
+
+## Migration to JUnit-XML-free reporter (don't break the CLI)
+
+The CLI mode (`mcp-test-framework run`) still uses JUnit XML for the wrapper. Two implementation choices for v1.4:
+
+| Option | Tradeoff |
+|--------|----------|
+| (A) CLI continues subprocess + JUnit XML parse; library mode uses the new live-event reporter | Two render paths; two test surfaces to keep in sync. The renderer functions can be shared. |
+| (B) CLI becomes a thin shim that runs `pytest.main()` in-process with the framework's reporter plugin auto-enabled | One render path; CLI loses subprocess isolation. The v1.2 Phase 14 decision was "subprocess for isolation" — overturning it deserves its own seed. |
+
+**Recommendation: (A).** Don't rewrite the CLI in v1.4. Library mode is the new primary surface; CLI keeps its v1.3 architecture. The renderer/parser functions stay shared. (Defer the consolidation question to v1.5+.)
+
+## Test-Code Surface Rename (SEED-023, packaging implications)
+
+The `sdet` → `test_code` rename is **mostly a package + import rewrite** — no new libraries:
+
+- `src/mcp_test_framework/sdet/` → `src/mcp_test_framework/test_code/` (directory rename)
+- `pyproject.toml` `[tool.hatch.build.targets.wheel] packages` unchanged (still `["src/mcp_test_framework"]`, the subdir rename is invisible to hatchling)
+- `[tool.pyright] include`: update `"src/mcp_test_framework/sdet/response.py"` → `"src/mcp_test_framework/test_code/response.py"`
+- `[project.scripts]`: add `gen-test-classes` entry alongside (or replacing — operator decision) `gen-sdet-classes`. **Recommendation:** add the new entry, keep the old as a deprecation-warning shim for one minor release, drop in v1.5.
+- `config.yaml`: `sdet.generated_root` key — break or migrate? Schema v2 just landed; bumping to v3 to rename is operator-hostile. **Recommendation:** accept BOTH keys (`test_code.generated_root` preferred, `sdet.generated_root` as a soft-deprecated alias) in v1.4; remove the alias in v1.5 with a v2→v3 migration. Pydantic-settings supports aliased fields trivially via `Field(alias=...)`.
+
+**No new libraries** are required for the rename. The work is all import-rewrites + docs.
+
+## Alternatives Considered (and rejected)
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `pytest_collection_modifyitems` + synthetic test module | `sys._getframe(1).f_globals` namespace injection | Debugger / coverage / `--collect-only` show synthesized tests with confusing source locations. Pytest's collection cache can't invalidate properly. Real precedent (`pytest-factoryboy`) avoids it. |
+| Native `pytest_runtest_logreport` reporter plugin | Keep parsing JUnit XML in library mode too | Requires forcing `--junitxml=<tempfile>` flag in the operator's pytest invocation, polluting their CI logs and conflicting with their own `--junitxml=PATH`. Live events are cleaner. |
+| Manual `pytest_addoption(parser)` flag | Auto-enable domain UI | Operators want native pytest output by default (they know how to read it). Opt-in is the right default per SEED-015. |
+| Single `pytest11` entry-point with both fixtures + reporter | Separate entries | Inability to `-p no:mcp_test_framework_reporter` while keeping fixtures. Separate entries cost nothing. |
+| Hatchling unchanged | Switch to `setuptools` / `poetry-core` / `flit-core` | Hatchling is the 2026 uv default; switching mid-project is gratuitous churn. No feature need. |
+| `pytest-factoryboy` as a learning reference | Adopt `pytest-factoryboy` as a dependency | Different problem (factory-boy-driven fixtures). Pattern-borrow only. |
+| Drop `pytest-timeout` | Keep as dev dep | Used to surface hung tests in framework self-tests. Library-mode operators don't depend on it transitively (it's in `[dependency-groups] dev`, not `[project] dependencies`). |
+
+## What NOT to Add
+
+| Library/Pattern | Why Avoid |
+|---------------|-----------|
+| `pluggy` declared as a direct dep | Pytest already pulls it. Direct dep risks version skew with pytest's pin. |
+| `pytest-html` as a runtime dep | The domain UI replaces it; mixing two reporters is operator-confusing. |
+| `pytest-cov` integration as a built-in | Not on the v1.4 critical path; operators add it to their own dev-deps if they want it. |
+| `pytest-xdist` integration in v1.4 | Explicitly deferred to v1.5 (per PROJECT.md). The library-mode `register()` API should be xdist-friendly (avoid module-global mutation after collection — use `config.cache` or `session.stash` for cross-worker state), but don't bake xdist in now. |
+| `importlib_metadata` backport | Stdlib `importlib.metadata` on Python 3.10+ is sufficient. You're on 3.14. |
+| A custom build backend / plugin | Hatchling does everything needed. |
+| Click-as-direct-dep | Typer still comes transitively via `mcp[cli]`. No change. |
+| Renaming the package `mcp_test_framework` → something else | Out of scope for v1.4; SEED-023 is a SUBpackage rename only. |
+
+## Version Compatibility Matrix
+
+| Package | Compatible with | Notes |
 |---------|-----------------|-------|
-| `mcp 1.27.0` | Python 3.10–3.14 | Classifies through 3.13 only; PyPI `requires-python = ">=3.10"`. No known 3.14 issues; widely used on 3.13 with no breaking interp changes between 3.13 and 3.14 that touch this codepath. **Confidence: MEDIUM** that 3.14 is fully smoke-tested upstream. Mitigation: `uv sync` will surface any C-ext build issues immediately, and `mcp` is pure-Python at the SDK layer. |
-| `pydantic 2.13` | `pydantic-core 2.x` (auto), Python 3.9–3.14 | 3.14 explicitly classified. |
-| `pytest 9.0` + `pytest-asyncio 1.3` | Python 3.10–3.14 | Both classify 3.14. `pytest-asyncio` 1.x is the only line compatible with `pytest>=9`. |
-| `httpx 0.28` | Python 3.8+ | No 3.14 classifier (httpx skips classifiers) but is the de facto async client and runs on 3.14 in production. Confidence: HIGH on real-world compat. |
-| `jsonschema 4.26` | Python 3.10+ | Use `Draft202012Validator` to match MCP's tool schema dialect. |
-| `pydantic-settings 2.14` | Pydantic 2.11+, Python 3.10+ | The `[yaml]` extra requires `pyyaml`. Pin source order via `settings_customise_sources` to make CLI > env > YAML > defaults explicit. |
+| `pytest 9.0.3` | Python ≥ 3.10 | Latest stable per PyPI 2026-05-15. Plugin author APIs (entry-points, hooks, TestReport) stable from 8.x. |
+| `pytest-asyncio 1.1+` | `pytest>=8.2,<10` | Compatible with pytest 9.x via the explicit upper bound. `loop_scope` parameter on fixtures (used by v1.3) is the stable API. **Confidence: HIGH on compat; MEDIUM on "no plugin-author breakage between 1.0 and 1.x" — recommend explicit smoke test during v1.4 phase 1.** |
+| `hatchling 1.29.0` | Python ≥ 3.8 | Latest, 2026-02-23. Wheel + sdist build unchanged. |
+| `mcp 1.27+` | Python ≥ 3.10 | Continues to work; stdio client unchanged. |
+| `pydantic 2.13.x` | Python ≥ 3.9 | Required by `mcp`; v3 is not out yet. |
+| `pydantic-settings 2.14.x` | Pydantic ≥ 2.11 | Continues to drive `Config`. Field aliases supported for the v1.4 `sdet`→`test_code` alias bridge. |
 
 ## Confidence Assessment
 
 | Choice | Level | Source(s) |
 |--------|-------|-----------|
-| `mcp` SDK as the only sane stdio client | HIGH | Context7 `/modelcontextprotocol/python-sdk`, official PyPI metadata |
-| `pytest-asyncio` strict mode | HIGH | Context7 `/pytest-dev/pytest-asyncio` (configuration.md, concepts.md) — confirms strict is default in 1.x |
-| `httpx` for Ollama (vs `ollama` client) | HIGH for "either works"; MEDIUM on the recommendation to prefer raw `httpx` | Spec mandates `/api/chat` HTTP semantics directly; both libs are current |
-| `format: "json"` on `/api/chat` | HIGH | Context7 Ollama Python docs + PyPI `ollama` package; matches spec verbatim |
-| `jsonschema` Draft202012Validator | HIGH | Context7 `/python-jsonschema/jsonschema` |
-| `pydantic-settings` over hand-rolled config | MEDIUM (this is a recommendation that *changes* the spec; the spec's hand-rolled approach also works) | Context7 `/pydantic/pydantic-settings`, PyPI metadata |
-| `typer` over argparse / Click | MEDIUM (judgment call; all three are viable) | PyPI metadata, transitive-dep observation in `mcp`'s `[cli]` extra |
-| Python 3.14 ready for all libs | MEDIUM-HIGH | PyPI classifiers verified for all libs except `mcp` (classifies 3.13) and `httpx` (no classifiers); both are pure-Python and 3.14-safe in practice |
-| `uv` 0.11.x | HIGH | PyPI metadata, project already uses it |
+| `[project.entry-points.pytest11]` is the right entry-point group | HIGH | PEP 621 + pytest docs (training data, corroborated by every published pytest plugin) |
+| `pytest_runtest_logreport` is the right hook for live event streaming | HIGH | pytest official hookspec (training data); pytest-html source uses it canonically |
+| `pytest_collection_modifyitems` is the right hook for injecting test items from a library | HIGH | pytest official hookspec; pytest-asyncio's own collection plugin uses similar shape |
+| `register()` populating a module-global plan + collection hook reading it | MEDIUM-HIGH | pytest-factoryboy is the precedent; pattern is sound but the exact wiring of "synthetic test module injection" is sufficient-but-not-trivial — recommend a small spike in the first v1.4 phase to validate before committing the API shape |
+| Hatchling wheel ships `src/mcp_test_framework/contracts/` after extraction | HIGH | v1.3 already proves the `packages = ["src/mcp_test_framework"]` shape works for arbitrary subdirs |
+| pytest 9.0.3 + pytest-asyncio 1.x compat | HIGH | PyPI metadata verified 2026-05-15 (pytest-asyncio declares `pytest<10,>=8.2`) |
+| `pytest-asyncio` 1.x has no plugin-author breaking changes vs framework's usage | MEDIUM | Could not retrieve full changelog; v1.3 already uses 1.3+; smoke-test as part of v1.4 phase 1 |
+| Test-code rename (SEED-023) has no library implications | HIGH | Pure rename; `Field(alias=...)` is documented Pydantic v2 surface |
+
+## Roadmap Implications
+
+Based on this stack research, the suggested v1.4 phase structure breaks into work that is **mostly within existing-stack capabilities**:
+
+1. **Phase A — Pytest plugin entry-point declaration + fixture move**
+   - Add `[project.entry-points.pytest11]` to pyproject.toml
+   - Verify auto-discovery in a sample external consumer repo
+   - Smoke-test that v1.3 `tests/conftest.py`'s `pytest_plugins = ["mcp_test_framework.fixtures"]` becomes redundant
+   - **Risk: LOW.** Standard pytest plugin pattern.
+
+2. **Phase B — Contract test extraction + `register()` API**
+   - Move `tests/contract/test_mcp_tool_contract.py` → `src/mcp_test_framework/contracts/_test_module.py`
+   - Design `register()` kwargs (mirror `Config` 1:1)
+   - Implement `pytest_collection_modifyitems` to inject the synthetic test module
+   - Port `pytest_generate_tests` parametrize logic from `tests/conftest.py` into the plugin
+   - **Risk: MEDIUM.** Synthetic module injection is the load-bearing technical bet — spike first.
+
+3. **Phase C — Live reporter plugin**
+   - Wire `pytest_runtest_logreport` → build `ParsedRun` incrementally
+   - Wire `pytest_sessionstart` → pre-run digest (port from `_runner._render_pre_run_digest`)
+   - Wire `pytest_terminal_summary` → per-tool rows + summary line
+   - Add `--mcp-domain-ui` opt-in flag via `pytest_addoption`
+   - **Risk: LOW-MEDIUM.** Renderer functions already exist; data sourcing changes from XML to `TestReport`. Most of the work is mechanical.
+
+4. **Phase D — SEED-023 rename**
+   - Directory rename + import rewrites + planning-ID scrub for "SDET" terminology
+   - Add `gen-test-classes` CLI command alongside `gen-sdet-classes` (deprecation shim)
+   - Add `test_code.generated_root` config field aliased to `sdet.generated_root`
+   - Update README + docs/SDET-AUTHORING.md → docs/TEST-CODE-AUTHORING.md
+   - **Risk: LOW.** Pure refactor.
+
+5. **Phase E — Carry-forward UAT closure + library-mode dogfood**
+   - The framework's own `tests/` calls `register()` against a fixture MCP server
+   - Validates: external operator's three-line conftest produces ~20 parametrized contract tests
+   - README pivots from "how to run the CLI" to "how to add the library"
+   - **Risk: LOW.** Standard dogfood loop.
+
+**Phase ordering rationale:** A enables B (entry-point loads the plugin); B is the load-bearing technical bet (spike first); C builds on B's plan registry but is independent in terms of risk; D is pure rename, can interleave or run after; E gates on A+B+C all working.
+
+## Open Questions / Gaps to Address During Phase Planning
+
+- **xdist-friendly `register()` plan storage**: module-global list won't survive worker spawn under xdist. Use `config.stash` keyed by a sentinel instead. Not v1.4 critical but worth getting right now to avoid a v1.5 retrofit. **Recommend: design phase B with `config.stash` from the start.**
+- **`pytest-asyncio` plugin-load ordering vs. mcp_test_framework**: when both plugins auto-load via entry-points, pytest's pluginmanager orders by name. Our `_preflight` autouse session-scoped fixture (which is async) depends on pytest-asyncio being loaded first. **Recommend: smoke-test in Phase A; pytest's `tryfirst`/`trylast` markers exist if ordering issues arise.**
+- **Reporter plugin and `pytest -p no:terminalreporter`**: some CI scenarios disable the terminal reporter; the domain UI must degrade gracefully (no terminal = no domain UI, no crash). **Recommend: gate the reporter on `config.pluginmanager.has_plugin("terminalreporter")`.**
+- **Synthetic test module + `--collect-only`**: operators running `pytest --collect-only` to see what will execute MUST see the injected contract tests. Verify in Phase B.
+- **`uv build` produces a wheel containing the entry-point metadata**: `uv build && python -c "from importlib.metadata import entry_points; print(entry_points(group='pytest11'))"` — verify post-build. **Recommend: add as a Phase A smoke check.**
 
 ## Sources
 
-- Context7 `/modelcontextprotocol/python-sdk` (v1.12.4 indexed, latest 1.27.0 on PyPI) — `stdio_client`, `ClientSession`, `list_tools`, `call_tool` patterns; confirmed stdio-context-manager API
-- Context7 `/pytest-dev/pytest-asyncio` — `asyncio_mode` defaults, `asyncio_default_fixture_loop_scope` deprecation behavior, strict-mode requirements
-- Context7 `/python-jsonschema/jsonschema` — `Draft202012Validator`, `iter_errors` patterns
-- Context7 `/pydantic/pydantic-settings` — `YamlConfigSettingsSource`, `env_file`, `settings_customise_sources` precedence
-- Context7 `/ollama/ollama-python` — `/api/chat` contract, `format` parameter, structured-output patterns
-- PyPI metadata (https://pypi.org/pypi/{mcp,pytest,pytest-asyncio,httpx,pydantic,pydantic-settings,jsonschema,pyyaml,python-dotenv,typer,click,ollama,uv,homelab-mcp,fastjsonschema,jsonschema-rs}/json) — current versions, `requires-python`, `requires-dist`, classifiers (verified 2026-05-04)
-- https://endoflife.date/api/python.json — Python 3.14.4 latest, EOL 2030-10-31
-
----
-*Stack research for: Python MCP-server integration test framework with Ollama LLM-as-judge*
-*Researched: 2026-05-04*
+- pytest 9.0.3 PyPI metadata — verified 2026-05-15 via PyPI JSON API (requires-python ≥3.10, 1300+ external plugins ecosystem)
+- pytest-asyncio 1.1.0+ PyPI metadata — verified 2026-05-15 (declares `pytest<10,>=8.2`)
+- hatchling 1.29.0 PyPI metadata — verified 2026-05-15 (released 2026-02-23)
+- pytest-playwright 0.7.2 PyPI metadata — verified 2026-05-15 (released 2025-11-24)
+- pytest hook reference: `pytest_runtest_logreport`, `pytest_collection_modifyitems`, `pytest_generate_tests`, `pytest_terminal_summary`, `pytest_addoption` — pytest official documentation
+- pytest-factoryboy `register()` API pattern — public pattern, well-documented
+- pytest-html reporter plugin architecture — the canonical pytest-reporter-plugin reference
+- v1.3 codebase reads: `src/mcp_test_framework/fixtures.py`, `tests/contract/test_mcp_tool_contract.py`, `src/mcp_test_framework/cli.py`, `src/mcp_test_framework/_runner.py`, `pyproject.toml`
+- v1.4 milestone seed reads: `.planning/seeds/SEED-015-library-mode-delivery.md`, `.planning/seeds/SEED-023-rename-sdet-surface-to-test-code.md`, `.planning/PROJECT.md` (Current Milestone section)
