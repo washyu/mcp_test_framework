@@ -101,7 +101,7 @@ Flags that reshape this output:
 inline between the digest and the pytest subprocess:
 
 ```
-$ mcp-test-framework run --explain
+$ mcp-test-framework run --config config.yaml --explain
 ========================================
 MCP Test Framework
 ========================================
