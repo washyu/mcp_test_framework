@@ -271,7 +271,7 @@ it (SEED-022). The `_CpuBumpManageVmParams(extra="allow")` workaround pattern
 is documented in [`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md). Run
 scenarios with `mcp-test-framework run --sdet`.
 
-<!-- mirrors _runner.py output — re-run the framework when output format changes (Phase 21 D-14) -->
+<!-- mirrors live runner output — re-run the framework and refresh this block when the operator-facing output format changes; see docs/SDET-AUTHORING.md for the SDET-mode digest contract -->
 
 ```python
 # tests/sdet/test_proxmox_vm_lifecycle.py
