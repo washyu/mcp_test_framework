@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Homelab Scenario Testing
-status: completed
-stopped_at: Plan 24-02 partial (live capture deferred via regen-failed contract)
-last_updated: "2026-05-15T20:23:04.221Z"
+milestone: v1.4
+milestone_name: Library Mode Delivery
+status: planning
+last_updated: "2026-05-15T21:03:45.783Z"
 last_activity: 2026-05-15
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 42
-  completed_plans: 42
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close)
 
 ## Current Position
 
-Milestone: v1.3 closed 2026-05-15.
-Status: Milestone complete. 9 phases / 42 plans / 29 reqs shipped; 27 satisfied + 2 partial-by-design (operator-approved live-UAT). Framework suite green at 578 passed.
-Next: `/gsd-new-milestone` to scope v1.4. Carry-forward debt (live-UAT items, v1.2 verification gaps, 20 dormant seeds) tracked in Deferred Items section.
-Last activity: 2026-05-15 (v1.3 close)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-15 — Milestone v1.4 started
 
 ## Performance Metrics
 

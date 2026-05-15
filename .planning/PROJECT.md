@@ -8,6 +8,19 @@ A pytest-based Python framework for testing MCP (Model Context Protocol) servers
 
 A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in the framework's `src/` tree (SEED-022).
 
+## Current Milestone: v1.4 Library Mode Delivery
+
+**Goal:** Reframe the framework as an importable Python test package — operator adds it to their MCP server's `pyproject.toml`, writes three lines in `conftest.py`, runs their existing `pytest`. Playwright-for-MCPs.
+
+**Target features:**
+- **Library-mode delivery (SEED-015)** — `register()` API in `src/mcp_test_framework/contracts/` is the primary entry point; extracts the contract pass (schema + Ollama description judge + output conformance) from `tests/contract/` into importable parametrized tests; pytest plugin entry point (`pytest11`) auto-loads session fixtures; domain UI as opt-in reporter plugin (not CLI post-pass).
+- **Test-code / SDET scenarios ship in the same package** — `mcp_session`, `tool().call()`, `<Tool>Params`/`<Tool>Response` codegen as the secondary surface for operator-authored scenarios.
+- **Public-API rename: `sdet` → `test_code` (SEED-023)** — lock the public import surface (`mcp_test_framework.test_code`, `gen-test-classes`, `--test-code` flag, `tests/test_code/`) before it hardens into "API-this-can't-change" territory.
+- **CLI demotes to optional convenience** — `mcp-test-framework run|list-tools|config-init|version` stay for CI one-liners and discovery; not the primary surface.
+- **Carry-forward UAT closure** — validate generated wrappers actually work and are useful at real scale via the library-mode dogfood: README §SDET-scenarios PASS-sample re-capture, Phase 17 SC1 (~70-tool live), v1.2 Phase 13 + Phase 14 live-stack UATs.
+
+**Out for v1.4 (push to v1.5+):** pytest-xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005). Both land cleaner on a stable library-mode API.
+
 ## Current State
 
 **Shipped:** v1.3 Homelab Scenario Testing (2026-05-15)
@@ -117,7 +130,7 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 
 ### Active
 
-To be scoped via `/gsd-new-milestone`. Carry-forward debt for v1.4 triage:
+Scoped for v1.4 — see "Current Milestone" above. Carry-forward debt to fold in:
 
 - [ ] README §SDET-scenarios PASS-sample re-capture (live-UAT with Proxmox keyring access — partial SERIALIZER-DOC-01)
 - [ ] Phase 17 SC1 live-stack confirmation at ~70-tool scale (`gen-sdet-classes` against live homelab-mcp + `uv run pyright` on real generated dir)
@@ -140,7 +153,7 @@ To be scoped via `/gsd-new-milestone`. Carry-forward debt for v1.4 triage:
 - Reading or importing `homelab-mcp` source — black-box subprocess under test (mechanically enforced via `ruff TID251` + `sys.modules` guard)
 - SUT-aware framework features (preflight markers, subsystem awareness) — SEED-022; locked Phase 20, structurally enforced Phase 21.1
 - CLI `--out` override and `MCPTF_GENERATED_ROOT` env var for `sdet.generated_root` — explicitly rejected Phase 21.1 D-02 (one source of truth)
-- SEED-023 SDET→test-code rename — deferred to v1.4; v1.3 preserved the `sdet` namespace name
+- ~~SEED-023 SDET→test-code rename~~ — **scoped into v1.4** alongside library-mode public API
 
 ## Context
 
@@ -216,4 +229,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 — v1.3 Homelab Scenario Testing shipped. SDET persona is now a first-class user alongside the operator; codegen surface, typed call wrapper, stateful primitives, domain UI scenario rendering, and SEED-022 structural enforcement landed across 9 phases / 42 plans / 29 reqs in 3 days. Next: `/gsd-new-milestone` to scope v1.4 — xdist parallelism + library mode + OpenAI-compat judge backend are the candidate cohort.*
+*Last updated: 2026-05-15 — v1.4 Library Mode Delivery scoped. Primary surface becomes `mcp_test_framework.contracts.register()` (importable contract pass — schema + Ollama description judge + output conformance), with test-code / SDET scenarios shipping in the same package as the secondary surface. SEED-015 + SEED-023 (sdet→test_code rename) + carry-forward UAT closure. xdist + OpenAI-compat judge pushed to v1.5+.*
