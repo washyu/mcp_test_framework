@@ -66,6 +66,12 @@ Replace manual Claude-client verification of homelab-mcp with automated end-to-e
 | ------------- | ----------- |
 | SCRUB-SRC-01  | Operator-facing `--help` output and the wider `src/mcp_test_framework/` tree stop leaking internal planning-system provenance. After the scrub: `mcp-test-framework --help` and every subcommand `--help` (`run`, `list-tools`, `version`, `gen-sdet-classes`, `config-init`) show zero matches for the locked regex `(CLI\|PERSONA\|CODEGEN\|SAFE\|RUNNER\|UX\|ISOL\|JUNIT\|SURFACE\|TEST\|CLEAN\|DOC\|UI\|SDET\|STATE\|PREFLIGHT\|SCRUB\|RELOC)-\d+\|\bD-\d+\b`; `grep -rE` of that same regex over `src/mcp_test_framework/` returns zero hits with no allowlist (per Phase 22 CONTEXT.md D-04 — planning IDs are removed, not suppressed via `# noqa`). Phase 17–21.1 unit tests continue to pass (no behavior change). Operator-facing `--help` prose remains at least as informative as the current ID-tagged version (verb + key flags + exit-code semantics preserved). The scrub also removes `Phase NN(.M)?` historical prefixes per CONTEXT.md D-01 as one-time discipline, though that shape is deliberately NOT in the regression regex (CONTEXT.md D-06 — operator-prose false-positive risk). |
 
+### SERIALIZER — Tool-call wire serializer (Phase 24)
+
+| ID             | Description |
+| -------------- | ----------- |
+| SERIALIZER-01  | `tool().call()` serializes only Pydantic params fields the SDET explicitly set: `_tool_factory.py:99` uses `model_dump(mode="json", exclude_unset=True)`. Optional fields with `None` defaults that the SDET never touched stay off the wire (the `arguments` dict the wrapper passes to `McpTestClient.call_tool` does not contain the key). SDETs who explicitly write `field=None` on the params constructor still put `null` on the wire (SEED-022: user intent, not value, is the discriminator). Unit tests in `tests/framework/unit/test_tool_factory.py` lock all three behaviors (unset omitted / explicit None preserved / explicit value preserved) via payload assertions on `_StubClient.calls[0][1]`. |
+
 ### UI — Domain rendering for SDET runs
 
 | ID    | Description                                                                                                                                                                                                                                                                                                       |
@@ -157,8 +163,9 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | DOC-SDET-02    | Phase 21 | Complete |
 | DOC-SDET-03    | Phase 21 | Pending  |
 | SCRUB-SRC-01   | Phase 22 | Complete |
+| SERIALIZER-01  | Phase 24 | Pending  |
 
-**Total: 27 requirements mapped across 7 phases (17–22). Coverage: 27/27 (100%).**
+**Total: 28 requirements mapped across 8 phases (17–24). Coverage: 28/28 (100%).**
 
 ### Phase coverage summary
 
@@ -171,3 +178,4 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | 21    | DOC-SDET-01, DOC-SDET-02, DOC-SDET-03                                       | 3     |
 | 21.1  | RELOC-01, RELOC-02, RELOC-03, RELOC-04                                      | 4     |
 | 22    | SCRUB-SRC-01                                                                | 1     |
+| 24    | SERIALIZER-01                                                              | 1     |
