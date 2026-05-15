@@ -29,6 +29,21 @@ class _FakeResponse(ToolResponse):
     pass
 
 
+class _FakeParamsWithOptional(BaseModel):
+    """Phase 24: fixture for exclude_unset semantics tests.
+
+    Mirrors the upstream shape that triggered the homelab-mcp inputSchema bug:
+    one required field + one optional field with `None` default. The framework's
+    `tool().call()` must NOT emit `cdrom: null` on the wire when the SDET never
+    set it (`exclude_unset=True`); but if the SDET explicitly writes
+    `cdrom=None`, the wrapper must put `null` on the wire (SEED-022: user
+    intent, not value, is the discriminator).
+    """
+
+    name: str
+    cdrom: str | None = None
+
+
 @pytest.fixture(autouse=True)
 def _reset_module_state():
     """Tests mutate module-level state; reset on teardown to prevent bleed."""
@@ -167,11 +182,13 @@ async def test_call_error_path_raises_tool_call_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_call_serializes_params_with_mode_json() -> None:
+async def test_call_serializes_params_with_mode_json_and_exclude_unset() -> None:
     """Phase 18 CONTEXT D-08 + 18-PATTERNS: params.model_dump must be called
     with mode='json' (wire-safe). Spies on a Pydantic subclass that records
     the kwargs passed to model_dump (Pydantic blocks instance-attr override,
-    so we use a subclass override instead)."""
+    so we use a subclass override instead). Phase 24 SERIALIZER-01: ALSO
+    assert exclude_unset=True so the chosen implementation choice is locked
+    alongside mode='json'."""
     from mcp.types import CallToolResult, TextContent
 
     captured_kwargs: dict = {}
@@ -201,6 +218,128 @@ async def test_call_serializes_params_with_mode_json() -> None:
     assert captured_kwargs.get("mode") == "json", (
         f"expected model_dump(mode='json'); got kwargs={captured_kwargs!r}"
     )
+    assert captured_kwargs.get("exclude_unset") is True, (
+        f"expected model_dump(exclude_unset=True) -- Phase 24 SERIALIZER-01; "
+        f"got kwargs={captured_kwargs!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_call_omits_unset_optional_field_from_wire_arguments() -> None:
+    """Phase 24 SERIALIZER-01: optional Pydantic field the SDET never set must NOT
+    appear in the `arguments` dict the wrapper passes to McpTestClient.call_tool.
+
+    This is the contract that resolves the framework-side contribution to the
+    homelab-mcp inputSchema bug (`Input validation error: None is not of type
+    'string'`). SEED-022 preserved: see the explicit-None test below for the
+    user-intent escape hatch.
+    """
+    from mcp.types import CallToolResult, TextContent
+
+    tf._ACTIVE_SLUG = "homelab_mcp"
+    tf._REGISTRIES["homelab_mcp"] = {
+        "create_vm": (_FakeParamsWithOptional, _FakeResponse)
+    }
+
+    fake_result = CallToolResult(
+        content=[TextContent(type="text", text="ok")],
+        isError=False,
+    )
+
+    class _StubClient:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict]] = []
+
+        async def call_tool(self, name: str, arguments: dict):
+            self.calls.append((name, arguments))
+            return fake_result
+
+    stub = _StubClient()
+    tf._ACTIVE_CLIENT = stub  # type: ignore[assignment]
+    wrapper = tool("create_vm")
+    # cdrom NOT passed -- SDET did not set it.
+    await wrapper.call(_FakeParamsWithOptional(name="x"))
+    assert len(stub.calls) == 1
+    sent_args = stub.calls[0][1]
+    assert "cdrom" not in sent_args, (
+        f"expected unset optional `cdrom` to be omitted from wire arguments; "
+        f"got {sent_args!r}"
+    )
+    assert sent_args == {"name": "x"}
+
+
+@pytest.mark.asyncio
+async def test_call_serializes_explicit_none_to_wire_null() -> None:
+    """Phase 24 SERIALIZER-01 / SEED-022: when the SDET EXPLICITLY passes
+    `field=None`, the wrapper must still put `null` on the wire. This is the
+    user-intent escape hatch -- an SDET testing the server's null-handling path
+    sets the attribute explicitly and the framework respects that.
+    """
+    from mcp.types import CallToolResult, TextContent
+
+    tf._ACTIVE_SLUG = "homelab_mcp"
+    tf._REGISTRIES["homelab_mcp"] = {
+        "create_vm": (_FakeParamsWithOptional, _FakeResponse)
+    }
+
+    fake_result = CallToolResult(
+        content=[TextContent(type="text", text="ok")],
+        isError=False,
+    )
+
+    class _StubClient:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict]] = []
+
+        async def call_tool(self, name: str, arguments: dict):
+            self.calls.append((name, arguments))
+            return fake_result
+
+    stub = _StubClient()
+    tf._ACTIVE_CLIENT = stub  # type: ignore[assignment]
+    wrapper = tool("create_vm")
+    # cdrom EXPLICITLY set to None -- SDET wants null on the wire.
+    await wrapper.call(_FakeParamsWithOptional(name="x", cdrom=None))
+    assert len(stub.calls) == 1
+    sent_args = stub.calls[0][1]
+    assert "cdrom" in sent_args, (
+        f"expected explicit `cdrom=None` to be PRESENT on wire; got {sent_args!r}"
+    )
+    assert sent_args["cdrom"] is None
+    assert sent_args == {"name": "x", "cdrom": None}
+
+
+@pytest.mark.asyncio
+async def test_call_serializes_explicit_value_unchanged() -> None:
+    """Phase 24 SERIALIZER-01: optional field set to a real value passes through
+    unchanged -- regression against an over-aggressive future change."""
+    from mcp.types import CallToolResult, TextContent
+
+    tf._ACTIVE_SLUG = "homelab_mcp"
+    tf._REGISTRIES["homelab_mcp"] = {
+        "create_vm": (_FakeParamsWithOptional, _FakeResponse)
+    }
+
+    fake_result = CallToolResult(
+        content=[TextContent(type="text", text="ok")],
+        isError=False,
+    )
+
+    class _StubClient:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict]] = []
+
+        async def call_tool(self, name: str, arguments: dict):
+            self.calls.append((name, arguments))
+            return fake_result
+
+    stub = _StubClient()
+    tf._ACTIVE_CLIENT = stub  # type: ignore[assignment]
+    wrapper = tool("create_vm")
+    await wrapper.call(_FakeParamsWithOptional(name="x", cdrom="/iso/local.iso"))
+    assert len(stub.calls) == 1
+    sent_args = stub.calls[0][1]
+    assert sent_args == {"name": "x", "cdrom": "/iso/local.iso"}
 
 
 def test_active_client_module_attribute_defaults_to_none() -> None:
