@@ -404,7 +404,7 @@ def test_cli_errors_static_call_sites_no_banned_tokens() -> None:
     # Walk up from this test file to the repo root (same pattern as
     # test_doc_scrub._repo_root) so the test passes regardless of the
     # cwd pytest is invoked from.
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     src = (repo_root / "src" / "mcp_test_framework" / "cli.py").read_text(
         encoding="utf-8"
     )
