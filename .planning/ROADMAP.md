@@ -188,7 +188,7 @@ Plans:
 **Goal:** Restore `tests/framework/` to a green run so v1.3 closes with no carried-over test debt — three independent root-cause clusters (Config v2 sdet-required propagation, parents[N] depth bumps post Phase 15 folder split, README content drift against the doc-scrub close-gate) are fixed in test-side code and operator-facing docs without modifying `src/mcp_test_framework/`.
 **Requirements**: None (bottom-up debt cleanup; close-gate is D-07/D-08: `uv run pytest tests/framework/ --tb=no -q` exits 0 with failed==0 and errored==0)
 **Depends on:** Phase 22
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 23-01-PLAN.md — Cluster A: Config(sdet=_SDET_STUB) propagation + tests/framework/conftest.py override (D-01, D-02, D-03)
