@@ -251,14 +251,21 @@ file.
 
 ## The inputSchema workaround (and why the framework does not mask it)
 
-The `_CpuBumpManageVmParams` subclass referenced in
-`test_modify_accepts_cpu_increase` above is a deliberate escape hatch. Some
-upstream MCP servers (homelab-mcp 1.7.0 included) declare an
+Some upstream MCP servers (homelab-mcp 1.7.0 included) declare an
 `inputSchema` that is self-contradictory: optional fields declared
 `type: "string"` (without `"null"`) AND defaulted to `null` in the same
 schema. The framework's Pydantic-generated `ManageProxmoxVmParams` is
 `extra="forbid"` (matching the declared schema), which prevents transporting
 an action payload like `{"type": "config", "cores": 2}` through the wire.
+
+**You generally won't hit this bug.** As of Phase 24 the framework's
+`tool().call()` serializer uses `model_dump(mode="json", exclude_unset=True)`,
+which means optional Pydantic fields that you never set on the params
+constructor stay off the wire entirely. The contradiction surfaces only
+when an SDET _explicitly_ chooses to put `null` on the wire — either by
+passing `field=None` to a constructor, or (for tools whose declared
+`extra="forbid"` blocks the action payload shape) by reaching for the
+`extra="allow"` escape hatch below.
 
 The escape hatch is a per-scenario subclass with `extra="allow"`:
 
@@ -287,12 +294,18 @@ Three observations on this pattern:
    framework correctly reflects the server's declared `extra="forbid"` shape
    — the workaround belongs to the scenario, not to the framework.
 
-2. **The framework does not paper over upstream bugs.** Adding
-   `exclude_none=True` to `tool().call()` would silently drop null fields
-   and mask the upstream contradiction — and it would also prevent SDETs
-   from testing the server's null-handling edge cases when they want to.
-   This is the SEED-022 principle: framework primitives; SDET owns safety.
-   The framework wraps tool calls; the SDET decides which payloads to send.
+2. **The framework does not paper over upstream bugs.** Phase 24 chose
+   `model_dump(mode="json", exclude_unset=True)` deliberately over
+   `exclude_none=True`. `exclude_unset=True` discriminates on **user
+   intent** — did the SDET set this attribute on the params constructor? —
+   not on **value**. An SDET who explicitly writes `field=None` still
+   puts `null` on the wire and still triggers the upstream contradiction
+   when one exists. `exclude_none=True` would silently drop _every_ null
+   field regardless of whether the SDET wanted it on the wire, masking
+   the upstream contradiction and also preventing SDETs from testing
+   the server's null-handling edge cases when they want to. This is the
+   SEED-022 principle: framework primitives; SDET owns safety. The
+   framework wraps tool calls; the SDET decides which payloads to send.
    See the in-repo memory file
    `project_framework_primitives_sdet_safety_principle.md` for the full
    statement of the principle.
