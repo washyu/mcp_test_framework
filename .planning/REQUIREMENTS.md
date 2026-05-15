@@ -98,38 +98,38 @@ Explicit exclusions for v1.4, with reasoning preserved for future audits:
 
 ## Traceability
 
-REQ → Phase mapping will be populated by the roadmapper.
+REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requirements mapped; 100% coverage; no orphans, no duplicates.
 
 | REQ ID | Phase | Status |
 |--------|-------|--------|
-| RENAME-01 | TBD | Pending |
-| RENAME-02 | TBD | Pending |
-| RENAME-03 | TBD | Pending |
-| RENAME-04 | TBD | Pending |
-| RENAME-05 | TBD | Pending |
-| RENAME-06 | TBD | Pending |
-| PACK-01 | TBD | Pending |
-| PACK-02 | TBD | Pending |
-| PACK-03 | TBD | Pending |
-| PACK-04 | TBD | Pending |
-| LIB-01 | TBD | Pending |
-| LIB-02 | TBD | Pending |
-| LIB-03 | TBD | Pending |
-| LIB-04 | TBD | Pending |
-| LIB-05 | TBD | Pending |
-| LIB-06 | TBD | Pending |
-| LIB-07 | TBD | Pending |
-| LIB-08 | TBD | Pending |
-| CFG-01 | TBD | Pending |
-| CFG-02 | TBD | Pending |
-| CODEGEN-LIB-01 | TBD | Pending |
-| CODEGEN-LIB-02 | TBD | Pending |
-| REPORTER-01 | TBD | Pending |
-| REPORTER-02 | TBD | Pending |
-| CLOSE-01 | TBD | Pending |
-| CLOSE-02 | TBD | Pending |
-| CLOSE-03 | TBD | Pending |
-| CLOSE-04 | TBD | Pending |
+| RENAME-01 | Phase 25 | Pending |
+| RENAME-02 | Phase 25 | Pending |
+| RENAME-03 | Phase 25 | Pending |
+| RENAME-04 | Phase 25 | Pending |
+| RENAME-05 | Phase 25 | Pending |
+| RENAME-06 | Phase 25 | Pending |
+| PACK-01 | Phase 26 | Pending |
+| PACK-02 | Phase 26 | Pending |
+| PACK-03 | Phase 26 | Pending |
+| PACK-04 | Phase 26 | Pending |
+| LIB-01 | Phase 27 | Pending |
+| LIB-02 | Phase 27 | Pending |
+| LIB-03 | Phase 27 | Pending |
+| LIB-04 | Phase 27 | Pending |
+| LIB-05 | Phase 27 | Pending |
+| LIB-06 | Phase 27 | Pending |
+| LIB-07 | Phase 27 | Pending |
+| LIB-08 | Phase 27 | Pending |
+| CFG-01 | Phase 28 | Pending |
+| CFG-02 | Phase 28 | Pending |
+| CODEGEN-LIB-01 | Phase 28 | Pending |
+| CODEGEN-LIB-02 | Phase 28 | Pending |
+| REPORTER-01 | Phase 29 | Pending |
+| REPORTER-02 | Phase 29 | Pending |
+| CLOSE-01 | Phase 30 | Pending |
+| CLOSE-02 | Phase 30 | Pending |
+| CLOSE-03 | Phase 30 | Pending |
+| CLOSE-04 | Phase 30 | Pending |
 
 ---
-*Last updated: 2026-05-15 — initial v1.4 scoping after research synthesis (4 parallel researchers, SUMMARY.md ready). 28 requirements across 7 categories.*
+*Last updated: 2026-05-15 — Traceability populated by roadmapper after 6-phase shape (25–30) approved. 28 requirements across 7 categories; phase assignment 6/4/8/4/2/4 (RENAME / PACK / LIB / CFG+CODEGEN / REPORTER / CLOSE).*

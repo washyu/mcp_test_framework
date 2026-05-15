@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
 status: planning
-last_updated: "2026-05-15T21:03:45.783Z"
+last_updated: "2026-05-15T22:00:00.000Z"
 last_activity: 2026-05-15
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close)
+See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 scoping)
 
 **Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
-**Current focus:** Planning next milestone (v1.4) — candidate cohort xdist parallelism + library mode + OpenAI-compat judge backend.
+**Current focus:** v1.4 Library Mode Delivery — reframe the framework as an importable pytest plugin (Playwright-for-MCPs). Phase 25 (rename `sdet` → `test_code`) is next.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 25 (next — not yet started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-15 — Milestone v1.4 started
+Status: Roadmap complete; ready for `/gsd-plan-phase 25`
+Last activity: 2026-05-15 — v1.4 ROADMAP.md created (6 phases / 28 reqs / 100% coverage)
 
 ## Performance Metrics
 
@@ -39,8 +39,9 @@ Last activity: 2026-05-15 — Milestone v1.4 started
 | v1.2 source diff | +37,100 / −1,928 across 168 files | doc churn + tests dominate |
 | v1.2 timeline | 4 days (2026-05-09 → 2026-05-12) | 236 commits in range |
 | v1.2 quick tasks | 1 (260512-dcs) | CLEAN-03 closure via audit |
-| v1.3 scoping metrics | 5 phases / 21 reqs / plans TBD | roadmap created 2026-05-12 |
-| Cross-milestone totals (shipped) | 18 phases / 69 plans / 85 reqs | all satisfied at milestone close |
+| v1.3 closing metrics | 9 phases / 42 plans / 29 reqs | shipped 2026-05-15 |
+| v1.4 scoping metrics | 6 phases / 28 reqs / plans TBD | roadmap created 2026-05-15 |
+| Cross-milestone totals (shipped) | 27 phases / 111 plans / 114 reqs | v1.0 + v1.1 + v1.2 + v1.3 |
 | Phase 18 P03 | 365 | 1 tasks | 4 files |
 | Phase 18 P04 | 51 | 1 tasks | 1 files |
 | Phase 18 P07 | ~1500 | 3 tasks | 4 files |
@@ -65,7 +66,7 @@ Last activity: 2026-05-15 — Milestone v1.4 started
 
 ### Decisions
 
-Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 + v1.1 close).
+Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 + v1.1 + v1.2 + v1.3 close).
 
 **v1.2 roadmapping decisions (2026-05-09):**
 
@@ -89,47 +90,35 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **Granularity = coarse (per config.json).** Each phase delivers a coherent SDET- or operator-perceivable capability; no phase is splittable without losing coherence. Phase 17 (codegen) is the technically heaviest single chunk because the codegen library choice + Pydantic-from-JSON-Schema + idempotent regen + ToolResponse uniformity are all interlocking.
 - **Carry-forward debt:** Phase 13 + 14 live-stack UATs from v1.2 will close opportunistically during v1.3 — the SDET runs against live homelab-mcp + Proxmox + Ollama are the same live-stack exercise those UATs were waiting on. Phase 16 D-11 `--debug` per-judge breakdown remains deferred to v1.5 (cohort with SEED-003); v1.3 does NOT pick it up.
 
-**v1.3 mid-flight reframe (Phase 20 discuss-phase, 2026-05-13):**
+**v1.4 roadmapping decisions (2026-05-15):**
 
-- **Phase 20 pivots from PREFLIGHT to scope correction.** Original Phase 20 goal ("`requires_homelab(...)` marker factory") was rejected during discuss-phase as a violation of the framework-primitives principle (SEED-022) — it bakes SUT-specific subsystem knowledge (`proxmox=`, `ollama=`) into the framework's API surface. The framework wraps tool calls (params/body/results) and nothing else; reachability checks belong to the SDET's test code via stock `@pytest.mark.skipif(not _probe(), reason=...)`.
-- **Three Phase 20 deliverables replace the killed work.** (1) Delete `tests/sdet/test_proxmox_vm_lifecycle.py` outright — the Phase 19 dogfood is SUT-aware and can't run in CI without operator-specific Proxmox creds; the architectural patterns survive in Phase 19's CONTEXT/SUMMARY artifacts for Phase 21 docs to lift. (2) Drop PREFLIGHT-01/02 from REQUIREMENTS.md; replace with CLEANUP-DOGFOOD-01 + CODEGEN-COVERAGE-01 + REQ-SCRUB-01 reflecting the actual deliverables. (3) Add mock-fixture-driven codegen unit tests under `tests/framework/unit/` that feed a synthetic tool list through the codegen pipeline and assert the generated Params/Response/registry artifacts have the correct shape — pure-data, no live MCP, CI-safe.
-- **Zero `src/` changes.** The reframe's load-bearing claim is that if the framework had to grow new code to satisfy `requires_homelab`, the requirement was wrong — not the implementation. Phase 20 ships only test-suite + planning-doc edits.
-- **Hello-world MCP server for CI deferred.** A tiny in-tree MCP server with hand-crafted tools (covers required/optional params, scalars/arrays, declared/undeclared outputSchema) would let CI run a real end-to-end "every discovered tool gets wrapped" pass. User explicitly said "out of scope for now" but flagged the need — captured as a deferred item (see Deferred Items table).
-- **v1.3 REQ count goes 21 → 22 (not 19 as the user initially estimated).** PREFLIGHT-01/02 removed (−2), but three new IDs added (+3). Phase coverage summary table reflects the net change.
-
-**v1.2 plan-checks (preserved from v1.2 milestone):**
-
-- [Phase ?]: Plan 16-01: _compose_pre_run_skip_reasons filters state-b via computed running set (Rule 1 deviation; smoke-test contract wins)
-- [Phase ?]: Plan 16-01: render_domain_ui no longer emits banner; two verbosity CLI e2e tests temporarily flipped to banner-ABSENCE until 16-02 wires pre-run digest
-- [Phase ?]: Plan 16-02: --explain owned by Typer wrapper, never forwarded to pytest (D-07 enforced by subprocess stub assert)
-- [Phase ?]: Plan 16-02: pre-run RenderContext built before subprocess (total_planned_cases=0), rebuilt post-parse with parsed.total_cases for summary line
-- [Phase ?]: Plan 16-02: Phase 14 D-14 negative test renamed in place preserving the regression breadcrumb (test_run_help_lists_explain_phase16)
-- [Phase 16]: Plan 16-03: README documents Phase 16 pre-run digest + --explain composition matrix + Phase 16 sample green run
-- [Phase 16]: Plan 16-03: docs/mcp_test_framework_mvp_spec.md zero-diff (intentional) — spec is MVP design contract, not operator CLI output reference
-- [Phase ?]: Mirror renderer output literally in docs — README sample blocks quote what _runner.py emits char-for-char, including whitespace quirks.
-- [Phase ?]: Plan 18-03 mcp_session fixture: Rule 3 deviation added public McpTestClient.server_info accessor (mcp SDK's ClientSession discards InitializeResult.serverInfo after caching only _server_capabilities)
-- [Phase 18]: Plan 18-07 tests/sdet/ scaffolding: Rule 1 deviation -- async tests using session-scoped mcp_session fixture MUST use `@pytest.mark.asyncio(loop_scope="session")`; bare `@pytest.mark.asyncio` hangs at the wire call boundary because pytest-asyncio strict mode under `asyncio_default_fixture_loop_scope="session"` pins the fixture's anyio streams to the session loop. Plan's example snippet used bare form; fixed in test file and documented for Phase 21 (DOC-SDET) docs.
-- [Phase 18]: Plan 18-08 framework self-tests: Task 5 (test_tool_factory.py update) was a documented no-op -- Plan 18-02 already deleted the NotImplementedError test, added test_call_raises_runtime_error_when_no_active_client, and extended _reset_module_state to save/restore _ACTIVE_CLIENT. All Task 5 acceptance criteria pre-satisfied by commit 0cec347.
-- [Phase 18]: Plan 18-08: test_sdet_renderer.py D-11 round-trip pinning uses xml.sax.saxutils.quoteattr for the mcptf_error_raw property value so the model_dump_json(indent=2) string survives XML attribute serialization; json.loads on the recovered string verifies CallToolResult schema keys (isError, content, structuredContent) survived the full pipeline.
-- [Phase 18]: Plan 18-08: indented-JSON grep gate uses 4-space prefix (not 2) because model_dump_json(indent=2) already adds its own 2-space indent and render_debug_appendix adds another 2-space prefix on every dump line -- combined left margin is 4 spaces before inner JSON keys. Test-author error caught during first run; fix is test-side only.
-- [Phase ?]: Phase 21.1 Plan 01: SdetConfig required-no-default on Config; no schema version bump
-- [Phase ?]: Phase 21.1 Plan 02: mcp_session uses spec_from_file_location + submodule_search_locations against cfg.sdet.generated_root; no sys.path mutation, no importlib.import_module at runtime
-- [Phase ?]: Phase 21.1 Plan 03: HYBRID D-09 strategy executed — mock-based for test_sdet_fixtures + test_gen_sdet_classes_cli; live-regen + module-level pytest.skip(allow_module_level=True) for test_proxmox_vm_lifecycle_readme_sample
-- [Phase ?]: Phase 21.1 Plan 03: _run_fixture snapshot extended with _REGISTRIES_snapshot deep copy so post-teardown asserts can verify yield-time registry contents
-- [Phase ?]: Phase 21.1 Plan 04: clean-break deletion of src/mcp_test_framework/sdet/generated/ tree (60 tracked files); single atomic commit for deletion + docs sweep per CONTEXT.md Claude's Discretion
-- [Phase ?]: Phase 21.1 Plan 04: D-10 byte-for-byte invariant deliberately relaxed for test_codegen_integration_mock.py docstring (Plan 03 pre-authorized); 3 literal references retained (session.py history breadcrumb + 2 negative-assertion test strings)
-- [Phase ?]: Phase 24 Plan 01: exclude_unset=True ships at _tool_factory.py:99; SEED-022 preserved (user-intent discriminator); three payload-asserting tests lock the contract; SERIALIZER-01 row added
+- **Phase numbering continues from v1.3 (Phase 24 → Phase 25).** No `--reset-phase-numbers` flag passed; continuous numbering across milestones preserved (v1.0=01-05, v1.1=06-11, v1.2=12-16, v1.3=17-24, v1.4=25-30).
+- **Phase 25 (RENAME) MUST land first.** SEED-023 (`sdet` → `test_code`) is irreversible after the first PyPI publish under any `mcp_test_framework.contracts.register()` surface. Lock the public import surface (package dir, CLI command name, flag name, config field name, docs terminology) BEFORE Phase 26's packaging foundation publishes a corrected dist name to PyPI. All three researchers (Stack/Architecture/Pitfalls) independently arrived at the same first-phase placement.
+- **Phase 26 (PACK) MUST come before Phase 27 (LIB).** `[project.entry-points.pytest11]` declaration is the precondition for plugin auto-loading; `register()` injection in Phase 27 requires the plugin entry-point to exist. Six pitfalls preventively addressed in one phase (asyncio config self-check, fixture namespace collision, black-box-rule-in-wheel, `py.typed` missing, wheel-content drift, dist-name typo). Plugin skeleton lands as empty hooks so Phase 27 adds business logic without re-touching `pyproject.toml`.
+- **Phase 27 (LIB) is the load-bearing technical bet.** Combines registry → extract → inject (Architecture phases C+D+F) because they're a coherent capability that's only useful as a unit. Spike `pytest_collect_file` virtual `_ContractsModule` injection at phase entry to validate the pattern before locking the API shape (research-flagged MEDIUM-HIGH confidence; HIGH after spike). `register()` accepts only explicit typed kwargs (NO `**kwargs`); signature snapshot test pinned. Multiple `register()` calls per conftest raises (safer for Stable API; merge-configs deferred to v1.5).
+- **Phase 28 (CFG + CODEGEN) bundles config seam with codegen output path.** Library-mode config flow has to be settled before docs reference `register()` examples; codegen output path is coupled — operators have no `config.yaml` to set `generated_root`, so the default must work cwd-relative. Cheaper after Phase 27 (uses register's kwarg surface as source of truth).
+- **Phase 29 (REPORTER) is orthogonal — independently landable.** Renderer is already input-agnostic; refactor not rewrite. Pairs naturally with renderer split (`_build_parsed_run_from_reports(TestReport[...])` alongside `parse_junit_xml(path)`). Default OFF (TS-5 in research); CI/no-TTY detection forces OFF; xdist coexistence via master-only emission; separate entry-point key so operator can `-p no:mcp_test_framework_reporter` while keeping contract fixtures.
+- **Phase 30 (CLOSE) lands last.** Docs LAST per v1.2 Phase 16 / v1.3 Phase 21 precedent — avoid doc-then-redoc churn. CLI demotion only after library mode is proven end-to-end via the framework's own `tests/contract/conftest.py` calling `register()`. Carry-forward UATs (README PASS-sample re-capture, Phase 17 SC1 ~70-tool live, v1.2 Phase 13+14 live-stack UATs) close as part of the library-mode dogfood pass.
+- **6 phases for 28 reqs.** Density 4.7 reqs/phase, comparable to v1.3 (4.2) and v1.0 (4.1). Phase 27 is intentionally the largest (8 reqs) because the `register()` API + contracts sub-package + test extraction is one coherent capability — splitting would ship a half-product. Phase 29 is intentionally small (2 reqs) because the reporter capability is independently verifiable and orthogonal to injection.
+- **Granularity = coarse (per config.json).** Each phase delivers a coherent operator-perceivable capability; no phase is splittable without losing coherence.
+- **Out of v1.4 (deferred to v1.5+):** pytest-xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005), `scoped_register()` multi-server context manager, URL-style judge kwarg sugar (`judge="ollama://..."` parser), `gen-test-classes` as library callable, `register(tools=None)` auto-discovery, removal of deprecation aliases, per-judge `--debug` breakdown (Phase 16 D-11 dormant carry-over), schema v2→v3 migration. All explicitly captured in REQUIREMENTS.md "Future Requirements" section to prevent re-triage churn.
 
 ### Roadmap Evolution
 
 - 2026-05-13: Phase 22 added — scrub requirement-ID leaks from `src/` (5 user-visible CLI docstrings + 58 internal references). Surfaced during Phase 17 live UAT when `mcp-test-framework --help` exposed `CLI-01`/`PERSONA-02`/`CODEGEN-01`-style tags. Source-code analog of the v1.2 doc scrub. v1.3 milestone range extended from Phases 17–21 to Phases 17–22.
 - 2026-05-13: Phase 23 added — test suite debt cleanup. Surfaced during Phase 20 UAT: `uv run pytest tests/framework/` returns 11 failed + 1 error, all pre-existing at baseline `cfb04f2`. Four categories: (1) Config schema v1→v2 mismatch — 4 tests in `test_tool_config.py`/`test_homelab_config.py` still expect `version=1`; (2) `parents[2]` path resolution broken after Phase 15-01 folder split (`2e74967`) — 5 tests in `test_cli_errors.py`/`test_migration_doc.py` resolve repo root to `tests/`; (3) missing `tests.test_mcp_tool_contract` module + `tests/docs/MIGRATION-v1-to-v2.md` doc; (4) README line 104 bare `mcp-test-framework run --explain` doc drift; plus 1 environmental ERROR (`homelab-mcp` not on PATH). Gate before v1.3 milestone close so debt does not carry forward. v1.3 milestone range extended from Phases 17–22 to Phases 17–23.
 - 2026-05-14: Phase 24 added — tool call serializer omits unset optional params (`model_dump(exclude_unset=True)`). Surfaced during Phase 21 Plan 21-02 UAT: live Proxmox run failed with the upstream homelab-mcp `inputSchema` bug hitting `create_proxmox_vm` (Phase 19-04's prediction that create was safe did not hold). Investigation found `_tool_factory.py:107` emits `null` for unset `cdrom`/`iso` fields. The Phase 17 SEED-022 lock-in disallowed `exclude_none=True` (which masks null bugs); `exclude_unset=True` is the SEED-022-compatible fix — distinguishes user-omitted from user-explicitly-set. Touches `_tool_factory.py`, `docs/SDET-AUTHORING.md` inputSchema-workaround section, README Plan 21-02 sample (re-capture as PASS), and the long-standing `homelab-mcp inputSchema` deferred-fix entry. v1.3 milestone range extended from Phases 17–23 to Phases 17–24.
+- 2026-05-15: v1.4 ROADMAP.md created — 6 phases / 28 reqs (RENAME×6, PACK×4, LIB×8, CFG×2, CODEGEN×2, REPORTER×2, CLOSE×4). 100% coverage; no orphans; phase numbering starts at 25.
 - Phase 21.1 inserted after Phase 21: SDET generated output relocation — make codegen output config-driven; remove SUT-specific code from src/ (URGENT)
 
 ### Blockers/Concerns
 
-None at roadmap stage. Open design questions captured in REQUIREMENTS.md (CLI surface for `gen-sdet-classes`, generated-file location, server-slug derivation, `requires_homelab` location, `tool()` vs attribute-access idiom, stub vs alias for outputSchema-undeclared responses) are deferred to plan-phase decisions, not roadmap blockers.
+None at roadmap stage. Two research-flagged spikes to land during planning:
+
+- **Phase 27 spike:** `pytest_collect_file` returning a virtual `_ContractsModule` is documented but the exact `from_parent` + `_getobj` wiring for a non-filesystem module needs validation. Mitigation: time-box spike at Phase 27 entry; fall back to operator-writes-one-re-export-file if blocked.
+- **Phase 29 spike:** Verify `pytest_runtest_logreport` event ordering under pytest-xdist; verify CI environment detection across GitHub Actions / Jenkins. (Relevant for SEED-002 in v1.5.)
+
+Open design questions deferred to plan-phase decisions (not roadmap blockers): URL-style judge kwarg vs split kwargs (Phase 28 decides); `gen-test-classes` library callable vs CLI-only (Phase 28 decides per "v1.4 requires CLI install" carve-out); fixture-rename one-milestone deprecation window (Phase 26 decides).
 
 ### Quick Tasks Completed
 
@@ -156,10 +145,10 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 | open-source-prep | Scrub homelab-specific captures from `.planning/` (05-SECURITY.md AR-05-15) | Open — only triggers if/when repo goes public | v1.0 close (2026-05-07) |
 | process-hygiene | Backfill 04.1-VERIFICATION.md (UAT.md status:complete is current evidence of record) | Open — optional | v1.0 close (2026-05-07) |
 | seed | SEED-001 — Replace rubric-style judge with full agent tool-use loop | dormant | v1.1 close (2026-05-08) |
-| seed | SEED-002 — Tool-level parallelism via pytest-xdist with read/write resource markers | dormant — v1.4 cohort | v1.1 close (2026-05-08) |
+| seed | SEED-002 — Tool-level parallelism via pytest-xdist with read/write resource markers | dormant — v1.5 cohort (deferred from v1.4) | v1.1 close (2026-05-08) |
 | seed | SEED-003 — Dynamic judging protocol — rubrics as data, not code | dormant — v1.5 | v1.1 close (2026-05-08) |
 | seed | SEED-004 — Stateful tool testing with resource setup/teardown | activated → Phase 19 (v1.3) | v1.1 close (2026-05-08) |
-| seed | SEED-005 — OpenAI-compatible judge backend as the unifier (local-first / hosted-opt-in) | dormant — v1.4 or v1.5 | v1.1 close (2026-05-08) |
+| seed | SEED-005 — OpenAI-compatible judge backend as the unifier (local-first / hosted-opt-in) | dormant — v1.5 (deferred from v1.4) | v1.1 close (2026-05-08) |
 | seed | SEED-006 — Config loading safety + opt-in tool selection | activated → Phase 13 (v1.2) | 2026-05-09 (v1.2 framing) |
 | seed | SEED-007 — Vibe-coded MCP user persona reframe | activated → Phase 12 (v1.2) | 2026-05-09 (v1.2 framing) |
 | seed | SEED-008 — Reporter UX overhaul — pre-run digest + --explain flag | activated → Phase 16 (v1.2) | 2026-05-09 (v1.2 framing) |
@@ -167,15 +156,16 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 | seed | SEED-010 — Separate operator-facing tests from framework self-tests | activated → Phase 15 (v1.2) | 2026-05-09 (v1.2 framing) |
 | seed | SEED-011 — Hybrid runner with domain-language UI | activated → Phase 14 (v1.2) | 2026-05-09 (v1.2 framing) |
 | seed | SEED-014 — Programmatic SDET test authoring (param/response classes + scenario API) | activated → Phases 17–21 (v1.3) | 2026-05-12 (v1.3 framing) |
-| seed | SEED-015 — Library mode / pytest plugin delivery | dormant — v1.4 (post-SDET-stabilization) | 2026-05-12 (v1.3 framing) |
+| seed | SEED-015 — Library mode / pytest plugin delivery | activated → Phases 25–30 (v1.4) | 2026-05-15 (v1.4 framing) |
+| seed | SEED-023 — Rename `sdet` → `test_code` for public-API freeze | activated → Phase 25 (v1.4) | 2026-05-15 (v1.4 framing) |
 | defer | Phase 16 D-11 `--debug` per-judge breakdown block | dormant — v1.5 cohort with SEED-003 | v1.2 close (2026-05-12) |
-| live-uat | Phase 13 live-stack UAT (v2 config + migration walkthrough) | Open — closes opportunistically during v1.3 | v1.2 close (2026-05-12) |
-| live-uat | Phase 14 live-stack UAT (test_runner_live_smoke.py + visual domain UI checks) | Open — closes opportunistically during v1.3 | v1.2 close (2026-05-12) |
+| live-uat | Phase 13 live-stack UAT (v2 config + migration walkthrough) | Open — closes in v1.4 Phase 30 (CLOSE-04 carry-forward) | v1.2 close (2026-05-12) |
+| live-uat | Phase 14 live-stack UAT (test_runner_live_smoke.py + visual domain UI checks) | Open — closes in v1.4 Phase 30 (CLOSE-04 carry-forward) | v1.2 close (2026-05-12) |
 | docs-polish | EXTENDING.md WR-01: line-range citation `_isolation.py:33-36` should be `36-39` (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
 | docs-polish | EXTENDING.md IN-01: "five entries" framing for `_PASSTHROUGH_ALLOWLIST` (4-tuple + separate `_MCP_PREFIX`) (11-REVIEW.md) | Absorbed into Phase 12 (CLEAN-01 sweep) | v1.1 close (2026-05-08) |
 | seed-defer | Hello-world MCP server for CI/CD coverage — tiny in-tree MCP with hand-crafted tools (required/optional params, scalars/arrays, declared/undeclared outputSchema) lets CI run a real end-to-end "every discovered tool gets wrapped" pass without operator infrastructure. | Open — future v1.x phase | Phase 20 reframe (2026-05-13) |
 | deferred-resolved | Phase 19 D-02 (CPU-cores bump impossible via `manage_proxmox_vm` lifecycle-action-only tool) — defer to Phase 20 substitution decision | Resolved-by-deletion (Phase 20) — the dogfood file hosting the substitution was deleted in Phase 20 per D-04; no substitution needed | v1.3 Phase 19 close → resolved Phase 20 (2026-05-13) |
-| live-uat | README §`## SDET scenarios` PASS-sample re-capture (Plan 24-02 Task 3a/3b) — Proxmox credential keyring is not reachable from the agent's PowerShell session even after `MCPTF_DOGFOOD_PROXMOX_HOST=192.168.10.20` is set; homelab-mcp reports `No Proxmox credentials found for 192.168.10.20`. The README §`## SDET scenarios` snapshot still shows the pre-Phase-24 FAIL output even though the framework default no longer triggers it; intro paragraph (L266-L272) and post-snapshot framing paragraph (L420-L427) remain in their pre-Plan-24-02 state. Tasks 1+2 of Plan 24-02 committed (SERIALIZER-DOC-01 row + SDET-AUTHORING soften). Re-snapshot manually when running in an operator shell that has keyring access — see Phase 21 D-14 manual-snapshot precedent. | Open — manual UAT | Phase 24 Plan 24-02 close (2026-05-15) |
+| live-uat | README §`## SDET scenarios` PASS-sample re-capture (Plan 24-02 Task 3a/3b) — Proxmox credential keyring is not reachable from the agent's PowerShell session even after `MCPTF_DOGFOOD_PROXMOX_HOST=192.168.10.20` is set; homelab-mcp reports `No Proxmox credentials found for 192.168.10.20`. The README §`## SDET scenarios` snapshot still shows the pre-Phase-24 FAIL output even though the framework default no longer triggers it; intro paragraph (L266-L272) and post-snapshot framing paragraph (L420-L427) remain in their pre-Plan-24-02 state. Tasks 1+2 of Plan 24-02 committed (SERIALIZER-DOC-01 row + SDET-AUTHORING soften). Re-snapshot manually when running in an operator shell that has keyring access — see Phase 21 D-14 manual-snapshot precedent. | Open — closes in v1.4 Phase 30 (CLOSE-04 carry-forward) | Phase 24 Plan 24-02 close (2026-05-15) |
 
 ### Acknowledged at v1.3 milestone close (2026-05-15)
 
@@ -184,16 +174,16 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | uat | Phase 18 18-UAT.md — 7 pending scenarios (testing status); SDET surface UAT not fully exercised against live homelab-mcp | Open — closes opportunistically against live homelab-mcp | v1.3 close (2026-05-15) |
-| verification | Phase 13 13-VERIFICATION.md — `human_needed` (v1.2 carryover) | Open — pre-existing v1.2 deferral | v1.3 close (2026-05-15) |
-| verification | Phase 14 14-VERIFICATION.md — `human_needed` (v1.2 carryover) | Open — pre-existing v1.2 deferral | v1.3 close (2026-05-15) |
-| verification | Phase 17 17-VERIFICATION.md — `human_needed` (live homelab-mcp at ~70 tools + `uv run pyright` on real generated dir) | Open — closes alongside other v1.3 live-UAT items | v1.3 close (2026-05-15) |
+| verification | Phase 13 13-VERIFICATION.md — `human_needed` (v1.2 carryover) | Open — closes in v1.4 Phase 30 (CLOSE-04) | v1.3 close (2026-05-15) |
+| verification | Phase 14 14-VERIFICATION.md — `human_needed` (v1.2 carryover) | Open — closes in v1.4 Phase 30 (CLOSE-04) | v1.3 close (2026-05-15) |
+| verification | Phase 17 17-VERIFICATION.md — `human_needed` (live homelab-mcp at ~70 tools + `uv run pyright` on real generated dir) | Open — closes in v1.4 Phase 30 (CLOSE-04) | v1.3 close (2026-05-15) |
 | quick_task | 260508-p0b-fix-v1-1-skip-doesnt-filter-parametrize — quick-task file missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
 | quick_task | 260512-dcs-flip-example-config-version-1-to-2-close — quick-task file missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
 | quick_task | 260513-chh-fix-session-needs-preflight-nodeid-path — quick-task file missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
-| seed | 18 dormant seeds (SEED-001/002/003/005/006/007/008/009/012/013/015/016/017/018/021/023) + 2 active-but-already-shipped (SEED-010 absorbed Phase 15, SEED-011 absorbed Phase 14) | Backlog parking lot — re-triage at /gsd-new-milestone | v1.3 close (2026-05-15) |
+| seed | 18 dormant seeds (SEED-001/002/003/005/006/007/008/009/012/013/015/016/017/018/021/023) + 2 active-but-already-shipped (SEED-010 absorbed Phase 15, SEED-011 absorbed Phase 14) | Backlog parking lot — SEED-015 + SEED-023 activated → v1.4 (2026-05-15); 16 remain dormant | v1.3 close (2026-05-15) |
 
 ## Session Continuity
 
-Last session: 2026-05-15T16:23:03.812Z
-Stopped at: Plan 24-02 partial (live capture deferred via regen-failed contract)
-Resume next: proceed to Plan 24-03 (final plan of Phase 24); manual UAT for README PASS-sample re-capture deferred to operator shell with keyring access (see Deferred Items)
+Last session: 2026-05-15T22:00:00.000Z
+Stopped at: v1.4 ROADMAP.md created — 6 phases (25–30) / 28 reqs / 100% coverage
+Resume next: `/gsd-plan-phase 25` — decompose Phase 25 (public-API rename `sdet` → `test_code`) into plans
