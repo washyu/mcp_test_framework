@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
-status: verifying
+status: executing
 stopped_at: Phase 22 context gathered
-last_updated: "2026-05-14T20:33:11.791Z"
-last_activity: 2026-05-14
+last_updated: "2026-05-14T22:26:13.099Z"
+last_activity: 2026-05-14 -- Phase 22 execution started
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 31
+  total_plans: 35
   completed_plans: 31
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 21.1 — SDET generated output relocation
+**Current focus:** Phase 22 — scrub-requirement-id-leaks-from-src
 
 ## Current Position
 
-Phase: 21.1 (SDET generated output relocation) — READY FOR VERIFICATION
-Plan: 4 of 4 complete
-Status: Phase complete — ready for verifier
+Phase: 22 (scrub-requirement-id-leaks-from-src) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 22
         Plan 04 deletion landed in atomic commit aebed8e: src/mcp_test_framework/sdet/generated/ tree fully removed (60 git-tracked files deleted); docs/SDET-AUTHORING.md swept (8 sites + 1 new "Configuring the generated-classes path" subsection); README.md SDET sample import block rewritten to tests.sdet._generated.homelab_mcp; test_codegen_integration_mock.py stale docstring updated.
         Framework src/ now contains zero SUT-specific code — SEED-022 structurally enforced.
         Framework test suite matches Plan 02 baseline (13 failed + 1 error, all pre-existing Phase 23 debt; no new failures attributable to Plan 04).
 Next: Run phase verifier on Phase 21.1, then v1.3 close work (Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
-Last activity: 2026-05-14
+Last activity: 2026-05-14 -- Phase 22 execution started
 
 ## Performance Metrics
 

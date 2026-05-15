@@ -1,39 +1,40 @@
-"""mcp_session fixture + registry activation -- Phase 18 SDET-03, Phase 21.1 RELOC-02.
+"""mcp_session fixture + registry activation.
 
-Phase 18 CONTEXT.md decisions (preserved):
-  - D-01: alias of the existing session-scoped ``mcp_client`` fixture. No
-    duplicate stdio_client / ClientSession lifecycle is introduced.
-  - D-02: 5-step registry activation in the fixture body (read serverInfo,
-    slugify, load generated module, read ``_REGISTRY``, install slots).
-    Restore prior state on teardown.
-  - D-03: missing generated module triggers
-    ``_pytest_exit_operator_tone(returncode=2)``.
+The fixture is an alias of the existing session-scoped ``mcp_client`` fixture
+-- no duplicate stdio_client / ClientSession lifecycle is introduced. Its
+body performs a 5-step registry activation against the generated SDET package
+for the connected server:
 
-Phase 21.1 changes (RELOC-02):
-  - Step 3 (module load) switched from ``importlib.import_module`` against a
-    package-namespace path (``mcp_test_framework.sdet.generated.<slug>``) to
-    ``importlib.util.spec_from_file_location`` against an on-disk path
-    (``<cfg.sdet.generated_root>/<slug>/__init__.py``). The framework no
-    longer requires the generated tree to live under its own ``src/``
-    package; the operator controls the location via config.yaml.
-  - The on-disk path must be a real directory containing a usable
-    ``__init__.py``; missing dir or missing init fail loud via
-    ``_pytest_exit_operator_tone``.
-  - ``submodule_search_locations=[str(slug_dir)]`` is non-negotiable: the
-    generated ``__init__.py`` uses RELATIVE imports
-    (``from .echo_message import ...``); without this kwarg those raise
-    ``ImportError: attempted relative import with no known parent package``.
+  1. read ``serverInfo.name`` off the live client
+  2. derive a directory slug via ``server_slug``
+  3. locate the generated package at
+     ``<cfg.sdet.generated_root>/<slug>/__init__.py``
+  4. load that module via ``importlib.util.spec_from_file_location`` and read
+     its ``_REGISTRY`` attribute
+  5. install ``_REGISTRY`` / ``_ACTIVE_SLUG`` / ``_ACTIVE_CLIENT`` slots on
+     ``_tool_factory`` and restore prior state on teardown
 
-Phase 04.1 invariant: the D-02 mutations are SYNC (module load via spec
-exec + dict + attribute assignments), so no new anyio cancel scope is
-opened across the yield. Pinned at
+The on-disk path must be a real directory containing a usable ``__init__.py``;
+missing dir or missing init fail loud via ``_pytest_exit_operator_tone`` so
+the operator gets an actionable next-step (run ``gen-sdet-classes``).
+
+``submodule_search_locations=[str(slug_dir)]`` is non-negotiable: the
+generated ``__init__.py`` uses RELATIVE imports
+(``from .echo_message import ...``); without this kwarg those raise
+``ImportError: attempted relative import with no known parent package``. The
+framework no longer requires the generated tree to live under its own
+``src/`` package; the operator controls the location via ``config.yaml``.
+
+Invariant: the registry-activation mutations are SYNC (module load via
+``spec_from_file_location`` + dict + attribute assignments), so no new anyio
+cancel scope is opened across the yield. Pinned at
 ``tests/framework/unit/test_sdet_fixtures.py::test_session_module_opens_no_anyio_cancel_scope``.
 
 Accessor choice for ``serverInfo.name``: the public
-``McpTestClient.server_info`` attribute (Plan 18-03 Rule 3 deviation). The
-mcp SDK's ``ClientSession`` discards ``InitializeResult.serverInfo`` after
-the handshake; the ``mcp_client`` fixture's owner task captures the result
-and threads ``server_info`` through ``McpTestClient._wrap``.
+``McpTestClient.server_info`` attribute. The mcp SDK's ``ClientSession``
+discards ``InitializeResult.serverInfo`` after the handshake; the
+``mcp_client`` fixture's owner task captures the result and threads
+``server_info`` through ``McpTestClient._wrap``.
 """
 from __future__ import annotations
 
@@ -52,7 +53,7 @@ from mcp_test_framework.sdet._slugs import server_slug
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def mcp_session(mcp_client: McpTestClient):
-    """Live ClientSession driver + active SDET registry (D-01/D-02/D-03)."""
+    """Live ClientSession driver + active SDET registry."""
     # Step 1+2: server name -> slug (single source of truth: _slugs.server_slug).
     assert mcp_client.server_info is not None, (
         "mcp_client.server_info must be populated by the fixture owner task "
@@ -62,8 +63,7 @@ async def mcp_session(mcp_client: McpTestClient):
     slug = server_slug(server_name)
 
     # Step 3: load the generated package from cfg.sdet.generated_root/<slug>/.
-    # Phase 21.1 RELOC-02: config-driven path, file-location loader, no
-    # sys.path mutation.
+    # Config-driven path, file-location loader, no sys.path mutation.
     cfg = Config()
     generated_root = cfg.sdet.generated_root
     if not generated_root.is_absolute():
@@ -89,8 +89,6 @@ async def mcp_session(mcp_client: McpTestClient):
             ),
         )
 
-    # Loader pattern lifted verbatim from tests/framework/unit/
-    # test_codegen_integration_mock.py:131-151 (_load_generated_init).
     # The synthetic package prefix avoids sys.modules collisions across
     # repeated pytest invocations within the same process.
     pkg_name = f"_mcptf_sdet_generated_{slug}"
@@ -132,7 +130,7 @@ async def mcp_session(mcp_client: McpTestClient):
     try:
         yield mcp_client
     finally:
-        # Step 7: restore prior state. Pop registry only if we installed it.
+        # Restore prior state. Pop registry only if we installed it.
         _tf._ACTIVE_SLUG = prior_slug
         _tf._ACTIVE_CLIENT = prior_client
         _tf._REGISTRIES.pop(slug, None)
