@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-05-15T15:42:14.923Z"
-last_activity: 2026-05-15 -- Phase 24 planning complete
+stopped_at: Completed 24-01-PLAN.md (Plan 1 of 3)
+last_updated: "2026-05-15T15:53:37.746Z"
+last_activity: 2026-05-15
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 42
-  completed_plans: 39
-  percent: 93
+  completed_plans: 40
+  percent: 95
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 23 — Test suite debt cleanup
+**Current focus:** Phase 24 — tool-call-serializer-omits-unset-optional-params-exclude-uns
 
 ## Current Position
 
-Phase: 24
-Plan: Not started
+Phase: 24 (tool-call-serializer-omits-unset-optional-params-exclude-uns) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
         Plan 23-04 close-gate re-run: `uv run pytest tests/framework/ --tb=no -q` exits 0 with 575 passed / 1 skipped / 17 deselected / 2 xfailed in 15.19s (failed==0, errored==0).
         D-02 invariant verified end-to-end: `git diff --stat 8d269ef..HEAD -- src/mcp_test_framework/` is empty across the entire phase (Plans 01/02/03 + recovery commit 24434f7).
         Trend: 12 failed + 1 error → 0 failed + 0 errored (net −12/−1).
         Wave 1 plans (23-01/02/03) merged into main (commits 5033f70, 71ed299, e457c6f); D-07 catch-up patch in 24434f7 closed two residuals (test_tool_config.py:364 stale import + test_isolation.py missing live_homelab marker).
 Next: Phase 24 — `tool().call()` serializer `exclude_unset=True` fix; v1.3 close push per `project_v1_3_close_push_and_scrub.md` once Phase 24 lands.
-Last activity: 2026-05-15 -- Phase 24 planning complete
+Last activity: 2026-05-15
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Last activity: 2026-05-15 -- Phase 24 planning complete
 | Phase 23 P02 | ~2min | 2 tasks | 2 files | Cluster B parents[2]→parents[3] mechanical bump |
 | Phase 23 P03 | ~6min | 4 tasks (2 diagnostic) | 1 file | Cluster C README D-05 + D-06 fixes |
 | Phase 23 P04 | ~5min | 1 task (diagnostic-only) | 0 files | close-gate GREEN: 575 passed / 0 failed / 0 errored |
+| Phase 24 P01 | ~10min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 21.1 Plan 03: _run_fixture snapshot extended with _REGISTRIES_snapshot deep copy so post-teardown asserts can verify yield-time registry contents
 - [Phase ?]: Phase 21.1 Plan 04: clean-break deletion of src/mcp_test_framework/sdet/generated/ tree (60 tracked files); single atomic commit for deletion + docs sweep per CONTEXT.md Claude's Discretion
 - [Phase ?]: Phase 21.1 Plan 04: D-10 byte-for-byte invariant deliberately relaxed for test_codegen_integration_mock.py docstring (Plan 03 pre-authorized); 3 literal references retained (session.py history breadcrumb + 2 negative-assertion test strings)
+- [Phase ?]: Phase 24 Plan 01: exclude_unset=True ships at _tool_factory.py:99; SEED-022 preserved (user-intent discriminator); three payload-asserting tests lock the contract; SERIALIZER-01 row added
 
 ### Roadmap Evolution
 
@@ -180,6 +182,6 @@ Items acknowledged at v1.0 / v1.1 close and carried into v1.2+ scope:
 
 ## Session Continuity
 
-Last session: 2026-05-15T05:27:21.737Z
-Stopped at: Phase 24 context gathered
+Last session: 2026-05-15T15:53:37.737Z
+Stopped at: Completed 24-01-PLAN.md (Plan 1 of 3)
 Resume next: run phase verifier on Phase 21.1; then proceed with Phase 22 (src/ requirement-ID scrub) per v1.3 close roadmap

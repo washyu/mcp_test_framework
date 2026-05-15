@@ -208,10 +208,10 @@ Plans:
   - `docs/SDET-AUTHORING.md` — soften `## The inputSchema workaround` section. `_CpuBumpManageVmParams(extra="allow")` pattern reduces from "always needed" to "needed only when you want to send `null` explicitly."
   - `README.md` — re-capture the `## SDET scenarios` snapshot (currently FAIL output per Plan 21-02 re-scope); the deleted `tests/sdet/test_proxmox_vm_lifecycle_readme_sample.py` may need temporary resurrection for the re-capture, matching the Plan 21-02 D-14 manual-snapshot pattern.
   - `.planning/STATE.md` Deferred Items — re-scope the `homelab-mcp inputSchema` entry (framework-side default behavior is fixed; explicit null-testing remains an SDET-owned action).
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 24-01-PLAN.md — Serializer change at _tool_factory.py:99 + 3 new payload tests + renamed kwargs-spy test + SERIALIZER-01 row (Wave 1)
+- [x] 24-01-PLAN.md — Serializer change at _tool_factory.py:99 + 3 new payload tests + renamed kwargs-spy test + SERIALIZER-01 row (Wave 1)
 - [ ] 24-02-PLAN.md — Soften docs/SDET-AUTHORING.md inputSchema-workaround framing + re-capture README PASS sample + SERIALIZER-DOC-01 row (Wave 2; depends_on: 24-01)
 - [ ] 24-03-PLAN.md — Split STATE.md Deferred Items L155 into Row A (Resolved, framework-side) + Row B (Open, upstream-fix) (Wave 2; depends_on: 24-01)
 

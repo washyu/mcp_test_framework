@@ -163,7 +163,7 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | DOC-SDET-02    | Phase 21 | Complete |
 | DOC-SDET-03    | Phase 21 | Pending  |
 | SCRUB-SRC-01   | Phase 22 | Complete |
-| SERIALIZER-01  | Phase 24 | Pending  |
+| SERIALIZER-01  | Phase 24 | Complete |
 
 **Total: 28 requirements mapped across 8 phases (17–24). Coverage: 28/28 (100%).**
 
