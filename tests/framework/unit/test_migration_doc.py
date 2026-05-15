@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[3]
 
 
 MIGRATION_DOC = _repo_root() / "docs" / "MIGRATION-v1-to-v2.md"
