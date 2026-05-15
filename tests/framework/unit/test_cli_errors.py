@@ -87,8 +87,18 @@ def test_load_config_path_not_found(tmp_path: Path) -> None:
     assert not BANNED_RE.search(err), f"banned tokens in error: {err!r}"
 
 
-def test_load_config_validation_error_version(tmp_path: Path) -> None:
-    """version: 99 produces operator-tone schema-version error."""
+def test_load_config_validation_error_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """version: 99 produces operator-tone schema-version error.
+
+    Phase 23 D-03 (env-pollution audit): cli._load_config mutates
+    os.environ["MCPTF_CONFIG_FILE"] (cli.py:299). Without a monkeypatch
+    baseline, that mutation persists into later tests -- e.g.
+    test_homelab_config.test_config_default_homelab loading this
+    version: 99 yaml and tripping the version validator.
+    """
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     cfg = tmp_path / "config.yaml"
     cfg.write_text(
         'ollama:\n'
@@ -350,7 +360,17 @@ def test_safe_06_v1_config_emits_locked_migration_message(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Phase 13 SAFE-06: loading a v1 config exits 2 with the LOCKED
-    ERROR-STYLE message body (docs/ERROR-STYLE.md:57-73)."""
+    ERROR-STYLE message body (docs/ERROR-STYLE.md:57-73).
+
+    Phase 23 D-03 (env-pollution audit): cli._load_config mutates
+    os.environ["MCPTF_CONFIG_FILE"] directly (cli.py:299) so that the
+    in-process pytest session sees the resolved path. monkeypatch.delenv
+    here gives MonkeyPatch a baseline to restore on test teardown --
+    without it the SUT's mutation persists into later tests, e.g.
+    test_homelab_config.test_config_default_homelab loading a stale
+    tmp_path/old.yaml at version: 1 and tripping the version validator.
+    """
+    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     cfg = tmp_path / "old.yaml"
     cfg.write_text(
         "version: 1\n"

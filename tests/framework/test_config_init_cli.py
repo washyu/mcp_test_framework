@@ -127,6 +127,11 @@ def test_scaffold_round_trips_through_config(
 
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(target))
     from mcp_test_framework.config import Config
-    cfg = Config()  # MUST NOT raise
-    assert cfg.version == 1
+    from mcp_test_framework.models import SdetConfig
+    # Phase 23 D-01 (Cluster A) Pattern S2: Config.sdet is REQUIRED post
+    # Phase 21.1 RELOC-01. The test exercises the scaffold round-trip;
+    # the YAML overlay supplies sdet for the operator path, the inline
+    # kwarg here covers the bare-Config() construction shape.
+    cfg = Config(sdet=SdetConfig(generated_root="tests/sdet/_generated"))  # MUST NOT raise
+    assert cfg.version == 2
     assert len(cfg.tools) >= 1

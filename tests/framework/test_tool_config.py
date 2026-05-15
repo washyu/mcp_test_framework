@@ -30,7 +30,12 @@ import yaml
 from pydantic import ValidationError
 
 from mcp_test_framework.config import Config
-from mcp_test_framework.models import ToolConfig
+from mcp_test_framework.models import SdetConfig, ToolConfig
+
+# Phase 23 D-01 (Cluster A): Config.sdet is REQUIRED post Phase 21.1 RELOC-01.
+# Module-level stub (Pattern S1) covers the bare Config() sites in this file.
+# Mirrors tests/framework/unit/test_homelab_config.py:51-58 (the locked source).
+_SDET_STUB = SdetConfig(generated_root="tests/sdet/_generated")
 
 # ===========================================================================
 # Schema tests -- sync, load-time, no live services
@@ -49,9 +54,14 @@ def test_default_toolconfig_values() -> None:
 
 
 def test_default_config_version_and_tools() -> None:
-    """D-01 / D-02 / TOOLCFG-06."""
-    cfg = Config()
-    assert cfg.version == 1
+    """D-01 / D-02 / TOOLCFG-06.
+
+    Phase 23 (Cluster A): Config.sdet is REQUIRED -> supply _SDET_STUB. The
+    default schema version is 2 since the v1->v2 migration; assertion
+    updated to match current schema.
+    """
+    cfg = Config(sdet=_SDET_STUB)
+    assert cfg.version == 2
     assert isinstance(cfg.tools, dict)
 
 
@@ -111,11 +121,18 @@ def test_toolconfig_skip_with_reason_succeeds() -> None:
     assert tc.skip_reason == "legitimate reason"
 
 
-@pytest.mark.parametrize("bad_version", [0, 2, -1, 99])
+@pytest.mark.parametrize("bad_version", [0, 1, -1, 99])
 def test_config_rejects_unsupported_version(bad_version) -> None:
-    """D-02 / CD-01: only version=1 accepted; error message names version + value."""
+    """D-02 / CD-01: only version=2 accepted post Phase 13 v1->v2 migration;
+    error message names version + value.
+
+    Phase 23 (Cluster A): parametrize previously included `2` from the v1
+    era; updated to `1` (now-stale schema) to keep the rejection contract
+    covered with a non-current version. Config.sdet is REQUIRED so supply
+    _SDET_STUB.
+    """
     with pytest.raises(ValueError) as exc_info:
-        Config(version=bad_version)
+        Config(sdet=_SDET_STUB, version=bad_version)
     msg = str(exc_info.value)
     assert "version" in msg
     assert str(bad_version) in msg
@@ -129,12 +146,21 @@ def test_reserved_fields_typed_but_runtime_no_op() -> None:
 
 
 def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
-    """D-20: YAML overlay path reaches `tools:` block correctly."""
+    """D-20: YAML overlay path reaches `tools:` block correctly.
+
+    Phase 23 (Cluster A): YAML must declare `version: 2` post the Phase 13
+    v1->v2 migration; bare Config() in this body needs sdet supplied via
+    YAML (the YAML source layers in atop init kwargs). The YAML now
+    carries the `sdet:` block alongside the `tools:` block to mirror what
+    the operator-facing scaffold emits.
+    """
     yaml_path = tmp_path / "config.yaml"
     yaml_path.write_text(
         textwrap.dedent(
             """
-            version: 1
+            version: 2
+            sdet:
+              generated_root: "tests/sdet/_generated"
             tools:
               foo_tool:
                 skip: true
@@ -148,7 +174,7 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     )
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
     cfg = Config()
-    assert cfg.version == 1
+    assert cfg.version == 2
     assert "foo_tool" in cfg.tools
     foo = cfg.tools["foo_tool"]
     assert foo.skip is True
