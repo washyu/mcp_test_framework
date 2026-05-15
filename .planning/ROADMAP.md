@@ -188,12 +188,12 @@ Plans:
 **Goal:** Restore `tests/framework/` to a green run so v1.3 closes with no carried-over test debt — three independent root-cause clusters (Config v2 sdet-required propagation, parents[N] depth bumps post Phase 15 folder split, README content drift against the doc-scrub close-gate) are fixed in test-side code and operator-facing docs without modifying `src/mcp_test_framework/`.
 **Requirements**: None (bottom-up debt cleanup; close-gate is D-07/D-08: `uv run pytest tests/framework/ --tb=no -q` exits 0 with failed==0 and errored==0)
 **Depends on:** Phase 22
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
-- [ ] 23-01-PLAN.md — Cluster A: Config(sdet=_SDET_STUB) propagation + tests/framework/conftest.py override (D-01, D-02, D-03)
-- [ ] 23-02-PLAN.md — Cluster B: parents[2] → parents[3] mechanical bump at 2 sites (D-04)
-- [ ] 23-03-PLAN.md — Cluster C: README --config pairing + banned-token semantic rewrite (D-05, D-06)
+- [x] 23-01-PLAN.md — Cluster A: Config(sdet=_SDET_STUB) propagation + tests/framework/conftest.py override (D-01, D-02, D-03)
+- [x] 23-02-PLAN.md — Cluster B: parents[2] → parents[3] mechanical bump at 2 sites (D-04)
+- [x] 23-03-PLAN.md — Cluster C: README --config pairing + banned-token semantic rewrite (D-05, D-06)
 - [ ] 23-04-PLAN.md — Close gate: full tests/framework/ green-run assertion (D-07, D-08) [wave 2; depends_on: 23-01, 23-02, 23-03]
 
 ### Phase 24: Tool call serializer omits unset optional params (exclude_unset)
