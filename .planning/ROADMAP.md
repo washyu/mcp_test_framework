@@ -199,7 +199,7 @@ Plans:
 ### Phase 24: Tool call serializer omits unset optional params (exclude_unset)
 
 **Goal:** `tool().call()` serializes only fields the SDET explicitly set on the params model — optionally-nullable fields with `None` defaults stay off the wire when untouched, eliminating the framework's contribution to `Input validation error: None is not of type 'string'` failures against MCP servers whose `inputSchema` declares optionals as `type: "string"`. SDETs retain the ability to test null-handling explicitly by passing `field=None` in the constructor.
-**Requirements**: TBD (likely 1 framework requirement + 1 doc-update requirement; finalize at `/gsd-plan-phase 24`)
+**Requirements**: [SERIALIZER-01, SERIALIZER-DOC-01]
 **Depends on:** Phase 23 (test suite green so the serializer-change ripple is isolated)
 **Background:** Surfaced in Phase 21 Plan 21-02 UAT (2026-05-13): live Proxmox run failed with the upstream homelab-mcp inputSchema bug hitting `create_proxmox_vm`, not just `manage_proxmox_vm`. Investigation showed the framework's `_tool_factory.py:107` emits `null` for unset `cdrom`/`iso` fields via `model_dump(mode="json")`. The Phase 17 SEED-022 lock-in disallowed `exclude_none=True` (which masks upstream null-handling bugs); `exclude_unset=True` is the SEED-022-compatible fix — it distinguishes user-omitted from user-explicitly-set, sending null only when the SDET asks for it.
 **Scope (anticipated by planner):**
@@ -208,10 +208,12 @@ Plans:
   - `docs/SDET-AUTHORING.md` — soften `## The inputSchema workaround` section. `_CpuBumpManageVmParams(extra="allow")` pattern reduces from "always needed" to "needed only when you want to send `null` explicitly."
   - `README.md` — re-capture the `## SDET scenarios` snapshot (currently FAIL output per Plan 21-02 re-scope); the deleted `tests/sdet/test_proxmox_vm_lifecycle_readme_sample.py` may need temporary resurrection for the re-capture, matching the Plan 21-02 D-14 manual-snapshot pattern.
   - `.planning/STATE.md` Deferred Items — re-scope the `homelab-mcp inputSchema` entry (framework-side default behavior is fixed; explicit null-testing remains an SDET-owned action).
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 24 to break down)
+- [ ] 24-01-PLAN.md — Serializer change at _tool_factory.py:99 + 3 new payload tests + renamed kwargs-spy test + SERIALIZER-01 row (Wave 1)
+- [ ] 24-02-PLAN.md — Soften docs/SDET-AUTHORING.md inputSchema-workaround framing + re-capture README PASS sample + SERIALIZER-DOC-01 row (Wave 2; depends_on: 24-01)
+- [ ] 24-03-PLAN.md — Split STATE.md Deferred Items L155 into Row A (Resolved, framework-side) + Row B (Open, upstream-fix) (Wave 2; depends_on: 24-01)
 
 ## Progress
 
