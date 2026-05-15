@@ -361,7 +361,7 @@ async def test_call_arguments_forwarded_to_call_tool_via_asyncmock() -> None:
     mcp_client + target_tool + tool_config, awaits the body, then asserts
     the AsyncMock received the configured args verbatim.
     """
-    from tests.test_mcp_tool_contract import test_empty_args_call_returns_non_error
+    from tests.contract.test_mcp_tool_contract import test_empty_args_call_returns_non_error
 
     configured_args = {"key": "value", "limit": 7}
     tool_config = ToolConfig(call_arguments=configured_args)

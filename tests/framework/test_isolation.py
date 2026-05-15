@@ -41,10 +41,18 @@ import pytest
 
 from mcp_test_framework.mcp_client import McpTestClient
 
-# UNMARKED per D-markers-1; preflight is the gate. loop_scope="session"
-# required so fixtures + tests share the session loop (matches
-# asyncio_default_fixture_loop_scope = "session" in pyproject.toml).
-pytestmark = [pytest.mark.asyncio(loop_scope="session")]
+# Marker: live_homelab — the mcp_client fixture spawns the homelab-mcp
+# binary as a subprocess, so this test only runs when homelab-mcp is on PATH.
+# Phase 23 close-gate: replaces the deleted preflight gate (D-markers-1
+# pre-Phase 20) so the test is correctly deselected by the default
+# `not live_homelab and not live_ollama` addopts filter on hosts without
+# a live homelab-mcp install. loop_scope="session" required so fixtures +
+# tests share the session loop (matches asyncio_default_fixture_loop_scope
+# = "session" in pyproject.toml).
+pytestmark = [
+    pytest.mark.live_homelab,
+    pytest.mark.asyncio(loop_scope="session"),
+]
 
 
 # ---------------------------------------------------------------------------
