@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: Homelab Scenario Testing
 status: executing
 stopped_at: Phase 23 context gathered
-last_updated: "2026-05-15T03:49:19.380Z"
-last_activity: 2026-05-15 -- Phase 23 planning complete
+last_updated: "2026-05-15T04:03:59.994Z"
+last_activity: 2026-05-15 -- Phase 23 execution started
 progress:
   total_phases: 9
   completed_phases: 7
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12 after v1.2 milestone close)
 
 **Core value:** A `pytest`-runnable test suite that exercises one MCP tool end-to-end (schema → call → judge) and exits non-zero on any failure — proving the framework's integration contract before adding breadth.
-**Current focus:** Phase 22 — scrub-requirement-id-leaks-from-src
+**Current focus:** Phase 23 — Test suite debt cleanup
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
-Status: Ready to execute
+Phase: 23 (Test suite debt cleanup) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 23
         Plan 04 deletion landed in atomic commit aebed8e: src/mcp_test_framework/sdet/generated/ tree fully removed (60 git-tracked files deleted); docs/SDET-AUTHORING.md swept (8 sites + 1 new "Configuring the generated-classes path" subsection); README.md SDET sample import block rewritten to tests.sdet._generated.homelab_mcp; test_codegen_integration_mock.py stale docstring updated.
         Framework src/ now contains zero SUT-specific code — SEED-022 structurally enforced.
         Framework test suite matches Plan 02 baseline (13 failed + 1 error, all pre-existing Phase 23 debt; no new failures attributable to Plan 04).
 Next: Run phase verifier on Phase 21.1, then v1.3 close work (Phase 22 hygiene per `project_v1_3_close_push_and_scrub.md`).
-Last activity: 2026-05-15 -- Phase 23 planning complete
+Last activity: 2026-05-15 -- Phase 23 execution started
 
 ## Performance Metrics
 
