@@ -71,6 +71,7 @@ Replace manual Claude-client verification of homelab-mcp with automated end-to-e
 | ID             | Description |
 | -------------- | ----------- |
 | SERIALIZER-01  | `tool().call()` serializes only Pydantic params fields the SDET explicitly set: `_tool_factory.py:99` uses `model_dump(mode="json", exclude_unset=True)`. Optional fields with `None` defaults that the SDET never touched stay off the wire (the `arguments` dict the wrapper passes to `McpTestClient.call_tool` does not contain the key). SDETs who explicitly write `field=None` on the params constructor still put `null` on the wire (SEED-022: user intent, not value, is the discriminator). Unit tests in `tests/framework/unit/test_tool_factory.py` lock all three behaviors (unset omitted / explicit None preserved / explicit value preserved) via payload assertions on `_StubClient.calls[0][1]`. |
+| SERIALIZER-DOC-01 | Docs and README sample track the Phase 24 serializer fix. `docs/SDET-AUTHORING.md` §`## The inputSchema workaround` is softened: the `_CpuBumpManageVmParams(extra="allow")` pattern is framed as needed ONLY when the SDET wants to test the server's null-handling path explicitly (not as a default per-Proxmox-call requirement). The SEED-022 teaching content (Phase 21 D-06) is preserved verbatim — the code block and the "framework doesn't paper over upstream bugs" rationale stay in the doc. `README.md` §`## SDET scenarios` re-captures the sample output as a PASS run (no `✗` rows); BOTH the intro paragraph (L266-L272) and the post-snapshot framing paragraph (L420-L427) are rewritten so the SEED-022 teaching shifts from "the default path triggers the bug" to "an SDET who explicitly tests null-handling triggers the bug." The README cross-links to `docs/SDET-AUTHORING.md` still resolve. |
 
 ### UI — Domain rendering for SDET runs
 
@@ -164,8 +165,9 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | DOC-SDET-03    | Phase 21 | Pending  |
 | SCRUB-SRC-01   | Phase 22 | Complete |
 | SERIALIZER-01  | Phase 24 | Complete |
+| SERIALIZER-DOC-01 | Phase 24 | Pending  |
 
-**Total: 28 requirements mapped across 8 phases (17–24). Coverage: 28/28 (100%).**
+**Total: 29 requirements mapped across 8 phases (17–24). Coverage: 29/29 (100%).**
 
 ### Phase coverage summary
 
@@ -178,4 +180,4 @@ These are explicitly NOT requirements — they're decisions to make during `/gsd
 | 21    | DOC-SDET-01, DOC-SDET-02, DOC-SDET-03                                       | 3     |
 | 21.1  | RELOC-01, RELOC-02, RELOC-03, RELOC-04                                      | 4     |
 | 22    | SCRUB-SRC-01                                                                | 1     |
-| 24    | SERIALIZER-01                                                              | 1     |
+| 24    | SERIALIZER-01, SERIALIZER-DOC-01                                            | 2     |
