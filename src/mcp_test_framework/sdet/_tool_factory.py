@@ -59,7 +59,7 @@ class ToolWrapper(Generic[P, R]):
       - ``.call(params)`` validates ``params`` against the inputSchema by
         virtue of being a Pydantic BaseModel (already done at
         ``CreateVmParams(...)`` construction), then serializes via
-        ``params.model_dump(mode='json')``, awaits
+        ``params.model_dump(mode='json', exclude_unset=True)``, awaits
         ``McpTestClient.call_tool(self.name, arguments)`` on the active
         ``_ACTIVE_CLIENT`` slot, and either raises ``ToolCallError`` (when
         ``result.isError`` is True) or constructs
@@ -79,9 +79,11 @@ class ToolWrapper(Generic[P, R]):
             ``_ACTIVE_CLIENT`` slot (set/cleared by the ``mcp_session``
             fixture). Raises RuntimeError if unset (naming the missing
             fixture so the operator can fix it).
-          - Serializes ``params`` via Pydantic with ``mode="json"`` (MCP wire
-            format expects JSON-serializable dicts; preserves int/str/list/None
-            as-is).
+          - Serializes ``params`` via Pydantic with ``mode="json", exclude_unset=True``.
+            MCP wire format expects JSON-serializable dicts; optional fields the
+            SDET never set stay off the wire (SEED-022: user intent, not value,
+            is the discriminator). An SDET who explicitly passes ``field=None`` still
+            puts ``null`` on the wire.
           - Awaits ``McpTestClient.call_tool`` (which already enforces
             ``asyncio.timeout`` internally).
           - On ``result.isError=True``: extracts code+message via the strict
@@ -96,7 +98,7 @@ class ToolWrapper(Generic[P, R]):
                 "no active MCP client. tool().call() requires the `mcp_session` "
                 "fixture. Use it in an SDET test under `tests/sdet/`."
             )
-        arguments = params.model_dump(mode="json")
+        arguments = params.model_dump(mode="json", exclude_unset=True)
         result = await _ACTIVE_CLIENT.call_tool(self.name, arguments)
         if result.isError:
             from mcp_test_framework.sdet.errors import (
