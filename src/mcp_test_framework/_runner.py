@@ -101,15 +101,28 @@ def _build_pytest_args(
       - ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
         ``--with-framework`` is a superset matching the pre-split
         ``pytest tests/`` collection.
-      - ``sdet=True`` SWAPS the operator-surface scope from ``tests/contract``
-        to ``tests/sdet`` (not additive); ``with_framework=True`` remains
-        ALWAYS additive on top of whichever scope is active. ``--sdet`` is
-        wrapper-owned and never reaches pytest's argv.
-    """
+      - ``sdet=True`` (operator-facing flag is ``--test-code``) SWAPS the
+        operator-surface scope from ``tests/contract`` to ``tests/test_code``
+        (not additive). Dual-discovery (D-07): the legacy ``tests/sdet/``  # noqa: sdet-rename-shim
+        path is retained as a fallback for v1.4 only (removed in v1.5); if
+        it exists AND contains ``test_*.py`` files, both paths are passed
+        to pytest. The session-once ``DeprecationWarning`` is fired from
+        ``tests/test_code/conftest.py`` when items collect from the legacy
+        path. ``with_framework=True`` remains ALWAYS additive on top of
+        whichever scope is active. The wrapper-owned ``--test-code`` /
+        ``--sdet`` flags never reach pytest's argv.
+    """  # noqa: sdet-rename-shim
     forwarded = list(pytest_args or [])
     if sdet:
-        # --sdet SWAPS the operator-surface scope (NOT additive).
-        args: list[str] = ["tests/sdet"]
+        # --test-code SWAPS the operator-surface scope (NOT additive).
+        # Dual-discovery: tests/test_code/ is the v1.4 primary path; the
+        # legacy fallback path is kept (D-07) for one milestone.  # noqa: sdet-rename-shim
+        # The session-once DeprecationWarning fires from
+        # tests/test_code/conftest.py when items collect from the legacy path.
+        args: list[str] = ["tests/test_code"]
+        legacy_sdet_dir = Path("tests/sdet")  # noqa: sdet-rename-shim
+        if legacy_sdet_dir.is_dir() and any(legacy_sdet_dir.glob("test_*.py")):  # noqa: sdet-rename-shim
+            args.append("tests/sdet")  # noqa: sdet-rename-shim
     else:
         args = ["tests/contract"]
     if with_framework:
@@ -489,15 +502,21 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
         name = tc.get("name", "")
         tool = _extract_tool_name(name)
         if tool is None:
-            # SDET-scope fall-through: testcases under tests/sdet/ are
-            # hand-authored (no parametrize bracket). Group by the
-            # classname's trailing module name with `test_` stripped;
-            # use the test function name (also `test_` stripped) as the
-            # row label. Synthetic key shape `<group>::<row_label>`
-            # keeps the parser->renderer dataclass surface frozen
-            # (no new ToolVerdict fields).
+            # test-code-scope fall-through: testcases under tests/test_code/
+            # are hand-authored (no parametrize bracket). The legacy
+            # tests/sdet/ path is also discovered during the v1.4 dual-  # noqa: sdet-rename-shim
+            # discovery window per D-07; classnames from both prefixes
+            # share the same synthetic bucket shape. Group by the
+            # classname's trailing module name
+            # with `test_` stripped; use the test function name (also
+            # `test_` stripped) as the row label. Synthetic key shape
+            # `<group>::<row_label>` keeps the parser->renderer dataclass
+            # surface frozen (no new ToolVerdict fields).
             classname = tc.get("classname", "")
-            if classname.startswith("tests.sdet.test_"):
+            if (
+                classname.startswith("tests.test_code.test_")
+                or classname.startswith("tests.sdet.test_")  # noqa: sdet-rename-shim
+            ):
                 group = classname.rsplit(".", 1)[-1].removeprefix("test_")
                 row_label = name.removeprefix("test_")
                 tool = f"{group}::{row_label}"
@@ -522,7 +541,7 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             bucket.verdict = "FAIL"
             elem = failure if failure is not None else error
             # ToolCallError-attached JUnit properties (set by
-            # tests/sdet/conftest.py:pytest_exception_interact) win over the
+            # tests/test_code/conftest.py:pytest_exception_interact) win over the
             # raw <failure message="..."> attr when present. The third
             # property `mcptf_error_raw` carries the
             # CallToolResult.model_dump_json(indent=2) string and is consumed
@@ -863,7 +882,7 @@ def _render_scenario_pre_run_digest(
 ) -> None:
     """Scenario-aware variant of ``_render_pre_run_digest``.
 
-    Buckets are scenario MODULE stems (``tests/sdet/test_proxmox_vm_lifecycle.py``
+    Buckets are scenario MODULE stems (``tests/test_code/test_proxmox_vm_lifecycle.py``
     -> ``'proxmox_vm_lifecycle'``). Same line-budget as
     ``_render_pre_run_digest`` (<= 10 lines). The em-dash separator U+2014
     is the locked rendering character; do not substitute an ASCII hyphen.
@@ -908,10 +927,11 @@ def _render_scenario_pre_run_digest(
     print("", file=file)
 
 
-def _collect_sdet_scenarios(
+def _collect_test_code_scenarios(
     ctx: "RenderContext",
 ) -> tuple[list[str], dict[str, str]]:
-    """Enumerate scenario module stems under ``tests/sdet/``.
+    """Enumerate scenario module stems under ``tests/test_code/``
+    (and the legacy ``tests/sdet/`` path as a v1.4 fallback per D-07).  # noqa: sdet-rename-shim
 
     The discovery side ships scenario stems; preflight-skip detection (for
     scenarios skipped by env-reachability probes) is a future extension.
@@ -923,14 +943,15 @@ def _collect_sdet_scenarios(
 
     Returns:
         (scenario_stems: list[str] sorted alphabetically, skipped: dict[str, str])
-    """
-    sdet_dir = Path("tests/sdet")
-    if not sdet_dir.is_dir():
-        return ([], {})
+    """  # noqa: sdet-rename-shim
     stems: list[str] = []
-    for p in sdet_dir.glob("test_*.py"):
-        stems.append(p.stem.removeprefix("test_"))
-    return (sorted(stems), {})
+    for dir_path in (Path("tests/test_code"), Path("tests/sdet")):  # noqa: sdet-rename-shim
+        if not dir_path.is_dir():
+            continue
+        for p in dir_path.glob("test_*.py"):
+            stems.append(p.stem.removeprefix("test_"))
+    # De-duplicate (legacy and primary may both exist transiently).
+    return (sorted(set(stems)), {})
 
 
 def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
@@ -1173,7 +1194,7 @@ def render_summary_only(
 class _ToolCallErrorRecord:
     """``--debug`` appendix record. tool/code/message/raw are all reconstructed
     from JUnit user_properties (set by
-    ``tests/sdet/conftest.py:pytest_exception_interact``).
+    ``tests/test_code/conftest.py:pytest_exception_interact``).
 
     ``raw`` carries the ``CallToolResult.model_dump_json(indent=2)`` string
     that ``pytest_exception_interact`` emits as the ``mcptf_error_raw``
@@ -1267,7 +1288,7 @@ def render_debug_appendix(
 
     When ``xml_path`` is provided AND the JUnit XML carries
     ``ToolCallError``-attached testcases (``mcptf_error_*`` user_properties
-    set by ``tests/sdet/conftest.py:pytest_exception_interact``), a
+    set by ``tests/test_code/conftest.py:pytest_exception_interact``), a
     ``--- ToolCallError dump ---`` block is emitted BEFORE
     ``--- raw pytest output ---`` for each such testcase. When ``xml_path``
     is None or the XML lacks those properties, the appendix is byte-identical

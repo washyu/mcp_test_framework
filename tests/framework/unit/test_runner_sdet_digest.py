@@ -6,7 +6,7 @@ Pins:
   count + --explain hint or per-scenario expansion, judges-text sentinel
   "(none — SDET scope)" with em-dash U+2014, optional framework breadcrumb,
   digest height <= 10 lines).
-- `_collect_sdet_scenarios` enumerates `tests/sdet/test_*.py` stems sorted
+- `_collect_test_code_scenarios` enumerates `tests/sdet/test_*.py` stems sorted
   alphabetically; returns empty when the directory is absent.
 - The non-SDET `_render_pre_run_digest` byte-shape is preserved (regression
   guard covered by test_runner_pre_run_digest.py; this file does NOT touch
@@ -25,7 +25,7 @@ import pytest
 
 from mcp_test_framework._runner import (
     RenderContext,
-    _collect_sdet_scenarios,
+    _collect_test_code_scenarios,
     _render_pre_run_digest,
     _render_scenario_pre_run_digest,
 )
@@ -142,21 +142,21 @@ def test_scenario_digest_accepts_file_kwarg() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _collect_sdet_scenarios
+# _collect_test_code_scenarios
 # ---------------------------------------------------------------------------
 
 
-def test_collect_sdet_scenarios_empty_when_directory_absent(
+def test_collect_test_code_scenarios_empty_when_directory_absent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """D-06: missing tests/sdet/ -> ([], {})."""
     monkeypatch.chdir(tmp_path)
-    stems, skipped = _collect_sdet_scenarios(_ctx())
+    stems, skipped = _collect_test_code_scenarios(_ctx())
     assert stems == []
     assert skipped == {}
 
 
-def test_collect_sdet_scenarios_returns_stems_alphabetized(
+def test_collect_test_code_scenarios_returns_stems_alphabetized(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """D-06: tests/sdet/test_X.py -> X (sorted)."""
@@ -169,7 +169,7 @@ def test_collect_sdet_scenarios_returns_stems_alphabetized(
     (sdet_dir / "conftest.py").write_text("# noscan\n", encoding="utf-8")
     (sdet_dir / "helpers.py").write_text("# noscan\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    stems, skipped = _collect_sdet_scenarios(_ctx())
+    stems, skipped = _collect_test_code_scenarios(_ctx())
     assert stems == ["alpha", "proxmox_vm_lifecycle", "zoo"]
     assert skipped == {}  # Phase 18 ships discovery only; Phase 19 adds skip detection.
 

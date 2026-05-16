@@ -113,17 +113,23 @@ def config() -> Config:
 # configured.
 #
 # Kept in sync with the renderer's scope discrimination (tests/contract
-# vs tests/sdet) -- single source of truth for live scopes.
-_LIVE_PREFIXES: tuple[str, ...] = ("tests/contract/", "tests/sdet/")
+# vs tests/test_code, with the legacy tests/sdet/ path retained as a v1.4  # noqa: sdet-rename-shim
+# dual-discovery fallback per D-07) -- single source of truth for live scopes.
+_LIVE_PREFIXES: tuple[str, ...] = (
+    "tests/contract/",
+    "tests/test_code/",
+    "tests/sdet/",  # noqa: sdet-rename-shim
+)
 
 
 def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
     """Return True iff any collected item is under a live-MCP scope.
 
-    Live-MCP scopes (``tests/contract/``, ``tests/sdet/``) call into the
-    real homelab-mcp subprocess and Ollama HTTP API; everything else
-    (``tests/framework/...``) is pure-data and must not be gated by the
-    autouse preflight fixture.
+    Live-MCP scopes (``tests/contract/``, ``tests/test_code/``, and the
+    legacy ``tests/sdet/`` path retained for v1.4 dual-discovery per D-07)  # noqa: sdet-rename-shim
+    call into the real homelab-mcp subprocess and Ollama HTTP API; everything
+    else (``tests/framework/...``) is pure-data and must not be gated by
+    the autouse preflight fixture.
 
     Historical note: an earlier version keyed on ``tests/unit/``, a prefix
     that no longer exists in the current layout. The stale check always
@@ -161,10 +167,10 @@ async def _preflight(request: pytest.FixtureRequest):
     120s httpx.Timeout the first time a judge call fires.
 
     The session-scope guard ``_session_needs_preflight`` short-circuits when
-    no items under live-MCP scopes (``tests/contract/``, ``tests/sdet/``)
-    are collected -- framework self-tests under ``tests/framework/...`` have
-    no MCP/Ollama dependency and must not be gated by integration
-    preconditions.
+    no items under live-MCP scopes (``tests/contract/``, ``tests/test_code/``,
+    or the legacy ``tests/sdet/`` retained for v1.4 dual-discovery) are  # noqa: sdet-rename-shim
+    collected -- framework self-tests under ``tests/framework/...`` have no
+    MCP/Ollama dependency and must not be gated by integration preconditions.
 
     The ``config`` fixture is requested *lazily* via
     ``request.getfixturevalue`` AFTER the live-MCP scope check, instead of

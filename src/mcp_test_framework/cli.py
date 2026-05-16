@@ -596,7 +596,7 @@ def run(
             # under --test-code because pytest only discovers tests/test_code, not
             # tests/contract).
             sdet_ctx = _runner.RenderContext(server_cmd=pre_run_ctx.server_cmd)
-            scenarios, skipped_scenarios = _runner._collect_sdet_scenarios(sdet_ctx)
+            scenarios, skipped_scenarios = _runner._collect_test_code_scenarios(sdet_ctx)
             _runner._render_scenario_pre_run_digest(
                 sdet_ctx,
                 scenarios,
