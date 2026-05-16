@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 25 context gathered
-last_updated: "2026-05-16T02:52:59.107Z"
+last_updated: "2026-05-16T03:18:41.701Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 25 (Public API Rename SEED-023 sdet → test_code) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-16
 
@@ -64,6 +64,7 @@ Last activity: 2026-05-16
 | Phase 24 P24-03 | ~3min | 1 tasks | 1 files |
 | Phase 25 P01 | ~9min | 3 tasks | 19 files |
 | Phase 25 P02 | ~15min | 2 tasks | 4 files |
+| Phase 25 P03 | ~20min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **Out of v1.4 (deferred to v1.5+):** pytest-xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005), `scoped_register()` multi-server context manager, URL-style judge kwarg sugar (`judge="ollama://..."` parser), `gen-test-classes` as library callable, `register(tools=None)` auto-discovery, removal of deprecation aliases, per-judge `--debug` breakdown (Phase 16 D-11 dormant carry-over), schema v2→v3 migration. All explicitly captured in REQUIREMENTS.md "Future Requirements" section to prevent re-triage churn.
 - [Phase 25-01]: Rule-1 deviation — 11 framework self-tests under tests/framework/unit/ repointed to mcp_test_framework.test_code (sdet shim only re-exports four public names; private submodules moved with the package)
 - [Phase ?]: Phase 25-02 — D-19 resolved (two separate Typer Options for --test-code + hidden --sdet, not combined declaration)
+- [Phase ?]: [Phase 25-03]: D-13 implementation moved upstream — pydantic-settings collapses AliasChoices keys before model_validator(mode='before') runs; checks split across _check_legacy_sdet_key_in_yaml (YAML path) + Config.model_validate override (dict path) + the model_validator as defense-in-depth. Behavior contract preserved.
 
 ### Roadmap Evolution
 
@@ -189,6 +191,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-16T02:52:53.573Z
+Last session: 2026-05-16T03:17:36.951Z
 Stopped at: Phase 25 context gathered
 Resume next: `/gsd-plan-phase 25` — decompose Phase 25 (public-API rename `sdet` → `test_code`) into plans
