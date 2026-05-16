@@ -1022,8 +1022,8 @@ def gen_sdet_classes(
 
     # Local imports keep cli.py module-load cost minimal (gen-sdet-classes is
     # a rarely-run command compared to `run` / `list-tools`).
-    from mcp_test_framework.sdet import _codegen
-    from mcp_test_framework.sdet._slugs import server_slug
+    from mcp_test_framework.test_code import _codegen
+    from mcp_test_framework.test_code._slugs import server_slug
 
     # `out_root` is config-driven; the framework never writes generated
     # Python code inside its own `src/` tree. Relative paths are
