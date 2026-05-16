@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
-status: executing
+status: ready_to_plan
 stopped_at: Phase 26 plan 02 (pytest11 plugin + console-script shim + fixture renames) committed
 last_updated: "2026-05-16T07:30:00.000Z"
 last_activity: 2026-05-16 -- Phase 26 plan 02 executed sequentially (3 tasks, 3 commits)
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
   completed_plans: 9
-  percent: 82
+  percent: 33
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 
 ## Current Position
 
-Phase: 26 (packaging-foundation-entry-point-py-typed-dist-name-plugin-s) — EXECUTING
-Plan: 3 of 5 (waves 1+2 complete; ready for Plan 26-04 wheel-shape gate)
-Status: Executing Phase 26 — wave 2 complete
-Last activity: 2026-05-16 -- Phase 26 plan 02 executed sequentially (pytest11 plugin + console-script shim + 6 fixture renames)
+Phase: 27
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-16
 
 ## Performance Metrics
 

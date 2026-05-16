@@ -21,10 +21,10 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### Packaging Foundation (PACK)
 
-- [ ] **PACK-01**: Operator's pytest auto-discovers the framework plugin without any `pytest_plugins=[...]` in their conftest — `[project.entry-points.pytest11]` declared in `pyproject.toml` points at the framework's plugin module.
-- [ ] **PACK-02**: Operator's `pyright` / `mypy` see typed signatures from every framework import — `py.typed` PEP 561 marker present in `src/mcp_test_framework/` and every operator-imported subpackage; wheel ships markers verified.
-- [ ] **PACK-03**: Operator can `pip install mcp-contracts` and `uv add mcp-contracts` successfully — PyPI distribution name corrected from the planning-stage placeholder `mvp-test-framework` to the final shipping name `mcp-contracts` (Phase 26 D-01; the originally-targeted `mcp-test-framework` is taken on PyPI by an unrelated project per D-03). Per D-02: no PyPI shim under the legacy name is needed because the project was never published. A console-script shim under `mcp-test-framework` is retained in v1.4 for local-install compatibility (Phase 26 D-06) and drops in v1.5.
-- [ ] **PACK-04**: Wheel-content regression test fails CI if the built wheel is missing `mcp_test_framework/contracts/`, `mcp_test_framework/test_code/`, any `py.typed` marker, or contains accidental `tests/` leakage — wheel introspection runs as part of the framework's own CI gate.
+- [x] **PACK-01**: Operator's pytest auto-discovers the framework plugin without any `pytest_plugins=[...]` in their conftest — `[project.entry-points.pytest11]` declared in `pyproject.toml` points at the framework's plugin module.
+- [x] **PACK-02**: Operator's `pyright` / `mypy` see typed signatures from every framework import — `py.typed` PEP 561 marker present in `src/mcp_test_framework/` and every operator-imported subpackage; wheel ships markers verified.
+- [x] **PACK-03**: Operator can `pip install mcp-contracts` and `uv add mcp-contracts` successfully — PyPI distribution name corrected from the planning-stage placeholder `mvp-test-framework` to the final shipping name `mcp-contracts` (Phase 26 D-01; the originally-targeted `mcp-test-framework` is taken on PyPI by an unrelated project per D-03). Per D-02: no PyPI shim under the legacy name is needed because the project was never published. A console-script shim under `mcp-test-framework` is retained in v1.4 for local-install compatibility (Phase 26 D-06) and drops in v1.5.
+- [x] **PACK-04**: Wheel-content regression test fails CI if the built wheel is missing `mcp_test_framework/contracts/`, `mcp_test_framework/test_code/`, any `py.typed` marker, or contains accidental `tests/` leakage — wheel introspection runs as part of the framework's own CI gate.
 
 ### Library API — `register()` and Test Injection (LIB)
 
@@ -108,10 +108,10 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | RENAME-04 | Phase 25 | Complete |
 | RENAME-05 | Phase 25 | Complete |
 | RENAME-06 | Phase 25 | Complete |
-| PACK-01 | Phase 26 | Pending |
-| PACK-02 | Phase 26 | Pending |
-| PACK-03 | Phase 26 | Pending |
-| PACK-04 | Phase 26 | Pending |
+| PACK-01 | Phase 26 | Complete |
+| PACK-02 | Phase 26 | Complete |
+| PACK-03 | Phase 26 | Complete |
+| PACK-04 | Phase 26 | Complete |
 | LIB-01 | Phase 27 | Pending |
 | LIB-02 | Phase 27 | Pending |
 | LIB-03 | Phase 27 | Pending |
