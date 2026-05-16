@@ -376,7 +376,7 @@ class TestD11RawRoundTrip:
         CallToolResult schema surface keys."""
         from mcp.types import CallToolResult, TextContent
 
-        from mcp_test_framework.sdet import ToolCallError
+        from mcp_test_framework.test_code import ToolCallError
 
         result = CallToolResult(
             isError=True,

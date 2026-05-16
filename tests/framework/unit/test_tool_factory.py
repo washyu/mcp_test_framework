@@ -1,4 +1,4 @@
-"""Unit tests for mcp_test_framework.sdet._tool_factory (CODEGEN-05 seam).
+"""Unit tests for mcp_test_framework.test_code._tool_factory (CODEGEN-05 seam).
 
 Pins:
   - tool(name) returns a ToolWrapper with correct params_cls / response_cls
@@ -13,9 +13,9 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from mcp_test_framework.sdet import _tool_factory as tf
-from mcp_test_framework.sdet._tool_factory import ToolWrapper, tool
-from mcp_test_framework.sdet.response import ToolResponse
+from mcp_test_framework.test_code import _tool_factory as tf
+from mcp_test_framework.test_code._tool_factory import ToolWrapper, tool
+from mcp_test_framework.test_code.response import ToolResponse
 
 
 # --- Fake classes for the registry ----------------------------------------
@@ -59,7 +59,7 @@ def _reset_module_state():
 
 def test_imports_succeed() -> None:
     """Plain importability check -- catches import-cycle regressions."""
-    from mcp_test_framework.sdet._tool_factory import (  # noqa: F401
+    from mcp_test_framework.test_code._tool_factory import (  # noqa: F401
         ToolWrapper,
         tool,
         _ACTIVE_SLUG,
@@ -155,7 +155,7 @@ async def test_call_error_path_raises_tool_call_error() -> None:
     .tool/.code/.message/.raw populated via _extract_code_message."""
     from mcp.types import CallToolResult
 
-    from mcp_test_framework.sdet.errors import ToolCallError
+    from mcp_test_framework.test_code.errors import ToolCallError
 
     tf._ACTIVE_SLUG = "homelab_mcp"
     tf._REGISTRIES["homelab_mcp"] = {"create_vm": (_FakeParams, _FakeResponse)}
@@ -350,7 +350,7 @@ def test_active_client_module_attribute_defaults_to_none() -> None:
     # attribute is the literal None set at module load.
     import importlib
 
-    import mcp_test_framework.sdet._tool_factory as tf_fresh
+    import mcp_test_framework.test_code._tool_factory as tf_fresh
 
     # The attribute exists.
     assert hasattr(tf_fresh, "_ACTIVE_CLIENT")

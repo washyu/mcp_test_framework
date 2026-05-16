@@ -19,7 +19,7 @@ from types import SimpleNamespace
 import pytest
 from mcp.types import CallToolResult, TextContent
 
-from mcp_test_framework.sdet import ToolCallError
+from mcp_test_framework.test_code import ToolCallError
 
 
 # --- Helpers --------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Unit tests for mcp_test_framework.sdet._codegen.generate (CODEGEN-01, D-03, D-06).
+"""Unit tests for mcp_test_framework.test_code._codegen.generate (CODEGEN-01, D-03, D-06).
 
 Pins:
   - file layout: one file per tool + __init__.py
@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from mcp.types import Tool
 
-from mcp_test_framework.sdet._codegen import generate
+from mcp_test_framework.test_code._codegen import generate
 
 
 _FIXED_TS = "2026-05-12T14:23:01+00:00"

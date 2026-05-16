@@ -21,8 +21,8 @@ from mcp.types import (
     TextContent,
 )
 
-from mcp_test_framework.sdet import ToolCallError
-from mcp_test_framework.sdet.errors import _extract_code_message
+from mcp_test_framework.test_code import ToolCallError
+from mcp_test_framework.test_code.errors import _extract_code_message
 
 
 # ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@ import re
 
 
 def _session_source() -> str:
-    from mcp_test_framework.sdet import session
+    from mcp_test_framework.test_code import session
     return inspect.getsource(session)
 
 

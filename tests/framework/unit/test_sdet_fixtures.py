@@ -1,4 +1,4 @@
-"""Unit tests for mcp_test_framework.sdet.session (Phase 18 SDET-03/04).
+"""Unit tests for mcp_test_framework.test_code.session (Phase 18 SDET-03/04).
 
 Pins D-01/D-02/D-03 (Phase 18 CONTEXT.md):
   - D-01: mcp_session is a session-scoped pytest-asyncio fixture aliasing the
@@ -30,8 +30,8 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel
 
-from mcp_test_framework.sdet import _tool_factory as tf
-from mcp_test_framework.sdet.response import ToolResponse
+from mcp_test_framework.test_code import _tool_factory as tf
+from mcp_test_framework.test_code.response import ToolResponse
 
 
 # --- Helpers --------------------------------------------------------------
@@ -79,7 +79,7 @@ from pathlib import Path  # noqa: E402
 import yaml  # noqa: E402
 from mcp.types import Tool  # noqa: E402
 
-from mcp_test_framework.sdet._codegen import generate as _codegen_generate  # noqa: E402
+from mcp_test_framework.test_code._codegen import generate as _codegen_generate  # noqa: E402
 
 _SYNTHETIC_SERVER_NAME = "synthetic-mcp"
 _SYNTHETIC_SLUG = "synthetic_mcp"
@@ -140,7 +140,7 @@ def _write_config_with_generated_root(tmp_path: Path, generated_root: Path) -> P
 
 def test_mcp_session_is_pytest_asyncio_session_scoped_fixture() -> None:
     """D-01: decorator must be @pytest_asyncio.fixture(loop_scope='session', scope='session')."""
-    from mcp_test_framework.sdet.session import mcp_session
+    from mcp_test_framework.test_code.session import mcp_session
 
     # pytest >=8 / pytest_asyncio >=1: FixtureFunctionDefinition exposes the
     # FixtureFunctionMarker on `_fixture_function_marker` and the async loop
@@ -156,7 +156,7 @@ def test_mcp_session_is_pytest_asyncio_session_scoped_fixture() -> None:
 
 def test_mcp_session_signature_depends_on_mcp_client() -> None:
     """D-01: the fixture parameter name is ``mcp_client`` (pytest dependency by name)."""
-    from mcp_test_framework.sdet.session import mcp_session
+    from mcp_test_framework.test_code.session import mcp_session
 
     # pytest_asyncio wraps the fixture; FixtureFunctionDefinition exposes the
     # original via `_get_wrapped_function()`.
@@ -169,7 +169,7 @@ def test_mcp_session_signature_depends_on_mcp_client() -> None:
 
 def test_mcp_session_module_imports_cleanly() -> None:
     """Smoke import — catches circular imports + missing dependencies."""
-    from mcp_test_framework.sdet.session import mcp_session  # noqa: F401
+    from mcp_test_framework.test_code.session import mcp_session  # noqa: F401
 
 
 # --- D-02: registry activation around yield -------------------------------
@@ -212,7 +212,7 @@ async def test_mcp_session_activates_registry_on_entry(
     """D-02 (Phase 21.1 RELOC-03 reworked): on entry, _ACTIVE_SLUG /
     _ACTIVE_CLIENT / _REGISTRIES[slug] are set against the spec-loaded
     synthetic package."""
-    from mcp_test_framework.sdet.session import mcp_session
+    from mcp_test_framework.test_code.session import mcp_session
 
     slug_dir = _build_synthetic_slug_dir(tmp_path)
     yaml_path = _write_config_with_generated_root(tmp_path, tmp_path)
@@ -241,7 +241,7 @@ async def test_mcp_session_restores_prior_state_on_teardown(
 ) -> None:
     """D-02 step 7 (Phase 21.1 RELOC-03 reworked): teardown restores prior
     _ACTIVE_SLUG / _ACTIVE_CLIENT and pops the synthetic registry."""
-    from mcp_test_framework.sdet.session import mcp_session
+    from mcp_test_framework.test_code.session import mcp_session
 
     _build_synthetic_slug_dir(tmp_path)
     yaml_path = _write_config_with_generated_root(tmp_path, tmp_path)
@@ -273,7 +273,7 @@ async def test_mcp_session_fail_loud_on_missing_generated_module(
     """D-03 (Phase 21.1 RELOC-03 reworked): missing slug dir under
     cfg.sdet.generated_root triggers pytest.exit(returncode=2) with
     operator-tone message naming the slug, gen-sdet-classes, and --sdet."""
-    from mcp_test_framework.sdet.session import mcp_session
+    from mcp_test_framework.test_code.session import mcp_session
 
     # Point sdet.generated_root at an empty tmp_path; no slug dir exists.
     empty_root = tmp_path / "empty_root"
@@ -307,7 +307,7 @@ def test_session_module_opens_no_anyio_cancel_scope() -> None:
     import inspect as _inspect
     import re
 
-    from mcp_test_framework.sdet import session as session_mod
+    from mcp_test_framework.test_code import session as session_mod
 
     src = _inspect.getsource(session_mod)
     matches = re.findall(r"with anyio\.|CancelScope", src)
@@ -330,7 +330,7 @@ class TestPublicSurface:
 
     def test_canonical_imports_resolve(self) -> None:
         """Plan 18-04: the four SDET symbols import from the package root."""
-        from mcp_test_framework.sdet import (
+        from mcp_test_framework.test_code import (
             ToolCallError,
             ToolResponse,
             mcp_session,
@@ -344,7 +344,7 @@ class TestPublicSurface:
 
     def test_all_lists_exact_four_names(self) -> None:
         """Plan 18-04: __all__ is exactly the four-name set (no drift)."""
-        from mcp_test_framework.sdet import __all__
+        from mcp_test_framework.test_code import __all__
 
         assert set(__all__) == {
             "ToolCallError",
@@ -355,14 +355,14 @@ class TestPublicSurface:
 
     def test_all_is_alphabetical(self) -> None:
         """Plan 18-04: __all__ is alphabetically ordered for stable reads."""
-        from mcp_test_framework.sdet import __all__
+        from mcp_test_framework.test_code import __all__
 
         assert list(__all__) == sorted(__all__)
 
     def test_internal_symbols_not_re_exported(self) -> None:
         """Plan 18-04: internal helpers / module-state slots / ToolWrapper
         are NOT re-exported through the package barrel."""
-        import mcp_test_framework.sdet as sdet_pkg
+        import mcp_test_framework.test_code as sdet_pkg
 
         # These exist in sibling modules but must not be on the barrel.
         for name in (
@@ -375,14 +375,14 @@ class TestPublicSurface:
         ):
             assert not hasattr(sdet_pkg, name), (
                 f"{name!r} must NOT be re-exported through "
-                f"mcp_test_framework.sdet barrel"
+                f"mcp_test_framework.test_code barrel"
             )
 
     def test_tool_call_error_is_plain_exception(self) -> None:
         """Plan 18-04 + Plan 18-01: re-exported ToolCallError is the typed
         exception (sanity: re-export points at the right symbol)."""
-        from mcp_test_framework.sdet import ToolCallError
-        from mcp_test_framework.sdet.errors import (
+        from mcp_test_framework.test_code import ToolCallError
+        from mcp_test_framework.test_code.errors import (
             ToolCallError as _ToolCallErrorDirect,
         )
 

@@ -4,7 +4,7 @@ Replaces the PREFLIGHT-01/02 coverage killed by the Phase 20 reframe (see
 .planning/phases/20-preflight-conditional-skip/20-CONTEXT.md D-07..D-10).
 
 Drives a hand-crafted synthetic tool list through
-mcp_test_framework.sdet._codegen.generate(...) into a tmp_path output dir,
+mcp_test_framework.test_code._codegen.generate(...) into a tmp_path output dir,
 then uses importlib to load the generated modules and asserts:
 
   1. <ToolName>Params Pydantic class shape (fields, types, required/optional).
@@ -31,8 +31,8 @@ from types import ModuleType
 import pytest
 from mcp.types import Tool
 
-from mcp_test_framework.sdet._codegen import generate
-from mcp_test_framework.sdet.response import ToolResponse
+from mcp_test_framework.test_code._codegen import generate
+from mcp_test_framework.test_code.response import ToolResponse
 
 
 # --- Synthetic tool fixture ------------------------------------------------

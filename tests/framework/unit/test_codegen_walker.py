@@ -1,4 +1,4 @@
-"""Unit tests for mcp_test_framework.sdet._codegen + _slugs.
+"""Unit tests for mcp_test_framework.test_code._codegen + _slugs.
 
 Pins:
   - _slugs: D-05 server_slug normalization, pascal_case / module_name keyword + digit guards
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from mcp_test_framework.sdet._slugs import module_name, pascal_case, server_slug
+from mcp_test_framework.test_code._slugs import module_name, pascal_case, server_slug
 
 
 # --- _slugs ----------------------------------------------------------------
@@ -87,7 +87,7 @@ class TestModuleName:
 
 from mcp.types import Tool
 
-from mcp_test_framework.sdet._codegen import (
+from mcp_test_framework.test_code._codegen import (
     SchemaValidityError,
     translate_tool,
 )
@@ -130,7 +130,7 @@ class TestWalkerHeader:
         src, _ = translate_tool(tool, **_FIXED_HEADER_KW)
         assert "from __future__ import annotations" in src
         assert "from pydantic import BaseModel, ConfigDict, Field" in src
-        assert "from mcp_test_framework.sdet.response import ToolResponse" in src
+        assert "from mcp_test_framework.test_code.response import ToolResponse" in src
         assert "import typing" in src
 
 

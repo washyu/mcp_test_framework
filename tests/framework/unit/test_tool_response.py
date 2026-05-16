@@ -1,4 +1,4 @@
-"""Unit tests for mcp_test_framework.sdet.response.ToolResponse (CODEGEN-04, D-07).
+"""Unit tests for mcp_test_framework.test_code.response.ToolResponse (CODEGEN-04, D-07).
 
 Pins the .data fallback chain (structuredContent -> JSON-parse first TextContent
 -> {"text": <concat>} fallback -> None), .text concatenation across mixed
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from mcp.types import CallToolResult, TextContent
 
-from mcp_test_framework.sdet import ToolResponse
+from mcp_test_framework.test_code import ToolResponse
 
 
 def _result(

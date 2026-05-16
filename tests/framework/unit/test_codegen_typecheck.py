@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 from mcp.types import Tool
 
-from mcp_test_framework.sdet import _codegen
+from mcp_test_framework.test_code import _codegen
 
 
 def _pyright_available() -> bool:
