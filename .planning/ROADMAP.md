@@ -73,7 +73,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
 
-- [ ] **Phase 25: Public-API rename (SEED-023) — `sdet` → `test_code`** — Lock the public import surface before library mode hardens it. Pure refactor; irreversible after first PyPI publish.
+- [x] **Phase 25: Public-API rename (SEED-023) — `sdet` → `test_code`** — Lock the public import surface before library mode hardens it. Pure refactor; irreversible after first PyPI publish. (completed 2026-05-16)
 - [ ] **Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton** — Smallest atomic capability that unblocks plugin auto-discovery, typed imports, and the wheel-level black-box guarantee.
 - [ ] **Phase 27: `register()` API + contracts sub-package + test extraction (LIB)** — The load-bearing technical bet. Operator's three-line `register()` call injects parametrized contract tests into their pytest collection via `pytest_collect_file` virtual-module synthesis.
 - [ ] **Phase 28: Config seam + codegen output path** — Library-mode config flow (kwargs > pyproject > defaults; `MCPTF_CONFIG_FILE` ignored) and a `tests/_generated/` default that refuses to write into `site-packages/`.
@@ -98,7 +98,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 25-03-PLAN.md — Rename SdetConfig to TestCodeConfig with AliasChoices + ambiguity validator
   - [x] 25-04-PLAN.md — Move tests/sdet/ to tests/test_code/ with dual-discovery + pyproject filterwarnings
   - [x] 25-05-PLAN.md — Sweep operator-facing docs/examples for test-code terminology + planning-ID strip
-  - [ ] 25-06-PLAN.md — CI-runnable acceptance gate (tests/framework/test_sdet_rename_leak_gate.py)
+  - [x] 25-06-PLAN.md — CI-runnable acceptance gate (tests/framework/test_sdet_rename_leak_gate.py)
 
 ### Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton
 **Goal**: Operator adds `mcp-test-framework` to `pyproject.toml`, runs `uv add` / `pip install`, and their pytest auto-loads the framework's plugin with typed imports — without any business-logic hooks yet. Establishes the packaging substrate that every later phase hangs off.
@@ -191,7 +191,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 22. Scrub requirement-ID leaks from src/ | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 23. Test suite debt cleanup | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
-| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 5/6 | In Progress|  |
+| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete   | 2026-05-16 |
 | 26. Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 0/TBD | Not started | - |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 0/TBD | Not started | - |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
