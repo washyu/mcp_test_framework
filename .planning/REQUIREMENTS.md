@@ -15,7 +15,7 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 - [x] **RENAME-01**: Operator can import the test-code surface as `from mcp_test_framework.test_code import ...` (package directory `src/mcp_test_framework/sdet/` renamed to `test_code/`; all internal imports updated).
 - [x] **RENAME-02**: Operator can run `mcp-test-framework gen-test-classes` (new CLI command name); `gen-sdet-classes` continues to work in v1.4 as a deprecation-warning shim and is removed in v1.5.
 - [x] **RENAME-03**: Operator can pass `--test-code` to `mcp-test-framework run` (replacing `--sdet`); old flag deprecated with warning in v1.4, removed in v1.5.
-- [ ] **RENAME-04**: Operator-authored test code lives under `tests/test_code/` (replacing `tests/sdet/`); discovery scope updated; library-mode default unchanged (operators choose any path).
+- [x] **RENAME-04**: Operator-authored test code lives under `tests/test_code/` (replacing `tests/sdet/`); discovery scope updated; library-mode default unchanged (operators choose any path).
 - [x] **RENAME-05**: Operator can set `cfg.test_code.generated_root` in `config.yaml`; `cfg.sdet.generated_root` continues to work via Pydantic `Field(alias=...)` deprecation alias in v1.4, removed in v1.5 with schema v2→v3 migration.
 - [ ] **RENAME-06**: Operator-facing docs use "test-code" terminology consistently — `docs/SDET-AUTHORING.md` renamed to `docs/TEST-CODE-AUTHORING.md`; README, CLAUDE.md, and inline CLI docstrings updated; planning-ID regex sweep returns zero matches in operator-facing surfaces.
 
@@ -105,7 +105,7 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | RENAME-01 | Phase 25 | Complete |
 | RENAME-02 | Phase 25 | Complete |
 | RENAME-03 | Phase 25 | Complete |
-| RENAME-04 | Phase 25 | Pending |
+| RENAME-04 | Phase 25 | Complete |
 | RENAME-05 | Phase 25 | Complete |
 | RENAME-06 | Phase 25 | Pending |
 | PACK-01 | Phase 26 | Pending |

@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 25 context gathered
-last_updated: "2026-05-16T03:18:41.701Z"
+last_updated: "2026-05-16T03:34:16.411Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 25 (Public API Rename SEED-023 sdet → test_code) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-05-16
 
@@ -65,6 +65,7 @@ Last activity: 2026-05-16
 | Phase 25 P01 | ~9min | 3 tasks | 19 files |
 | Phase 25 P02 | ~15min | 2 tasks | 4 files |
 | Phase 25 P03 | ~20min | 2 tasks | 17 files |
+| Phase 25 P04 | ~25min | 4 tasks | 11 files | Rule-1 deviation: 5 framework self-tests repointed (argv assertions + conftest path + helper name) + 4 D-07 ID literals stripped
 
 ## Accumulated Context
 
@@ -109,6 +110,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase 25-01]: Rule-1 deviation — 11 framework self-tests under tests/framework/unit/ repointed to mcp_test_framework.test_code (sdet shim only re-exports four public names; private submodules moved with the package)
 - [Phase ?]: Phase 25-02 — D-19 resolved (two separate Typer Options for --test-code + hidden --sdet, not combined declaration)
 - [Phase ?]: [Phase 25-03]: D-13 implementation moved upstream — pydantic-settings collapses AliasChoices keys before model_validator(mode='before') runs; checks split across _check_legacy_sdet_key_in_yaml (YAML path) + Config.model_validate override (dict path) + the model_validator as defense-in-depth. Behavior contract preserved.
+- [Phase 25-04]: Dual-discovery argv shape locked — primary `tests/test_code` is always passed; legacy `tests/sdet` is appended ONLY when the directory contains `test_*.py` files. Empty-directory case (after `git mv`) leaves argv as single-path; populated case (external operator with untouched legacy tree) gets both paths + the session-once `DeprecationWarning` from `tests/test_code/conftest.py`. Classname-prefix check in the JUnit testcase parser accepts BOTH `tests.test_code.test_` AND `tests.sdet.test_` (renderer compatibility through the dual-discovery window).
 
 ### Roadmap Evolution
 
@@ -191,6 +193,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-16T03:17:36.951Z
-Stopped at: Phase 25 context gathered
-Resume next: `/gsd-plan-phase 25` — decompose Phase 25 (public-API rename `sdet` → `test_code`) into plans
+Last session: 2026-05-16
+Stopped at: Phase 25 Plan 25-04 complete (RENAME-04 shipped)
+Resume next: `/gsd-execute-phase 25` — execute Plan 25-05 (Pydantic alias schema work was Plan 25-03; remaining are 25-05 sweep + 25-06 docs)
