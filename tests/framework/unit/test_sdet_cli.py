@@ -103,52 +103,57 @@ def test_run_help_sdet_mentions_composition_with_with_framework() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_run_raw_sdet_argv_has_tests_sdet(tmp_path, monkeypatch) -> None:
-    """`run --sdet --raw` -> subprocess argv contains tests/sdet, not tests/contract."""
+def test_run_raw_sdet_argv_has_tests_test_code(tmp_path, monkeypatch) -> None:
+    """`run --raw --test-code` -> subprocess argv contains tests/test_code,
+    not tests/contract. Phase 25 RENAME-04: primary scope is tests/test_code/."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)  # No tests/sdet/ in cwd -> dual-discovery inactive.
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
         _stub_subprocess_capturing_argv(captured),
     )
-    result = _invoke("run", "--raw", "--sdet", "--config", str(cfg_path))
+    result = _invoke("run", "--raw", "--test-code", "--config", str(cfg_path))
     # Exit code is the stubbed subprocess returncode (0).
     assert result.exit_code == 0, result.output
     argv = captured.get("argv", [])
-    assert "tests/sdet" in argv, argv
+    assert "tests/test_code" in argv, argv
     assert "tests/contract" not in argv, argv
-    # D-07: --sdet literal must never reach pytest's argv.
-    assert "--sdet" not in argv, argv
+    # D-07: --test-code / --sdet literals must never reach pytest's argv.
+    assert "--test-code" not in argv, argv
+    assert "--sdet" not in argv, argv  # noqa: sdet-rename-shim
 
 
 def test_run_raw_sdet_with_framework_argv_has_both(tmp_path, monkeypatch) -> None:
-    """`run --sdet --with-framework --raw` -> argv has tests/sdet AND tests/framework."""
+    """`run --raw --test-code --with-framework` -> argv has tests/test_code AND tests/framework."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
         _stub_subprocess_capturing_argv(captured),
     )
     result = _invoke(
-        "run", "--raw", "--sdet", "--with-framework", "--config", str(cfg_path)
+        "run", "--raw", "--test-code", "--with-framework", "--config", str(cfg_path)
     )
     assert result.exit_code == 0, result.output
     argv = captured.get("argv", [])
-    assert "tests/sdet" in argv, argv
+    assert "tests/test_code" in argv, argv
     assert "tests/framework" in argv, argv
     assert "tests/contract" not in argv, argv
-    assert "--sdet" not in argv, argv
+    assert "--test-code" not in argv, argv
 
 
 def test_run_raw_no_sdet_argv_has_tests_contract(tmp_path, monkeypatch) -> None:
-    """`run --raw` (no --sdet) -> argv has tests/contract; tests/sdet absent.
+    """`run --raw` (no --test-code) -> argv has tests/contract; tests/test_code absent.
 
     Phase 16 default-path zero-diff guard.
     """
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -158,7 +163,8 @@ def test_run_raw_no_sdet_argv_has_tests_contract(tmp_path, monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     argv = captured.get("argv", [])
     assert "tests/contract" in argv, argv
-    assert "tests/sdet" not in argv, argv
+    assert "tests/test_code" not in argv, argv
+    assert "tests/sdet" not in argv, argv  # noqa: sdet-rename-shim
 
 
 # ---------------------------------------------------------------------------
@@ -167,10 +173,11 @@ def test_run_raw_no_sdet_argv_has_tests_contract(tmp_path, monkeypatch) -> None:
 
 
 def test_run_sdet_dispatches_scenario_digest(tmp_path, monkeypatch) -> None:
-    """D-06: `run --sdet` (non-raw) prints the SDET digest banner, NOT the
+    """D-06: `run --test-code` (non-raw) prints the SDET digest banner, NOT the
     tool-flavored 'MCP Test Framework' banner."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -181,18 +188,19 @@ def test_run_sdet_dispatches_scenario_digest(tmp_path, monkeypatch) -> None:
         "mcp_test_framework.cli._discover_tools_for_run",
         lambda cfg: [],
     )
-    result = _invoke("run", "--sdet", "--config", str(cfg_path))
+    result = _invoke("run", "--test-code", "--config", str(cfg_path))
     assert result.exit_code == 0, result.output
     assert "MCP Test Framework (SDET)" in result.output, result.output
     # The tool banner ("MCP Test Framework" followed by newline, no (SDET)
-    # suffix) must NOT appear under --sdet.
+    # suffix) must NOT appear under --test-code.
     assert "\nMCP Test Framework\n" not in result.output
 
 
 def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
-    """D-06 regression: `run` (no --sdet) still prints the tool digest banner."""
+    """D-06 regression: `run` (no --test-code) still prints the tool digest banner."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -216,10 +224,11 @@ def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
 def test_run_default_no_sdet_raw_argv_has_tests_contract(
     tmp_path, monkeypatch
 ) -> None:
-    """D-04 baseline: `run --raw` (no --sdet) argv carries tests/contract,
-    not tests/sdet. Phase 16 default-path zero-diff regression."""
+    """D-04 baseline: `run --raw` (no --test-code) argv carries tests/contract,
+    not tests/test_code. Phase 16 default-path zero-diff regression."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -229,16 +238,18 @@ def test_run_default_no_sdet_raw_argv_has_tests_contract(
     assert result.exit_code == 0, result.output
     argv = captured.get("argv", [])
     assert "tests/contract" in argv, argv
-    assert "tests/sdet" not in argv, argv
+    assert "tests/test_code" not in argv, argv
+    assert "tests/sdet" not in argv, argv  # noqa: sdet-rename-shim
 
 
 def test_run_with_framework_only_argv_has_contract_and_framework(
     tmp_path, monkeypatch
 ) -> None:
-    """D-05 baseline: `run --raw --with-framework` (no --sdet) argv has
+    """D-05 baseline: `run --raw --with-framework` (no --test-code) argv has
     tests/contract + tests/framework (additive on the contract scope)."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -251,26 +262,27 @@ def test_run_with_framework_only_argv_has_contract_and_framework(
     argv = captured.get("argv", [])
     assert "tests/contract" in argv, argv
     assert "tests/framework" in argv, argv
-    assert "tests/sdet" not in argv, argv
+    assert "tests/test_code" not in argv, argv
 
 
-def test_run_sdet_q_argv_has_tests_sdet(tmp_path, monkeypatch) -> None:
-    """D-05: `run --sdet -q --raw` argv has tests/sdet; -q is a pytest flag
-    that DOES forward to the subprocess (unlike --sdet, which is wrapper-owned).
-    Pinned here to document the asymmetry: --sdet is wrapper-only,
-    -q passes through to pytest."""
+def test_run_sdet_q_argv_has_tests_test_code(tmp_path, monkeypatch) -> None:
+    """D-05: `run --raw --test-code -q` argv has tests/test_code; -q is a
+    pytest flag that DOES forward to the subprocess (unlike --test-code,
+    which is wrapper-owned). Pinned here to document the asymmetry:
+    --test-code is wrapper-only, -q passes through to pytest."""
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
+    monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
         _stub_subprocess_capturing_argv(captured),
     )
     result = _invoke(
-        "run", "--raw", "--sdet", "-q", "--config", str(cfg_path)
+        "run", "--raw", "--test-code", "-q", "--config", str(cfg_path)
     )
     assert result.exit_code == 0, result.output
     argv = captured.get("argv", [])
-    assert "tests/sdet" in argv, argv
-    # --sdet is wrapper-owned; never leaks to pytest argv.
-    assert "--sdet" not in argv, argv
+    assert "tests/test_code" in argv, argv
+    # --test-code is wrapper-owned; never leaks to pytest argv.
+    assert "--test-code" not in argv, argv

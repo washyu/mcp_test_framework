@@ -1,11 +1,12 @@
-"""Unit tests for tests/sdet/conftest.py:pytest_exception_interact (D-09 + D-11).
+"""Unit tests for tests/test_code/conftest.py:pytest_exception_interact (D-09 + D-11).
 
-Pins the strict-ToolCallError behavior of the SDET-only conftest hook:
+Pins the strict-ToolCallError behavior of the test-code conftest hook
+(renamed in Phase 25 RENAME-04 from tests/sdet/conftest.py via git mv):
   - D-09: stash (.code, .message) onto report.user_properties.
   - D-11: stash CallToolResult.model_dump_json(indent=2) onto report.user_properties
     so the --debug appendix can render the raw block.
 
-The hook is module-level in tests/sdet/conftest.py and only enriches
+The hook is module-level in tests/test_code/conftest.py and only enriches
 ToolCallError. Other exceptions (AssertionError, RuntimeError, etc.) pass
 through untouched -- generic exception enrichment is a v1.4 candidate.
 """
@@ -26,14 +27,14 @@ from mcp_test_framework.test_code import ToolCallError
 
 
 def _load_sdet_conftest():
-    """Load tests/sdet/conftest.py as a module via importlib.
+    """Load tests/test_code/conftest.py as a module via importlib.
 
-    We can't `import tests.sdet.conftest` directly because pytest plugin
+    We can't `import tests.test_code.conftest` directly because pytest plugin
     machinery owns conftest loading. importlib.util gives a clean handle to
     the module's symbols for unit-testing the hook in isolation.
     """
-    path = Path(__file__).resolve().parents[3] / "tests" / "sdet" / "conftest.py"
-    spec = importlib.util.spec_from_file_location("sdet_conftest_under_test", path)
+    path = Path(__file__).resolve().parents[3] / "tests" / "test_code" / "conftest.py"
+    spec = importlib.util.spec_from_file_location("test_code_conftest_under_test", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -68,7 +69,7 @@ def test_hook_is_module_level():
     """The hook function must be importable as a top-level attribute."""
     mod = _load_sdet_conftest()
     assert callable(getattr(mod, "pytest_exception_interact", None)), (
-        "tests/sdet/conftest.py must define a module-level "
+        "tests/test_code/conftest.py must define a module-level "
         "pytest_exception_interact function"
     )
 

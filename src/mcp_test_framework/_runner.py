@@ -103,8 +103,8 @@ def _build_pytest_args(
         ``pytest tests/`` collection.
       - ``sdet=True`` (operator-facing flag is ``--test-code``) SWAPS the
         operator-surface scope from ``tests/contract`` to ``tests/test_code``
-        (not additive). Dual-discovery (D-07): the legacy ``tests/sdet/``  # noqa: sdet-rename-shim
-        path is retained as a fallback for v1.4 only (removed in v1.5); if
+        (not additive). Dual-discovery: the legacy ``tests/sdet/`` path is  # noqa: sdet-rename-shim
+        retained as a fallback for v1.4 only (removed in v1.5); if
         it exists AND contains ``test_*.py`` files, both paths are passed
         to pytest. The session-once ``DeprecationWarning`` is fired from
         ``tests/test_code/conftest.py`` when items collect from the legacy
@@ -116,7 +116,7 @@ def _build_pytest_args(
     if sdet:
         # --test-code SWAPS the operator-surface scope (NOT additive).
         # Dual-discovery: tests/test_code/ is the v1.4 primary path; the
-        # legacy fallback path is kept (D-07) for one milestone.  # noqa: sdet-rename-shim
+        # legacy fallback path is kept for one milestone.  # noqa: sdet-rename-shim
         # The session-once DeprecationWarning fires from
         # tests/test_code/conftest.py when items collect from the legacy path.
         args: list[str] = ["tests/test_code"]
@@ -505,9 +505,9 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
             # test-code-scope fall-through: testcases under tests/test_code/
             # are hand-authored (no parametrize bracket). The legacy
             # tests/sdet/ path is also discovered during the v1.4 dual-  # noqa: sdet-rename-shim
-            # discovery window per D-07; classnames from both prefixes
-            # share the same synthetic bucket shape. Group by the
-            # classname's trailing module name
+            # discovery window; classnames from both prefixes share the
+            # same synthetic bucket shape. Group by the classname's
+            # trailing module name
             # with `test_` stripped; use the test function name (also
             # `test_` stripped) as the row label. Synthetic key shape
             # `<group>::<row_label>` keeps the parser->renderer dataclass
@@ -931,7 +931,7 @@ def _collect_test_code_scenarios(
     ctx: "RenderContext",
 ) -> tuple[list[str], dict[str, str]]:
     """Enumerate scenario module stems under ``tests/test_code/``
-    (and the legacy ``tests/sdet/`` path as a v1.4 fallback per D-07).  # noqa: sdet-rename-shim
+    (and the legacy ``tests/sdet/`` path as a v1.4 fallback).  # noqa: sdet-rename-shim
 
     The discovery side ships scenario stems; preflight-skip detection (for
     scenarios skipped by env-reachability probes) is a future extension.

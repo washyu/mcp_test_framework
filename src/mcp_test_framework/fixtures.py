@@ -114,7 +114,7 @@ def config() -> Config:
 #
 # Kept in sync with the renderer's scope discrimination (tests/contract
 # vs tests/test_code, with the legacy tests/sdet/ path retained as a v1.4  # noqa: sdet-rename-shim
-# dual-discovery fallback per D-07) -- single source of truth for live scopes.
+# dual-discovery fallback) -- single source of truth for live scopes.
 _LIVE_PREFIXES: tuple[str, ...] = (
     "tests/contract/",
     "tests/test_code/",
@@ -126,10 +126,10 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
     """Return True iff any collected item is under a live-MCP scope.
 
     Live-MCP scopes (``tests/contract/``, ``tests/test_code/``, and the
-    legacy ``tests/sdet/`` path retained for v1.4 dual-discovery per D-07)  # noqa: sdet-rename-shim
-    call into the real homelab-mcp subprocess and Ollama HTTP API; everything
-    else (``tests/framework/...``) is pure-data and must not be gated by
-    the autouse preflight fixture.
+    legacy ``tests/sdet/`` path retained for v1.4 dual-discovery) call into  # noqa: sdet-rename-shim
+    the real homelab-mcp subprocess and Ollama HTTP API; everything else
+    (``tests/framework/...``) is pure-data and must not be gated by the
+    autouse preflight fixture.
 
     Historical note: an earlier version keyed on ``tests/unit/``, a prefix
     that no longer exists in the current layout. The stale check always
