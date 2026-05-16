@@ -2,24 +2,24 @@
 
 Registered via [project.entry-points.pytest11] in pyproject.toml so pytest
 auto-discovers the framework's fixtures and hooks WITHOUT any
-`pytest_plugins=[...]` declaration in the operator's conftest (PACK-01 / SC2).
+`pytest_plugins=[...]` declaration in the operator's conftest.
 
-Phase 26 lands the skeleton:
+Current skeleton:
   - Hook signatures (`pytest_configure`, `pytest_collection_modifyitems`,
-    `pytest_addoption`) are pre-declared with no-op bodies (D-10).
+    `pytest_addoption`) are pre-declared with no-op bodies.
   - Session-scoped fixtures are re-exported from `mcp_test_framework.fixtures`
-    under their renamed `mcp_*` names (D-11/D-15).
+    under their renamed `mcp_*` names.
   - Six unprefixed deprecation aliases (`config`, `judge`, `target_tool`,
     `rubric_clarity`, `rubric_disambiguation`, `rubric_parameters`) are
     declared here as separate `@pytest.fixture` defs that depend on the
-    prefixed fixture and emit a one-time DeprecationWarning per process
-    (D-17). All six aliases drop in v1.5 (D-18).
+    prefixed fixture and emit a one-time DeprecationWarning per process.
+    All six aliases drop in v1.5.
 
-Phase 27 (LIB-01..LIB-08) fills the hook bodies with register()-driven
-behavior — contract-test injection, marker auto-application, preflight
-gating. This plugin is intentionally framework-primitive: NO SUT-aware
-logic, NO homelab-mcp imports, NO opinions about what tools exist
-(SEED-022).
+A future library-mode milestone will fill the hook bodies with
+register()-driven behavior — contract-test injection, marker
+auto-application, preflight gating. This plugin is intentionally
+framework-primitive: NO SUT-aware logic, NO homelab-mcp imports, NO
+opinions about what tools exist.
 
 Coexistence note: `tests/conftest.py:30-55` also defines `pytest_configure`
 for the framework's own `sys.modules` black-box guard. Pytest invokes both
@@ -34,7 +34,7 @@ import pytest
 
 # Re-export the renamed prefixed fixtures from fixtures.py so the pytest
 # auto-discovery surfaces them without the operator needing
-# `pytest_plugins=[...]` (PACK-01). Internal fixtures (`_preflight`,
+# `pytest_plugins=[...]`. Internal fixtures (`_preflight`,
 # `_isolated_home`) and the function-scoped `tool_config` are re-exported
 # too so the framework's own test suite continues to see them via the
 # entry-point load path. The `noqa: F401` markers signal that these
@@ -55,8 +55,8 @@ from mcp_test_framework.fixtures import (  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
-# Hook skeletons (Phase 26 D-10): bodies are intentionally trivial.
-# Phase 27 fills register()-driven behavior here without re-touching
+# Hook skeletons: bodies are intentionally trivial. A future library-mode
+# milestone fills register()-driven behavior here without re-touching
 # pyproject.toml or the entry-point declaration.
 # ---------------------------------------------------------------------------
 
@@ -68,20 +68,20 @@ def pytest_configure(config: pytest.Config) -> None:
     `pytest_configure`; ordering follows plugin load order. This hook is
     purely additive — adding an inivalue line is idempotent across reruns.
 
-    Phase 27 will extend this body to invoke registration glue (LIB-04).
+    A future milestone will extend this body to invoke registration glue.
     """
     config.addinivalue_line(
         "markers",
-        "mcp_contract: framework-injected MCP contract test (Phase 27 LIB-04).",
+        "mcp_contract: framework-injected MCP contract test.",
     )
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Reserve the --mcp-* CLI option namespace.
 
-    Phase 26: no options registered yet — only the option group is created
-    so Phase 27 can `getgroup("mcp_test_framework")` without duplicate-group
-    warnings on first call.
+    No options registered yet — only the option group is created so a
+    future milestone can `getgroup("mcp_test_framework")` without
+    duplicate-group warnings on first call.
     """
     parser.getgroup("mcp_test_framework", "MCP test framework options")
 
