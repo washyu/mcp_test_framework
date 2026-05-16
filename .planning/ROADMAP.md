@@ -92,7 +92,13 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   3. Operator can set either `cfg.test_code.generated_root` or `cfg.sdet.generated_root` in `config.yaml` and both load the same field (Pydantic `Field(alias=...)` shim); deprecation warning fires on the old key.
   4. Operator-authored tests under `tests/test_code/` are discovered by the framework's discovery scope (`tests/sdet/` continues to work for one milestone with a deprecation note).
   5. Operator-facing docs (README, `docs/TEST-CODE-AUTHORING.md`, CLAUDE.md, inline CLI docstrings) consistently use "test-code" terminology; planning-ID regex sweep returns zero matches in operator-facing surfaces.
-**Plans**: TBD
+**Plans**: 6 plans
+  - [ ] 25-01-PLAN.md — Rename src/mcp_test_framework/sdet/ package to test_code/ with back-compat shim
+  - [ ] 25-02-PLAN.md — Rename gen-sdet-classes CLI command + --sdet flag with hidden deprecation shims
+  - [ ] 25-03-PLAN.md — Rename SdetConfig to TestCodeConfig with AliasChoices + ambiguity validator
+  - [ ] 25-04-PLAN.md — Move tests/sdet/ to tests/test_code/ with dual-discovery + pyproject filterwarnings
+  - [ ] 25-05-PLAN.md — Sweep operator-facing docs/examples for test-code terminology + planning-ID strip
+  - [ ] 25-06-PLAN.md — CI-runnable acceptance gate (tests/framework/test_sdet_rename_leak_gate.py)
 
 ### Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton
 **Goal**: Operator adds `mcp-test-framework` to `pyproject.toml`, runs `uv add` / `pip install`, and their pytest auto-loads the framework's plugin with typed imports — without any business-logic hooks yet. Establishes the packaging substrate that every later phase hangs off.
@@ -185,7 +191,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 22. Scrub requirement-ID leaks from src/ | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 23. Test suite debt cleanup | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
-| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 0/TBD | Not started | - |
+| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 0/6 | Not started | - |
 | 26. Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 0/TBD | Not started | - |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 0/TBD | Not started | - |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
