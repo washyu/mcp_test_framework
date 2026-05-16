@@ -28,10 +28,14 @@ Commands once the project is built out per spec:
 
 ```
 uv sync                                     # install deps
-uv run mcp-test-framework list-tools        # connect via stdio, print tool list
-uv run mcp-test-framework run               # CI entry point — runs pytest, exits with pytest's code
+uv run mcp-contracts list-tools        # connect via stdio, print tool list
+uv run mcp-contracts run               # CI entry point — runs pytest, exits with pytest's code
 uv run pytest tests/path::test_name         # run a single test
 ```
+
+The legacy `uv run mcp-test-framework` invocation continues to work in v1.4
+with a DeprecationWarning carrying the literal copy `mcp-test-framework command is deprecated since v1.4 and will be removed in v1.5 — use mcp-contracts instead.`;
+the alias drops in v1.5 alongside every other v1.4 deprecation shim.
 
 Until the CLI is implemented, `uv run python main.py` is the only runnable entry point.
 
@@ -96,7 +100,7 @@ A pytest-based Python framework for testing MCP (Model Context Protocol) servers
 | **pydantic-settings** | 2.14.0 | Layered config (env → .env → YAML → CLI override) | **Replaces `python-dotenv` + hand-rolled YAML overlay.** Built-in `YamlConfigSettingsSource`, dotenv loader, env-var loader, and explicit `settings_customise_sources` precedence — exactly the precedence the spec describes ("env first, YAML overlays, CLI overrides"). Already a transitive dep of `mcp`. |
 | **jsonschema** | 4.26.0 | Validate MCP tool `inputSchema`/`outputSchema` and tool responses | The reference Python implementation; ship Draft 2020-12 (`Draft202012Validator`) which is what MCP tool schemas use; `iter_errors()` gives you all errors at once (perfect for the spec's `validate_tool_schema → list[ValidationIssue]`); already a transitive dep of `mcp` |
 | **PyYAML** | 6.0.3 | YAML parsing (under `pydantic-settings[yaml]`) | Universal, stable; only included because `YamlConfigSettingsSource` requires it. Use `yaml.safe_load` semantics (`pydantic-settings` does this for you). |
-| **typer** | 0.25.1 | CLI framework (`mcp-test-framework run/list-tools/version`) | Click-based but type-hint-driven — your handlers are plain typed functions; pydantic-friendly; auto-generates `--help`; already a transitive dep of `mcp` (under `[cli]` extra). See "CLI" section. |
+| **typer** | 0.25.1 | CLI framework (`mcp-contracts run/list-tools/version`) | Click-based but type-hint-driven — your handlers are plain typed functions; pydantic-friendly; auto-generates `--help`; already a transitive dep of `mcp` (under `[cli]` extra). See "CLI" section. |
 ### Supporting Libraries (transitive — do not declare directly)
 | Library | Why it's there | Action |
 |---------|---------------|--------|

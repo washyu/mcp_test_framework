@@ -9,8 +9,8 @@ Ollama-backed description-quality judge, and output conformance checks.
 ## Testing an MCP server you didn't write
 
 The framework treats your MCP server as a black box — you don't need to read
-its source. `mcp-test-framework list-tools` shows you the tools the server
-exposes and their parameter shapes; `mcp-test-framework config-init` scaffolds
+its source. `mcp-contracts list-tools` shows you the tools the server
+exposes and their parameter shapes; `mcp-contracts config-init` scaffolds
 a config file populated with the actual tools you have. Designed for operators
 testing servers they didn't author.
 
@@ -33,17 +33,23 @@ uv sync
 ```
 
 `uv sync` installs the runtime + dev dependencies and registers the
-`mcp-test-framework` console script under `.venv/Scripts/` (Windows) or
+`mcp-contracts` console script under `.venv/Scripts/` (Windows) or
 `.venv/bin/` (Unix).
+
+**Legacy script alias:** the `mcp-test-framework` console-script is retained
+in v1.4 as a back-compat shim. Invoking it emits a `DeprecationWarning`
+carrying the literal copy `mcp-test-framework command is deprecated since v1.4 and will be removed in v1.5 — use mcp-contracts instead.`
+and then dispatches to the same Typer app. The shim drops in v1.5
+alongside every other v1.4 deprecation.
 
 ## Commands
 
 ### Run the test suite
 
 ```bash
-uv run mcp-test-framework run --config config.yaml
-uv run mcp-test-framework run --config ./config.yaml
-uv run mcp-test-framework run --config config.yaml -- -x --lf -k schema
+uv run mcp-contracts run --config config.yaml
+uv run mcp-contracts run --config ./config.yaml
+uv run mcp-contracts run --config config.yaml -- -x --lf -k schema
 ```
 
 `run` invokes pytest against `tests/contract/` (the operator-relevant SUT-contract
@@ -101,7 +107,7 @@ Flags that reshape this output:
 inline between the digest and the pytest subprocess:
 
 ```
-$ mcp-test-framework run --config config.yaml --explain
+$ mcp-contracts run --config config.yaml --explain
 ========================================
 MCP Test Framework
 ========================================
@@ -130,8 +136,8 @@ scales to homelab-mcp's full ~70-tool surface.
 ### List MCP server tools
 
 ```bash
-uv run mcp-test-framework list-tools --config config.yaml
-uv run mcp-test-framework list-tools --config config.yaml --json
+uv run mcp-contracts list-tools --config config.yaml
+uv run mcp-contracts list-tools --config config.yaml --json
 ```
 
 Default output is indented blocks (tool name on one line, the full wrapped
@@ -143,7 +149,7 @@ judge -- it is a quick discovery surface for whatever the server exposes.
 ### Show the version
 
 ```bash
-uv run mcp-test-framework version
+uv run mcp-contracts version
 ```
 
 ## Configuration
@@ -162,7 +168,7 @@ Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
 | `MCPTF_CONFIG_FILE` | unset | Optional path to a YAML config overlay (sits below env in precedence). |
 
 Configure the framework via `config.yaml` — generate a starter with
-`mcp-test-framework config-init -o config.yaml` and pass it via
+`mcp-contracts config-init -o config.yaml` and pass it via
 `--config config.yaml`. Env vars are reserved for CI-secret passthrough only
 (see `.env.example`); they no longer override config values. The framework
 does not auto-discover a `config.yaml` in the current directory; the path
@@ -185,7 +191,7 @@ Per-tool config lives under the top-level `tools:` key in your YAML overlay. Und
 
 The `setup` and `depends_on` fields are typed in the model but have no runtime semantics in v1.1; future versions will activate them additively.
 
-Replace the placeholder tool names below with the names from your `mcp-test-framework list-tools` output.
+Replace the placeholder tool names below with the names from your `mcp-contracts list-tools` output.
 
 ### Block A: skip-with-reason
 
@@ -270,7 +276,7 @@ schema -- the framework surfaces that contract bug as a real test failure
 instead of masking it (framework primitives; test-code author owns safety).
 The `_CpuBumpManageVmParams(extra="allow")` workaround pattern is documented
 in [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md). Run scenarios
-with `mcp-test-framework run --test-code`.
+with `mcp-contracts run --test-code`.
 
 <!-- mirrors live runner output — re-run the framework and refresh this block when the operator-facing output format changes; see docs/TEST-CODE-AUTHORING.md for the test-code mode digest contract -->
 <!-- noqa: sdet-rename-shim — the fenced text snapshot below is a verbatim pre-rename capture; the v1.4 close milestone owns the re-capture against the renamed surface. The "(SDET)" header, "Judges: (none — SDET scope)" line, and "mcp_test_framework.sdet.errors.ToolCallError" rows are intentionally preserved here for the duration of the v1.4 deprecation window. -->
@@ -428,7 +434,7 @@ conditional skip recipe for scenarios that require live infrastructure, and
 the `_CpuBumpManageVmParams(extra='allow')` workaround for the inputSchema
 bug shown above.
 
-Default `mcp-test-framework run` collects only `tests/contract/`; the
+Default `mcp-contracts run` collects only `tests/contract/`; the
 `--test-code` flag opts the test-code scope into the run. See
 [`## Commands`](#commands) above for full flag composition.
 
@@ -450,7 +456,7 @@ Run the suite in CI with `--junit-xml=` and ingest the result with a JUnit-aware
 # .github/workflows/test.yml -- GitHub Actions starter.
 # On Jenkins / GitLab CI / CircleCI, translate the `runs-on` / `uses` /
 # `with` keys to the equivalent runner + action concepts. The CLI invocation
-# (`uv run mcp-test-framework run --config config.yaml --junit-xml=results.xml`) is portable.
+# (`uv run mcp-contracts run --config config.yaml --junit-xml=results.xml`) is portable.
 name: tests
 on: [push, pull_request]
 jobs:
@@ -463,7 +469,7 @@ jobs:
           python-version: "3.14"
       - run: uv sync
       # Default addopts in pyproject.toml excludes live_homelab + live_ollama markers.
-      - run: uv run mcp-test-framework run --config config.yaml --junit-xml=results.xml
+      - run: uv run mcp-contracts run --config config.yaml --junit-xml=results.xml
       - name: Publish test report
         if: always()
         uses: dorny/test-reporter@v2
@@ -483,7 +489,7 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
   `list-tools` and `run` paths both unwind the MCP subprocess in the same task
   that started it (see `src/mcp_test_framework/fixtures.py` and
   `src/mcp_test_framework/cli.py`).
-- If `uv run mcp-test-framework` fails with "command not found" after editing
+- If `uv run mcp-contracts` fails with "command not found" after editing
   `pyproject.toml`: re-run `uv sync` to regenerate the script shim under
   `.venv/Scripts/`.
 - If `homelab-mcp` is not on `PATH` and you see `[WinError 2]`: confirm
