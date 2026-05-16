@@ -1,14 +1,13 @@
 """mcp-test-framework console-script deprecation shim.
 
 The console-script `mcp-test-framework` is retained for v1.4 as a back-compat
-entry point (Phase 26 D-06). It emits a single DeprecationWarning on first
-process call and then dispatches to the same Typer `app` the new
-`mcp-contracts` script targets.
+entry point. It emits a single DeprecationWarning on first process call and
+then dispatches to the same Typer `app` the new `mcp-contracts` script
+targets.
 
-Removed in v1.5 (D-18) alongside every other Phase 25 / Phase 26
-deprecation shim.
+Removed in v1.5 alongside every other v1.4 deprecation shim.
 
-Deprecation copy is hardcoded per Phase 25 D-05 (no central constant); the
+Deprecation copy is hardcoded per call site (no central constant); the
 literal string is greppable for the v1.5 cleanup sweep.
 """
 from __future__ import annotations

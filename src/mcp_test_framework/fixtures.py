@@ -87,7 +87,7 @@ def _pytest_exit_operator_tone(
 
 
 @pytest.fixture(scope="session")
-def mcp_config() -> Config:  # Phase 26 D-15: renamed from `config`; unprefixed alias lives in _plugin.py
+def mcp_config() -> Config:  # renamed from `config`; unprefixed alias lives in _plugin.py
     """Load YAML config once per session.
 
     Precedence: init kwarg > ``MCPTF_CONFIG_FILE`` path-pointer > YAML > defaults.
@@ -188,7 +188,7 @@ async def _preflight(request: pytest.FixtureRequest):
         yield
         return
 
-    config: Config = request.getfixturevalue("mcp_config")  # Phase 26 D-15: renamed fixture
+    config: Config = request.getfixturevalue("mcp_config")  # renamed fixture
 
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
@@ -359,7 +359,7 @@ async def _isolated_home():
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path):  # Phase 26 D-15: param `config`→`mcp_config`
+async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path):  # param `config`→`mcp_config`
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
@@ -459,7 +459,7 @@ async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path):  # P
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_judge(mcp_config: Config, _preflight) -> Judge:  # Phase 26 D-15: renamed from `judge`; param `config`→`mcp_config`
+async def mcp_judge(mcp_config: Config, _preflight) -> Judge:  # renamed from `judge`; param `config`→`mcp_config`
     """Long-lived ``OllamaJudge`` instance, exposed to tests as ``Judge`` Protocol.
 
     Internal instantiation of ``OllamaJudge`` stays in this fixture body so
@@ -483,7 +483,7 @@ async def mcp_judge(mcp_config: Config, _preflight) -> Judge:  # Phase 26 D-15: 
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_target_tool(  # Phase 26 D-15: renamed from `target_tool`
+async def mcp_target_tool(  # renamed from `target_tool`
     request: pytest.FixtureRequest,
     mcp_client: McpTestClient,
     _preflight,
@@ -508,7 +508,7 @@ async def mcp_target_tool(  # Phase 26 D-15: renamed from `target_tool`
 
 
 @pytest.fixture
-def tool_config(mcp_config: Config, mcp_target_tool) -> ToolConfig:  # Phase 26 D-15: params renamed (fixture name unchanged — not in SC5 collision list)
+def tool_config(mcp_config: Config, mcp_target_tool) -> ToolConfig:  # params renamed (fixture name unchanged — not in SC5 collision list)
     """Resolve ``config.tools.get(target_tool.name, ToolConfig())`` per test.
 
     Default (function) scope is intentional: the fixture must reflect the
@@ -530,15 +530,15 @@ def tool_config(mcp_config: Config, mcp_target_tool) -> ToolConfig:  # Phase 26 
 
 
 @pytest.fixture(scope="session")
-def mcp_rubric_clarity() -> ClarityRubric:  # Phase 26 D-16: renamed from `rubric_clarity`
+def mcp_rubric_clarity() -> ClarityRubric:  # renamed from `rubric_clarity`
     return ClarityRubric()
 
 
 @pytest.fixture(scope="session")
-def mcp_rubric_disambiguation() -> DisambiguationRubric:  # Phase 26 D-16: renamed from `rubric_disambiguation`
+def mcp_rubric_disambiguation() -> DisambiguationRubric:  # renamed from `rubric_disambiguation`
     return DisambiguationRubric()
 
 
 @pytest.fixture(scope="session")
-def mcp_rubric_parameters() -> ParametersRubric:  # Phase 26 D-16: renamed from `rubric_parameters`
+def mcp_rubric_parameters() -> ParametersRubric:  # renamed from `rubric_parameters`
     return ParametersRubric()

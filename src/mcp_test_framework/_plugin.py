@@ -90,16 +90,16 @@ def pytest_collection_modifyitems(
     config: pytest.Config,
     items: list[pytest.Item],
 ) -> None:
-    """Hook slot reserved for Phase 27's contract-test injection.
+    """Hook slot reserved for a future library-mode milestone's contract-test injection.
 
-    Phase 26 body is intentionally empty — locking the hook surface so
-    Phase 27 only adds behavior, never declarations.
+    Body is intentionally empty — locking the hook surface so a future
+    milestone only adds behavior, never declarations.
     """
-    # No-op in Phase 26 (D-10).
+    # No-op.
 
 
 # ---------------------------------------------------------------------------
-# Deprecation aliases (D-17 / Phase 25 D-05 pattern):
+# Deprecation aliases:
 #
 # Each unprefixed alias is a separate `@pytest.fixture` def that:
 #   1. Receives the prefixed fixture as a parameter (DI; no manual lookup).
@@ -108,14 +108,14 @@ def pytest_collection_modifyitems(
 #      a session-wide use prints exactly one warning per alias.
 #   3. Returns the prefixed value unchanged (identity passthrough).
 #
-# Six aliases drop coherently in v1.5 (D-18) alongside every other Phase 25
-# and Phase 26 deprecation shim. Hardcoded deprecation copy per call site
-# (no central constant) — Phase 25 D-05.
+# Six aliases drop coherently in v1.5 alongside every other v1.4
+# deprecation shim. Hardcoded deprecation copy per call site (no central
+# constant).
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session")
 def config(mcp_config):
-    """Deprecated alias for `mcp_config` — removed in v1.5 (Phase 26 D-17)."""
+    """Deprecated alias for `mcp_config` — removed in v1.5."""
     warnings.warn(
         "the `config` fixture is deprecated since v1.4 and will be removed in v1.5 — "
         "use `mcp_config` instead.",
@@ -127,7 +127,7 @@ def config(mcp_config):
 
 @pytest.fixture(scope="session")
 def judge(mcp_judge):
-    """Deprecated alias for `mcp_judge` — removed in v1.5 (Phase 26 D-17)."""
+    """Deprecated alias for `mcp_judge` — removed in v1.5."""
     warnings.warn(
         "the `judge` fixture is deprecated since v1.4 and will be removed in v1.5 — "
         "use `mcp_judge` instead.",
@@ -139,7 +139,7 @@ def judge(mcp_judge):
 
 @pytest.fixture(scope="session")
 def target_tool(mcp_target_tool):
-    """Deprecated alias for `mcp_target_tool` — removed in v1.5 (Phase 26 D-17)."""
+    """Deprecated alias for `mcp_target_tool` — removed in v1.5."""
     warnings.warn(
         "the `target_tool` fixture is deprecated since v1.4 and will be removed in v1.5 — "
         "use `mcp_target_tool` instead.",
@@ -151,7 +151,7 @@ def target_tool(mcp_target_tool):
 
 @pytest.fixture(scope="session")
 def rubric_clarity(mcp_rubric_clarity):
-    """Deprecated alias for `mcp_rubric_clarity` — removed in v1.5 (Phase 26 D-17)."""
+    """Deprecated alias for `mcp_rubric_clarity` — removed in v1.5."""
     warnings.warn(
         "the `rubric_clarity` fixture is deprecated since v1.4 and will be removed in v1.5 — "
         "use `mcp_rubric_clarity` instead.",
@@ -163,7 +163,7 @@ def rubric_clarity(mcp_rubric_clarity):
 
 @pytest.fixture(scope="session")
 def rubric_disambiguation(mcp_rubric_disambiguation):
-    """Deprecated alias for `mcp_rubric_disambiguation` — removed in v1.5 (Phase 26 D-17)."""
+    """Deprecated alias for `mcp_rubric_disambiguation` — removed in v1.5."""
     warnings.warn(
         "the `rubric_disambiguation` fixture is deprecated since v1.4 and will be removed in v1.5 — "
         "use `mcp_rubric_disambiguation` instead.",
@@ -175,7 +175,7 @@ def rubric_disambiguation(mcp_rubric_disambiguation):
 
 @pytest.fixture(scope="session")
 def rubric_parameters(mcp_rubric_parameters):
-    """Deprecated alias for `mcp_rubric_parameters` — removed in v1.5 (Phase 26 D-17)."""
+    """Deprecated alias for `mcp_rubric_parameters` — removed in v1.5."""
     warnings.warn(
         "the `rubric_parameters` fixture is deprecated since v1.4 and will be removed in v1.5 — "
         "use `mcp_rubric_parameters` instead.",
