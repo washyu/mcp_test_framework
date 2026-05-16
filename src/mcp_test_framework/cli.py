@@ -24,13 +24,14 @@ Behavior contracts encoded in this module:
 - `list-tools` uses `asyncio.Runner` + AsyncExitStack-owned
   `McpTestClient` so `__aexit__` runs in the same task that did
   `__aenter__` -- this avoids the cancel-scope teardown bug.
-- `version` reads `importlib.metadata.version("mvp-test-framework")` and
+- `version` reads `importlib.metadata.version("mcp-contracts")` and
   falls back to the package `__version__` constant on PackageNotFoundError.
 
-Distribution-name vs package-name discrepancy:
-    pyproject.toml [project] name = "mvp-test-framework"   <-- metadata.version() arg
-    importable package          = "mcp_test_framework"
-    console-script name         = "mcp-test-framework"
+Distribution-name vs package-name discrepancy (Phase 26 D-01/D-04/D-06):
+    pyproject.toml [project] name = "mcp-contracts"        <-- metadata.version() arg
+    importable package            = "mcp_test_framework"   <-- D-04: unchanged
+    console-script name (primary) = "mcp-contracts"        <-- D-05
+    console-script name (legacy)  = "mcp-test-framework"   <-- D-06: v1.4 deprecation shim, removed v1.5
 """
 from __future__ import annotations
 
@@ -971,7 +972,7 @@ def config_init(
 def version() -> None:
     """Print the package version."""
     try:
-        v = metadata.version("mvp-test-framework")  # distribution name, NOT importable package
+        v = metadata.version("mcp-contracts")  # Phase 26 D-01: distribution name (NOT importable package)
     except metadata.PackageNotFoundError:
         from mcp_test_framework import __version__ as v
     typer.echo(v)
