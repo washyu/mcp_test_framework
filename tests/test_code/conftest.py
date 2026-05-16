@@ -16,7 +16,7 @@ parent tests/conftest.py (which registers mcp_test_framework.fixtures).
 """
 from __future__ import annotations
 
-from mcp_test_framework.sdet import ToolCallError
+from mcp_test_framework.test_code import ToolCallError
 
 
 def pytest_exception_interact(node, call, report):

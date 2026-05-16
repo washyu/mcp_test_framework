@@ -39,7 +39,7 @@ import pytest
 import pytest_asyncio
 
 from mcp_test_framework.config import Config
-from mcp_test_framework.sdet import ToolCallError, mcp_session, tool  # noqa: F401
+from mcp_test_framework.test_code import ToolCallError, mcp_session, tool  # noqa: F401
 
 # Phase 21.1 RELOC-03: classes are loaded on-demand from cfg.sdet.generated_root
 # via the same loader the framework's mcp_session fixture uses. The README's
@@ -50,7 +50,7 @@ from mcp_test_framework.sdet import ToolCallError, mcp_session, tool  # noqa: F4
 import importlib.util as _importlib_util
 import sys as _sys
 
-from mcp_test_framework.sdet._slugs import server_slug as _server_slug
+from mcp_test_framework.test_code._slugs import server_slug as _server_slug
 
 # Phase 21.1 RELOC-03: live-only -- requires cfg.sdet.generated_root populated
 # by a prior `gen-sdet-classes` run AND reachable Proxmox + homelab-mcp.
