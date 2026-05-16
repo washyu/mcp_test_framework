@@ -87,7 +87,7 @@ def _pytest_exit_operator_tone(
 
 
 @pytest.fixture(scope="session")
-def config() -> Config:
+def mcp_config() -> Config:  # Phase 26 D-15: renamed from `config`; unprefixed alias lives in _plugin.py
     """Load YAML config once per session.
 
     Precedence: init kwarg > ``MCPTF_CONFIG_FILE`` path-pointer > YAML > defaults.
@@ -188,7 +188,7 @@ async def _preflight(request: pytest.FixtureRequest):
         yield
         return
 
-    config: Config = request.getfixturevalue("config")
+    config: Config = request.getfixturevalue("mcp_config")  # Phase 26 D-15: renamed fixture
 
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
@@ -359,7 +359,7 @@ async def _isolated_home():
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_client(config: Config, _preflight, _isolated_home: Path):
+async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path):  # Phase 26 D-15: param `config`→`mcp_config`
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
@@ -391,8 +391,8 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
       owner task.
     """
     params = StdioServerParameters(
-        command=config.mcp_server.command,
-        args=config.mcp_server.args,
+        command=mcp_config.mcp_server.command,
+        args=mcp_config.mcp_server.args,
         # Allowlisted env + HOME redirect to the shared isolation tempdir.
         env=_build_isolated_env(_isolated_home),
     )
@@ -408,7 +408,7 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
                 ClientSession(read, write) as session,
             ):
                 try:
-                    with anyio.fail_after(config.mcp_server.timeout_seconds):
+                    with anyio.fail_after(mcp_config.mcp_server.timeout_seconds):
                         init_result = await session.initialize()
                     # Capture serverInfo so the test-code ``mcp_session`` fixture
                     # can derive the generated-module slug. The mcp SDK
@@ -416,7 +416,7 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
                     # ``_server_capabilities`` only.
                     client = McpTestClient._wrap(
                         session,
-                        config.mcp_server.timeout_seconds,
+                        mcp_config.mcp_server.timeout_seconds,
                         server_info=init_result.serverInfo,
                     )
                 except BaseException as exc:
@@ -434,7 +434,7 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
     try:
         client = await asyncio.wait_for(
             asyncio.shield(ready),
-            timeout=config.mcp_server.timeout_seconds + 5,
+            timeout=mcp_config.mcp_server.timeout_seconds + 5,
         )
     except BaseException:
         owner.cancel()
@@ -459,7 +459,7 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def judge(config: Config, _preflight) -> Judge:
+async def mcp_judge(mcp_config: Config, _preflight) -> Judge:  # Phase 26 D-15: renamed from `judge`; param `config`→`mcp_config`
     """Long-lived ``OllamaJudge`` instance, exposed to tests as ``Judge`` Protocol.
 
     Internal instantiation of ``OllamaJudge`` stays in this fixture body so
@@ -469,9 +469,9 @@ async def judge(config: Config, _preflight) -> Judge:
     async with AsyncExitStack() as stack:
         instance = await stack.enter_async_context(
             OllamaJudge(
-                config.ollama.base_url,
-                config.ollama.model,
-                config.ollama.timeout_seconds,
+                mcp_config.ollama.base_url,
+                mcp_config.ollama.model,
+                mcp_config.ollama.timeout_seconds,
             )
         )
         yield instance
@@ -483,7 +483,7 @@ async def judge(config: Config, _preflight) -> Judge:
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def target_tool(
+async def mcp_target_tool(  # Phase 26 D-15: renamed from `target_tool`
     request: pytest.FixtureRequest,
     mcp_client: McpTestClient,
     _preflight,
@@ -508,7 +508,7 @@ async def target_tool(
 
 
 @pytest.fixture
-def tool_config(config: Config, target_tool) -> ToolConfig:
+def tool_config(mcp_config: Config, mcp_target_tool) -> ToolConfig:  # Phase 26 D-15: params renamed (fixture name unchanged — not in SC5 collision list)
     """Resolve ``config.tools.get(target_tool.name, ToolConfig())`` per test.
 
     Default (function) scope is intentional: the fixture must reflect the
@@ -521,7 +521,7 @@ def tool_config(config: Config, target_tool) -> ToolConfig:
     Sync fixture (no async resources) -- safe under the cancel-scope
     invariant; no anyio scope is opened across yield.
     """
-    return config.tools.get(target_tool.name, ToolConfig())
+    return mcp_config.tools.get(mcp_target_tool.name, ToolConfig())
 
 
 # ---------------------------------------------------------------------------
@@ -530,15 +530,15 @@ def tool_config(config: Config, target_tool) -> ToolConfig:
 
 
 @pytest.fixture(scope="session")
-def rubric_clarity() -> ClarityRubric:
+def mcp_rubric_clarity() -> ClarityRubric:  # Phase 26 D-16: renamed from `rubric_clarity`
     return ClarityRubric()
 
 
 @pytest.fixture(scope="session")
-def rubric_disambiguation() -> DisambiguationRubric:
+def mcp_rubric_disambiguation() -> DisambiguationRubric:  # Phase 26 D-16: renamed from `rubric_disambiguation`
     return DisambiguationRubric()
 
 
 @pytest.fixture(scope="session")
-def rubric_parameters() -> ParametersRubric:
+def mcp_rubric_parameters() -> ParametersRubric:  # Phase 26 D-16: renamed from `rubric_parameters`
     return ParametersRubric()
