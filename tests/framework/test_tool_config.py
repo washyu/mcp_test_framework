@@ -30,12 +30,12 @@ import yaml
 from pydantic import ValidationError
 
 from mcp_test_framework.config import Config
-from mcp_test_framework.models import SdetConfig, ToolConfig
+from mcp_test_framework.models import TestCodeConfig, ToolConfig
 
 # Phase 23 D-01 (Cluster A): Config.sdet is REQUIRED post Phase 21.1 RELOC-01.
 # Module-level stub (Pattern S1) covers the bare Config() sites in this file.
 # Mirrors tests/framework/unit/test_homelab_config.py:51-58 (the locked source).
-_SDET_STUB = SdetConfig(generated_root="tests/sdet/_generated")
+_TEST_CODE_STUB = TestCodeConfig(generated_root="tests/sdet/_generated")
 
 # ===========================================================================
 # Schema tests -- sync, load-time, no live services
@@ -56,11 +56,11 @@ def test_default_toolconfig_values() -> None:
 def test_default_config_version_and_tools() -> None:
     """D-01 / D-02 / TOOLCFG-06.
 
-    Phase 23 (Cluster A): Config.sdet is REQUIRED -> supply _SDET_STUB. The
+    Phase 23 (Cluster A): Config.sdet is REQUIRED -> supply _TEST_CODE_STUB. The
     default schema version is 2 since the v1->v2 migration; assertion
     updated to match current schema.
     """
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
     assert cfg.version == 2
     assert isinstance(cfg.tools, dict)
 
@@ -129,10 +129,10 @@ def test_config_rejects_unsupported_version(bad_version) -> None:
     Phase 23 (Cluster A): parametrize previously included `2` from the v1
     era; updated to `1` (now-stale schema) to keep the rejection contract
     covered with a non-current version. Config.sdet is REQUIRED so supply
-    _SDET_STUB.
+    _TEST_CODE_STUB.
     """
     with pytest.raises(ValueError) as exc_info:
-        Config(sdet=_SDET_STUB, version=bad_version)
+        Config(test_code=_TEST_CODE_STUB, version=bad_version)
     msg = str(exc_info.value)
     assert "version" in msg
     assert str(bad_version) in msg
@@ -227,9 +227,9 @@ class TestV111SkipFilter:
         from mcp_test_framework import _runner as _r
         from tests.conftest import _resolve_tool_names
 
-        from mcp_test_framework.models import SdetConfig
+        from mcp_test_framework.models import TestCodeConfig
         config = Config(
-            sdet=SdetConfig(generated_root="tests/sdet/_generated"),
+            test_code=TestCodeConfig(generated_root="tests/sdet/_generated"),
             tools={
                 "a": ToolConfig(),
                 "b": ToolConfig(skip=True, skip_reason="testing the filter"),

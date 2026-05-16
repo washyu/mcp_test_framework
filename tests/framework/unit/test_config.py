@@ -20,15 +20,15 @@ import pydantic_core
 import pytest
 
 from mcp_test_framework.config import Config
-from mcp_test_framework.models import OllamaConfig, SdetConfig
+from mcp_test_framework.models import OllamaConfig, TestCodeConfig
 
 # Phase 21.1 RELOC-01 (Rule 3 deviation, plan 21.1-01): Config.sdet became a
 # REQUIRED field with no default. Every Config(...) call in this file must
-# now provide it -- either via an init kwarg (`sdet=_SDET_STUB`) or via the
+# now provide it -- either via an init kwarg (`test_code=_TEST_CODE_STUB`) or via the
 # `sdet:` block in the YAML body. The stub points at a per-test tmp path-
 # adjacent literal; tests do not exercise the value, only the load.
-_SDET_STUB = SdetConfig(generated_root=Path("tests/sdet/_generated"))
-_SDET_YAML_BLOCK = 'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+_TEST_CODE_STUB = TestCodeConfig(generated_root=Path("tests/sdet/_generated"))
+_TEST_CODE_YAML_BLOCK = 'test_code:\n  generated_root: "tests/sdet/_generated"\n'
 
 # Every spec env var that must be cleared at the start of each test to avoid
 # leakage from the developer's shell environment.
@@ -69,7 +69,7 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """No env, no YAML -> every field is its declared default."""
     _clear_env(monkeypatch)
 
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     assert cfg.ollama.base_url == "http://127.0.0.1:11434"
     assert cfg.ollama.model == "qwen3.6:latest"
@@ -92,7 +92,7 @@ def test_env_var_has_no_effect_on_defaults(monkeypatch: pytest.MonkeyPatch) -> N
     _clear_env(monkeypatch)
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://env:1")
 
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     assert cfg.ollama.base_url == "http://127.0.0.1:11434"
 
@@ -113,7 +113,7 @@ def test_yaml_overrides_default(
         "ollama:\n  base_url: http://yaml:1\n  model: qwen3.6:latest\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
     )
 
     cfg = Config(yaml_file=str(yaml_path))
@@ -133,7 +133,7 @@ def test_dotenv_in_cwd_has_no_effect(
         'MCP_SERVER_COMMAND=uvx\nMCP_SERVER_ARGS=["homelab-mcp"]\n', encoding="utf-8"
     )
 
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     # Defaults win; .env contents are ignored.
     assert cfg.mcp_server.command == "homelab-mcp"
@@ -154,7 +154,7 @@ def test_yaml_beats_env_var(
         "ollama:\n  base_url: http://yaml:1\n  model: qwen3.6:latest\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
     )
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://env:1")
 
@@ -174,7 +174,7 @@ def test_init_overrides_yaml(
         "ollama:\n  base_url: http://yaml:1\n  model: qwen3.6:latest\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
     )
 
     cfg = Config(yaml_file=str(yaml_path), ollama=OllamaConfig(base_url="http://init:1"))
@@ -196,7 +196,7 @@ def test_safe_05_env_var_does_not_override_yaml(
         "mcp_server:\n"
         "  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
         encoding="utf-8",
     )
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://from-env:11434")
@@ -221,7 +221,7 @@ def test_safe_05_dotenv_file_in_cwd_has_no_effect(
         "ollama:\n  base_url: http://from-yaml:11434\n  model: qwen3.6:latest\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
@@ -239,7 +239,7 @@ def test_safe_06_version_1_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         "ollama:\n  base_url: http://x:11434\n  model: m\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
         encoding="utf-8",
     )
     from pydantic import ValidationError
@@ -259,7 +259,7 @@ def test_safe_06_version_2_accepted(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         "ollama:\n  base_url: http://x:11434\n  model: m\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
         encoding="utf-8",
     )
     cfg = Config(yaml_file=str(yaml_path))
@@ -269,7 +269,7 @@ def test_safe_06_version_2_accepted(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 def test_top_level_config_is_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mutating a top-level Config field raises ValidationError."""
     _clear_env(monkeypatch)
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     with pytest.raises((pydantic_core.ValidationError, ValueError, TypeError)):
         cfg.judge_timeout_seconds = 999  # type: ignore[misc]
@@ -278,7 +278,7 @@ def test_top_level_config_is_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_sub_model_is_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mutating a sub-model field raises -- verifies Assumption A5 in 01-RESEARCH.md."""
     _clear_env(monkeypatch)
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     with pytest.raises((pydantic_core.ValidationError, ValueError, TypeError)):
         cfg.ollama.model = "X"  # type: ignore[misc]
@@ -288,7 +288,7 @@ def test_no_yaml_path_uses_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Config() with no kwargs returns model defaults."""
     _clear_env(monkeypatch)
 
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     assert cfg.ollama.base_url == "http://127.0.0.1:11434"
 
@@ -298,7 +298,7 @@ def test_invalid_yaml_path_skips_yaml_overlay(monkeypatch: pytest.MonkeyPatch) -
     a non-existent file (Path.is_file guard inside settings_customise_sources)."""
     _clear_env(monkeypatch)
 
-    cfg = Config(yaml_file="/does/not/exist.yaml", sdet=_SDET_STUB)
+    cfg = Config(yaml_file="/does/not/exist.yaml", test_code=_TEST_CODE_STUB)
 
     assert cfg.ollama.base_url == "http://127.0.0.1:11434"
 
@@ -312,7 +312,7 @@ def test_mcp_server_timeout_seconds_env_has_no_effect(
     _clear_env(monkeypatch)
     monkeypatch.setenv("MCP_SERVER_TIMEOUT_SECONDS", "5")
 
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
 
     # Model default wins; env var is ignored.
     assert cfg.mcp_server.timeout_seconds == 30
@@ -360,7 +360,7 @@ def test_no_cwd_config_yaml_auto_discovery_and_no_fail_loud(
     # fail-loud half lands first, this raises and the assertion error
     # explicitly names which half flipped.
     try:
-        cfg = Config(sdet=_SDET_STUB)
+        cfg = Config(test_code=_TEST_CODE_STUB)
     except Exception as exc:  # noqa: BLE001 -- intentional broad catch
         raise AssertionError(
             "SEED-006 half (2) has flipped: Config() now raises when no "
@@ -402,7 +402,7 @@ def test_phase_13_d_11_target_block_in_yaml_rejected(tmp_path: Path) -> None:
         "ollama:\n  base_url: http://x:11434\n  model: m\n"
         "mcp_server:\n  command: /bin/true\n"
         "tools: {}\n"
-        + _SDET_YAML_BLOCK,
+        + _TEST_CODE_YAML_BLOCK,
         encoding="utf-8",
     )
     from pydantic import ValidationError

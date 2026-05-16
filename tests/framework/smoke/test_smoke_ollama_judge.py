@@ -32,7 +32,7 @@ import pytest
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
-from mcp_test_framework.models import SdetConfig
+from mcp_test_framework.models import TestCodeConfig
 from mcp_test_framework.ollama_judge import JudgeResult, OllamaJudge
 
 _log = logging.getLogger("mcp_test_framework.ollama_judge")
@@ -78,9 +78,9 @@ async def test_cold_start_returns_valid_judge_result() -> None:
     """SC#2: cold-start judge call against live Ollama returns a valid JudgeResult.
 
     Phase 23 D-01 (Cluster A) Pattern S2: Config.sdet is REQUIRED post Phase
-    21.1 RELOC-01; supply an inline SdetConfig stub at this single site.
+    21.1 RELOC-01; supply an inline TestCodeConfig stub at this single site.
     """
-    cfg = Config(sdet=SdetConfig(generated_root="tests/sdet/_generated"))
+    cfg = Config(test_code=TestCodeConfig(generated_root="tests/sdet/_generated"))
     async with OllamaJudge(
         cfg.ollama.base_url,
         cfg.ollama.model,

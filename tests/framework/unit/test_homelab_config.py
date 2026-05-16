@@ -51,17 +51,17 @@ def test_homelab_proxmox_frozen():
 import textwrap
 
 from mcp_test_framework.config import Config
-from mcp_test_framework.models import SdetConfig
+from mcp_test_framework.models import TestCodeConfig
 
 # Phase 21.1 RELOC-01: Config.sdet is REQUIRED. Tests in this file that
 # construct Config(...) must supply an sdet stub (or set it in YAML).
-_SDET_STUB = SdetConfig(generated_root="tests/sdet/_generated")
+_TEST_CODE_STUB = TestCodeConfig(generated_root="tests/sdet/_generated")
 
 
 def test_config_default_homelab():
     # Pure-default Config (no YAML, no env). Confirms the new field
     # default_factory wires through the root model.
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
     assert cfg.homelab.proxmox.dogfood_vmid_range == (9990, 9999)
 
 

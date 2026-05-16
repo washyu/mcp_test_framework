@@ -209,6 +209,14 @@ class TestCodeConfig(BaseModel):
     path or change directory before invoking the CLI.
     """
 
+    # ``__test__ = False`` tells pytest NOT to collect this Pydantic config
+    # model as a test class. Without it, pytest's default discovery sees the
+    # leading ``Test`` in the class name and emits
+    # ``PytestCollectionWarning: cannot collect test class 'TestCodeConfig'
+    # because it has a __init__ constructor`` for every module that imports
+    # it. The flag is a no-op for non-pytest callers.
+    __test__ = False
+
     model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
 
     generated_root: Path = Field(

@@ -62,10 +62,10 @@ async def mcp_session(mcp_client: McpTestClient):
     server_name = mcp_client.server_info.name
     slug = server_slug(server_name)
 
-    # Step 3: load the generated package from cfg.sdet.generated_root/<slug>/.
+    # Step 3: load the generated package from cfg.test_code.generated_root/<slug>/.
     # Config-driven path, file-location loader, no sys.path mutation.
     cfg = Config()
-    generated_root = cfg.sdet.generated_root
+    generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():
         generated_root = Path.cwd() / generated_root
     slug_dir = generated_root / slug
@@ -79,7 +79,7 @@ async def mcp_session(mcp_client: McpTestClient):
             ),
             detail=[
                 f"  The fixture looked for `{init_py}` and it does not exist.",
-                f"  Configured `sdet.generated_root`: {cfg.sdet.generated_root}",
+                f"  Configured `sdet.generated_root`: {cfg.test_code.generated_root}",
                 "  This usually means `gen-sdet-classes` has not been run "
                 "for this server, or the server's name changed.",
             ],

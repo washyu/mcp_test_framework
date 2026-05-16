@@ -1,9 +1,12 @@
-"""Phase 21.1 RELOC-01: top-level Config wires `sdet: SdetConfig` as required.
+"""Phase 21.1 RELOC-01: top-level Config wires `test_code: TestCodeConfig` as required.
+
+(Originally named `sdet: SdetConfig`; Phase 25 RENAME-05 renamed the field and
+class as part of the v1.4 sdet -> test_code public-API freeze.)
 
 Pins the integration contract:
-  - A valid YAML with sdet.generated_root loads cleanly and exposes Path.
-  - A YAML missing the sdet block raises ValidationError with
-    type=missing at loc=("sdet",).
+  - A valid YAML with test_code.generated_root loads cleanly and exposes Path.
+  - A YAML missing the test_code block raises ValidationError with
+    type=missing at loc=("test_code",).
   - That ValidationError routes through the existing
     _emit_operator_error_for_validation `missing` branch and produces the
     SAFE-03 operator-tone output (exit code 2).
@@ -27,33 +30,35 @@ def _write_yaml(tmp_path: Path, payload: dict) -> Path:
     return p
 
 
-def test_valid_config_loads_sdet_field(tmp_path: Path) -> None:
+def test_valid_config_loads_test_code_field(tmp_path: Path) -> None:
     yaml_path = _write_yaml(tmp_path, {
         "version": 2,
         "mcp_server": {"command": "uvx", "args": ["x"], "timeout_seconds": 30},
-        "sdet": {"generated_root": str(tmp_path / "_generated")},
+        "test_code": {"generated_root": str(tmp_path / "_generated")},
     })
     cfg = Config(yaml_file=str(yaml_path))
-    assert isinstance(cfg.sdet.generated_root, Path)
-    assert cfg.sdet.generated_root == Path(str(tmp_path / "_generated"))
+    assert isinstance(cfg.test_code.generated_root, Path)
+    assert cfg.test_code.generated_root == Path(str(tmp_path / "_generated"))
 
 
-def test_missing_sdet_block_raises_validation_error(tmp_path: Path) -> None:
+def test_missing_test_code_block_raises_validation_error(tmp_path: Path) -> None:
     yaml_path = _write_yaml(tmp_path, {
         "version": 2,
         "mcp_server": {"command": "uvx", "args": ["x"], "timeout_seconds": 30},
-        # no sdet key at all
+        # no test_code key at all
     })
     with pytest.raises(ValidationError) as exc_info:
         Config(yaml_file=str(yaml_path))
     errs = exc_info.value.errors()
+    # Phase 25 RENAME-05: field name is `test_code`; missing-field loc reports
+    # the canonical field name (the legacy `sdet` is a validation_alias only).
     assert any(
-        e["type"] == "missing" and e["loc"] == ("sdet",)
+        e["type"] == "missing" and e["loc"] == ("test_code",)
         for e in errs
-    ), f"expected `missing` error at loc=('sdet',); got {errs!r}"
+    ), f"expected `missing` error at loc=('test_code',); got {errs!r}"
 
 
-def test_missing_sdet_routes_through_safe03_mapper(
+def test_missing_test_code_routes_through_safe03_mapper(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """RELOC-01: existing _emit_operator_error_for_validation `missing`
@@ -79,14 +84,14 @@ def test_missing_sdet_routes_through_safe03_mapper(
     captured = capsys.readouterr()
     out = captured.out + captured.err
     assert "config file is missing a required field" in out
-    assert "sdet" in out
+    assert "test_code" in out
 
 
 def test_version_2_still_accepted(tmp_path: Path) -> None:
     yaml_path = _write_yaml(tmp_path, {
         "version": 2,
         "mcp_server": {"command": "uvx", "args": ["x"], "timeout_seconds": 30},
-        "sdet": {"generated_root": str(tmp_path / "_generated")},
+        "test_code": {"generated_root": str(tmp_path / "_generated")},
     })
     cfg = Config(yaml_file=str(yaml_path))
     assert cfg.version == 2

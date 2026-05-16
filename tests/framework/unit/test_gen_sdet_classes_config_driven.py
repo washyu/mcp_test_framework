@@ -65,8 +65,12 @@ def test_source_no_longer_hardcodes_path() -> None:
 
 
 def test_out_root_read_from_config() -> None:
-    """Static check: the function body reads cfg.sdet.generated_root."""
+    """Static check: the function body reads cfg.test_code.generated_root.
+
+    Phase 25 RENAME-05: Pydantic field renamed sdet -> test_code; the gen
+    function now reads cfg.test_code.generated_root.
+    """
     import inspect
     from mcp_test_framework.cli import gen_test_classes
     src = inspect.getsource(gen_test_classes)
-    assert "cfg.sdet.generated_root" in src
+    assert "cfg.test_code.generated_root" in src

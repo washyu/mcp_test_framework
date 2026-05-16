@@ -29,7 +29,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
-from mcp_test_framework.models import SdetConfig
+from mcp_test_framework.models import TestCodeConfig
 
 pytestmark = [
     pytest.mark.live_homelab,
@@ -38,13 +38,13 @@ pytestmark = [
 
 # Phase 23 D-01 (Cluster A) Pattern S1: Config.sdet is REQUIRED post Phase
 # 21.1 RELOC-01. Both SC#1 and SC#2 here construct Config() bare; module-
-# level stub avoids repeating the SdetConfig literal at each site.
-_SDET_STUB = SdetConfig(generated_root="tests/sdet/_generated")
+# level stub avoids repeating the TestCodeConfig literal at each site.
+_TEST_CODE_STUB = TestCodeConfig(generated_root="tests/sdet/_generated")
 
 
 async def test_raw_stdio_lists_target_tool() -> None:
     """SC#1: raw stdio_client + ClientSession lists target tool with non-empty schema."""
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
     params = StdioServerParameters(
         command=cfg.mcp_server.command,
         args=cfg.mcp_server.args,
@@ -66,7 +66,7 @@ async def test_raw_stdio_lists_target_tool() -> None:
 
 async def test_wrapper_call_tool_returns_non_error_with_content() -> None:
     """SC#2: McpTestClient.call_tool returns isError=False with content or structuredContent."""
-    cfg = Config(sdet=_SDET_STUB)
+    cfg = Config(test_code=_TEST_CODE_STUB)
     async with McpTestClient(
         cfg.mcp_server.command,
         cfg.mcp_server.args,

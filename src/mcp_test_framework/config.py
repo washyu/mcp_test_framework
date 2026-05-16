@@ -82,10 +82,10 @@ class Config(BaseSettings):
     def _warn_or_reject_legacy_sdet_key(cls, data: Any) -> Any:  # noqa: sdet-rename-shim
         """Defense-in-depth ambiguity check for the v1.4 sdet->test_code alias.
 
-        Per D-13, the parent ``Config`` carries a ``mode='before'``
-        model_validator that rejects raw input containing BOTH ``sdet`` and
-        ``test_code`` keys simultaneously. In practice the two operator
-        entry points each catch this earlier:
+        The parent ``Config`` carries a ``mode='before'`` model_validator
+        that rejects raw input containing BOTH ``sdet`` and ``test_code``
+        keys simultaneously. In practice the two operator entry points
+        each catch this earlier:
 
         - YAML load (``Config(yaml_file=PATH)``): ``settings_customise_sources``
           pre-scans the raw YAML via ``_check_legacy_sdet_key_in_yaml`` BEFORE
@@ -101,7 +101,7 @@ class Config(BaseSettings):
         intentionally NOT emitted here -- the two upstream entry points
         each emit exactly one warning, and emitting from here too would
         double-fire on the dict-validate path (which would violate the
-        ``one DeprecationWarning per process`` contract in D-13).
+        ``one DeprecationWarning per process`` contract).
         """
         if not isinstance(data, dict):
             return data

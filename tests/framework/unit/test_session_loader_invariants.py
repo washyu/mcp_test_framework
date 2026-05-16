@@ -39,8 +39,11 @@ def test_phase_04_1_no_anyio_cancel_scope() -> None:
     assert matches == [], f"found anyio cancel scopes: {matches}"
 
 
-def test_reads_cfg_sdet_generated_root() -> None:
-    assert "cfg.sdet.generated_root" in _session_source()
+def test_reads_cfg_test_code_generated_root() -> None:
+    # Phase 25 RENAME-05: Pydantic field renamed sdet -> test_code; the session
+    # loader now reads cfg.test_code.generated_root (alias remains valid for
+    # YAML keys via AliasChoices, but Python attribute access uses the new name).
+    assert "cfg.test_code.generated_root" in _session_source()
 
 
 def test_uses_operator_tone_exit_for_missing_dir() -> None:

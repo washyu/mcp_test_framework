@@ -65,7 +65,7 @@ def _load_generated_homelab_mcp():
     at the configured root.
     """
     cfg = Config()
-    generated_root = cfg.sdet.generated_root
+    generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():
         generated_root = Path.cwd() / generated_root
     slug = _server_slug("homelab-mcp")

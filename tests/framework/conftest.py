@@ -14,11 +14,11 @@ from __future__ import annotations
 import pytest
 
 from mcp_test_framework.config import Config
-from mcp_test_framework.models import SdetConfig
+from mcp_test_framework.models import TestCodeConfig
 
-_SDET_STUB = SdetConfig(generated_root="tests/sdet/_generated")
+_TEST_CODE_STUB = TestCodeConfig(generated_root="tests/sdet/_generated")
 
 
 @pytest.fixture(scope="session")
 def config() -> Config:
-    return Config(sdet=_SDET_STUB)
+    return Config(test_code=_TEST_CODE_STUB)

@@ -52,17 +52,17 @@ from pydantic import ValidationError
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.mcp_client import McpTestClient
-from mcp_test_framework.models import SdetConfig
+from mcp_test_framework.models import TestCodeConfig
 
 # Bootstrap stub: the paths used by `list-tools` / `config-init` under
-# ``allow_missing=True`` fall back to ``Config(sdet=_BOOTSTRAP_SDET_STUB)``
+# ``allow_missing=True`` fall back to ``Config(test_code=_BOOTSTRAP_TEST_CODE_STUB)``
 # so the framework can emit a starter scaffold from an unconfigured
 # directory. The stub value matches the convention emitted by
 # ``_format_tools_yaml_scaffold`` so an operator who saves the scaffold
 # and re-runs gets a self-consistent path. This stub is NEVER reachable
-# from operator-supplied YAML: ``sdet.generated_root`` remains a required
+# from operator-supplied YAML: ``test_code.generated_root`` remains a required
 # field for any loaded config.
-_BOOTSTRAP_SDET_STUB = SdetConfig(generated_root=Path("tests/sdet/_generated"))
+_BOOTSTRAP_TEST_CODE_STUB = TestCodeConfig(generated_root=Path("tests/sdet/_generated"))
 
 app = typer.Typer(
     name="mcp-test-framework",
@@ -742,7 +742,7 @@ def list_tools(
     """
     cfg = _load_config(config, allow_missing=True)
     if cfg is None:
-        cfg = Config(sdet=_BOOTSTRAP_SDET_STUB)
+        cfg = Config(test_code=_BOOTSTRAP_TEST_CODE_STUB)
     try:
         with asyncio.Runner() as runner:
             tools = runner.run(_list_tools_async(cfg))
@@ -863,7 +863,7 @@ def config_init(
 
     cfg = _load_config(config, allow_missing=True)
     if cfg is None:
-        cfg = Config(sdet=_BOOTSTRAP_SDET_STUB)
+        cfg = Config(test_code=_BOOTSTRAP_TEST_CODE_STUB)
 
     # Apply --command / --arg overrides via Pydantic v2 model_copy on the
     # frozen Config / McpServerConfig instances. Re-instantiating Config(...)
@@ -1045,7 +1045,7 @@ def gen_test_classes(
     # `out_root` is config-driven; the framework never writes generated
     # Python code inside its own `src/` tree. Relative paths are
     # resolved against CWD (mirrors the MCPTF_CONFIG_FILE convention).
-    out_root = cfg.sdet.generated_root
+    out_root = cfg.test_code.generated_root
     if not out_root.is_absolute():
         out_root = Path.cwd() / out_root
     server_version = getattr(server_info, "version", "") or ""
