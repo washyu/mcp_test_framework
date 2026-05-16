@@ -1,9 +1,9 @@
 # Error message style guide
 
 Operator-facing error messages in `mcp-test-framework` follow four rules.
-This guide is the citation target for every rewritten error site (PERSONA-03)
-and the canonical source for the SAFE-03 / SAFE-06 reference messages that
-downstream config-safety work will implement verbatim.
+This guide is the citation target for every rewritten error site and the
+canonical source for the missing-config and schema-mismatch reference
+messages that the config-safety code implements verbatim.
 
 ## Rules
 
@@ -43,7 +43,7 @@ downstream config-safety work will implement verbatim.
 The following messages are LOCKED in this style guide. Downstream
 implementations copy them verbatim — copy exactly, do not reword.
 
-### SAFE-03 — no config found, framework refuses to run
+### No config found, framework refuses to run
 
     no config file found: ./config.yaml
 
@@ -54,7 +54,7 @@ implementations copy them verbatim — copy exactly, do not reword.
     next: run `mcp-test-framework config-init -o config.yaml` to generate
           a starter config, then edit it to enable the tools you want to test
 
-### SAFE-06 — config uses an older schema version
+### Config uses an older schema version
 
     config file uses an older format: <path>
 

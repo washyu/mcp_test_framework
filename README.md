@@ -257,28 +257,30 @@ The same reasoning is recorded in the JUnit XML's `<failure message="…">`.
 Either tweak the tool's description upstream, or skip the tool in your config
 (per the "Per-tool configuration" section above).
 
-## SDET scenarios
+## test-code scenarios
 
-Beyond the contract pass, SDETs author stateful scenarios under `tests/sdet/` --
-create resources, verify shape, tear down. Each scenario module renders as a
-per-tool group with nested rows under the same domain UI the contract pass
-uses. The sample below runs against a live Proxmox cluster (gated by
-`MCPTF_DOGFOOD_PROXMOX_HOST`) and is shown here mid-failure: the upstream
-`homelab-mcp` `manage_proxmox_vm`-family `inputSchema` reports `type: "string"`
-on optional fields and defaults them to `null` in the same schema -- the
-framework surfaces that contract bug as a real test failure instead of masking
-it (SEED-022). The `_CpuBumpManageVmParams(extra="allow")` workaround pattern
-is documented in [`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md). Run
-scenarios with `mcp-test-framework run --sdet`.
+Beyond the contract pass, test-code authors write stateful scenarios under
+`tests/test_code/` -- create resources, verify shape, tear down. Each scenario
+module renders as a per-tool group with nested rows under the same domain UI
+the contract pass uses. The sample below runs against a live Proxmox cluster
+(gated by `MCPTF_DOGFOOD_PROXMOX_HOST`) and is shown here mid-failure: the
+upstream `homelab-mcp` `manage_proxmox_vm`-family `inputSchema` reports
+`type: "string"` on optional fields and defaults them to `null` in the same
+schema -- the framework surfaces that contract bug as a real test failure
+instead of masking it (framework primitives; test-code author owns safety).
+The `_CpuBumpManageVmParams(extra="allow")` workaround pattern is documented
+in [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md). Run scenarios
+with `mcp-test-framework run --test-code`.
 
-<!-- mirrors live runner output — re-run the framework and refresh this block when the operator-facing output format changes; see docs/SDET-AUTHORING.md for the SDET-mode digest contract -->
+<!-- mirrors live runner output — re-run the framework and refresh this block when the operator-facing output format changes; see docs/TEST-CODE-AUTHORING.md for the test-code mode digest contract -->
+<!-- noqa: sdet-rename-shim — the fenced text snapshot below is a verbatim pre-Phase-25 capture; Phase 30 CLOSE-04 owns the re-capture against the renamed surface. The "(SDET)" header, "Judges: (none — SDET scope)" line, and "mcp_test_framework.sdet.errors.ToolCallError" rows are intentionally preserved here for the duration of the v1.4 deprecation window. -->
 
 ```python
-# tests/sdet/test_proxmox_vm_lifecycle.py
-"""SDET sample: 2-test VM-lifecycle scenario against a live Proxmox cluster.
+# tests/test_code/test_proxmox_vm_lifecycle.py
+"""test-code sample: 2-test VM-lifecycle scenario against a live Proxmox cluster.
 
-Requires MCPTF_DOGFOOD_PROXMOX_HOST. See docs/SDET-AUTHORING.md for the full
-walkthrough (module-scope fixtures, cross-file ordering, conditional skip
+Requires MCPTF_DOGFOOD_PROXMOX_HOST. See docs/TEST-CODE-AUTHORING.md for the
+full walkthrough (module-scope fixtures, cross-file ordering, conditional skip
 recipe, inputSchema workaround).
 """
 from __future__ import annotations
@@ -289,8 +291,8 @@ from dataclasses import dataclass
 import pytest
 import pytest_asyncio
 
-from mcp_test_framework.sdet import ToolCallError, mcp_session, tool
-from tests.sdet._generated.homelab_mcp import (
+from mcp_test_framework.test_code import ToolCallError, mcp_session, tool
+from tests.test_code._generated.homelab_mcp import (
     CreateProxmoxVmParams,
     CreateProxmoxVmResponse,
     DeleteProxmoxVmParams,
@@ -306,7 +308,7 @@ class ProxmoxVmLifecycleState:
 async def proxmox_vm_lifecycle(mcp_session):
     host = os.environ["MCPTF_DOGFOOD_PROXMOX_HOST"]
     node = os.environ.get("MCPTF_DOGFOOD_PROXMOX_NODE", "pve")
-    vmid = 9990  # pick a free VMID in your range; see docs/SDET-AUTHORING.md
+    vmid = 9990  # pick a free VMID in your range; see docs/TEST-CODE-AUTHORING.md
 
     created = await tool("create_proxmox_vm").call(
         CreateProxmoxVmParams(host=host, name="mcptf-sample", node=node, vmid=vmid, cores=1)
@@ -420,15 +422,15 @@ Result: 0 PASS / 2 FAIL / 58 SKIP  in 6.2s
 The two `✗` rows above are the framework doing its job: a real upstream
 contract bug surfaced as a failing test, with the `ToolCallError` reason
 quoted verbatim on the row. See
-[`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md) for the full authoring
-walkthrough -- module-scope fixtures, cross-file ordering, the conditional
-skip recipe for scenarios that require live infrastructure, and the
-`_CpuBumpManageVmParams(extra='allow')` workaround for the inputSchema bug
-shown above.
+[`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md) for the full
+authoring walkthrough -- module-scope fixtures, cross-file ordering, the
+conditional skip recipe for scenarios that require live infrastructure, and
+the `_CpuBumpManageVmParams(extra='allow')` workaround for the inputSchema
+bug shown above.
 
 Default `mcp-test-framework run` collects only `tests/contract/`; the
-`--sdet` flag opts the SDET scope into the run. See [`## Commands`](#commands)
-above for full flag composition.
+`--test-code` flag opts the test-code scope into the run. See
+[`## Commands`](#commands) above for full flag composition.
 
 ## Isolation guarantee
 
@@ -493,7 +495,7 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
 
 - [`docs/mcp_test_framework_mvp_spec.md`](docs/mcp_test_framework_mvp_spec.md) -- authoritative design spec
 - [`docs/EXTENDING.md`](docs/EXTENDING.md) -- add a new rubric, swap the judge backend
-- [`docs/SDET-AUTHORING.md`](docs/SDET-AUTHORING.md) -- author SDET scenarios: codegen regen, module-scope fixtures, cross-file ordering, conditional skip recipe.
+- [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md) -- author test-code scenarios: codegen regen, module-scope fixtures, cross-file ordering, conditional skip recipe.
 - [`.planning/PROJECT.md`](.planning/PROJECT.md) -- project mission, constraints, key decisions
 - [`docs/EXTENDING.md#add-a-new-mcp-tool-target`](docs/EXTENDING.md#add-a-new-mcp-tool-target) -- add a new MCP tool target via per-tool config (no code changes)
 - [`config.example.yaml`](config.example.yaml) — starter template with placeholder names and three pattern variations.
