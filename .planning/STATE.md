@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
-stopped_at: Phase 26 context gathered
-last_updated: "2026-05-16T06:39:35.791Z"
-last_activity: 2026-05-16 -- Phase 26 execution started
+stopped_at: Phase 26 plan 02 (pytest11 plugin + console-script shim + fixture renames) committed
+last_updated: "2026-05-16T07:30:00.000Z"
+last_activity: 2026-05-16 -- Phase 26 plan 02 executed sequentially (3 tasks, 3 commits)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 6
-  percent: 55
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 26 (packaging-foundation-entry-point-py-typed-dist-name-plugin-s) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 26
-Last activity: 2026-05-16 -- Phase 26 execution started
+Plan: 3 of 5 (waves 1+2 complete; ready for Plan 26-04 wheel-shape gate)
+Status: Executing Phase 26 — wave 2 complete
+Last activity: 2026-05-16 -- Phase 26 plan 02 executed sequentially (pytest11 plugin + console-script shim + 6 fixture renames)
 
 ## Performance Metrics
 
@@ -68,6 +68,9 @@ Last activity: 2026-05-16 -- Phase 26 execution started
 | Phase 25 P04 | ~25min | 4 tasks | 11 files | Rule-1 deviation: 5 framework self-tests repointed (argv assertions + conftest path + helper name) + 4 D-07 ID literals stripped
 | Phase 25 P25-05 | ~20min | 3 tasks | 31 files |
 | Phase 25 P25-06 | ~6min | 1 tasks | 2 files | Option A executed: per-line noqa tags on 4 README snapshot lines + leak gate authored; bite-test verified; Phase 25 closed end-to-end (RENAME-01..06)
+| Phase 26 P26-01 | ~12min | 3 tasks | 4 files | Wave 1: pyproject.toml dist-rename to mcp-contracts + entry-points + scripts; cli.py:974 fix; REQUIREMENTS.md + ROADMAP.md source-of-truth amendments
+| Phase 26 P26-03 | ~3min | 2 tasks | 4 files | Wave 1: three PEP 561 py.typed markers + contracts/__init__.py stub (docstring-only; register() reserved for Phase 27 per D-14)
+| Phase 26 P26-02 | ~25min | 3 tasks | 3 files | Wave 2: _plugin.py (pytest11 + 3 hook stubs + 7 fixture re-exports + 6 deprecation aliases) + _deprecated_script.py (console-script shim with lazy cli-import inside main()) + fixtures.py (6 renames + 8 cross-ref repairs including _preflight getfixturevalue string)
 
 ## Accumulated Context
 

@@ -112,9 +112,9 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   4. Framework CI fails if the built wheel is missing `mcp_test_framework/contracts/`, `mcp_test_framework/test_code/`, any required `py.typed` marker, or contains accidental `tests/` leakage — wheel introspection gate runs on every build.
   5. Operator's existing fixture names (`config`, `judge`, `client`, `target_tool`) do not collide — framework fixtures ship under `mcp_*` prefixed names with one-milestone unprefixed compatibility aliases.
 **Plans**: 5 plans
-  - [ ] 26-01-PLAN.md — pyproject.toml dist-rename, entry-points, scripts; cli.py:974 version-string fix
-  - [ ] 26-02-PLAN.md — _plugin.py skeleton + _deprecated_script.py shim + fixtures.py rename surgery
-  - [ ] 26-03-PLAN.md — contracts/ subpackage stub + py.typed markers
+  - [x] 26-01-PLAN.md — pyproject.toml dist-rename, entry-points, scripts; cli.py:974 version-string fix
+  - [x] 26-02-PLAN.md — _plugin.py skeleton + _deprecated_script.py shim + fixtures.py rename surgery
+  - [x] 26-03-PLAN.md — contracts/ subpackage stub + py.typed markers
   - [ ] 26-04-PLAN.md — Wheel-introspection regression gate + cli-version regression test
   - [ ] 26-05-PLAN.md — Docs sweep + TestPyPI dry-run + acceptance verification + ROADMAP SC1 amendment
 
