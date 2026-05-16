@@ -51,6 +51,13 @@ markers = [
   "live_ollama: requires reachable Ollama at OLLAMA_BASE_URL with the configured model",
 ]
 addopts = "-m 'not live_homelab and not live_ollama'"
+# Phase 25 D-03: force our own pytest runs to ALWAYS surface project-emitted
+# DeprecationWarnings (whose `module` starts with `mcp_test_framework`) so
+# accidental use of the v1.4 deprecation shims is caught in the framework's
+# own test suite. External operators' pytest configs are unaffected.
+filterwarnings = [
+    "always::DeprecationWarning:mcp_test_framework",
+]
 
 [tool.ruff]
 line-length = 100
@@ -74,16 +81,16 @@ select = ["E", "F", "I", "TID"]
 # 17-RESEARCH.md). When/if the whole codebase is brought under pyright,
 # expand `include` and `strict`.
 [tool.pyright]
-# Phase 21.1 RELOC-04: `src/mcp_test_framework/sdet/generated` removed --
-# generated SDET classes now live at the operator-configured
-# `sdet.generated_root` (typically outside `src/`). Type-checking generated
+# Phase 21.1 RELOC-04 + Phase 25 RENAME-04: `src/mcp_test_framework/test_code/generated`
+# removed -- generated test-code classes now live at the operator-configured
+# `test_code.generated_root` (typically outside `src/`). Type-checking generated
 # output is the operator's responsibility (point their own pyright config
 # at the configured path if they want strict coverage).
 include = [
-    "src/mcp_test_framework/sdet/response.py",
+    "src/mcp_test_framework/test_code/response.py",
 ]
 strict = [
-    "src/mcp_test_framework/sdet/response.py",
+    "src/mcp_test_framework/test_code/response.py",
 ]
 reportMissingTypeStubs = false
 pythonVersion = "3.14"
