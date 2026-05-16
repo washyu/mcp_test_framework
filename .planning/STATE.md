@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
-status: verifying
+status: ready_to_plan
 stopped_at: Phase 25 complete (all 6 plans / RENAME-01..06 shipped; CI leak gate live)
 last_updated: "2026-05-16T04:15:59.962Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
   completed_plans: 6
-  percent: 100
+  percent: 33
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 
 ## Current Position
 
-Phase: 25 (Public API Rename SEED-023 sdet → test_code) — COMPLETE (all 6 plans shipped)
-Plan: 6 of 6 (closed)
-Status: Phase complete — ready for verification; Phase 26 (PACK) unblocked
+Phase: 26
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-16
 
 ## Performance Metrics
