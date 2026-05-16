@@ -369,6 +369,22 @@ def _discover_tools_for_run(cfg: Config) -> list[str]:
         )
 
 
+def _warn_sdet_flag(value: bool) -> bool:  # noqa: sdet-rename-shim
+    """Eager Typer/Click callback that emits the --sdet -> --test-code  # noqa: sdet-rename-shim
+    deprecation warning during option parsing, BEFORE --help short-circuits
+    the command body. Fires once per process via Python's default filter.
+    """  # noqa: sdet-rename-shim
+    if value:
+        import warnings
+        warnings.warn(  # noqa: sdet-rename-shim
+            "--sdet is deprecated since v1.4 and will be removed in v1.5 — "  # noqa: sdet-rename-shim
+            "use --test-code instead.",  # noqa: sdet-rename-shim
+            DeprecationWarning,  # noqa: sdet-rename-shim
+            stacklevel=2,  # noqa: sdet-rename-shim
+        )  # noqa: sdet-rename-shim
+    return value  # noqa: sdet-rename-shim
+
+
 @app.command(
     context_settings={
         "allow_extra_args": True,
@@ -448,6 +464,8 @@ def run(
         "--sdet",  # noqa: sdet-rename-shim
         hidden=True,  # noqa: sdet-rename-shim
         help="Deprecated alias for --test-code; removed in v1.5.",  # noqa: sdet-rename-shim
+        callback=_warn_sdet_flag,  # noqa: sdet-rename-shim
+        is_eager=True,  # noqa: sdet-rename-shim
     ),
     explain: bool = typer.Option(
         False,
@@ -493,13 +511,9 @@ def run(
     flag.
     """
     if sdet_legacy:  # noqa: sdet-rename-shim
-        import warnings
-        warnings.warn(  # noqa: sdet-rename-shim
-            "--sdet is deprecated since v1.4 and will be removed in v1.5 — "  # noqa: sdet-rename-shim
-            "use --test-code instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )  # noqa: sdet-rename-shim
+        # Deprecation warning fires from _warn_sdet_flag eager callback during  # noqa: sdet-rename-shim
+        # option parsing (so it surfaces even on `--sdet --help`); body only  # noqa: sdet-rename-shim
+        # coerces the legacy flag to the new behavior.
         test_code = True  # legacy operators get the same behavior  # noqa: sdet-rename-shim
 
     # Reconfigure sys.stdout to utf-8 with errors='replace' BEFORE any
