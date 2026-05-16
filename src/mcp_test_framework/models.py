@@ -187,7 +187,7 @@ class HomelabConfig(BaseModel):
     proxmox: HomelabProxmoxConfig = Field(default_factory=HomelabProxmoxConfig)
 
 
-class SdetConfig(BaseModel):
+class TestCodeConfig(BaseModel):
     """SDET codegen + fixture surface knobs.
 
     Currently exposes only ``generated_root`` -- the on-disk directory the
