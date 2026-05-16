@@ -97,7 +97,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 25-02-PLAN.md — Rename gen-sdet-classes CLI command + --sdet flag with hidden deprecation shims
   - [x] 25-03-PLAN.md — Rename SdetConfig to TestCodeConfig with AliasChoices + ambiguity validator
   - [x] 25-04-PLAN.md — Move tests/sdet/ to tests/test_code/ with dual-discovery + pyproject filterwarnings
-  - [ ] 25-05-PLAN.md — Sweep operator-facing docs/examples for test-code terminology + planning-ID strip
+  - [x] 25-05-PLAN.md — Sweep operator-facing docs/examples for test-code terminology + planning-ID strip
   - [ ] 25-06-PLAN.md — CI-runnable acceptance gate (tests/framework/test_sdet_rename_leak_gate.py)
 
 ### Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton
@@ -191,7 +191,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 22. Scrub requirement-ID leaks from src/ | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 23. Test suite debt cleanup | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
-| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 4/6 | In Progress|  |
+| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 5/6 | In Progress|  |
 | 26. Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 0/TBD | Not started | - |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 0/TBD | Not started | - |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
