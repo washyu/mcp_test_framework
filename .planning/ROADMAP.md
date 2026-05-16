@@ -75,7 +75,8 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
 
 - [x] **Phase 25: Public-API rename (SEED-023) — `sdet` → `test_code`** — Lock the public import surface before library mode hardens it. Pure refactor; irreversible after first PyPI publish.
  (completed 2026-05-16)
-- [x] **Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton** — Smallest atomic capability that unblocks plugin auto-discovery, typed imports, and the wheel-level black-box guarantee. (completed 2026-05-16)
+- [x] **Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton** — Smallest atomic capability that unblocks plugin auto-discovery, typed imports, and the wheel-level black-box guarantee.
+ (completed 2026-05-16)
 - [ ] **Phase 27: `register()` API + contracts sub-package + test extraction (LIB)** — The load-bearing technical bet. Operator's three-line `register()` call injects parametrized contract tests into their pytest collection via `pytest_collect_file` virtual-module synthesis.
 - [ ] **Phase 28: Config seam + codegen output path** — Library-mode config flow (kwargs > pyproject > defaults; `MCPTF_CONFIG_FILE` ignored) and a `tests/_generated/` default that refuses to write into `site-packages/`.
 - [ ] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
@@ -128,7 +129,12 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   3. Operator can run `pytest -m mcp_contract` (or `pytest -m "not mcp_contract"`) and the selection works — every injected item carries the marker; the `_preflight` autouse fires only when `register()` is non-empty AND `mcp_contract`-marked tests are being collected, never against operator's unrelated tests.
   4. Operator calling `register()` twice in one conftest sees a friendly `RegistrationError` naming the prior call's source location; calling it outside `conftest.py` or outside collection phase also raises a friendly error. `register()` accepts only explicit typed kwargs (NO `**kwargs`); signature is pinned by a snapshot test.
   5. Operator installing the framework into a vanilla project sees the black-box rule enforced in the wheel install — `sys.modules` runtime guard fires from `register()`; wheel-introspection AST-walk CI test fails on banned SUT imports inside `src/`.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 27-01-PLAN.md — Wave 0 spike (`_ContractsModule` hybrid synthesis pattern) + extract `_tests.py` + relocate `_black_box_guard.py`
+  - [ ] 27-02-PLAN.md — Plugin `pytest_addoption` ini key + `pytest_configure` (Config load, black-box guard, MCPTF_CONFIG_FILE deprecation warning)
+  - [ ] 27-03-PLAN.md — Plugin `pytest_collection` synthetic Module injection + `pytest_generate_tests` indirect parametrize + marker auto-application
+  - [ ] 27-04-PLAN.md — CLI subprocess `-o "mcp_config_file=PATH"` rewire + `_preflight` predicate flip to marker-based detection
+  - [ ] 27-05-PLAN.md — Framework dogfood (pyproject ini) + delete legacy `tests/contract/` + REQUIREMENTS/ROADMAP amendments
 
 ### Phase 28: Config seam + codegen output path
 **Goal**: Operator's library-mode config flow is settled — `register()` kwargs are the single source of truth, `MCPTF_CONFIG_FILE` cannot silently leak from a sibling project, and `gen-test-classes` writes generated classes to a sensible default path inside the operator's project (never into `site-packages/`).
@@ -199,7 +205,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
-| 27. register() API + contracts sub-package + test extraction | v1.4 | 0/TBD | Not started | - |
+| 27. register() API + contracts sub-package + test extraction | v1.4 | 0/5 | Not started | - |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |
