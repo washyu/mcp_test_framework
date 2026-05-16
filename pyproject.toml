@@ -1,5 +1,5 @@
 [project]
-name = "mvp-test-framework"
+name = "mcp-contracts"
 version = "0.1.0"
 description = "Pytest framework for testing MCP servers end-to-end."
 readme = "README.md"
@@ -15,10 +15,21 @@ dependencies = [
 ]
 
 [project.scripts]
-# Wired in Phase 5 (Plan 05-01). Distribution name is "mvp-test-framework";
-# the script name "mcp-test-framework" points at the importable package
-# "mcp_test_framework" and the Typer instance `app`.
-mcp-test-framework = "mcp_test_framework.cli:app"
+# Phase 26 D-05/D-06: dist name is "mcp-contracts" (D-01); script name
+# "mcp-contracts" is the new primary; "mcp-test-framework" is retained for
+# v1.4 as a back-compat deprecation shim (D-06) and is removed in v1.5
+# (D-18). Both scripts dispatch to importable package "mcp_test_framework";
+# the primary points at the Typer instance `app`, the shim points at the
+# wrapper in `_deprecated_script.py` (created in Plan 26-02).
+mcp-contracts = "mcp_test_framework.cli:app"
+mcp-test-framework = "mcp_test_framework._deprecated_script:main"
+
+[project.entry-points.pytest11]
+# Phase 26 D-09 / PACK-01: pytest auto-loads this plugin via the pytest11
+# entry-point group. Operators no longer need `pytest_plugins=[...]` in
+# their conftest. Module body is created in Plan 26-02; this declaration
+# only references it (the wheel-shape gate in 26-04 verifies both halves).
+mcp_test_framework = "mcp_test_framework._plugin"
 
 # PEP 735 dev dependency group -- the canonical 2026 location for tooling.
 # Do NOT use the legacy `[tool.uv].dev-dependencies` block, and do NOT use
@@ -100,8 +111,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 # Hatchling cannot auto-detect the package directory because the project name
-# (mvp-test-framework) differs from the package name (mcp_test_framework) -- "mvp" vs "mcp".
-# Without this, `uv sync` fails with "Unable to determine which files to ship".
-# Deviation Rule 3 (auto-fix blocking issue) -- documented in 01-01-SUMMARY.md.
+# (mcp-contracts, post Phase 26 D-01) differs from the package name
+# (mcp_test_framework, unchanged per D-04). Without this, `uv sync` fails
+# with "Unable to determine which files to ship". Hatch maintainer-confirmed
+# (hatch discussion #554, cited in 26-RESEARCH.md): `packages` auto-includes
+# non-`.py` files including PEP 561 `py.typed` markers — Plan 26-03 relies
+# on this to ship markers in the wheel without a `force-include` stanza.
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_test_framework"]
