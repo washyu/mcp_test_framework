@@ -345,13 +345,13 @@ async def test_delete_returns_ok(proxmox_vm_lifecycle):
 
 ```text
 ========================================
-MCP Test Framework (SDET)
+MCP Test Framework (SDET) <!-- noqa: sdet-rename-shim -->
 ========================================
 MCP server:  uvx homelab-mcp
 Discovered:  1 scenarios
 Running:      1  (proxmox_vm_lifecycle)
 Skipping:     0  (use --explain to list)
-Judges:      (none — SDET scope)
+Judges:      (none — SDET scope) <!-- noqa: sdet-rename-shim -->
 
 skipped:
   analyze_network_topology                 – SKIP — not selected in config
@@ -413,8 +413,8 @@ skipped:
   update_device_fingerprint_preview        – SKIP — not selected in config
   validate_infrastructure_changes          – SKIP — not selected in config
 proxmox_vm_lifecycle
-  ✗ create_returns_pending_vm — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
-  ✗ delete_returns_ok — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'"
+  ✗ create_returns_pending_vm — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'" <!-- noqa: sdet-rename-shim -->
+  ✗ delete_returns_ok — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'" <!-- noqa: sdet-rename-shim -->
 
 Result: 0 PASS / 2 FAIL / 58 SKIP  in 6.2s
 ```
