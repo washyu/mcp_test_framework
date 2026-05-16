@@ -115,7 +115,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 26-01-PLAN.md — pyproject.toml dist-rename, entry-points, scripts; cli.py:974 version-string fix
   - [x] 26-02-PLAN.md — _plugin.py skeleton + _deprecated_script.py shim + fixtures.py rename surgery
   - [x] 26-03-PLAN.md — contracts/ subpackage stub + py.typed markers
-  - [ ] 26-04-PLAN.md — Wheel-introspection regression gate + cli-version regression test
+  - [x] 26-04-PLAN.md — Wheel-introspection regression gate + cli-version regression test
   - [ ] 26-05-PLAN.md — Docs sweep + TestPyPI dry-run + acceptance verification + ROADMAP SC1 amendment
 
 ### Phase 27: `register()` API + contracts sub-package + test extraction (LIB)
@@ -198,7 +198,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 23. Test suite debt cleanup | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
-| 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 3/5 | In Progress|  |
+| 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 4/5 | In Progress|  |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 0/TBD | Not started | - |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
