@@ -69,20 +69,33 @@ def _stub_subprocess_capturing_argv(captured: dict, returncode: int = 0):
 
 
 def test_run_help_lists_sdet_flag() -> None:
-    """--sdet appears in `run --help` (parallel to Phase 16 --explain)."""
+    """--test-code appears in `run --help` (parallel to Phase 16 --explain).
+
+    Phase 25 RENAME-03 renamed the operator-facing flag from --sdet to
+    --test-code. The legacy --sdet flag is hidden=True on the shim and
+    must NOT appear in --help output any more. Test name preserved for
+    blame continuity; assertion repointed to the new flag.
+    """
     result = _invoke("run", "--help")
     assert result.exit_code == 0, result.output
-    assert "--sdet" in result.output
+    assert "--test-code" in result.output
+    # Old surface intentionally hidden -- documents the deprecation contract.
+    assert "--sdet" not in result.output
 
 
 def test_run_help_sdet_mentions_composition_with_with_framework() -> None:
-    """The --sdet help text documents composition with --with-framework (D-05)."""
+    """The --test-code help text documents composition with --with-framework (D-05).
+
+    Phase 25 RENAME-03: help text now references tests/test_code/ as the
+    documented scope. Plan 04 wires dual-discovery for the legacy
+    tests/sdet/ path; this test pins the operator-facing vocabulary.
+    """
     result = _invoke("run", "--help")
     assert result.exit_code == 0, result.output
     # Verbatim from CONTEXT.md (the pattern doc): the help text mentions
     # composing with --with-framework, --raw, --debug, -q, and --explain.
     assert "--with-framework" in result.output
-    assert "tests/sdet" in result.output
+    assert "tests/test_code" in result.output
 
 
 # ---------------------------------------------------------------------------

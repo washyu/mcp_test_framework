@@ -430,17 +430,24 @@ def run(
             "(without this flag) collects only the SUT-contract surface."
         ),
     ),
-    sdet: bool = typer.Option(
+    test_code: bool = typer.Option(
         False,
-        "--sdet",
+        "--test-code",
         help=(
             "Swap the operator-surface scope from tests/contract/ to "
-            "tests/sdet/. Runs SDET-authored scenarios against the active "
-            "MCP server. Composes with --with-framework (adds tests/framework/), "
-            "--raw (bypass domain UI), --debug (appendix), -q (summary only), "
-            "and --explain (per-scenario skip reasons). Default (without "
-            "this flag) collects only tests/contract/."
+            "tests/test_code/. Runs operator-authored test-code scenarios "
+            "against the active MCP server. Composes with --with-framework "
+            "(adds tests/framework/), --raw (bypass domain UI), --debug "
+            "(appendix), -q (summary only), and --explain (per-scenario "
+            "skip reasons). Default (without this flag) collects only "
+            "tests/contract/."
         ),
+    ),
+    sdet_legacy: bool = typer.Option(  # noqa: sdet-rename-shim
+        False,  # noqa: sdet-rename-shim
+        "--sdet",  # noqa: sdet-rename-shim
+        hidden=True,  # noqa: sdet-rename-shim
+        help="Deprecated alias for --test-code; removed in v1.5.",  # noqa: sdet-rename-shim
     ),
     explain: bool = typer.Option(
         False,
@@ -485,6 +492,16 @@ def run(
     effect inside the subprocess -- `run` MUST NOT pass an explicit `-m`
     flag.
     """
+    if sdet_legacy:
+        import warnings
+        warnings.warn(
+            "--sdet is deprecated since v1.4 and will be removed in v1.5 — "
+            "use --test-code instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )  # noqa: sdet-rename-shim
+        test_code = True  # legacy operators get the same behavior  # noqa: sdet-rename-shim
+
     # Reconfigure sys.stdout to utf-8 with errors='replace' BEFORE any
     # rendering or any _load_config error path. On Windows the default
     # console code page is cp1252, which cannot encode the renderer's
@@ -529,7 +546,7 @@ def run(
             pytest_args=pytest_args,
             raw=True,
             with_framework=with_framework,
-            sdet=sdet,
+            sdet=test_code,
         )
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
@@ -570,13 +587,13 @@ def run(
     # "(use --explain to list)" hint when the list is rendered inline
     # right below.
     if not quiet:
-        if sdet:
-            # Scenario-aware digest under --sdet. Fresh sdet-only
+        if test_code:
+            # Scenario-aware digest under --test-code. Fresh test-code-only
             # RenderContext -- only server_cmd is consumed by the
             # scenario digest; contract-scope discovered_tools /
-            # tools_config / judges fields have no meaning under SDET
+            # tools_config / judges fields have no meaning under test-code
             # scope (pytest_generate_tests parametrize does NOT run
-            # under --sdet because pytest only discovers tests/sdet, not
+            # under --test-code because pytest only discovers tests/test_code, not
             # tests/contract).
             sdet_ctx = _runner.RenderContext(server_cmd=pre_run_ctx.server_cmd)
             scenarios, skipped_scenarios = _runner._collect_sdet_scenarios(sdet_ctx)
@@ -601,7 +618,7 @@ def run(
         pytest_args=pytest_args,
         raw=False,
         with_framework=with_framework,
-        sdet=sdet,
+        sdet=test_code,
     )
     try:
         # If the subprocess crashed before writing the tempfile, surface a

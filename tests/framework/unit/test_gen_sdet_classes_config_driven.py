@@ -1,4 +1,13 @@
-"""Phase 21.1 RELOC-02: gen-sdet-classes is config-driven via cfg.sdet.generated_root."""
+"""Phase 21.1 RELOC-02: gen-test-classes is config-driven via cfg.sdet.generated_root.
+
+Phase 25 RENAME-02 (plan 25-02) renamed the Typer command from
+gen-sdet-classes to gen-test-classes and the Python function from
+gen_sdet_classes to gen_test_classes. The legacy CLI name still works
+as a deprecation shim. Tests below pin the canonical new function symbol
+via inspect; the legacy `_invoke("gen-sdet-classes", ...)` paths still
+work for now but emit a DeprecationWarning -- those continue to exercise
+the shim, which is intentional coverage for the v1.4 deprecation window.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -42,10 +51,10 @@ def test_missing_sdet_generated_root_exits_2(tmp_path: Path, monkeypatch: pytest
 
 
 def test_source_no_longer_hardcodes_path() -> None:
-    """grep gate: cli.py:gen_sdet_classes must not contain the legacy hardcoded path string."""
+    """grep gate: cli.py:gen_test_classes must not contain the legacy hardcoded path string."""
     import inspect
-    from mcp_test_framework.cli import gen_sdet_classes
-    src = inspect.getsource(gen_sdet_classes)
+    from mcp_test_framework.cli import gen_test_classes
+    src = inspect.getsource(gen_test_classes)
     # Filter out lines starting with `#` (comments may legitimately mention
     # the legacy path in a migration note); the contract is the runtime
     # code path no longer constructs the legacy string.
@@ -58,6 +67,6 @@ def test_source_no_longer_hardcodes_path() -> None:
 def test_out_root_read_from_config() -> None:
     """Static check: the function body reads cfg.sdet.generated_root."""
     import inspect
-    from mcp_test_framework.cli import gen_sdet_classes
-    src = inspect.getsource(gen_sdet_classes)
+    from mcp_test_framework.cli import gen_test_classes
+    src = inspect.getsource(gen_test_classes)
     assert "cfg.sdet.generated_root" in src
