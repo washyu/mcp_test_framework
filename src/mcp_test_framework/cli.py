@@ -1,11 +1,11 @@
-"""Typer CLI surface (`run` / `list-tools` / `version` / `gen-sdet-classes` / `config-init`).
+"""Typer CLI surface (`run` / `list-tools` / `version` / `gen-test-classes` / `config-init`).
 
 Implements the CLI surface documented in docs/mcp_test_framework_mvp_spec.md §CLI:
 
     run [--config PATH] [-- pytest args]
     list-tools [--config PATH] [--json]
     version
-    gen-sdet-classes [--config PATH]
+    gen-test-classes [--config PATH]
     config-init [--output PATH] [--force] [--command CMD] [--arg ARG]...
 
 Behavior contracts encoded in this module:
@@ -946,8 +946,8 @@ def version() -> None:
     typer.echo(v)
 
 
-@app.command("gen-sdet-classes")
-def gen_sdet_classes(
+@app.command("gen-test-classes")
+def gen_test_classes(
     config: Path | None = typer.Option(
         None,
         "--config",
@@ -1002,15 +1002,15 @@ def gen_sdet_classes(
 
     server_name = (getattr(server_info, "name", "") or "").strip()
     if not server_name:
-        # Loud-fail with operator-tone error: gen-sdet-classes needs a
+        # Loud-fail with operator-tone error: gen-test-classes needs a
         # non-empty server name to derive the output directory.
         _emit_operator_error(
-            summary="gen-sdet-classes: server identification failed",
+            summary="gen-test-classes: server identification failed",
             detail=[
                 f"the configured MCP server (command "
                 f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`) "
                 f"reports an empty serverInfo.name.",
-                "gen-sdet-classes needs a non-empty name to derive the "
+                "gen-test-classes needs a non-empty name to derive the "
                 "<sdet.generated_root>/<slug>/ output directory.",
             ],
             next_step=(
@@ -1020,7 +1020,7 @@ def gen_sdet_classes(
             ),
         )
 
-    # Local imports keep cli.py module-load cost minimal (gen-sdet-classes is
+    # Local imports keep cli.py module-load cost minimal (gen-test-classes is
     # a rarely-run command compared to `run` / `list-tools`).
     from mcp_test_framework.test_code import _codegen
     from mcp_test_framework.test_code._slugs import server_slug
@@ -1041,16 +1041,16 @@ def gen_sdet_classes(
         )
     except _codegen.SchemaValidityError as exc:
         _emit_operator_error(
-            summary="gen-sdet-classes: invalid tool schema",
+            summary="gen-test-classes: invalid tool schema",
             detail=[str(exc)],
             next_step=(
                 "report the offending tool to the server author; "
-                "gen-sdet-classes refuses to translate non-JSON-Schema input."
+                "gen-test-classes refuses to translate non-JSON-Schema input."
             ),
         )
 
     slug = server_slug(server_name)
-    typer.echo(f"gen-sdet-classes: wrote SDET classes for {server_name}\n")
+    typer.echo(f"gen-test-classes: wrote SDET classes for {server_name}\n")
     typer.echo(f"  server:    {server_name} v{server_version}")
     typer.echo(f"  slug:      {slug}")
     typer.echo(f"  target:    {out_root / slug}/")
@@ -1059,6 +1059,28 @@ def gen_sdet_classes(
         f"  degraded:  {counts['degraded_fields']} fields "
         f"(grep \"codegen: degraded\" for details)"
     )
+
+
+@app.command("gen-sdet-classes", hidden=True)  # noqa: sdet-rename-shim
+def _gen_sdet_classes_shim(  # noqa: sdet-rename-shim
+    config: Path | None = typer.Option(  # noqa: sdet-rename-shim
+        None,  # noqa: sdet-rename-shim
+        "--config",  # noqa: sdet-rename-shim
+        help=(  # noqa: sdet-rename-shim
+            "Path to a YAML config (overrides MCPTF_CONFIG_FILE and "  # noqa: sdet-rename-shim
+            "./config.yaml autodiscovery)."  # noqa: sdet-rename-shim
+        ),  # noqa: sdet-rename-shim
+    ),  # noqa: sdet-rename-shim
+) -> None:  # noqa: sdet-rename-shim
+    """Deprecated alias for `gen-test-classes` -- removed in v1.5."""  # noqa: sdet-rename-shim
+    import warnings  # noqa: sdet-rename-shim
+    warnings.warn(  # noqa: sdet-rename-shim
+        "gen-sdet-classes is deprecated since v1.4 and will be removed in v1.5 — "  # noqa: sdet-rename-shim
+        "use gen-test-classes instead.",  # noqa: sdet-rename-shim
+        DeprecationWarning,  # noqa: sdet-rename-shim
+        stacklevel=2,  # noqa: sdet-rename-shim
+    )  # noqa: sdet-rename-shim
+    gen_test_classes(config=config)  # noqa: sdet-rename-shim
 
 
 # Serializes concurrent _run_codegen_handshake calls in the same
@@ -1071,7 +1093,7 @@ _codegen_handshake_lock = asyncio.Lock()
 
 
 async def _run_codegen_handshake(cfg: Config) -> tuple[object, list[Tool]]:
-    """Open one-shot McpTestClient; return (serverInfo, tools) for gen-sdet-classes.
+    """Open one-shot McpTestClient; return (serverInfo, tools) for gen-test-classes.
 
     ``mcp_client.py`` is intentionally not modified by this helper. To
     read serverInfo without touching that file we patch
@@ -1367,7 +1389,7 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
         "\n"
         "# SDET codegen + fixture output path. REQUIRED.\n"
         "#\n"
-        "# The `mcp-test-framework gen-sdet-classes` command writes generated\n"
+        "# The `mcp-test-framework gen-test-classes` command writes generated\n"
         "# typed classes into <generated_root>/<server_slug>/, and the\n"
         "# `mcp_session` pytest fixture loads them from the same path.\n"
         "# Recommended convention: `tests/sdet/_generated` (colocated with\n"
