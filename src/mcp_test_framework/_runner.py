@@ -83,7 +83,7 @@ def _build_pytest_args(
     pytest_args: list[str] | None,
     *,
     with_framework: bool = False,
-    sdet: bool = False,
+    sdet: bool = False,  # noqa: sdet-rename-shim
 ) -> list[str]:
     """Translate the public ``--junit-xml=PATH`` spelling into pytest's
     ``--junitxml=PATH`` (no-dash internal spelling) and assemble the argv
@@ -101,7 +101,7 @@ def _build_pytest_args(
       - ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
         ``--with-framework`` is a superset matching the pre-split
         ``pytest tests/`` collection.
-      - ``sdet=True`` (operator-facing flag is ``--test-code``) SWAPS the
+      - ``sdet=True`` (operator-facing flag is ``--test-code``) SWAPS the  # noqa: sdet-rename-shim
         operator-surface scope from ``tests/contract`` to ``tests/test_code``
         (not additive). Dual-discovery: the legacy ``tests/sdet/`` path is  # noqa: sdet-rename-shim
         retained as a fallback for v1.4 only (removed in v1.5); if
@@ -110,10 +110,10 @@ def _build_pytest_args(
         ``tests/test_code/conftest.py`` when items collect from the legacy
         path. ``with_framework=True`` remains ALWAYS additive on top of
         whichever scope is active. The wrapper-owned ``--test-code`` /
-        ``--sdet`` flags never reach pytest's argv.
+        ``--sdet`` flags never reach pytest's argv.  # noqa: sdet-rename-shim
     """  # noqa: sdet-rename-shim
     forwarded = list(pytest_args or [])
-    if sdet:
+    if sdet:  # noqa: sdet-rename-shim
         # --test-code SWAPS the operator-surface scope (NOT additive).
         # Dual-discovery: tests/test_code/ is the v1.4 primary path; the
         # legacy fallback path is kept for one milestone.  # noqa: sdet-rename-shim
@@ -165,7 +165,7 @@ def run_pytest_subprocess(
     pytest_args: list[str] | None,
     raw: bool,
     with_framework: bool = False,
-    sdet: bool = False,
+    sdet: bool = False,  # noqa: sdet-rename-shim
 ) -> tuple[int, Path | None, str, str]:
     """Spawn pytest as a child process and return its result.
 
@@ -201,7 +201,7 @@ def run_pytest_subprocess(
     if raw:
         # Raw mode -- no internal tempfile, no capture.
         inner_args = _build_pytest_args(
-            junit_xml, pytest_args, with_framework=with_framework, sdet=sdet
+            junit_xml, pytest_args, with_framework=with_framework, sdet=sdet  # noqa: sdet-rename-shim
         )
         argv = [sys.executable, "-m", "pytest", *inner_args]
         # Force the child pytest to WRITE utf-8 bytes even on Windows (where
@@ -232,7 +232,7 @@ def run_pytest_subprocess(
     # operator junit_xml is deliberately suppressed inside _build_pytest_args
     # so only the wrapper's tempfile is exposed to pytest as --junitxml.
     inner_args = _build_pytest_args(
-        None, pytest_args, with_framework=with_framework, sdet=sdet
+        None, pytest_args, with_framework=with_framework, sdet=sdet  # noqa: sdet-rename-shim
     )
     argv = [
         sys.executable,
@@ -888,8 +888,8 @@ def _render_scenario_pre_run_digest(
     is the locked rendering character; do not substitute an ASCII hyphen.
 
     The em-dash literal U+2014 appears in:
-      1. judges_text = "(none — SDET scope)"   -- signals no Ollama grading
-      2. The --explain expansion line          -- matches the locked separator
+      1. judges_text = "(none — test-code scope)"   -- signals no Ollama grading
+      2. The --explain expansion line               -- matches the locked separator
 
     Args:
         ctx: shared RenderContext (server_cmd field consumed).
@@ -906,11 +906,11 @@ def _render_scenario_pre_run_digest(
     running = sorted(scenarios)
     running_n = len(running)
     skipping_n = len(skipped_scenarios)
-    judges_text = "(none — SDET scope)"   # em-dash U+2014
+    judges_text = "(none — test-code scope)"   # em-dash U+2014
     running_text = ", ".join(running) if running else "(none)"
 
     print("=" * 40, file=file)
-    print("MCP Test Framework (SDET)", file=file)
+    print("MCP Test Framework (test-code)", file=file)
     print("=" * 40, file=file)
     print(f"MCP server:  {ctx.server_cmd}", file=file)
     print(f"Discovered:  {running_n + skipping_n} scenarios", file=file)

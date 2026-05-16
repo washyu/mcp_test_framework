@@ -98,7 +98,7 @@ def test_tool_raises_with_candidate_list_on_unknown_name() -> None:
     assert "create_vm" in msg
     assert "delete_vm" in msg
     assert "homelab_mcp" in msg
-    assert "gen-sdet-classes" in msg  # next-step hint
+    assert "gen-test-classes" in msg  # next-step hint
 
 
 @pytest.mark.asyncio
@@ -114,7 +114,7 @@ async def test_call_raises_runtime_error_when_no_active_client() -> None:
     msg = str(exc.value)
     assert "no active MCP client" in msg
     assert "mcp_session" in msg
-    assert "tests/sdet/" in msg
+    assert "tests/test_code/" in msg
 
 
 @pytest.mark.asyncio

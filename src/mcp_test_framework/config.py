@@ -60,10 +60,10 @@ class Config(BaseSettings):
     # via ``_emit_operator_error_for_validation``'s ``missing`` branch in
     # ``cli.py``. One source of truth -- no env var, no CLI flag override.
     #
-    # The ``validation_alias=AliasChoices("test_code", "sdet")`` accepts BOTH
-    # the canonical v1.4 YAML key (``test_code:``) and the legacy v1.3 key
-    # (``sdet:``). The legacy key is paired with a DeprecationWarning fired by
-    # ``_warn_or_reject_legacy_sdet_key`` below; the alias is removed in v1.5.
+    # The ``validation_alias=AliasChoices("test_code", "sdet")`` accepts BOTH  # noqa: sdet-rename-shim
+    # the canonical v1.4 YAML key (``test_code:``) and the legacy v1.3 key  # noqa: sdet-rename-shim
+    # (``sdet:``). The legacy key is paired with a DeprecationWarning fired by  # noqa: sdet-rename-shim
+    # ``_warn_or_reject_legacy_sdet_key`` below; the alias is removed in v1.5.  # noqa: sdet-rename-shim
     test_code: TestCodeConfig = Field(  # noqa: sdet-rename-shim
         ...,
         validation_alias=AliasChoices("test_code", "sdet"),  # noqa: sdet-rename-shim
@@ -80,10 +80,10 @@ class Config(BaseSettings):
     @model_validator(mode="before")
     @classmethod
     def _warn_or_reject_legacy_sdet_key(cls, data: Any) -> Any:  # noqa: sdet-rename-shim
-        """Defense-in-depth ambiguity check for the v1.4 sdet->test_code alias.
+        """Defense-in-depth ambiguity check for the v1.4 sdet->test_code alias.  # noqa: sdet-rename-shim
 
         The parent ``Config`` carries a ``mode='before'`` model_validator
-        that rejects raw input containing BOTH ``sdet`` and ``test_code``
+        that rejects raw input containing BOTH ``sdet`` and ``test_code``  # noqa: sdet-rename-shim
         keys simultaneously. In practice the two operator entry points
         each catch this earlier:
 
@@ -105,12 +105,12 @@ class Config(BaseSettings):
         """
         if not isinstance(data, dict):
             return data
-        has_legacy = "sdet" in data
+        has_legacy = "sdet" in data  # noqa: sdet-rename-shim
         has_new = "test_code" in data
         if has_legacy and has_new:
             raise ValueError(  # noqa: sdet-rename-shim
-                "config.yaml contains both 'sdet' and 'test_code' keys -- "
-                "remove the legacy 'sdet' key (deprecated since v1.4, removed in v1.5) "
+                "config.yaml contains both 'sdet' and 'test_code' keys -- "  # noqa: sdet-rename-shim
+                "remove the legacy 'sdet' key (deprecated since v1.4, removed in v1.5) "  # noqa: sdet-rename-shim
                 "and keep only 'test_code'."
             )
         return data
@@ -126,7 +126,7 @@ class Config(BaseSettings):
         by_alias: bool | None = None,
         by_name: bool | None = None,
     ) -> "Config":
-        """Pre-scan dict input for the v1.4 sdet->test_code alias before
+        """Pre-scan dict input for the v1.4 sdet->test_code alias before  # noqa: sdet-rename-shim
         pydantic-settings strips alias keys.
 
         ``BaseSettings`` (unlike plain ``BaseModel``) routes ``model_validate``
@@ -139,13 +139,12 @@ class Config(BaseSettings):
         before delegating to the base implementation.
         """
         if isinstance(obj, dict):
-            has_legacy = "sdet" in obj
+            has_legacy = "sdet" in obj  # noqa: sdet-rename-shim
             has_new = "test_code" in obj
             if has_legacy and has_new:
                 # Build a ValidationError so callers grepping for
-                # ValidationError on this path (per RENAME-05 acceptance)
-                # see the canonical exception type rather than a bare
-                # ValueError.
+                # ValidationError on this path see the canonical exception
+                # type rather than a bare ValueError.
                 from pydantic_core import PydanticCustomError
                 from pydantic import ValidationError
 
@@ -170,7 +169,7 @@ class Config(BaseSettings):
                 import warnings
 
                 warnings.warn(  # noqa: sdet-rename-shim
-                    "config.yaml key 'sdet:' is deprecated since v1.4 and will be removed in v1.5 -- "
+                    "config.yaml key 'sdet:' is deprecated since v1.4 and will be removed in v1.5 -- "  # noqa: sdet-rename-shim
                     "use 'test_code:' instead.",
                     DeprecationWarning,
                     stacklevel=2,
@@ -236,8 +235,8 @@ class Config(BaseSettings):
             yaml_file = os.environ.get("MCPTF_CONFIG_FILE")
         sources: list[PydanticBaseSettingsSource] = [init_settings]
         if yaml_file and Path(yaml_file).is_file():
-            # v1.4 sdet->test_code alias: inspect the raw YAML BEFORE the
-            # YAML source's alias-aware key resolution collapses ``sdet`` and
+            # v1.4 sdet->test_code alias: inspect the raw YAML BEFORE the  # noqa: sdet-rename-shim
+            # YAML source's alias-aware key resolution collapses ``sdet`` and  # noqa: sdet-rename-shim
             # ``test_code`` into a single top-level field. Pydantic-settings
             # merges alias choices at source-build time, so the
             # ``_warn_or_reject_legacy_sdet_key`` model_validator only sees
@@ -253,11 +252,11 @@ class Config(BaseSettings):
 
 
 def _check_legacy_sdet_key_in_yaml(yaml_file: str) -> None:  # noqa: sdet-rename-shim
-    """Pre-scan a YAML file for the v1.4 sdet->test_code alias keys.
+    """Pre-scan a YAML file for the v1.4 sdet->test_code alias keys.  # noqa: sdet-rename-shim
 
     Raises a ``pydantic.ValidationError`` (constructed against ``Config``)
-    if BOTH ``sdet`` and ``test_code`` top-level keys are present. Emits a
-    once-per-process ``DeprecationWarning`` if only the legacy ``sdet``
+    if BOTH ``sdet`` and ``test_code`` top-level keys are present. Emits a  # noqa: sdet-rename-shim
+    once-per-process ``DeprecationWarning`` if only the legacy ``sdet``  # noqa: sdet-rename-shim
     key is present.
 
     Called from ``settings_customise_sources`` so the check runs against
@@ -279,7 +278,7 @@ def _check_legacy_sdet_key_in_yaml(yaml_file: str) -> None:  # noqa: sdet-rename
         return
     if not isinstance(raw, dict):
         return
-    has_legacy = "sdet" in raw
+    has_legacy = "sdet" in raw  # noqa: sdet-rename-shim
     has_new = "test_code" in raw
     if has_legacy and has_new:
         from pydantic import ValidationError
@@ -306,7 +305,7 @@ def _check_legacy_sdet_key_in_yaml(yaml_file: str) -> None:  # noqa: sdet-rename
         import warnings
 
         warnings.warn(  # noqa: sdet-rename-shim
-            "config.yaml key 'sdet:' is deprecated since v1.4 and will be removed in v1.5 -- "
+            "config.yaml key 'sdet:' is deprecated since v1.4 and will be removed in v1.5 -- "  # noqa: sdet-rename-shim
             "use 'test_code:' instead.",
             DeprecationWarning,
             stacklevel=2,

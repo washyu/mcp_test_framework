@@ -28,19 +28,19 @@ judge_timeout_seconds: 120
 # Schema version. This release accepts version 2.
 version: 2
 
-# SDET codegen + fixture output path. REQUIRED.
+# test-code codegen + fixture output path. REQUIRED.
 #
-# The `mcp-test-framework gen-sdet-classes` command writes generated typed
+# The `mcp-test-framework gen-test-classes` command writes generated typed
 # classes into <generated_root>/<server_slug>/, and the `mcp_session`
 # pytest fixture loads them from the same path. Recommended convention:
-# `tests/sdet/_generated` (colocated with your tests/sdet/ scenarios, the
-# `_` prefix signals "tool-managed, don't hand-edit"). Pick any path you
-# want -- the framework does not enforce a layout.
+# `tests/test_code/_generated` (colocated with your tests/test_code/
+# scenarios, the `_` prefix signals "tool-managed, don't hand-edit"). Pick
+# any path you want -- the framework does not enforce a layout.
 #
 # Non-absolute paths are resolved relative to the current working
 # directory when the config is loaded.
-sdet:
-  generated_root: "tests/sdet/_generated"
+test_code:
+  generated_root: "tests/test_code/_generated"
 
 # Per-tool registry: each entry below illustrates one pattern variation.
 # Replace placeholder names with actual tool names from

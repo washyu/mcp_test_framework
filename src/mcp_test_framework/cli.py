@@ -62,7 +62,7 @@ from mcp_test_framework.models import TestCodeConfig
 # and re-runs gets a self-consistent path. This stub is NEVER reachable
 # from operator-supplied YAML: ``test_code.generated_root`` remains a required
 # field for any loaded config.
-_BOOTSTRAP_TEST_CODE_STUB = TestCodeConfig(generated_root=Path("tests/sdet/_generated"))
+_BOOTSTRAP_TEST_CODE_STUB = TestCodeConfig(generated_root=Path("tests/test_code/_generated"))
 
 app = typer.Typer(
     name="mcp-test-framework",
@@ -107,9 +107,9 @@ def _emit_operator_error_for_validation(
     Function never returns; every branch calls _emit_operator_error which raises.
     """
     errors = exc.errors()
-    # With `sdet` required on Config, a v1 YAML missing the `sdet` block
+    # With `test_code` required on Config, a v1 YAML missing the `test_code` block
     # produces TWO Pydantic errors -- the v1 version-mismatch AND the
-    # missing-sdet field. Order of `errors[0]` is implementation-defined
+    # missing-test_code field. Order of `errors[0]` is implementation-defined
     # and would silently shift the rendered v1-migration message to the
     # missing-required-field path, breaking the locked migration error
     # text. Scan ALL errors and prefer the version-mismatch first so the
@@ -492,10 +492,10 @@ def run(
     effect inside the subprocess -- `run` MUST NOT pass an explicit `-m`
     flag.
     """
-    if sdet_legacy:
+    if sdet_legacy:  # noqa: sdet-rename-shim
         import warnings
-        warnings.warn(
-            "--sdet is deprecated since v1.4 and will be removed in v1.5 — "
+        warnings.warn(  # noqa: sdet-rename-shim
+            "--sdet is deprecated since v1.4 and will be removed in v1.5 — "  # noqa: sdet-rename-shim
             "use --test-code instead.",
             DeprecationWarning,
             stacklevel=2,
@@ -546,7 +546,7 @@ def run(
             pytest_args=pytest_args,
             raw=True,
             with_framework=with_framework,
-            sdet=test_code,
+            sdet=test_code,  # noqa: sdet-rename-shim
         )
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
@@ -618,7 +618,7 @@ def run(
         pytest_args=pytest_args,
         raw=False,
         with_framework=with_framework,
-        sdet=test_code,
+        sdet=test_code,  # noqa: sdet-rename-shim
     )
     try:
         # If the subprocess crashed before writing the tempfile, surface a
@@ -977,8 +977,8 @@ def gen_test_classes(
     """Generate typed Pydantic Params/Response classes for every tool.
 
     Introspects the configured MCP server via list_tools and writes
-    `<sdet.generated_root>/<server_slug>/<tool>.py` for every tool the
-    server advertises, where `sdet.generated_root` is the required path
+    `<test_code.generated_root>/<server_slug>/<tool>.py` for every tool the
+    server advertises, where `test_code.generated_root` is the required path
     declared in your config.yaml. Wipe-and-write: rerunning replaces
     the directory wholesale. Honors the standard config-source
     precedence: --config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
@@ -1028,7 +1028,7 @@ def gen_test_classes(
                 f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`) "
                 f"reports an empty serverInfo.name.",
                 "gen-test-classes needs a non-empty name to derive the "
-                "<sdet.generated_root>/<slug>/ output directory.",
+                "<test_code.generated_root>/<slug>/ output directory.",
             ],
             next_step=(
                 "ask the server author to set a name in their server's "
@@ -1067,7 +1067,7 @@ def gen_test_classes(
         )
 
     slug = server_slug(server_name)
-    typer.echo(f"gen-test-classes: wrote SDET classes for {server_name}\n")
+    typer.echo(f"gen-test-classes: wrote test-code classes for {server_name}\n")
     typer.echo(f"  server:    {server_name} v{server_version}")
     typer.echo(f"  slug:      {slug}")
     typer.echo(f"  target:    {out_root / slug}/")
@@ -1368,7 +1368,7 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
     Output shape (the operator-facing scaffold contract -- see
     docs/ERROR-STYLE.md for the surrounding error-message style guide):
     - Top-level `ollama:`, `mcp_server:`, `judge_timeout_seconds:`,
-      `version:`, `sdet:`, and `tools:` blocks all populated.
+      `version:`, `test_code:`, and `tools:` blocks all populated.
     - `version: 2` literal (this release's accepted schema version).
     - Every discovered tool emitted as
       `<name>: { skip: true, skip_reason: ... }` with the name passed
@@ -1404,20 +1404,20 @@ def _format_tools_yaml_scaffold(tools: list[Tool]) -> str:
         "# Schema version. This release accepts version 2.\n"
         "version: 2\n"
         "\n"
-        "# SDET codegen + fixture output path. REQUIRED.\n"
+        "# test-code codegen + fixture output path. REQUIRED.\n"
         "#\n"
         "# The `mcp-test-framework gen-test-classes` command writes generated\n"
         "# typed classes into <generated_root>/<server_slug>/, and the\n"
         "# `mcp_session` pytest fixture loads them from the same path.\n"
-        "# Recommended convention: `tests/sdet/_generated` (colocated with\n"
-        "# your tests/sdet/ scenarios; the `_` prefix signals\n"
+        "# Recommended convention: `tests/test_code/_generated` (colocated\n"
+        "# with your tests/test_code/ scenarios; the `_` prefix signals\n"
         "# \"tool-managed, don't hand-edit\"). Pick any path you want --\n"
         "# the framework does not enforce a layout.\n"
         "#\n"
         "# Non-absolute paths are resolved relative to the current working\n"
         "# directory when the config is loaded.\n"
-        "sdet:\n"
-        f"  generated_root: {json.dumps('tests/sdet/_generated')}\n"
+        "test_code:\n"
+        f"  generated_root: {json.dumps('tests/test_code/_generated')}\n"
         "\n"
         "# Per-tool registry. Every tool the connected server advertises is\n"
         "# listed below as `skip: true` -- the framework will not call any\n"

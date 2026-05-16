@@ -252,7 +252,7 @@ class TestD06ScenarioDigest:
             explain=False,
         )
         out = capsys.readouterr().out
-        assert "(none — SDET scope)" in out  # em-dash U+2014
+        assert "(none — test-code scope)" in out  # em-dash U+2014
 
     def test_with_framework_breadcrumb(self, capsys) -> None:
         """D-06: --with-framework appends a continuation breadcrumb line."""

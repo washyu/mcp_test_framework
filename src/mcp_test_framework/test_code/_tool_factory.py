@@ -3,13 +3,13 @@
 Locked invariants:
   - stringly-typed ``tool("name").call(params)`` -- single surface, no
     attribute-access namespace (``Tool.create_vm.call(...)`` ergonomic deferred
-    until SDETs ask for it).
+    until test-code authors ask for it).
   - ``ToolWrapper`` is Generic over ``(P, R)`` so an IDE can complete the
     typed response on ``await tool("create_vm").call(params)``.
 
 The module-level ``_REGISTRIES`` + ``_ACTIVE_SLUG`` + ``_ACTIVE_CLIENT`` slots
 are populated by the ``mcp_session`` fixture: the fixture loads the generated
-``__init__.py`` from the operator-configured ``sdet.generated_root`` via
+``__init__.py`` from the operator-configured ``test_code.generated_root`` via
 ``importlib.util.spec_from_file_location``, reads its ``_REGISTRY`` attr,
 inserts it into ``_REGISTRIES[slug]``, sets ``_ACTIVE_SLUG = slug`` and
 ``_ACTIVE_CLIENT = <client>``, then yields. On teardown the fixture restores
@@ -81,9 +81,9 @@ class ToolWrapper(Generic[P, R]):
             fixture so the operator can fix it).
           - Serializes ``params`` via Pydantic with ``mode="json", exclude_unset=True``.
             MCP wire format expects JSON-serializable dicts; optional fields the
-            SDET never set stay off the wire (SEED-022: user intent, not value,
-            is the discriminator). An SDET who explicitly passes ``field=None`` still
-            puts ``null`` on the wire.
+            test-code author never set stay off the wire (user intent, not value,
+            is the discriminator). A test-code author who explicitly passes
+            ``field=None`` still puts ``null`` on the wire.
           - Awaits ``McpTestClient.call_tool`` (which already enforces
             ``asyncio.timeout`` internally).
           - On ``result.isError=True``: extracts code+message via the strict
@@ -96,7 +96,7 @@ class ToolWrapper(Generic[P, R]):
         if _ACTIVE_CLIENT is None:
             raise RuntimeError(
                 "no active MCP client. tool().call() requires the `mcp_session` "
-                "fixture. Use it in an SDET test under `tests/sdet/`."
+                "fixture. Use it in a test-code test under `tests/test_code/`."
             )
         arguments = params.model_dump(mode="json", exclude_unset=True)
         result = await _ACTIVE_CLIENT.call_tool(self.name, arguments)
@@ -119,7 +119,7 @@ def tool(name: str) -> ToolWrapper:
     """Look up the typed wrapper for an MCP tool by name.
 
     Returns a ToolWrapper whose ``params_cls`` and ``response_cls`` were
-    registered by ``gen-sdet-classes``.
+    registered by ``gen-test-classes``.
 
     Raises:
       RuntimeError: no active registry (the ``mcp_session`` fixture has not
@@ -130,15 +130,15 @@ def tool(name: str) -> ToolWrapper:
     if _ACTIVE_SLUG is None:
         raise RuntimeError(
             "no MCP server registry is active. The `mcp_session` fixture is "
-            "what activates a registry. If you are running an SDET test "
-            "outside of `tests/sdet/` or without `--sdet`, that is the cause."
+            "what activates a registry. If you are running a test-code test "
+            "outside of `tests/test_code/` or without `--test-code`, that is the cause."
         )
     registry = _REGISTRIES.get(_ACTIVE_SLUG, {})
     if name not in registry:
         raise KeyError(
             f"tool {name!r} is not in the generated registry for server "
             f"{_ACTIVE_SLUG!r}. Available tools: {sorted(registry.keys())!r}. "
-            f"Re-run `mcp-test-framework gen-sdet-classes` if the server's "
+            f"Re-run `mcp-test-framework gen-test-classes` if the server's "
             f"tool set changed."
         )
     params_cls, response_cls = registry[name]

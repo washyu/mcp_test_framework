@@ -174,7 +174,7 @@ async def _preflight(request: pytest.FixtureRequest):
 
     The ``config`` fixture is requested *lazily* via
     ``request.getfixturevalue`` AFTER the live-MCP scope check, instead of
-    as a direct parameter. With ``sdet.generated_root`` now required on
+    as a direct parameter. With ``test_code.generated_root`` now required on
     Config, a bare ``Config()`` constructed for framework-only test
     sessions (no ``MCPTF_CONFIG_FILE`` set) would fail with the canonical
     missing-required-field error (see docs/ERROR-STYLE.md) before the
@@ -410,7 +410,7 @@ async def mcp_client(config: Config, _preflight, _isolated_home: Path):
                 try:
                     with anyio.fail_after(config.mcp_server.timeout_seconds):
                         init_result = await session.initialize()
-                    # Capture serverInfo so the SDET ``mcp_session`` fixture
+                    # Capture serverInfo so the test-code ``mcp_session`` fixture
                     # can derive the generated-module slug. The mcp SDK
                     # discards ``InitializeResult`` after caching
                     # ``_server_capabilities`` only.

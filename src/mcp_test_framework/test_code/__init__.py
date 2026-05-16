@@ -1,4 +1,4 @@
-"""mcp_test_framework.test_code -- public SDET test surface.
+"""mcp_test_framework.test_code -- public test-code authoring surface.
 
 Exports:
   - ToolResponse: uniform .raw / .data / .text / .is_error base class that

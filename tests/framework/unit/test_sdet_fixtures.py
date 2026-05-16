@@ -289,10 +289,10 @@ async def test_mcp_session_fail_loud_on_missing_generated_module(
 
     assert exc_info.value.returncode == 2
     message = str(exc_info.value)
-    assert "No generated SDET classes" in message
+    assert "No generated test-code classes" in message
     assert "missing_server" in message  # slug normalization
-    assert "gen-sdet-classes" in message
-    assert "--sdet" in message
+    assert "gen-test-classes" in message
+    assert "--test-code" in message
 
 
 # --- Phase 04.1 invariant guard -------------------------------------------

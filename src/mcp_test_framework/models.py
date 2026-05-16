@@ -137,7 +137,7 @@ class ToolConfig(BaseModel):
 
 
 class HomelabProxmoxConfig(BaseModel):
-    """Proxmox-specific knobs for SDET dogfood scenarios.
+    """Proxmox-specific knobs for test-code dogfood scenarios.
 
     Currently exposes only ``dogfood_vmid_range`` -- the reserved VMID
     window the framework's VM-lifecycle dogfood scenario allocates
@@ -188,10 +188,10 @@ class HomelabConfig(BaseModel):
 
 
 class TestCodeConfig(BaseModel):
-    """SDET codegen + fixture surface knobs.
+    """test-code codegen + fixture surface knobs.
 
     Currently exposes only ``generated_root`` -- the on-disk directory the
-    framework writes generated SDET classes into (via ``gen-sdet-classes``)
+    framework writes generated test-code classes into (via ``gen-test-classes``)
     and loads them from (via the ``mcp_session`` fixture). The field is
     REQUIRED with no default: the framework refuses to silently invent a
     path to write Python code into or load Python code from, matching the
@@ -222,11 +222,11 @@ class TestCodeConfig(BaseModel):
     generated_root: Path = Field(
         ...,
         description=(
-            "On-disk directory the framework writes generated SDET classes "
-            "into and loads them from. REQUIRED -- the framework will not "
-            "silently invent a path. Recommended convention: "
-            "tests/sdet/_generated/ (the framework recommends this in docs "
-            "but does not enforce it)."
+            "On-disk directory the framework writes generated test-code "
+            "classes into and loads them from. REQUIRED -- the framework "
+            "will not silently invent a path. Recommended convention: "
+            "tests/test_code/_generated/ (the framework recommends this in "
+            "docs but does not enforce it)."
         ),
     )
 
@@ -241,8 +241,8 @@ class TestCodeConfig(BaseModel):
         """
         if isinstance(v, str) and v.strip() == "":
             raise ValueError(
-                "sdet.generated_root must not be an empty string; "
-                "set it to a directory path such as 'tests/sdet/_generated' "
+                "test_code.generated_root must not be an empty string; "
+                "set it to a directory path such as 'tests/test_code/_generated' "
                 "or remove the key entirely to get the missing-required-field error"
             )
         return v

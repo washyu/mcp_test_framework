@@ -2,13 +2,13 @@
 
 The fixture is an alias of the existing session-scoped ``mcp_client`` fixture
 -- no duplicate stdio_client / ClientSession lifecycle is introduced. Its
-body performs a 5-step registry activation against the generated SDET package
-for the connected server:
+body performs a 5-step registry activation against the generated test-code
+package for the connected server:
 
   1. read ``serverInfo.name`` off the live client
   2. derive a directory slug via ``server_slug``
   3. locate the generated package at
-     ``<cfg.sdet.generated_root>/<slug>/__init__.py``
+     ``<cfg.test_code.generated_root>/<slug>/__init__.py``
   4. load that module via ``importlib.util.spec_from_file_location`` and read
      its ``_REGISTRY`` attribute
   5. install ``_REGISTRY`` / ``_ACTIVE_SLUG`` / ``_ACTIVE_CLIENT`` slots on
@@ -16,7 +16,7 @@ for the connected server:
 
 The on-disk path must be a real directory containing a usable ``__init__.py``;
 missing dir or missing init fail loud via ``_pytest_exit_operator_tone`` so
-the operator gets an actionable next-step (run ``gen-sdet-classes``).
+the operator gets an actionable next-step (run ``gen-test-classes``).
 
 ``submodule_search_locations=[str(slug_dir)]`` is non-negotiable: the
 generated ``__init__.py`` uses RELATIVE imports
@@ -53,7 +53,7 @@ from mcp_test_framework.test_code._slugs import server_slug
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def mcp_session(mcp_client: McpTestClient):
-    """Live ClientSession driver + active SDET registry."""
+    """Live ClientSession driver + active test-code registry."""
     # Step 1+2: server name -> slug (single source of truth: _slugs.server_slug).
     assert mcp_client.server_info is not None, (
         "mcp_client.server_info must be populated by the fixture owner task "
@@ -74,24 +74,24 @@ async def mcp_session(mcp_client: McpTestClient):
     if not slug_dir.is_dir() or not init_py.is_file():
         _pytest_exit_operator_tone(
             summary=(
-                f"No generated SDET classes found for server {slug!r} "
+                f"No generated test-code classes found for server {slug!r} "
                 f"(from serverInfo.name={server_name!r})."
             ),
             detail=[
                 f"  The fixture looked for `{init_py}` and it does not exist.",
-                f"  Configured `sdet.generated_root`: {cfg.test_code.generated_root}",
-                "  This usually means `gen-sdet-classes` has not been run "
+                f"  Configured `test_code.generated_root`: {cfg.test_code.generated_root}",
+                "  This usually means `gen-test-classes` has not been run "
                 "for this server, or the server's name changed.",
             ],
             next_step=(
-                "run `mcp-test-framework gen-sdet-classes` against this "
-                "server first, then re-run with --sdet"
+                "run `mcp-test-framework gen-test-classes` against this "
+                "server first, then re-run with --test-code"
             ),
         )
 
     # The synthetic package prefix avoids sys.modules collisions across
     # repeated pytest invocations within the same process.
-    pkg_name = f"_mcptf_sdet_generated_{slug}"
+    pkg_name = f"_mcptf_test_code_generated_{slug}"
     for k in [k for k in list(sys.modules) if k == pkg_name or k.startswith(pkg_name + ".")]:
         del sys.modules[k]
     spec = importlib.util.spec_from_file_location(
@@ -102,7 +102,7 @@ async def mcp_session(mcp_client: McpTestClient):
     if spec is None or spec.loader is None:
         _pytest_exit_operator_tone(
             summary=(
-                f"Failed to construct module spec for generated SDET "
+                f"Failed to construct module spec for generated test-code "
                 f"package at {init_py}."
             ),
             detail=[
@@ -112,7 +112,7 @@ async def mcp_session(mcp_client: McpTestClient):
                 "Python source file (e.g. a 0-byte file or non-text content).",
             ],
             next_step=(
-                "regenerate the package with `mcp-test-framework gen-sdet-classes`"
+                "regenerate the package with `mcp-test-framework gen-test-classes`"
             ),
         )
     mod = importlib.util.module_from_spec(spec)

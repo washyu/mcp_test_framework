@@ -1,4 +1,4 @@
-"""Slug + identifier helpers for the SDET codegen.
+"""Slug + identifier helpers for the test-code codegen.
 
   - ``server_slug(name)`` normalizes ``serverInfo.name`` from the MCP
     ``initialize`` handshake. Rule: lowercase -> non-[a-z0-9] to underscore

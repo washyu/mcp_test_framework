@@ -273,7 +273,7 @@ in [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md). Run scenarios
 with `mcp-test-framework run --test-code`.
 
 <!-- mirrors live runner output — re-run the framework and refresh this block when the operator-facing output format changes; see docs/TEST-CODE-AUTHORING.md for the test-code mode digest contract -->
-<!-- noqa: sdet-rename-shim — the fenced text snapshot below is a verbatim pre-Phase-25 capture; Phase 30 CLOSE-04 owns the re-capture against the renamed surface. The "(SDET)" header, "Judges: (none — SDET scope)" line, and "mcp_test_framework.sdet.errors.ToolCallError" rows are intentionally preserved here for the duration of the v1.4 deprecation window. -->
+<!-- noqa: sdet-rename-shim — the fenced text snapshot below is a verbatim pre-rename capture; the v1.4 close milestone owns the re-capture against the renamed surface. The "(SDET)" header, "Judges: (none — SDET scope)" line, and "mcp_test_framework.sdet.errors.ToolCallError" rows are intentionally preserved here for the duration of the v1.4 deprecation window. -->
 
 ```python
 # tests/test_code/test_proxmox_vm_lifecycle.py

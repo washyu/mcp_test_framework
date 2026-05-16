@@ -41,13 +41,13 @@ def _ctx(server_cmd: str = "uvx homelab-mcp") -> RenderContext:
 
 
 def test_scenario_digest_banner_says_sdet(capsys) -> None:
-    """D-06: banner identifies the scope as SDET (distinguishable from the
-    contract-scope digest's 'MCP Test Framework' banner)."""
+    """D-06: banner identifies the scope as test-code (distinguishable from
+    the contract-scope digest's 'MCP Test Framework' banner)."""
     _render_scenario_pre_run_digest(_ctx(), [], {})
     out = capsys.readouterr().out
     lines = out.split("\n")
     assert lines[0] == "=" * 40
-    assert lines[1] == "MCP Test Framework (SDET)"
+    assert lines[1] == "MCP Test Framework (test-code)"
     assert lines[2] == "=" * 40
 
 
@@ -100,11 +100,11 @@ def test_scenario_digest_with_framework_breadcrumb(capsys) -> None:
 
 
 def test_scenario_digest_judges_sentinel_uses_em_dash(capsys) -> None:
-    """D-06: SDET scope reports judges as '(none — SDET scope)' with
-    em-dash U+2014, signaling that SDET runs don't grade with Ollama."""
+    """D-06: test-code scope reports judges as '(none — test-code scope)' with
+    em-dash U+2014, signaling that test-code runs don't grade with Ollama."""
     _render_scenario_pre_run_digest(_ctx(), ["s"], {})
     out = capsys.readouterr().out
-    assert "Judges:      (none — SDET scope)" in out, repr(out)
+    assert "Judges:      (none — test-code scope)" in out, repr(out)
 
 
 def test_scenario_digest_height_bounded(capsys) -> None:
@@ -138,7 +138,7 @@ def test_scenario_digest_accepts_file_kwarg() -> None:
     """capsys-parity: file=stream redirects output."""
     buf = io.StringIO()
     _render_scenario_pre_run_digest(_ctx(), ["s"], {}, file=buf)
-    assert "MCP Test Framework (SDET)" in buf.getvalue()
+    assert "MCP Test Framework (test-code)" in buf.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -191,4 +191,4 @@ def test_non_sdet_digest_banner_unchanged(capsys) -> None:
     _render_pre_run_digest(ctx)
     out = capsys.readouterr().out
     assert "MCP Test Framework\n" in out
-    assert "MCP Test Framework (SDET)" not in out
+    assert "MCP Test Framework (test-code)" not in out

@@ -190,7 +190,7 @@ def test_run_sdet_dispatches_scenario_digest(tmp_path, monkeypatch) -> None:
     )
     result = _invoke("run", "--test-code", "--config", str(cfg_path))
     assert result.exit_code == 0, result.output
-    assert "MCP Test Framework (SDET)" in result.output, result.output
+    assert "MCP Test Framework (test-code)" in result.output, result.output
     # The tool banner ("MCP Test Framework" followed by newline, no (SDET)
     # suffix) must NOT appear under --test-code.
     assert "\nMCP Test Framework\n" not in result.output
@@ -213,7 +213,7 @@ def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
     result = _invoke("run", "--config", str(cfg_path))
     assert result.exit_code == 0, result.output
     assert "MCP Test Framework" in result.output
-    assert "MCP Test Framework (SDET)" not in result.output
+    assert "MCP Test Framework (test-code)" not in result.output
 
 
 # ---------------------------------------------------------------------------

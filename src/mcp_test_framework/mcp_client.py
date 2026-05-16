@@ -149,8 +149,8 @@ class McpTestClient:
         ``ClientSession.initialize()``. The mcp SDK discards this value
         after the handshake (only ``_server_capabilities`` is cached on
         the session), so the fixture's owner task captures the result
-        and threads it here. Required by the ``mcp_session`` SDET fixture
-        to derive the generated-module slug.
+        and threads it here. Required by the ``mcp_session`` test-code
+        fixture to derive the generated-module slug.
         """
         instance = cls.__new__(cls)
         instance._command = "<wrapped>"
