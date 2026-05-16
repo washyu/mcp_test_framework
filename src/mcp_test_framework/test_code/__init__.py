@@ -1,4 +1,4 @@
-"""mcp_test_framework.sdet -- public SDET test surface.
+"""mcp_test_framework.test_code -- public SDET test surface.
 
 Exports:
   - ToolResponse: uniform .raw / .data / .text / .is_error base class that
@@ -10,13 +10,13 @@ Exports:
   - ToolCallError: typed exception raised by ``tool().call()`` when
     ``result.isError`` is True; carries ``.tool / .code / .message / .raw``.
 
-See docs/SDET-AUTHORING.md for the authoring walkthrough.
+See docs/TEST-CODE-AUTHORING.md for the authoring walkthrough.
 """
 from __future__ import annotations
 
-from mcp_test_framework.sdet.errors import ToolCallError
-from mcp_test_framework.sdet.response import ToolResponse
-from mcp_test_framework.sdet.session import mcp_session
-from mcp_test_framework.sdet._tool_factory import tool
+from mcp_test_framework.test_code.errors import ToolCallError
+from mcp_test_framework.test_code.response import ToolResponse
+from mcp_test_framework.test_code.session import mcp_session
+from mcp_test_framework.test_code._tool_factory import tool
 
 __all__ = ["ToolCallError", "ToolResponse", "mcp_session", "tool"]

@@ -47,8 +47,8 @@ import pytest_asyncio
 from mcp_test_framework.config import Config
 from mcp_test_framework.fixtures import _pytest_exit_operator_tone
 from mcp_test_framework.mcp_client import McpTestClient
-from mcp_test_framework.sdet import _tool_factory as _tf
-from mcp_test_framework.sdet._slugs import server_slug
+from mcp_test_framework.test_code import _tool_factory as _tf
+from mcp_test_framework.test_code._slugs import server_slug
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")

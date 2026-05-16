@@ -32,7 +32,7 @@ from typing import Generic, TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel
 
-from mcp_test_framework.sdet.response import ToolResponse
+from mcp_test_framework.test_code.response import ToolResponse
 
 if TYPE_CHECKING:
     from mcp_test_framework.mcp_client import McpTestClient
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 _REGISTRIES: dict[str, dict[str, tuple[type[BaseModel], type[ToolResponse]]]] = {}
 _ACTIVE_SLUG: str | None = None
-# Mutated ONLY by mcp_session in src/mcp_test_framework/sdet/session.py.
+# Mutated ONLY by mcp_session in src/mcp_test_framework/test_code/session.py.
 _ACTIVE_CLIENT: "McpTestClient | None" = None
 
 
@@ -101,7 +101,7 @@ class ToolWrapper(Generic[P, R]):
         arguments = params.model_dump(mode="json", exclude_unset=True)
         result = await _ACTIVE_CLIENT.call_tool(self.name, arguments)
         if result.isError:
-            from mcp_test_framework.sdet.errors import (
+            from mcp_test_framework.test_code.errors import (
                 ToolCallError,
                 _extract_code_message,
             )

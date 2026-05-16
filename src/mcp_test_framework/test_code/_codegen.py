@@ -33,7 +33,7 @@ from pathlib import Path
 
 from mcp.types import Tool
 
-from mcp_test_framework.sdet._slugs import module_name, pascal_case, server_slug
+from mcp_test_framework.test_code._slugs import module_name, pascal_case, server_slug
 
 # NOTE: jsonschema's `Draft202012Validator` / `validator_for` are deliberately
 # NOT imported here. MCP tool schemas declare Draft 2020-12, but calling
@@ -535,7 +535,7 @@ def translate_tool(
         f"from __future__ import annotations\n\n"
         f"{typing_import_line}"
         f"from pydantic import {pydantic_imports}\n\n"
-        f"from mcp_test_framework.sdet.response import ToolResponse\n\n\n"
+        f"from mcp_test_framework.test_code.response import ToolResponse\n\n\n"
         f"class {cls_base}Params(BaseModel):\n"
         f'    """Params for the `{tool.name}` tool.\n\n'
         f"    Generated from inputSchema. Pydantic validates required / type /\n"
@@ -594,7 +594,7 @@ def _render_init(
     # `_tool_factory._REGISTRIES` expectations. Downstream consumers of the
     # generated `_REGISTRY` see a typed Pydantic model class, not bare `type`.
     registry_block = (
-        "# The tool(name) factory in mcp_test_framework.sdet._tool_factory\n"
+        "# The tool(name) factory in mcp_test_framework.test_code._tool_factory\n"
         "# dispatches against this _REGISTRY.\n"
         "_REGISTRY: dict[str, tuple[type[BaseModel], type[ToolResponse]]] = {\n"
         + "\n".join(registry_lines) + "\n}\n"
@@ -607,7 +607,7 @@ def _render_init(
         f"{header}"
         f"from __future__ import annotations\n\n"
         f"from pydantic import BaseModel\n\n"
-        f"from mcp_test_framework.sdet.response import ToolResponse\n\n"
+        f"from mcp_test_framework.test_code.response import ToolResponse\n\n"
         f"{body}"
         f"{all_block}\n\n"
         f"{registry_block}"
