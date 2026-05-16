@@ -73,7 +73,8 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
 
-- [x] **Phase 25: Public-API rename (SEED-023) — `sdet` → `test_code`** — Lock the public import surface before library mode hardens it. Pure refactor; irreversible after first PyPI publish. (completed 2026-05-16)
+- [x] **Phase 25: Public-API rename (SEED-023) — `sdet` → `test_code`** — Lock the public import surface before library mode hardens it. Pure refactor; irreversible after first PyPI publish.
+ (completed 2026-05-16)
 - [ ] **Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton** — Smallest atomic capability that unblocks plugin auto-discovery, typed imports, and the wheel-level black-box guarantee.
 - [ ] **Phase 27: `register()` API + contracts sub-package + test extraction (LIB)** — The load-bearing technical bet. Operator's three-line `register()` call injects parametrized contract tests into their pytest collection via `pytest_collect_file` virtual-module synthesis.
 - [ ] **Phase 28: Config seam + codegen output path** — Library-mode config flow (kwargs > pyproject > defaults; `MCPTF_CONFIG_FILE` ignored) and a `tests/_generated/` default that refuses to write into `site-packages/`.
@@ -110,7 +111,12 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   3. Operator's `pyright` / `mypy` resolves typed signatures from every operator-imported subpackage (`mcp_test_framework`, `mcp_test_framework.contracts`, `mcp_test_framework.test_code`) — `py.typed` markers ship in the wheel.
   4. Framework CI fails if the built wheel is missing `mcp_test_framework/contracts/`, `mcp_test_framework/test_code/`, any required `py.typed` marker, or contains accidental `tests/` leakage — wheel introspection gate runs on every build.
   5. Operator's existing fixture names (`config`, `judge`, `client`, `target_tool`) do not collide — framework fixtures ship under `mcp_*` prefixed names with one-milestone unprefixed compatibility aliases.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 26-01-PLAN.md — pyproject.toml dist-rename, entry-points, scripts; cli.py:974 version-string fix
+  - [ ] 26-02-PLAN.md — _plugin.py skeleton + _deprecated_script.py shim + fixtures.py rename surgery
+  - [ ] 26-03-PLAN.md — contracts/ subpackage stub + py.typed markers
+  - [ ] 26-04-PLAN.md — Wheel-introspection regression gate + cli-version regression test
+  - [ ] 26-05-PLAN.md — Docs sweep + TestPyPI dry-run + acceptance verification + ROADMAP SC1 amendment
 
 ### Phase 27: `register()` API + contracts sub-package + test extraction (LIB)
 **Goal**: Operator writes three lines in `tests/conftest.py` — `from mcp_test_framework.contracts import register; register(server_command=[...], tools=[...], judge=...)` — and parametrized contract tests appear in their pytest collection with the same pass/fail signal as today's CLI. Load-bearing technical bet of v1.4.
@@ -192,7 +198,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 23. Test suite debt cleanup | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
-| 26. Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 0/TBD | Not started | - |
+| 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 0/5 | Not started | - |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 0/TBD | Not started | - |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
