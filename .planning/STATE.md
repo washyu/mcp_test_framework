@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
-status: completed
-stopped_at: Phase 25 context gathered
-last_updated: "2026-05-15T22:44:08.719Z"
-last_activity: 2026-05-15 — v1.4 ROADMAP.md created (6 phases / 28 reqs / 100% coverage)
+status: executing
+stopped_at: Completed 25-01-PLAN.md (sdet -> test_code rename + back-compat shim)
+last_updated: "2026-05-16T02:41:42.680Z"
+last_activity: 2026-05-16
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 6
+  completed_plans: 1
+  percent: 17
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 scoping)
 
 **Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
-**Current focus:** v1.4 Library Mode Delivery — reframe the framework as an importable pytest plugin (Playwright-for-MCPs). Phase 25 (rename `sdet` → `test_code`) is next.
+**Current focus:** Phase 25 — Public API Rename SEED-023 sdet → test_code
 
 ## Current Position
 
-Phase: 25 (next — not yet started)
-Plan: —
-Status: Roadmap complete; ready for `/gsd-plan-phase 25`
-Last activity: 2026-05-15 — v1.4 ROADMAP.md created (6 phases / 28 reqs / 100% coverage)
+Phase: 25 (Public API Rename SEED-023 sdet → test_code) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-05-16
 
 ## Performance Metrics
 
@@ -61,6 +62,7 @@ Last activity: 2026-05-15 — v1.4 ROADMAP.md created (6 phases / 28 reqs / 100%
 | Phase 23 P04 | ~5min | 1 task (diagnostic-only) | 0 files | close-gate GREEN: 575 passed / 0 failed / 0 errored |
 | Phase 24 P01 | ~10min | 3 tasks | 3 files |
 | Phase 24 P24-03 | ~3min | 1 tasks | 1 files |
+| Phase 25 P01 | ~9min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -102,6 +104,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **6 phases for 28 reqs.** Density 4.7 reqs/phase, comparable to v1.3 (4.2) and v1.0 (4.1). Phase 27 is intentionally the largest (8 reqs) because the `register()` API + contracts sub-package + test extraction is one coherent capability — splitting would ship a half-product. Phase 29 is intentionally small (2 reqs) because the reporter capability is independently verifiable and orthogonal to injection.
 - **Granularity = coarse (per config.json).** Each phase delivers a coherent operator-perceivable capability; no phase is splittable without losing coherence.
 - **Out of v1.4 (deferred to v1.5+):** pytest-xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005), `scoped_register()` multi-server context manager, URL-style judge kwarg sugar (`judge="ollama://..."` parser), `gen-test-classes` as library callable, `register(tools=None)` auto-discovery, removal of deprecation aliases, per-judge `--debug` breakdown (Phase 16 D-11 dormant carry-over), schema v2→v3 migration. All explicitly captured in REQUIREMENTS.md "Future Requirements" section to prevent re-triage churn.
+- [Phase 25-01]: Rule-1 deviation — 11 framework self-tests under tests/framework/unit/ repointed to mcp_test_framework.test_code (sdet shim only re-exports four public names; private submodules moved with the package)
 
 ### Roadmap Evolution
 
@@ -184,6 +187,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-15T22:44:08.706Z
+Last session: 2026-05-16T02:41:42.673Z
 Stopped at: Phase 25 context gathered
 Resume next: `/gsd-plan-phase 25` — decompose Phase 25 (public-API rename `sdet` → `test_code`) into plans
