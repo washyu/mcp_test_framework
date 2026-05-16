@@ -102,11 +102,11 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 25-06-PLAN.md — CI-runnable acceptance gate (tests/framework/test_sdet_rename_leak_gate.py)
 
 ### Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton
-**Goal**: Operator adds `mcp-test-framework` to `pyproject.toml`, runs `uv add` / `pip install`, and their pytest auto-loads the framework's plugin with typed imports — without any business-logic hooks yet. Establishes the packaging substrate that every later phase hangs off.
+**Goal**: Operator adds `mcp-contracts` to `pyproject.toml`, runs `uv add` / `pip install`, and their pytest auto-loads the framework's plugin with typed imports — without any business-logic hooks yet. Establishes the packaging substrate that every later phase hangs off.
 **Depends on**: Phase 25 (rename must land before the entry-point string references `mcp_test_framework.test_code` or any operator-imported subpackage).
 **Requirements**: PACK-01, PACK-02, PACK-03, PACK-04
 **Success Criteria** (what must be TRUE):
-  1. Operator running `pip install mcp-test-framework` (corrected from `mvp-test-framework`) or `uv add mcp-test-framework` succeeds against the PyPI-published wheel; a one-milestone shim under the old name redirects.
+  1. Operator running `pip install mcp-contracts` or `uv add mcp-contracts` succeeds against the **TestPyPI**-published wheel (Phase 26 ships a TestPyPI dry-run + local-install verification; production PyPI publish defers to Phase 30 CLOSE-01..04). No PyPI shim under the legacy `mvp-test-framework` name is needed — D-02: the project has never been published, so PACK-03's "one-milestone shim" clause is closed-by-non-applicability.
   2. Operator with the package installed runs `pytest --trace-config` (or equivalent) and sees `mcp_test_framework` listed as an auto-discovered plugin without any `pytest_plugins=[...]` in their conftest.
   3. Operator's `pyright` / `mypy` resolves typed signatures from every operator-imported subpackage (`mcp_test_framework`, `mcp_test_framework.contracts`, `mcp_test_framework.test_code`) — `py.typed` markers ship in the wheel.
   4. Framework CI fails if the built wheel is missing `mcp_test_framework/contracts/`, `mcp_test_framework/test_code/`, any required `py.typed` marker, or contains accidental `tests/` leakage — wheel introspection gate runs on every build.
