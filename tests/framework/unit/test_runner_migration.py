@@ -84,11 +84,17 @@ def test_safe_01_empty_tools_means_zero_selection() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 13 review CR-01: IPC handoff from cli.py:_load_config to the
-# in-process pytest session's bare Config().
+# Phase 13 review CR-01 + Phase 27 D-11: config-source IPC channel.
 #
-# These tests pin the "MCPTF_CONFIG_FILE as path-pointer fallback" channel
-# without requiring a live MCP server or pytest.main subprocess.
+# Pre-Phase-27 the wrapper exported the resolved YAML path to
+# MCPTF_CONFIG_FILE so a pytest-session-spawned bare `Config()` would
+# inherit it. Phase 27 removes the env-var WRITE; the wrapper now threads
+# the resolved path explicitly to the subprocess via
+# `pytest -o "mcp_config_file=PATH"` (see _runner.run_pytest_subprocess
+# `mcp_config_path` kwarg + the in-subprocess plugin's `pytest_configure`).
+# The env-var READ in `_load_config` Branch 2 stays for v1.4 back-compat
+# so operators with the legacy env var exported still get their config
+# picked up (with a one-time DeprecationWarning emitted by the plugin).
 # ---------------------------------------------------------------------------
 
 
@@ -138,21 +144,31 @@ def test_cr01_bare_config_picks_up_mcptf_config_file(
     assert cfg.mcp_server.command == "uvx"
 
 
-def test_cr01_resolver_writes_mcptf_config_file_env_var(
+def test_resolver_returns_resolved_path_and_does_not_write_env_var(
     tmp_path,
     monkeypatch,
 ) -> None:
-    """Phase 13 review CR-01: `_load_config` must export the resolved
-    path to MCPTF_CONFIG_FILE so the pytest-session-spawned Config()
-    instances see the same source.
+    """Phase 27 D-11: `_load_config` returns `(Config, resolved_path)` and
+    does NOT write MCPTF_CONFIG_FILE.
 
-    Exercises the full chain: --config PATH -> _load_config -> env var
-    set -> bare Config() in the same process reads it.
+    Pre-Phase-27 behavior: the resolver exported MCPTF_CONFIG_FILE so a
+    bare `Config()` spawned inside pytest would inherit the path. That
+    write was the env-var-precedence footgun: a stale value left by an
+    earlier run could silently override an explicit --config. Phase 27
+    removes the write; the wrapper now threads the resolved path
+    explicitly to the subprocess pytest via `-o "mcp_config_file=PATH"`
+    (see _runner.run_pytest_subprocess(mcp_config_path=...)) so the
+    in-subprocess plugin's pytest_configure reads it through the same
+    ini key library-mode operators set in
+    [tool.pytest.ini_options].
+
+    This test pins the two new invariants:
+      1. The resolver returns a 2-tuple (Config, Path).
+      2. The resolver does NOT mutate os.environ["MCPTF_CONFIG_FILE"].
     """
     from pathlib import Path
 
     from mcp_test_framework.cli import _load_config
-    from mcp_test_framework.config import Config
 
     yaml_path = tmp_path / "config.yaml"
     yaml_path.write_text(
@@ -172,28 +188,25 @@ def test_cr01_resolver_writes_mcptf_config_file_env_var(
         "    skip_reason: 'destructive'\n",
         encoding="utf-8",
     )
-    # Clear any pre-existing env var to ensure the resolver writes it.
+    # Clear any pre-existing env var so we can assert the resolver does NOT
+    # write one (i.e., absence post-resolution = no write).
     monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     monkeypatch.chdir(tmp_path)
 
-    resolved_cfg = _load_config(Path(str(yaml_path)))
-    assert resolved_cfg is not None
+    cfg, resolved = _load_config(Path(str(yaml_path)))
+    assert cfg is not None
     # Resolver's own Config() must see the tools.
-    assert set(resolved_cfg.tools.keys()) == {"alpha", "beta"}
+    assert set(cfg.tools.keys()) == {"alpha", "beta"}
+    assert cfg.tools["alpha"].skip is False
+    assert cfg.tools["beta"].skip is True
+    assert cfg.tools["beta"].skip_reason == "destructive"
 
-    # The env var must now be set so the pytest-session bare Config()
-    # picks up the same file. This is the state-(b) + state-(c) channel.
+    # New tuple-return contract.
+    assert resolved == Path(str(yaml_path))
+
+    # The env var MUST NOT be set by the resolver. The wrapper now passes
+    # the resolved path explicitly to the subprocess via `-o`; an env-var
+    # write would re-introduce the precedence-ambiguity footgun this plan
+    # closes.
     import os as _os
-    assert _os.environ.get("MCPTF_CONFIG_FILE") == str(yaml_path)
-
-    # Simulate the in-process pytest session by constructing a bare
-    # Config() (which is exactly what tests/conftest.py:pytest_generate_tests
-    # and fixtures.config both do).
-    bare_cfg = Config()
-    assert set(bare_cfg.tools.keys()) == {"alpha", "beta"}, (
-        "bare Config() must inherit MCPTF_CONFIG_FILE from _load_config: "
-        "CR-01 regression."
-    )
-    assert bare_cfg.tools["alpha"].skip is False
-    assert bare_cfg.tools["beta"].skip is True
-    assert bare_cfg.tools["beta"].skip_reason == "destructive"
+    assert _os.environ.get("MCPTF_CONFIG_FILE") is None

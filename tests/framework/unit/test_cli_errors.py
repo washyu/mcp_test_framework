@@ -302,8 +302,9 @@ def test_safe_02_cwd_autodiscovery_picks_up_local_config(
     monkeypatch.chdir(tmp_path)
     # We assert resolver discovery via the loader directly (no pytest spawn).
     from mcp_test_framework.cli import _load_config
-    cfg = _load_config(None)  # Plan 13-02 makes version=2 valid.
+    cfg, resolved = _load_config(None)  # Plan 13-02 makes version=2 valid.
     assert cfg is not None
+    assert resolved is not None  # Phase 27: resolver now returns (cfg, path).
 
 
 def test_config_init_works_in_empty_dir_with_command_override(

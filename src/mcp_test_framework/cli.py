@@ -12,9 +12,14 @@ Behavior contracts encoded in this module:
 
 - `_load_config(path)` resolves the YAML path
   (--config > MCPTF_CONFIG_FILE > ./config.yaml) and passes it as a
-  `yaml_file` kwarg to Config(). It also writes the resolved path back
-  to MCPTF_CONFIG_FILE so the in-process pytest session's bare Config()
-  picks up the same source. ValidationError is mapped to typer.Exit via
+  `yaml_file` kwarg to Config(). It returns a (Config, resolved_path)
+  tuple; `run()` threads the resolved path to the subprocess pytest via
+  `_runner.run_pytest_subprocess(mcp_config_path=...)` so the subprocess
+  picks up the same YAML through pytest's `-o "mcp_config_file=PATH"`
+  runtime ini override (the CLI-side mirror of the operator's library-mode
+  `[tool.pytest.ini_options] mcp_config_file = PATH`). No env-var write --
+  one config-resolution mechanism end-to-end across CLI + library.
+  ValidationError is mapped to typer.Exit via
   `_emit_operator_error_for_validation` -- it does NOT propagate.
 - `run` invokes pytest as a child subprocess via the runner module
   (`mcp_test_framework._runner`). `_load_config` is the pre-flight gate
@@ -198,7 +203,9 @@ def _emit_operator_error_for_validation(
     )
 
 
-def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | None:
+def _load_config(
+    path: Path | None, *, allow_missing: bool = False
+) -> tuple[Config | None, Path | None]:
     """Resolve the YAML config path and load Config().
 
     Precedence:
@@ -212,18 +219,26 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
     Args:
         path: Value of --config (None when the operator did not pass it).
         allow_missing: When True (used by `config-init` and `list-tools`),
-            the "nothing found" branch returns None instead of raising
-            the no-config-found operator error. This is the bootstrap
-            path: the recovery command (`config-init -o config.yaml`)
-            must itself run from an unconfigured directory. An
-            explicit-but-broken --config or MCPTF_CONFIG_FILE STILL
-            raises (typo, not bootstrap). Defaults to False; only `run`
-            keeps the strict no-config surface.
+            the "nothing found" branch returns (None, None) instead of
+            raising the no-config-found operator error. This is the
+            bootstrap path: the recovery command
+            (`config-init -o config.yaml`) must itself run from an
+            unconfigured directory. An explicit-but-broken --config or
+            MCPTF_CONFIG_FILE STILL raises (typo, not bootstrap).
+            Defaults to False; only `run` keeps the strict no-config
+            surface.
 
     Returns:
-        A Config instance, or None when allow_missing=True and no config
-        source was reachable. The caller is responsible for constructing
-        a default Config() in the None case.
+        A two-tuple ``(cfg, resolved_path)`` where:
+          - ``cfg`` is the loaded ``Config`` instance, or ``None`` when
+            ``allow_missing=True`` and no config source was reachable.
+          - ``resolved_path`` is the YAML path that ``Config`` was loaded
+            from, or ``None`` when ``cfg`` is ``None``. The ``run``
+            command threads this path to the subprocess pytest via
+            ``_runner.run_pytest_subprocess(mcp_config_path=resolved)``
+            so the in-subprocess plugin sees the same YAML through the
+            ``[tool.pytest.ini_options] mcp_config_file = PATH``
+            mechanism (one config-resolution route end-to-end).
     """
     resolved: Path | None = None
     source_label: str = ""  # "--config" / "MCPTF_CONFIG_FILE" / "./config.yaml"
@@ -275,7 +290,7 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
         if allow_missing:
             # Bootstrap path: config-init and list-tools may run from an
             # unconfigured directory. Caller constructs a default Config().
-            return None
+            return (None, None)
         _emit_operator_error(
             summary="no config file found: ./config.yaml",
             detail=[
@@ -289,17 +304,15 @@ def _load_config(path: Path | None, *, allow_missing: bool = False) -> Config | 
             ),
         )
 
-    # Load with the resolved path as an explicit kwarg.
-    # Also export MCPTF_CONFIG_FILE so the in-process pytest session
-    # spawned by `run()` -- which constructs a bare `Config()` inside
-    # fixtures, conftest, and the reporter -- picks up the same resolved
-    # YAML path via the env-var fallback in
-    # `Config.settings_customise_sources`. The env var is a PATH POINTER,
-    # not a scalar-value source -- the source-precedence contract in
-    # docs/ERROR-STYLE.md is preserved.
-    os.environ["MCPTF_CONFIG_FILE"] = str(resolved)
+    # Load with the resolved path as an explicit kwarg. The resolved path
+    # is returned to the caller so `run()` can thread it to the subprocess
+    # pytest via `-o "mcp_config_file=PATH"` (see
+    # `_runner._build_pytest_args` / `mcp_config_path` kwarg). No env-var
+    # write -- one config-resolution mechanism end-to-end across CLI mode
+    # (subprocess pytest with `-o` ini override) and library mode
+    # (operator's `[tool.pytest.ini_options] mcp_config_file = PATH`).
     try:
-        return Config(yaml_file=str(resolved))
+        return (Config(yaml_file=str(resolved)), resolved)
     except ValidationError as exc:
         _emit_operator_error_for_validation(exc, source=source_label)
 
@@ -547,9 +560,10 @@ def run(
     from mcp_test_framework import _runner
     import xml.etree.ElementTree as ET
 
-    cfg = _load_config(config)  # raises typer.Exit(2) on any unrecoverable error.
-    # _load_config(path, allow_missing=False) returns a non-None Config on
-    # success or raises typer.Exit -- safe to treat cfg as Config below.
+    cfg, resolved = _load_config(config)  # raises typer.Exit(2) on any unrecoverable error.
+    # _load_config(path, allow_missing=False) returns a non-None Config plus
+    # the resolved YAML path on success, or raises typer.Exit -- safe to
+    # treat cfg as Config and resolved as Path below.
 
     if raw:
         # Raw mode: no tempfile, no capture, no render, no discovery.
@@ -562,6 +576,7 @@ def run(
             raw=True,
             with_framework=with_framework,
             sdet=test_code,  # noqa: sdet-rename-shim
+            mcp_config_path=resolved,
         )
         mapped, warning = _runner._map_exit_code(rc)
         if warning is not None:
@@ -634,6 +649,7 @@ def run(
         raw=False,
         with_framework=with_framework,
         sdet=test_code,  # noqa: sdet-rename-shim
+        mcp_config_path=resolved,
     )
     try:
         # If the subprocess crashed before writing the tempfile, surface a
@@ -755,7 +771,7 @@ def list_tools(
     `list-tools` is deliberately bootstrap-friendly so an operator can
     probe a server before opting tools in.
     """
-    cfg = _load_config(config, allow_missing=True)
+    cfg, _ = _load_config(config, allow_missing=True)
     if cfg is None:
         cfg = Config(test_code=_BOOTSTRAP_TEST_CODE_STUB)
     try:
@@ -876,7 +892,7 @@ def config_init(
             next_step="add `--force` to overwrite, or pick a different `--output` path",
         )
 
-    cfg = _load_config(config, allow_missing=True)
+    cfg, _ = _load_config(config, allow_missing=True)
     if cfg is None:
         cfg = Config(test_code=_BOOTSTRAP_TEST_CODE_STUB)
 
@@ -1004,7 +1020,7 @@ def gen_test_classes(
           invalid tool schema
       130 SIGINT during MCP handshake / list_tools
     """
-    cfg = _load_config(config)  # strict; fail-loud on absent config
+    cfg, _ = _load_config(config)  # strict; fail-loud on absent config
     assert cfg is not None, "_load_config(strict) must return Config or raise"
     try:
         with asyncio.Runner() as runner:
