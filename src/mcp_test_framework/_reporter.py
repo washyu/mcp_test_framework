@@ -48,7 +48,14 @@ from mcp_test_framework import _runner
 # capturemanager replaces sys.stdout but never touches sys.__stdout__.
 # Evaluating isatty() against sys.stdout would return False inside a
 # captured pytest run even on a real terminal.
-_ORIGINAL_STDOUT = sys.__stdout__
+#
+# WR-02: on pythonw (Windows GUI launcher) and frozen-binary contexts
+# (pyinstaller/--noconsole), CPython sets sys.__stdout__ to None because
+# there is no underlying stdio fd. Fall back to sys.stdout so the cached
+# reference is always writable. The fallback stream may be a non-TTY
+# wrapper (which is fine: `isatty` returns False and auto-mode resolves
+# to "off" -- the desired behavior in those contexts).
+_ORIGINAL_STDOUT = sys.__stdout__ or sys.stdout
 
 
 @dataclass
