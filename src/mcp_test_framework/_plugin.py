@@ -33,9 +33,15 @@ plugin; a later cleanup plan in this phase removes the duplicate guard in
 """
 from __future__ import annotations
 
+import os
 import warnings
+from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
+
+from mcp_test_framework._black_box_guard import check_black_box
+from mcp_test_framework.config import Config
 
 # Re-export the renamed prefixed fixtures from fixtures.py so the pytest
 # auto-discovery surfaces them without the operator needing
@@ -66,19 +72,82 @@ from mcp_test_framework.fixtures import (  # noqa: F401
 # ---------------------------------------------------------------------------
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Register the `mcp_contract` marker.
+    """Register the `mcp_contract` marker and (if `mcp_config_file` ini is set)
+    load the operator's YAML config, run the black-box guard, and stash the
+    Config instance on `config._mcp_contracts_config` for the collection hook
+    to consume.
 
-    Coexists with `tests/conftest.py:pytest_configure` (the framework's own
-    black-box `sys.modules` guard). Pytest invokes every loaded plugin's
-    `pytest_configure`; ordering follows plugin load order. This hook is
-    purely additive — adding an inivalue line is idempotent across reruns.
-
-    A future milestone will extend this body to invoke registration glue.
+    Responsibilities:
+      - Always: register `mcp_contract` marker.
+      - Always: if `MCPTF_CONFIG_FILE` env var is set, emit DeprecationWarning
+        regardless of mode. Library mode IGNORES the env var's value.
+      - If `mcp_config_file` ini set: resolve path, fail-loud on missing-path
+        or invalid-YAML, construct Config(yaml_file=path), run black-box guard,
+        stash Config on config._mcp_contracts_config.
+      - If `mcp_config_file` ini unset/empty: silent no-op.
     """
     config.addinivalue_line(
         "markers",
         "mcp_contract: framework-injected MCP contract test.",
     )
+
+    # Emit DeprecationWarning if MCPTF_CONFIG_FILE is set in env.
+    if os.environ.get("MCPTF_CONFIG_FILE"):
+        warnings.warn(
+            "MCPTF_CONFIG_FILE env var is deprecated since v1.4 and will be "
+            "removed in v1.5 — use `[tool.pytest.ini_options] mcp_config_file = "
+            "PATH` in pyproject.toml or pass `--config PATH` to mcp-contracts "
+            "run instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    # Read ini; empty string = operator opted out, silent no-op.
+    raw = (config.getini("mcp_config_file") or "").strip()
+    if not raw:
+        return
+
+    # Resolve relative to pyproject.toml's directory.
+    path = Path(raw)
+    if not path.is_absolute():
+        path = config.rootpath / path
+
+    # Fail-loud if path doesn't exist or isn't a file.
+    if not path.is_file():
+        pytest.exit(
+            f"mcp_config_file points at {path!s} which does not exist or "
+            f"is not a file\n"
+            f"\nnext: check the path in [tool.pytest.ini_options] in "
+            f"pyproject.toml, or run `mcp-contracts config-init -o config.yaml`",
+            returncode=2,
+        )
+
+    # Load via existing pydantic-settings yaml_file= kwarg path.
+    # On ValidationError, render operator-tone and pytest.exit(2).
+    try:
+        cfg = Config(yaml_file=str(path))
+    except ValidationError as exc:
+        # Lazy-import to avoid cli.py <-> _plugin.py circular at module load.
+        from mcp_test_framework.cli import _emit_operator_error_for_validation
+        try:
+            _emit_operator_error_for_validation(exc, source=str(path))
+        except SystemExit:
+            # _emit_operator_error_for_validation raises typer.Exit (SystemExit
+            # subclass) with code=2. Translate to pytest.exit so the convention
+            # `returncode=2 = setup error` is preserved end-to-end.
+            pytest.exit(
+                f"mcp_config_file validation failed: {path!s}\n"
+                f"\nnext: check the YAML against config.example.yaml or run "
+                f"`mcp-contracts config-init -o config.yaml`",
+                returncode=2,
+            )
+
+    # Relocated black-box guard. Raises RuntimeError on sys.modules leak;
+    # let it propagate (pytest surfaces it as a session-startup error).
+    check_black_box()
+
+    # Stash for the collection hook to consume.
+    config._mcp_contracts_config = cfg  # type: ignore[attr-defined]
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
