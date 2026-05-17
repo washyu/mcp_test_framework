@@ -106,6 +106,9 @@ def test_run_help_explain_mentions_raw_and_quiet_interactions() -> None:
 
 
 def test_run_explain_lists_skipped_tools_alphabetically(monkeypatch, tmp_path) -> None:
+    """Phase 29 reporter-rewire: the digest banner moved into the reporter
+    (subprocess-side); only the --explain Skipping block stays CLI-side
+    (the reporter does not handle --explain)."""
     cfg = _make_valid_config(tmp_path, tools={"alpha": {"judges": ["clarity"]}})
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -119,7 +122,9 @@ def test_run_explain_lists_skipped_tools_alphabetically(monkeypatch, tmp_path) -
     result = _invoke("run", "--explain", "--config", str(cfg))
     assert result.exit_code == 0, result.output
     out = result.output
-    assert "MCP Test Framework" in out  # digest still emits
+    # Phase 29: digest banner moved into the reporter; not in CLI output.
+    assert "MCP Test Framework" not in out
+    # --explain Skipping block stays CLI-side.
     assert "Skipping (2):" in out
     # em-dash present, sort order beta < gamma.
     assert "—" in out, repr(out)
@@ -131,7 +136,19 @@ def test_run_explain_lists_skipped_tools_alphabetically(monkeypatch, tmp_path) -
 
 
 def test_run_explain_renders_after_digest_before_pytest(monkeypatch, tmp_path) -> None:
-    """D-06: digest -> Skipping block -> pytest output order."""
+    """Phase 29 reporter-rewire: the digest banner (`MCP Test Framework`)
+    moved into the reporter (subprocess-side); CliRunner cannot see it
+    because the subprocess is stubbed.
+
+    The --explain Skipping block stays CLI-side (the reporter does not
+    handle --explain; it is wrapper-owned). The Result: line also moves
+    to the reporter, so it does not appear here either. This test now
+    pins:
+      - CLI emits the --explain Skipping block (CLI-side, before subprocess)
+      - CLI does NOT emit the digest banner (subprocess-side)
+      - CLI does NOT emit the Result: summary (subprocess-side under
+        default mode)
+    """
     cfg = _make_valid_config(tmp_path, tools={"alpha": {}})
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -143,12 +160,13 @@ def test_run_explain_renders_after_digest_before_pytest(monkeypatch, tmp_path) -
     )
     result = _invoke("run", "--explain", "--config", str(cfg))
     out = result.output
-    digest_idx = out.index("MCP Test Framework")
-    explain_idx = out.index("Skipping (1):")
-    result_idx = out.index("Result:")
-    assert digest_idx < explain_idx < result_idx, (
-        f"order: digest={digest_idx} explain={explain_idx} result={result_idx}\n{out}"
-    )
+    # CLI no longer emits the digest banner (reporter owns it).
+    assert "MCP Test Framework" not in out
+    # CLI still emits the --explain Skipping block.
+    assert "Skipping (1):" in out
+    # CLI no longer emits the Result: summary under default-mode
+    # (reporter owns it inside the subprocess).
+    assert "Result:" not in out
 
 
 # ---------------------------------------------------------------------------
@@ -197,8 +215,11 @@ def test_run_raw_with_explain_is_bypassed(monkeypatch, tmp_path) -> None:
 
 
 def test_run_explain_with_with_framework_emits_suffix(monkeypatch, tmp_path) -> None:
-    """D-03 / D-08: --explain --with-framework: digest gets the suffix,
-    Skipping block lists tool-side skips only."""
+    """Phase 29 reporter-rewire: the digest banner + "+ framework self-tests"
+    suffix moved into the reporter (subprocess-side). The CLI now emits
+    only the --explain Skipping block. With subprocess.run stubbed, the
+    reporter-side strings are absent; the CLI-side Skipping block stays.
+    """
     cfg = _make_valid_config(tmp_path, tools={"alpha": {}})
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -210,12 +231,17 @@ def test_run_explain_with_with_framework_emits_suffix(monkeypatch, tmp_path) -> 
     )
     result = _invoke("run", "--explain", "--with-framework", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    assert "+ framework self-tests" in result.output
+    # Phase 29: digest + framework suffix live in the reporter now.
+    assert "+ framework self-tests" not in result.output
+    # CLI-side Skipping block stays.
     assert "Skipping (1):" in result.output
 
 
 def test_run_default_emits_digest_without_explain_block(monkeypatch, tmp_path) -> None:
-    """D-01: default mode emits digest but NOT the Skipping (N): block."""
+    """Phase 29 reporter-rewire: in default mode (no --explain), the CLI
+    emits nothing. The digest banner + Skipping (N) hint moved into the
+    reporter (subprocess-side). --explain Skipping block stays CLI-side
+    but only emits when --explain is set (not here)."""
     cfg = _make_valid_config(tmp_path, tools={"alpha": {}})
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -227,14 +253,21 @@ def test_run_default_emits_digest_without_explain_block(monkeypatch, tmp_path) -
     )
     result = _invoke("run", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    assert "MCP Test Framework" in result.output  # digest emits
-    assert "(use --explain to list)" in result.output  # hint stays
-    assert "Skipping (1):" not in result.output  # no inline expansion
+    # Phase 29: digest banner + hint live in the reporter now.
+    assert "MCP Test Framework" not in result.output
+    assert "(use --explain to list)" not in result.output
+    # Skipping inline expansion only fires under --explain (CLI-side).
+    assert "Skipping (1):" not in result.output
 
 
 def test_run_default_post_run_has_no_second_banner(monkeypatch, tmp_path) -> None:
-    """D-01: post-run output (per-tool rows + summary) MUST NOT include
-    a second `MCP Test Framework` banner. Banner appears exactly once."""
+    """Phase 29 reporter-rewire: the CLI no longer emits the
+    `MCP Test Framework` banner at all (it moved into the reporter).
+    With the subprocess stubbed, CliRunner sees zero banner occurrences.
+    This pins "CLI never double-prints" as the stronger invariant:
+    count == 0 in stubbed CLI output, since count == 1 in the reporter's
+    subprocess stdout (verified by tests/framework/test_reporter_plugin.py).
+    """
     cfg = _make_valid_config(tmp_path, tools={"alpha": {}})
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -246,8 +279,9 @@ def test_run_default_post_run_has_no_second_banner(monkeypatch, tmp_path) -> Non
     )
     result = _invoke("run", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    assert result.output.count("MCP Test Framework") == 1, (
-        f"banner repeated: {result.output!r}"
+    assert result.output.count("MCP Test Framework") == 0, (
+        f"banner unexpectedly emitted by CLI (should be reporter-side): "
+        f"{result.output!r}"
     )
 
 
@@ -257,7 +291,12 @@ def test_run_default_post_run_has_no_second_banner(monkeypatch, tmp_path) -> Non
 
 
 def test_run_default_includes_explain_hint(monkeypatch, tmp_path) -> None:
-    """WARNING 4: default mode (no --explain) shows the hint string."""
+    """Phase 29 reporter-rewire: the `(use --explain to list)` hint is
+    part of the digest, which moved into the reporter. The CLI no longer
+    emits it. The hint behaviour itself is still verified in the unit
+    tests for `_render_pre_run_digest` (which test the helper directly,
+    not via the CLI surface); this CLI-level test is now reduced to a
+    negative pin (CLI does NOT emit the hint -- the reporter does)."""
     cfg = _make_valid_config(tmp_path, tools={"alpha": {}})
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -269,7 +308,8 @@ def test_run_default_includes_explain_hint(monkeypatch, tmp_path) -> None:
     )
     result = _invoke("run", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    assert "(use --explain to list)" in result.output
+    # Phase 29: hint lives in the reporter, not the CLI.
+    assert "(use --explain to list)" not in result.output
 
 
 def test_run_explain_suppresses_hint(monkeypatch, tmp_path) -> None:

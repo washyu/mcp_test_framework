@@ -868,7 +868,7 @@ def run(
         total_planned_cases=0,  # post-parse ctx below carries parsed.total_cases
     )
 
-    # Phase 29 D-05 / REPORTER-01: contract-path pre-run digest emission
+    # Phase 29 reporter-rewire: contract-path pre-run digest emission
     # moved into the reporter plugin (pytest_collection_finish hook
     # inside the subprocess). CLI still owns:
     #   1. The test-code scenario digest (test_code=True branch) -- the
@@ -898,14 +898,14 @@ def run(
                 explain=explain,
             )
         else:
-            # Phase 29 D-05: contract-path digest emitted by the reporter
-            # inside the subprocess (pytest_collection_finish). CLI no
-            # longer emits it here. Only --explain expansion stays.
+            # Phase 29 reporter-rewire: contract-path digest emitted by
+            # the reporter inside the subprocess (pytest_collection_finish).
+            # CLI no longer emits it here. Only --explain expansion stays.
             if explain:
                 _runner._render_skipped_tools_explain(pre_run_ctx)
 
-    # Phase 29 D-05 / REPORTER-01: drive the in-subprocess reporter plugin.
-    # REVISION Rule A: --debug WINS over -q. The matrix:
+    # Phase 29 reporter-rewire: drive the in-subprocess reporter plugin.
+    # Resolution rule -- `--debug` WINS over `-q`. The matrix:
     #   default (no -q, no --debug)      -> "force" (reporter renders domain UI)
     #   -q (no --debug)                  -> "off"   (reporter silent; CLI parses
     #                                                JUnit + render_summary_only)
@@ -960,14 +960,15 @@ def run(
             judges=judges,
             total_planned_cases=parsed.total_cases,
         )
-        # Phase 29 D-05 / REPORTER-01: default-path render moved into the
-        # pytest subprocess (the reporter plugin emits header + rows + summary
-        # via _build_parsed_run_from_reports + render_domain_ui). CLI keeps
-        # parse + render_summary_only ONLY for the `-q AND NOT --debug` path,
-        # since pytest has no native "summary-only" mode the reporter could
-        # substitute. REVISION Rule A: under `-q --debug` the reporter renders
-        # inside the subprocess and the --debug appendix below appends -- the
-        # operator explicitly opted into maximum information.
+        # Phase 29 reporter-rewire: default-path render moved into the
+        # pytest subprocess (the reporter plugin emits header + rows +
+        # summary via _build_parsed_run_from_reports + render_domain_ui).
+        # CLI keeps parse + render_summary_only ONLY for the
+        # `-q AND NOT --debug` path, since pytest has no native
+        # "summary-only" mode the reporter could substitute. Under
+        # `-q --debug` the reporter renders inside the subprocess and the
+        # --debug appendix below appends -- the operator explicitly opted
+        # into maximum information.
         # --debug uses `parsed` for the appendix below.
         if quiet and not debug:
             _runner.render_summary_only(parsed, ctx)

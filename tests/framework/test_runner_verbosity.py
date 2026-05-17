@@ -202,6 +202,19 @@ def test_run_quiet_renders_summary_only(monkeypatch, tmp_path) -> None:
 
 
 def test_run_default_renders_full_domain_ui(monkeypatch, tmp_path) -> None:
+    """Phase 29 reporter-rewire: the default-path banner + per-tool rows +
+    summary are now emitted by the reporter plugin INSIDE the pytest
+    subprocess, not by the CLI. CliRunner captures the CLI's own output
+    only; the subprocess stdout is captured by run_pytest_subprocess and
+    only re-emitted under --debug.
+
+    With subprocess.run fully stubbed (the stub bypasses the reporter
+    entirely), the CLI's own output for the default path is empty. The
+    invariant under test is the same as before -- "CLI does not emit
+    pytest framing" -- but the rendered domain UI now lives elsewhere
+    (verified by the reporter integration tests in
+    tests/framework/test_reporter_plugin.py).
+    """
     cfg = _make_valid_config(tmp_path)
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -214,15 +227,26 @@ def test_run_default_renders_full_domain_ui(monkeypatch, tmp_path) -> None:
 
     result = _invoke("run", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    # Phase 16 D-01: pre-run digest now emits BEFORE the subprocess (wired in
-    # Plan 16-02). Banner is back in default-mode CLI output, just earlier.
-    assert "MCP Test Framework" in result.output
-    assert "Result:" in result.output
-    # No pytest framing.
+    # Phase 29: domain UI moved into the reporter (inside subprocess);
+    # CLI emits NOTHING in the default path. Subprocess stdout is
+    # captured but not re-emitted unless --debug is set.
+    assert "MCP Test Framework" not in result.output
+    assert "Result:" not in result.output
+    # No pytest framing leaks into CLI output either.
     assert "test session starts" not in result.output
 
 
 def test_run_debug_appends_appendix_after_domain_ui(monkeypatch, tmp_path) -> None:
+    """Phase 29 reporter-rewire: under --debug, the reporter renders the
+    domain UI inside the subprocess and the CLI appends the --debug
+    appendix on top after the subprocess returns.
+
+    With subprocess.run stubbed, the reporter never runs (the stub
+    bypasses the real pytest entirely) so the banner does not appear in
+    CliRunner output. The --debug appendix is still emitted by the CLI
+    (it consumes captured_stdout/captured_stderr from the stub), so the
+    "--- raw pytest output ---" header appears.
+    """
     cfg = _make_valid_config(tmp_path)
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -235,22 +259,22 @@ def test_run_debug_appends_appendix_after_domain_ui(monkeypatch, tmp_path) -> No
 
     result = _invoke("run", "--debug", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    # D-13 invariant + Phase 16 D-01: pre-run digest banner now emits BEFORE
-    # the subprocess (Plan 16-02 wired _render_pre_run_digest in cli.py);
-    # debug appendix still appears AFTER per-tool rows + summary.
-    assert "MCP Test Framework" in result.output
+    # Banner now belongs to the reporter (subprocess-side); stubbed away.
+    assert "MCP Test Framework" not in result.output
+    # --debug appendix still emitted by CLI after subprocess returns.
     assert "--- raw pytest output ---" in result.output
-    # Order: banner BEFORE appendix (banner is pre-pytest, appendix is post-pytest).
-    header_idx = result.output.index("MCP Test Framework")
-    appendix_idx = result.output.index("--- raw pytest output ---")
-    assert header_idx < appendix_idx
 
 
 def test_run_quiet_plus_debug_renders_summary_then_appendix(
     monkeypatch, tmp_path,
 ) -> None:
-    """-q + --debug = summary-only THEN debug appendix.
-    D-13 invariant: --debug appends to whatever rung below produced."""
+    """Phase 29 reporter-rewire + resolution rule (--debug WINS over -q):
+    `-q --debug` -> domain_ui_mode='force'. The reporter renders the
+    domain UI inside the subprocess (stubbed away here), and the CLI
+    appends the --debug appendix on top. The CLI does NOT call
+    render_summary_only under `-q --debug` (gated on
+    `quiet and not debug`).
+    """
     cfg = _make_valid_config(tmp_path)
     monkeypatch.setattr(
         "mcp_test_framework._runner.subprocess.run",
@@ -263,16 +287,14 @@ def test_run_quiet_plus_debug_renders_summary_then_appendix(
 
     result = _invoke("run", "-q", "--debug", "--config", str(cfg))
     assert result.exit_code == 0, result.output
-    # No header.
+    # No banner (subprocess-side, stubbed away).
     assert "MCP Test Framework" not in result.output
-    # Summary present.
-    assert "Result:" in result.output
-    # Appendix present.
+    # No summary line from CLI: render_summary_only is gated on
+    # `quiet and not debug`; under `-q --debug` debug wins so the CLI
+    # does NOT emit the summary line.
+    assert "Result:" not in result.output
+    # Appendix present (CLI-side, after subprocess return).
     assert "--- raw pytest output ---" in result.output
-    # Order: Result BEFORE appendix.
-    summary_idx = result.output.index("Result:")
-    appendix_idx = result.output.index("--- raw pytest output ---")
-    assert summary_idx < appendix_idx
 
 
 def test_run_raw_ignores_quiet_and_debug(monkeypatch, tmp_path) -> None:

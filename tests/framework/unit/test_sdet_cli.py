@@ -197,7 +197,14 @@ def test_run_sdet_dispatches_scenario_digest(tmp_path, monkeypatch) -> None:
 
 
 def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
-    """D-06 regression: `run` (no --test-code) still prints the tool digest banner."""
+    """Phase 29 reporter-rewire regression: `run` (no --test-code) no
+    longer emits the tool digest banner from the CLI itself -- the
+    contract-path digest moved into the reporter (subprocess-side). The
+    test-code scenario digest (`MCP Test Framework (test-code)`) is the
+    only digest still owned by the CLI, and it must NOT appear under
+    the contract path. With subprocess.run stubbed, the reporter-side
+    contract banner is absent from CliRunner output.
+    """
     cfg_path = _make_valid_config(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
@@ -212,7 +219,9 @@ def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
     )
     result = _invoke("run", "--config", str(cfg_path))
     assert result.exit_code == 0, result.output
-    assert "MCP Test Framework" in result.output
+    # Phase 29: contract-path digest lives in the reporter; not in CLI output.
+    assert "MCP Test Framework" not in result.output
+    # The test-code variant must not appear under the contract path either.
     assert "MCP Test Framework (test-code)" not in result.output
 
 

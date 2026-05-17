@@ -151,15 +151,19 @@ def _build_pytest_args(
         args.append(f"--junitxml={junit_xml}")
     args.extend(forwarded)
     if domain_ui_mode != "off":
-        # Phase 29 D-05 / REPORTER-01: CLI tells the in-subprocess reporter
+        # Phase 29 reporter-rewire: CLI tells the in-subprocess reporter
         # plugin whether to render the domain UI. "force" = always render
-        # (matches CLI's existing "always show domain UI" UX, even in piped
-        # CI stdout where the reporter's auto mode would otherwise off itself).
-        # "off" = reporter stays silent (the -q quiet path uses this so CLI
-        # owns the summary-only render). REVISION Rule A: --debug wins over
-        # -q, so `-q --debug` yields mode="force" (computed in cli.py:run).
-        # Appended AFTER `forwarded` so the explicit CLI choice wins over any
-        # operator-supplied --mcp-domain-ui via pytest's last-occurrence rule.
+        # (matches CLI's existing "always show domain UI" behaviour, even
+        # in piped CI stdout where the reporter's auto mode would otherwise
+        # off itself). "off" = reporter stays silent (the -q quiet path
+        # uses this so CLI owns the summary-only render). The
+        # quiet-vs-debug resolution rule (--debug wins over -q) is computed
+        # in cli.py:run before this kwarg is passed; under `-q --debug`
+        # the mode is "force" so the reporter still renders inside the
+        # subprocess and the CLI appends the --debug appendix on top.
+        # Appended AFTER `forwarded` so the explicit CLI choice wins over
+        # any operator-supplied --mcp-domain-ui via pytest's
+        # last-occurrence argparse rule.
         args.append(f"--mcp-domain-ui={domain_ui_mode}")
     if mcp_config_path is not None:
         # Pass the resolved config path to the in-subprocess plugin via
