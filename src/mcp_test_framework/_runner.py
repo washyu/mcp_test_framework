@@ -815,11 +815,26 @@ def _build_parsed_run_from_reports(reports: list[pytest.TestReport]) -> ParsedRu
             tool, ToolVerdict(name=tool, verdict="PASS")
         )
         bucket.case_count += 1
-        # Sum durations across all phase events for this nodeid (matches
-        # JUnit <testcase time="..."> which is the consolidated test time).
-        bucket.duration += sum(
-            float(getattr(r, "duration", 0.0) or 0.0) for r in phases.values()
-        )
+        # WR-01: attribute duration to the call phase only when present.
+        # pytest's JUnit writer populates <testcase time="..."> with the
+        # call-phase duration (its default; see junit_duration_report ini)
+        # and the live adapter MUST agree with parse_junit_xml so the
+        # renderer's bucket.duration is path-agnostic. A setup-skip path
+        # has no call report -- attribute setup+teardown in that fallback
+        # so a SKIPPED-at-setup test still reports a non-zero duration
+        # consistent with what pytest's JUnit writer emits when only
+        # setup ran.
+        call_phase = phases.get("call")
+        if call_phase is not None:
+            bucket.duration += float(getattr(call_phase, "duration", 0.0) or 0.0)
+        else:
+            # Setup-skip / collection-error fallback. The JUnit writer
+            # records <testcase time> as the consolidated time in this
+            # path too, so summing the available phase reports is the
+            # closest live equivalent.
+            bucket.duration += sum(
+                float(getattr(r, "duration", 0.0) or 0.0) for r in phases.values()
+            )
 
         setup = phases.get("setup")
         call = phases.get("call")

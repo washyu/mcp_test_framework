@@ -65,7 +65,12 @@ def _make_report(
 
 
 def test_three_phase_pass_produces_one_case() -> None:
-    """Three reports for one parametrized nodeid all passed -> single case."""
+    """Three reports for one parametrized nodeid all passed -> single case.
+
+    WR-01: bucket.duration mirrors pytest's JUnit writer's default
+    `<testcase time>` (call-phase only), so the three-phase run reports
+    the call-phase duration (0.01), NOT the setup+call+teardown sum.
+    """
     nodeid = "tests/contract/test_x.py::test_y[mytool]"
     reports = [
         _make_report(nodeid, "setup", "passed", duration=0.01),
@@ -78,7 +83,7 @@ def test_three_phase_pass_produces_one_case() -> None:
     bucket = run.per_tool["mytool"]
     assert bucket.case_count == 1
     assert bucket.verdict == "PASS"
-    assert bucket.duration == pytest.approx(0.03)
+    assert bucket.duration == pytest.approx(0.01)
 
 
 def test_call_failure_produces_fail_verdict() -> None:
@@ -248,8 +253,14 @@ def test_totals_sum_across_buckets() -> None:
     assert run.total_cases == 3
     assert run.total_failures == 1
     assert run.total_skipped == 1
-    # 0.03 (pass) + 0.04 (fail) + 0.01 (skip) = 0.08
-    assert run.total_time == pytest.approx(0.08)
+    # WR-01: bucket.duration is the call-phase duration (matches pytest's
+    # JUnit writer default `<testcase time>`), with a setup-skip fallback
+    # that sums the available phases when no call report exists.
+    # tool_pass: call=0.01 -> 0.01
+    # tool_fail: call=0.02 -> 0.02
+    # tool_skip: setup-skip fallback (no call) -> 0.01
+    # Total: 0.01 + 0.02 + 0.01 = 0.04
+    assert run.total_time == pytest.approx(0.04)
 
 
 # ---------------------------------------------------------------------------
