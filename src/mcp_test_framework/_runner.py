@@ -696,8 +696,9 @@ def _build_parsed_run_from_reports(reports: list[pytest.TestReport]) -> ParsedRu
     ``tests.test_code.test_`` OR ``tests.sdet.test_`` (legacy dual-
     discovery window). Mirrors parse_junit_xml lines 540-563 verbatim so
     the renderer sees identical bucket shapes across both input paths.
+    (noqa: sdet-rename-shim covers the legacy classname-prefix mention.)
 
-    Pitfall 4 (ToolCallError on user_properties): SDET-authored scenarios
+    Pitfall 4 (ToolCallError on user_properties): scenario tests
     set ``mcptf_error_code`` / ``mcptf_error_message`` /
     ``mcptf_error_raw`` via ``record_property`` (from
     ``tests/test_code/conftest.py:pytest_exception_interact``). The JUnit
@@ -732,7 +733,7 @@ def _build_parsed_run_from_reports(reports: list[pytest.TestReport]) -> ParsedRu
         if tool is None:
             # Scenario fall-through: mirror parse_junit_xml:540-563 verbatim.
             # tests/test_code/ are hand-authored (no parametrize bracket);
-            # tests/sdet/ is the v1.4 dual-discovery legacy path. Both share
+            # tests/sdet/ is the v1.4 dual-discovery legacy path. Both share  # noqa: sdet-rename-shim
             # the same synthetic bucket shape so the renderer's per-tool
             # block stays input-agnostic.
             classname = _classname_from_nodeid(nodeid)

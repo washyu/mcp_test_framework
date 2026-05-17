@@ -264,17 +264,28 @@ def test_cli_reexports_helpers_for_backward_compat() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_reporter_module_no_longer_importable() -> None:
-    """Phase 14 Plan 05: the v1.1 reporter plugin module was deleted. Any
-    code path that still tries to import it (e.g., a stray
-    `from mcp_test_framework import _reporter` left over from v1.1) MUST
-    fail loud at import time.
+def test_reporter_module_importable_with_live_event_hooks() -> None:
+    """Phase 29: the v1.1 ``_reporter`` module was deleted (Phase 14 Plan 05),
+    and a new live event-driven reporter was re-introduced in Phase 29 under
+    the same name. The new module is the second pytest11 entry-point target
+    and MUST expose the locked pytest hook surface.
 
-    This test prevents accidental reintroduction in future phases.
+    This test pins the new module's shape so a future deletion or rename
+    fails loud here, and supersedes the prior Phase-14 "must not exist" gate
+    (which was inverted by Phase 29 by design).
     """
     import importlib
-    with pytest.raises((ImportError, ModuleNotFoundError)):
-        importlib.import_module("mcp_test_framework._reporter")
+    mod = importlib.import_module("mcp_test_framework._reporter")
+    for hook in (
+        "pytest_addoption",
+        "pytest_configure",
+        "pytest_collection_finish",
+        "pytest_runtest_logreport",
+        "pytest_sessionfinish",
+    ):
+        assert callable(getattr(mod, hook, None)), (
+            f"_reporter is missing required pytest hook {hook!r}"
+        )
 
 
 def test_runner_owns_discovery_cache() -> None:
