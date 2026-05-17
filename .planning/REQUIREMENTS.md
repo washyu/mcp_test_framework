@@ -49,7 +49,7 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### Reporter Plugin (REPORTER)
 
-- [ ] **REPORTER-01**: Operator passing `--mcp-domain-ui` to `pytest` sees the MCP domain-language output (header / per-tool rows / summary) alongside or replacing pytest's native output — driven by live `pytest_runtest_logreport` events, NOT JUnit XML parsing. Default OFF; CI / no-TTY environments default OFF even with the flag set unless `--mcp-domain-ui=force` is passed.
+- [x] **REPORTER-01**: Operator passing `--mcp-domain-ui` to `pytest` sees the MCP domain-language output (header / per-tool rows / summary) alongside or replacing pytest's native output — driven by live `pytest_runtest_logreport` events, NOT JUnit XML parsing. Default OFF; CI / no-TTY environments default OFF even with the flag set unless `--mcp-domain-ui=force` is passed.
 - [ ] **REPORTER-02**: Operator running under `pytest-xdist` sees the domain UI emitted from the master process only; worker output is not multiplexed into the domain UI rows. Reporter plugin loaded under separate `[project.entry-points.pytest11]` key so operator can `-p no:mcp_test_framework_reporter` while keeping contract fixtures.
 
 ### CLI Demotion + Carry-Forward UAT + Docs (CLOSE)
@@ -124,7 +124,7 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | CFG-02 | Phase 27 | Removed (Phase 27 D-01) |
 | CODEGEN-LIB-01 | Phase 28 | Complete |
 | CODEGEN-LIB-02 | Phase 28 | Complete |
-| REPORTER-01 | Phase 29 | Pending |
+| REPORTER-01 | Phase 29 | Complete |
 | REPORTER-02 | Phase 29 | Pending |
 | CLOSE-01 | Phase 30 | Pending |
 | CLOSE-02 | Phase 30 | Pending |
