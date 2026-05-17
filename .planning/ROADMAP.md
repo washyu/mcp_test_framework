@@ -79,7 +79,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
  (completed 2026-05-16)
 - [x] **Phase 27: pytest-native ini config + contracts test injection + dogfood (LIB)** — The load-bearing technical bet. Operator sets `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` and the framework plugin injects parametrized contract tests into their pytest collection via a `_ContractsModule(_PytestModule)` virtual-module synthesis.
  (completed 2026-05-17)
-- [ ] **Phase 28: Codegen output path (CODEGEN)** — Config seam closed in Phase 27; remaining work is a `tests/_generated/` default that refuses to write into `site-packages/` for `gen-test-classes`.
+- [ ] **Phase 28: Codegen output path (CODEGEN)** — `gen-test-classes` refuses to invent an output path or write under its own install tree, prompts before overwriting non-empty targets, and reads the same `mcp_config_file` ini route pytest uses.
 - [ ] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
 - [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
 
@@ -138,12 +138,13 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 27-05-PLAN.md — Framework dogfood (pyproject ini) + delete legacy `tests/contract/` + REQUIREMENTS/ROADMAP amendments
 
 ### Phase 28: Codegen output path (CODEGEN)
-**Goal**: `gen-test-classes` writes generated typed classes to a sensible default path inside the operator's project (never into `site-packages/`). Library-mode config seam (CFG-01, CFG-02) was closed in Phase 27 (D-01: `register()` API dropped; ini route is the single config source); Phase 28 is now codegen-output-path policy only.
+**Goal**: `gen-test-classes` refuses to invent an output path or write under its own install tree, and reads the same `mcp_config_file` ini route pytest uses. Driver: the framework knows nothing about the operator's project layout (rejecting "smart default" framing); single config-resolution route extended from the pytest plugin to the Typer CLI.
 **Depends on**: Phase 27 (`mcp_config_file` ini route is the source of truth for config; `gen-test-classes` reads `cfg.test_code.generated_root` from the same Config object).
 **Requirements**: CODEGEN-LIB-01, CODEGEN-LIB-02
 **Success Criteria** (what must be TRUE):
-  1. Operator running `mcp-contracts gen-test-classes` from a project with a `tests/` directory and no config set gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default; operator in a project without `tests/` gets a friendly error directing them to set `cfg.test_code.generated_root` or pass `--output-dir`.
-  2. `gen-test-classes` refuses to write under any `sys.path` directory containing the installed `mcp_test_framework` package — the resolved absolute target path is checked at command start and aborts with a friendly error if it falls inside an installed-package tree.
+  1. Operator running `mcp-contracts gen-test-classes` without `cfg.test_code.generated_root` set sees a fail-loud operator-tone error naming the missing field and pointing at `mcp-contracts config-init`. Operator with the field set sees codegen succeed (target dir is created if missing; non-empty target prompts for confirmation in a TTY; non-TTY non-empty target aborts with a helpful error and exit code 2 — no `--yes` / `--force` flag exists).
+  2. `gen-test-classes` refuses to write under any directory containing the installed `mcp_test_framework` package — the resolved absolute target path is checked at command start (BEFORE the MCP handshake) and aborts with an operator-tone error naming `test_code.generated_root`, the resolved target path, and the framework install root if it falls inside the installed-package tree. No bypass flag or config knob exists.
+  3. Operator who set `[tool.pytest.ini_options] mcp_config_file = PATH` in pyproject.toml sees `mcp-contracts gen-test-classes` use the same config file as `pytest`, without passing `--config`. Precedence ladder: `--config PATH` > pyproject.toml ini value > `MCPTF_CONFIG_FILE` env var (deprecated, removed v1.5) > `./config.yaml` autodiscovery > fail-loud.
 **Plans**: 4 plans
   - [x] 28-01-site-packages-guard-PLAN.md — Pre-handshake site-packages guard (CODEGEN-LIB-02)
   - [x] 28-02-pyproject-ini-config-route-PLAN.md — gen-test-classes reads pyproject.toml mcp_config_file ini value
