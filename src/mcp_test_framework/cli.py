@@ -307,7 +307,7 @@ def _emit_operator_error_for_validation(
             ],
             next_step=(
                 "copy the relevant block from config.example.yaml or run "
-                "`mcp-test-framework config-init -o config.yaml`"
+                "`mcp-contracts config-init -o config.yaml`"
             ),
         )
     # Generic fallback -- operator-tone, no pydantic-internal terms.
