@@ -57,6 +57,9 @@ dev = [
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
+# Phase 27 D-06: framework dogfoods library mode — contract tests are
+# injected via the plugin reading this ini value, not via tests/contract/.
+mcp_config_file = "./config.test.yaml"
 markers = [
   "live_homelab: requires homelab-mcp runnable via uvx (or on PATH)",
   "live_ollama: requires reachable Ollama at OLLAMA_BASE_URL with the configured model",

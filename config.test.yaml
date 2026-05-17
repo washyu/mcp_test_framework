@@ -1,0 +1,32 @@
+# Framework CI dogfood config — exercises the library-mode plugin path on
+# every `uv run pytest` against the framework root.
+#
+# `tools: {}` is intentional: the plugin's pytest_collection short-circuits
+# (silent no-inject) when the opt-in allowlist is empty, so framework CI
+# exercises every plugin code path that does NOT require spawning the live
+# MCP server. This gives the framework's own test suite a real plugin-load
+# regression gate without requiring `uvx homelab-mcp` on PATH at CI time.
+#
+# Schema version 2 (Phase 13 v2 rework). `test_code.generated_root` is the
+# only REQUIRED field beyond the ollama/mcp_server defaults.
+
+version: 2
+
+ollama:
+  base_url: http://127.0.0.1:11434
+  model: qwen3.6:latest
+  timeout_seconds: 120
+
+mcp_server:
+  command: uvx
+  args: [homelab-mcp]
+  timeout_seconds: 30
+
+judge_timeout_seconds: 120
+
+test_code:
+  generated_root: "tests/test_code/_generated"
+
+# Empty opt-in allowlist: plugin's pytest_collection returns silently with
+# zero `<mcp-contracts>` items injected. Framework self-tests run unchanged.
+tools: {}
