@@ -868,12 +868,17 @@ def run(
         total_planned_cases=0,  # post-parse ctx below carries parsed.total_cases
     )
 
-    # Pre-run digest + --explain expansion BOTH gate on `not quiet`.
-    # -q wins over --explain. `with_framework=` flows into the digest so
-    # the "+ framework self-tests" continuation line emits inline (no
-    # awkward blank gap). `explain=` suppresses the
-    # "(use --explain to list)" hint when the list is rendered inline
-    # right below.
+    # Phase 29 D-05 / REPORTER-01: contract-path pre-run digest emission
+    # moved into the reporter plugin (pytest_collection_finish hook
+    # inside the subprocess). CLI still owns:
+    #   1. The test-code scenario digest (test_code=True branch) -- the
+    #      reporter only handles _render_pre_run_digest (contract path),
+    #      NOT _render_scenario_pre_run_digest, so the test-code-persona
+    #      digest stays here.
+    #   2. The --explain expansion (_render_skipped_tools_explain) -- the
+    #      reporter does not handle --explain (it is a CLI-only flag
+    #      absent from the pytest argv passthrough).
+    # The `not quiet` outer gate is unchanged.
     if not quiet:
         if test_code:
             # Scenario-aware digest under --test-code. Fresh test-code-only
@@ -893,13 +898,24 @@ def run(
                 explain=explain,
             )
         else:
-            _runner._render_pre_run_digest(
-                pre_run_ctx,
-                with_framework=with_framework,
-                explain=explain,
-            )
+            # Phase 29 D-05: contract-path digest emitted by the reporter
+            # inside the subprocess (pytest_collection_finish). CLI no
+            # longer emits it here. Only --explain expansion stays.
             if explain:
                 _runner._render_skipped_tools_explain(pre_run_ctx)
+
+    # Phase 29 D-05 / REPORTER-01: drive the in-subprocess reporter plugin.
+    # REVISION Rule A: --debug WINS over -q. The matrix:
+    #   default (no -q, no --debug)      -> "force" (reporter renders domain UI)
+    #   -q (no --debug)                  -> "off"   (reporter silent; CLI parses
+    #                                                JUnit + render_summary_only)
+    #   --debug (with or without -q)     -> "force" (reporter renders; CLI also
+    #                                                appends --debug appendix
+    #                                                after subprocess return)
+    # Rationale: --debug is an explicit operator opt-in to maximum info;
+    # silencing the reporter under `-q --debug` would punish operators who
+    # meant "I want full debug context including domain UI."
+    domain_ui_mode = "force" if debug else ("off" if quiet else "force")
 
     rc, tmp_xml, captured_stdout, captured_stderr = _runner.run_pytest_subprocess(
         junit_xml=junit_xml,
@@ -908,6 +924,7 @@ def run(
         with_framework=with_framework,
         sdet=test_code,  # noqa: sdet-rename-shim
         mcp_config_path=resolved,
+        domain_ui_mode=domain_ui_mode,
     )
     try:
         # If the subprocess crashed before writing the tempfile, surface a
@@ -943,17 +960,19 @@ def run(
             judges=judges,
             total_planned_cases=parsed.total_cases,
         )
-        # Verbosity ladder:
-        #   -q (quiet) swaps render_domain_ui -> render_summary_only.
-        #   --debug appends raw pytest output AFTER whichever rung above
-        #     ran.
-        # The two flags are orthogonal: `-q --debug` means
-        # "summary line, then appendix". Invariant: each rung adds info;
-        # none re-shapes the layer below.
-        if quiet:
+        # Phase 29 D-05 / REPORTER-01: default-path render moved into the
+        # pytest subprocess (the reporter plugin emits header + rows + summary
+        # via _build_parsed_run_from_reports + render_domain_ui). CLI keeps
+        # parse + render_summary_only ONLY for the `-q AND NOT --debug` path,
+        # since pytest has no native "summary-only" mode the reporter could
+        # substitute. REVISION Rule A: under `-q --debug` the reporter renders
+        # inside the subprocess and the --debug appendix below appends -- the
+        # operator explicitly opted into maximum information.
+        # --debug uses `parsed` for the appendix below.
+        if quiet and not debug:
             _runner.render_summary_only(parsed, ctx)
-        else:
-            _runner.render_domain_ui(parsed, ctx)
+        # else (default OR --debug OR -q --debug): reporter already rendered
+        # the default UI inside the subprocess.
 
         if debug:
             # --debug appends AFTER whatever the lower rung rendered. The
