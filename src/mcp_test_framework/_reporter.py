@@ -208,8 +208,19 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
     every worker test (xdist forwards events). Workers early-returned in
     ``pytest_configure`` so their ``_STATE`` is None -- no risk of
     double-counting.
+
+    WR-03 filter: only accept reports whose ``when`` is one of the three
+    canonical pytest phases (``setup``, ``call``, ``teardown``). Plugins
+    like pytest-rerunfailures emit additional report kinds and xdist
+    may forward duplicated reports under certain failure modes;
+    accepting those would inflate ``bucket.duration`` and ``case_count``
+    in ``_build_parsed_run_from_reports`` because the bucketing dict
+    keys on ``(nodeid, when)`` and an unknown ``when`` produces a
+    distinct entry rather than a no-op.
     """
     if _STATE is None or not _STATE.enabled:
+        return
+    if report.when not in ("setup", "call", "teardown"):
         return
     _STATE.reports.append(report)
 
