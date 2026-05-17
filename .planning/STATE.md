@@ -4,8 +4,8 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 29 context gathered
-last_updated: "2026-05-17T18:55:44.198Z"
-last_activity: 2026-05-17 -- Phase 29 planning complete
+last_updated: "2026-05-17T19:03:04.749Z"
+last_activity: 2026-05-17 -- Phase 29 execution started
 progress:
   total_phases: 6
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 scoping)
 
 **Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 28 — codegen-output-path-codegen
+**Current focus:** Phase 29 — live-domain-ui-reporter-plugin
 
 ## Current Position
 
-Phase: 28 (codegen-output-path-codegen) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-05-17 -- Phase 29 planning complete
+Phase: 29 (live-domain-ui-reporter-plugin) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 29
+Last activity: 2026-05-17 -- Phase 29 execution started
 
 ## Performance Metrics
 
