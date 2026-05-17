@@ -180,13 +180,107 @@ def test_relative_path_resolves_against_pyproject_directory(
 
 
 def test_pyproject_typo_value_raises_fail_loud(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    _write_pyproject_with_mcp_config_file(tmp_path, "./does-not-exist.yaml")
+    """WR-06: typo error must name raw value, resolved candidate, and pyproject.
+
+    A refactor that swaps to a generic 'config not found' message would lose
+    the typo-specific context an operator needs to find the offending key.
+    Lock the three load-bearing identifiers in the rendered operator copy.
+    """
+    raw_value = "./does-not-exist.yaml"
+    _write_pyproject_with_mcp_config_file(tmp_path, raw_value)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(typer.Exit) as exc_info:
         _load_config(path=None)
     assert exc_info.value.exit_code == 2
+    captured = capsys.readouterr()
+    combined = captured.err + captured.out
+    # Names the raw value (the actual ini string the operator typed):
+    assert raw_value in combined
+    # Names the resolved candidate path (pyproject.parent / raw_value):
+    resolved_candidate = tmp_path / "does-not-exist.yaml"
+    assert str(resolved_candidate) in combined
+    # Names the pyproject.toml location:
+    assert str(tmp_path / "pyproject.toml") in combined
+
+
+@pytest.mark.parametrize(
+    "raw_toml_value",
+    [
+        "[1, 2]",         # list
+        "5",              # int
+        "true",           # bool
+        # Note: TOML has no `None`; we model "None" as "absent entirely" via
+        # _write_pyproject_with_mcp_config_file(value=None), already covered
+        # by test_pyproject_without_ini_options_section_falls_through. The
+        # additional sentinel here is an in-TOML representation that pydantic
+        # would reject if isinstance(raw, str) ever stopped guarding:
+        '{ key = "val" }',  # inline table
+    ],
+    ids=["list", "int", "bool", "inline_table"],
+)
+def test_pyproject_non_string_value_falls_through_silently(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    raw_toml_value: str,
+) -> None:
+    """WR-06: helper's isinstance(raw, str) guard collapses non-strings to ''.
+
+    A future refactor that drops the isinstance check would raise
+    'AttributeError: '<type>' object has no attribute 'strip'' and crash
+    the CLI on any non-string mcp_config_file value. Pin the fall-through
+    behavior so the regression test fires before the crash hits operators.
+    """
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        textwrap.dedent(
+            f"""\
+            [project]
+            name = "x"
+            version = "0.0"
+
+            [tool.pytest.ini_options]
+            mcp_config_file = {raw_toml_value}
+            """
+        ),
+        encoding="utf-8",
+    )
+    cwd_yaml = tmp_path / "config.yaml"
+    _write_minimal_config_yaml(cwd_yaml)
+    monkeypatch.chdir(tmp_path)
+    cfg, resolved = _load_config(path=None)
+    # Fell through to cwd autodiscovery without raising:
+    assert cfg is not None
+    assert resolved == cwd_yaml
+
+
+def test_pyproject_absolute_path_value(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """WR-06: absolute mcp_config_file path bypasses pyproject-relative resolution.
+
+    Exercises the `if not candidate.is_absolute()` branch's negative side
+    (currently uncovered by other tests, all of which pass relative paths).
+    """
+    abs_inner = tmp_path / "absolute_inner.yaml"
+    _write_minimal_config_yaml(abs_inner)
+    # Use the absolute path verbatim in pyproject.toml. On Windows we need
+    # to escape backslashes for TOML's string syntax.
+    abs_str = str(abs_inner).replace("\\", "\\\\")
+    _write_pyproject_with_mcp_config_file(tmp_path, abs_str)
+    # chdir somewhere ELSE so the absolute path cannot accidentally pass via
+    # cwd or pyproject-relative resolution.
+    other = tmp_path / "other"
+    other.mkdir()
+    monkeypatch.chdir(other)
+    cfg, resolved = _load_config(path=None)
+    assert cfg is not None
+    # The resolved path must equal the absolute path verbatim (not
+    # pyproject.parent / abs_str).
+    assert resolved == abs_inner
 
 
 def test_load_config_walks_upward_for_pyproject(
