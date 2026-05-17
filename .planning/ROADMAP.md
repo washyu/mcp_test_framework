@@ -81,7 +81,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
  (completed 2026-05-17)
 - [x] **Phase 28: Codegen output path (CODEGEN)** — `gen-test-classes` refuses to invent an output path or write under its own install tree, prompts before overwriting non-empty targets, and reads the same `mcp_config_file` ini route pytest uses.
  (completed 2026-05-17)
-- [ ] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
+- [x] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission. (completed 2026-05-17)
 - [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
 
 ## Phase Details
@@ -162,9 +162,9 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   3. Operator running `pytest --mcp-domain-ui` under CI / no-TTY environments sees the reporter remain OFF unless they pass `--mcp-domain-ui=force` — `pytest-html`, `pytest-sugar`, and similar terminal-coexistence plugins are not hijacked.
   4. Operator running `pytest --mcp-domain-ui -n auto` (pytest-xdist) sees the domain UI emitted from the master process only; worker output is not multiplexed into the per-tool rows. Reporter ships under a separate `[project.entry-points.pytest11]` key so `-p no:mcp_test_framework_reporter` disables it while keeping contract fixtures.
 **Plans**: 3 plans
-  - [ ] 29-01-PLAN.md — Live TestReport adapter (`_build_parsed_run_from_reports` in `_runner.py`) + unit tests (REPORTER-01 data backbone)
-  - [ ] 29-02-PLAN.md — Reporter plugin module (`_reporter.py`) + `pytest11` entry-point + subprocess integration tests (REPORTER-01 + REPORTER-02)
-  - [ ] 29-03-PLAN.md — CLI rewire: delete default render call, pass `--mcp-domain-ui` driven by `-q` flag (REPORTER-01 operator-path payoff)
+  - [x] 29-01-PLAN.md — Live TestReport adapter (`_build_parsed_run_from_reports` in `_runner.py`) + unit tests (REPORTER-01 data backbone)
+  - [x] 29-02-PLAN.md — Reporter plugin module (`_reporter.py`) + `pytest11` entry-point + subprocess integration tests (REPORTER-01 + REPORTER-02)
+  - [x] 29-03-PLAN.md — CLI rewire: delete default render call, pass `--mcp-domain-ui` driven by `-q` flag (REPORTER-01 operator-path payoff)
 
 ### Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite
 **Goal**: Library mode is dogfooded by the framework's own CI (framework `pyproject.toml` sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` — pre-empted by Phase 27 D-06); CLI continues to ship but README and `docs/LIBRARY-MODE.md` lead with library-mode usage; carry-forward live-UAT items from v1.2 / v1.3 close (README PASS-sample re-capture, Phase 17 SC1 at ~70 tools, Phase 13 + 14 live-stack UATs) close as part of the dogfood pass.
@@ -215,5 +215,5 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete   | 2026-05-17 |
 | 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete   | 2026-05-17 |
-| 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
+| 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete    | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |
