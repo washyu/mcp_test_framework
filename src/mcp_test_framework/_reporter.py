@@ -37,6 +37,7 @@ identically whether or not pytest-xdist is installed.
 from __future__ import annotations
 
 import sys
+import warnings
 from dataclasses import dataclass, field
 
 import pytest
@@ -133,6 +134,25 @@ def pytest_configure(config: pytest.Config) -> None:
         return
     if choice == "auto" and not bool(getattr(_ORIGINAL_STDOUT, "isatty", lambda: False)()):
         return
+    # WR-04: defensive re-init guard. The module-global _STATE assumes one
+    # pytest session per process and is torn down in pytest_unconfigure.
+    # That assumption holds for the operator's normal `pytest` / `mcp-
+    # contracts run` invocations (each spawns a fresh interpreter) but
+    # breaks for in-process re-entry: IDE test runners (PyCharm, VS Code)
+    # that keep the interpreter warm across runs, or library callers
+    # invoking pytest.main() twice. If _STATE is still populated when we
+    # arrive here, the previous session's reports list would otherwise
+    # silently merge into this session's accumulator.
+    if _STATE is not None:
+        warnings.warn(
+            "mcp_test_framework reporter: _STATE was populated at "
+            "pytest_configure -- previous pytest_unconfigure did not fire "
+            "(in-process re-entry or library-mode pytest.main re-use). "
+            "Resetting accumulator; reports from the prior session are "
+            "discarded.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     _STATE = _ReporterState(enabled=True)
 
 
