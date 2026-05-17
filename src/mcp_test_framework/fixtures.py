@@ -106,15 +106,20 @@ def mcp_config() -> Config:  # renamed from `config`; unprefixed alias lives in 
 # ---------------------------------------------------------------------------
 
 
-# Live-MCP scopes: items under these prefixes call the real homelab-mcp /
-# Ollama stack and require the preflight gate. Anything else (framework
-# unit / smoke / runner self-tests under tests/framework/...) must skip
-# preflight so it runs cleanly on a machine with no homelab-mcp / Ollama
-# configured.
+# Live-MCP scopes for test-code-author paths: items whose nodeids start
+# with these prefixes call the real homelab-mcp / Ollama stack via
+# hand-authored scenarios (no `mcp_contract` marker; the marker is
+# applied only to framework-injected contract tests). Everything else
+# (framework unit / smoke / runner self-tests under tests/framework/...)
+# must skip preflight so it runs cleanly on a machine with no
+# homelab-mcp / Ollama configured.
 #
-# Kept in sync with the renderer's scope discrimination (tests/contract
-# vs tests/test_code, with the legacy tests/sdet/ path retained as a v1.4  # noqa: sdet-rename-shim
-# dual-discovery fallback) -- single source of truth for live scopes.
+# The transitional `tests/contract/` entry covers the legacy on-disk
+# contract test file (`tests/contract/test_mcp_tool_contract.py`) that
+# is still collected via `tests/conftest.py:pytest_generate_tests` and
+# does NOT carry the `mcp_contract` marker. A sibling plan deletes the
+# legacy collection wiring; once that lands, the `tests/contract/`
+# entry can drop and the marker branch alone covers contract tests.
 _LIVE_PREFIXES: tuple[str, ...] = (
     "tests/contract/",
     "tests/test_code/",
@@ -123,27 +128,51 @@ _LIVE_PREFIXES: tuple[str, ...] = (
 
 
 def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
-    """Return True iff any collected item is under a live-MCP scope.
+    """Return True iff any collected item needs the live-MCP preflight gate.
 
-    Live-MCP scopes (``tests/contract/``, ``tests/test_code/``, and the
-    legacy ``tests/sdet/`` path retained for v1.4 dual-discovery) call into  # noqa: sdet-rename-shim
-    the real homelab-mcp subprocess and Ollama HTTP API; everything else
-    (``tests/framework/...``) is pure-data and must not be gated by the
-    autouse preflight fixture.
+    Two-branch detection (live = needs preflight; pure-data = does not):
 
-    Historical note: an earlier version keyed on ``tests/unit/``, a prefix
-    that no longer exists in the current layout. The stale check always
-    returned True and forced operators to either set ``MCPTF_CONFIG_FILE``
-    or pass ``--noconftest`` to run framework-only suites. The predicate
-    was inverted to a live-scope allowlist so the preflight gate keys on
-    "does this item need a live MCP server?" rather than on a stale
-    unit-test prefix.
+      PRIMARY (marker): any item carrying ``pytest.mark.mcp_contract``.
+        Covers the plugin's framework-injected contract tests, including
+        the synthetic ``<mcp-contracts>::test_*`` nodeids that no
+        path-prefix could match. The marker is applied per-item by
+        ``_plugin.pytest_collection_modifyitems``.
+
+      SECONDARY (nodeid prefix): any item whose nodeid starts with
+        ``_LIVE_PREFIXES``. Covers hand-authored test-code-author
+        scenarios under ``tests/test_code/`` (and the legacy
+        ``tests/sdet/`` path retained for v1.4 dual-discovery), which do  # noqa: sdet-rename-shim
+        NOT carry the contract marker but still drive a live MCP
+        session. Also covers the legacy on-disk
+        ``tests/contract/test_mcp_tool_contract.py`` collected via
+        ``tests/conftest.py:pytest_generate_tests`` during the
+        inter-plan window before that wiring is deleted.
+
+    Framework-only test suites (``tests/framework/...``) are pure-data and
+    must NOT trigger preflight -- a developer with no homelab-mcp /
+    Ollama configured can still run them.
+
+    Historical note: an earlier version keyed solely on a path prefix
+    (``tests/unit/``) that no longer exists in the current layout. The
+    stale check always returned True and forced operators to either set
+    ``MCPTF_CONFIG_FILE`` or pass ``--noconftest``. The predicate was
+    inverted to a live-scope allowlist, and now hybridized with marker
+    detection so plugin-injected synthetic nodeids are covered without
+    a brittle nodeid grammar dependency.
     """
     items = getattr(request.session, "items", []) or []
     if not items:
         return False
     for item in items:
-        # item.nodeid uses forward slashes on every platform pytest supports.
+        # PRIMARY: framework-injected contract tests carry `mcp_contract`.
+        # `iter_markers` may be absent on lightweight test fakes; treat
+        # absence as "no marker" rather than crashing the predicate.
+        iter_markers = getattr(item, "iter_markers", None)
+        if iter_markers is not None and any(iter_markers("mcp_contract")):
+            return True
+        # SECONDARY: test-code-author paths + transitional legacy
+        # tests/contract/ collection. nodeid uses forward slashes on
+        # every platform pytest supports.
         if item.nodeid.startswith(_LIVE_PREFIXES):
             return True
     return False
