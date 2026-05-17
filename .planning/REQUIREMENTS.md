@@ -44,7 +44,7 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### Codegen Output Path (CODEGEN)
 
-- [x] **CODEGEN-LIB-01**: Operator who runs `gen-test-classes` from a project with a `tests/` directory gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default — no config required. Operators in projects without a `tests/` directory get a friendly error directing them to set `cfg.test_code.generated_root` or use `--output-dir`.
+- [x] **CODEGEN-LIB-01**: Operator who runs `gen-test-classes` without `cfg.test_code.generated_root` set gets a fail-loud operator-tone error naming the missing field and pointing at `mcp-contracts config-init`. No smart default; the framework does not infer project layout. No `--output-dir` flag; `--config PATH` is the only invocation-level override. Operator running against a non-empty target dir is prompted before overwrite; in non-TTY contexts the command aborts with exit code 2 (no `--yes` / `--force` flag exists). `gen-test-classes` resolves the config via the same `[tool.pytest.ini_options] mcp_config_file` route as pytest (precedence: `--config PATH` > pyproject.toml ini value > `MCPTF_CONFIG_FILE` env var (deprecated, removed v1.5) > `./config.yaml` autodiscovery > fail-loud).
 - [x] **CODEGEN-LIB-02**: `gen-test-classes` refuses to write under any `sys.path` directory containing the installed `mcp_test_framework` package (typically `site-packages/`); resolves the target path absolute at command-start and aborts with a friendly error if the resolved path is inside an installed-package tree.
 
 ### Reporter Plugin (REPORTER)
