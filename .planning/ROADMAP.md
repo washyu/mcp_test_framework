@@ -130,7 +130,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   4. Operator calling `register()` twice in one conftest sees a friendly `RegistrationError` naming the prior call's source location; calling it outside `conftest.py` or outside collection phase also raises a friendly error. `register()` accepts only explicit typed kwargs (NO `**kwargs`); signature is pinned by a snapshot test.
   5. Operator installing the framework into a vanilla project sees the black-box rule enforced in the wheel install — `sys.modules` runtime guard fires from `register()`; wheel-introspection AST-walk CI test fails on banned SUT imports inside `src/`.
 **Plans**: 5 plans
-  - [ ] 27-01-PLAN.md — Wave 0 spike (`_ContractsModule` hybrid synthesis pattern) + extract `_tests.py` + relocate `_black_box_guard.py`
+  - [x] 27-01-PLAN.md — Wave 0 spike (`_ContractsModule` hybrid synthesis pattern) + extract `_tests.py` + relocate `_black_box_guard.py`
   - [ ] 27-02-PLAN.md — Plugin `pytest_addoption` ini key + `pytest_configure` (Config load, black-box guard, MCPTF_CONFIG_FILE deprecation warning)
   - [ ] 27-03-PLAN.md — Plugin `pytest_collection` synthetic Module injection + `pytest_generate_tests` indirect parametrize + marker auto-application
   - [ ] 27-04-PLAN.md — CLI subprocess `-o "mcp_config_file=PATH"` rewire + `_preflight` predicate flip to marker-based detection
@@ -205,7 +205,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
-| 27. register() API + contracts sub-package + test extraction | v1.4 | 0/5 | Not started | - |
+| 27. register() API + contracts sub-package + test extraction | v1.4 | 1/5 | In Progress|  |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |

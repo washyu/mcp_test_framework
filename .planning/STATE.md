@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
-status: planning
+status: executing
 stopped_at: Phase 27 context gathered (pivoted from register() to ini-driven config)
-last_updated: "2026-05-16T22:33:22.336Z"
-last_activity: 2026-05-16
+last_updated: "2026-05-17T00:11:59.891Z"
+last_activity: 2026-05-17
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_plans: 16
+  completed_plans: 12
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 scoping)
 
 **Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 26 — packaging-foundation-entry-point-py-typed-dist-name-plugin-s
+**Current focus:** Phase 27 — register-api-contracts-sub-package-test-extraction-lib
 
 ## Current Position
 
-Phase: 27
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-16
+Phase: 27 (register-api-contracts-sub-package-test-extraction-lib) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-17
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Last activity: 2026-05-16
 | Phase 26 P26-01 | ~12min | 3 tasks | 4 files | Wave 1: pyproject.toml dist-rename to mcp-contracts + entry-points + scripts; cli.py:974 fix; REQUIREMENTS.md + ROADMAP.md source-of-truth amendments
 | Phase 26 P26-03 | ~3min | 2 tasks | 4 files | Wave 1: three PEP 561 py.typed markers + contracts/__init__.py stub (docstring-only; register() reserved for Phase 27 per D-14)
 | Phase 26 P26-02 | ~25min | 3 tasks | 3 files | Wave 2: _plugin.py (pytest11 + 3 hook stubs + 7 fixture re-exports + 6 deprecation aliases) + _deprecated_script.py (console-script shim with lazy cli-import inside main()) + fixtures.py (6 renames + 8 cross-ref repairs including _preflight getfixturevalue string)
+| Phase 27 P01 | 45 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: [Phase 25-05]: Per-line # noqa: sdet-rename-shim tagging applied to all D-18 compat-shim lines because plan 06 leak gate is line-by-line, not block-aware. Includes config.py AliasChoices block, _runner.py sdet= kwarg, cli.py --sdet shim, examples/homelab-mcp.yaml sdet: alias demo.
 - [Phase ?]: [Phase 25-06]: Option A executed -- per-line HTML-comment noqa suffix tags on the 4 untagged README snapshot lines (348, 354, 416, 417). Rule-1 deviation absorbing plan-05 territory; honors locked D-18 line-level semantic verbatim; preserves Phase 30 re-capture handoff.
 - [Phase ?]: [Phase 25]: Phase 25 (RENAME) closed end-to-end -- 6 plans / 6 waves; RENAME-01 through RENAME-06 shipped. Public import surface locked behind CI gate (tests/framework/test_sdet_rename_leak_gate.py). Phase 26 (PACK) unblocked.
+- [Phase ?]: Plan 27-01: Wave 0 spike PASSED -- hybrid _ContractsModule(_PytestModule) injection pattern is GO for Plans 27-02 and 27-03.
+- [Phase ?]: Plan 27-01: Operator-facing -k selection against <mcp-contracts> requires substring match (e.g. -k mcp) since pytest -k parser treats - as binary operator.
 
 ### Roadmap Evolution
 
@@ -204,6 +207,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-16T22:33:22.320Z
+Last session: 2026-05-17T00:11:40.756Z
 Stopped at: Phase 27 context gathered (pivoted from register() to ini-driven config)
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)
