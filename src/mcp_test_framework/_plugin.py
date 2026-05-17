@@ -15,16 +15,21 @@ Current skeleton:
     prefixed fixture and emit a one-time DeprecationWarning per process.
     All six aliases drop in v1.5.
 
-A future library-mode milestone will fill the hook bodies with
-register()-driven behavior — contract-test injection, marker
-auto-application, preflight gating. This plugin is intentionally
+A library-mode milestone fills the hook bodies with an ini-driven
+entry point: operators set
+`[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` and the
+plugin auto-injects parametrized contract tests at collection time.
+This plugin is intentionally
 framework-primitive: NO SUT-aware logic, NO homelab-mcp imports, NO
 opinions about what tools exist.
 
 Coexistence note: `tests/conftest.py:30-55` also defines `pytest_configure`
 for the framework's own `sys.modules` black-box guard. Pytest invokes both
 hooks; this plugin's body is purely additive (marker registration only)
-and MUST NOT remove or relocate the guard.
+and MUST NOT remove or relocate the guard. The relocated guard now lives in
+`src/mcp_test_framework/_black_box_guard.py` and is invoked from this
+plugin; a later cleanup plan in this phase removes the duplicate guard in
+`tests/conftest.py`.
 """
 from __future__ import annotations
 
@@ -77,13 +82,25 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Reserve the --mcp-* CLI option namespace.
+    """Reserve the --mcp-* CLI option namespace and register the
+    `mcp_config_file` ini key.
 
-    No options registered yet — only the option group is created so a
-    future milestone can `getgroup("mcp_test_framework")` without
-    duplicate-group warnings on first call.
+    The ini key is the operator's library-mode entry point. Set in
+    [tool.pytest.ini_options] in pyproject.toml; relative paths resolve
+    against the directory containing pyproject.toml. Absent or empty
+    string = library mode opted out (silent no-op).
     """
     parser.getgroup("mcp_test_framework", "MCP test framework options")
+    parser.addini(
+        "mcp_config_file",
+        type="string",
+        default="",
+        help=(
+            "Path to MCP test framework YAML config; relative paths are "
+            "resolved relative to pyproject.toml's directory. Absent or "
+            "empty = library mode opted out (no contract tests injected)."
+        ),
+    )
 
 
 def pytest_collection_modifyitems(
