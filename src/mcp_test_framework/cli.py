@@ -917,6 +917,20 @@ def run(
     # meant "I want full debug context including domain UI."
     domain_ui_mode = "force" if debug else ("off" if quiet else "force")
 
+    # CR-01 fix: on the default-UI path (no -q, no --debug) the in-subprocess
+    # reporter plugin owns the live header / per-tool rows / summary. Stream
+    # its stdout straight to the operator instead of capturing-and-discarding
+    # (the v1.3 behavior captured stdout and only replayed it inside the
+    # --debug appendix, so the default `mcp-contracts run` invocation
+    # silently swallowed the entire domain UI).
+    #
+    # Stream only when the reporter is rendering AND we are NOT building
+    # a --debug appendix (the appendix still needs captured_stdout for its
+    # raw-pytest block under --debug). -q (no --debug) keeps capturing so
+    # pytest's chatter stays suppressed while the CLI renders its own
+    # summary-only line.
+    stream_stdout = (not quiet) and (not debug)
+
     rc, tmp_xml, captured_stdout, captured_stderr = _runner.run_pytest_subprocess(
         junit_xml=junit_xml,
         pytest_args=pytest_args,
@@ -925,6 +939,7 @@ def run(
         sdet=test_code,  # noqa: sdet-rename-shim
         mcp_config_path=resolved,
         domain_ui_mode=domain_ui_mode,
+        stream_stdout=stream_stdout,
     )
     try:
         # If the subprocess crashed before writing the tempfile, surface a

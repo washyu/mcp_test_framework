@@ -211,6 +211,7 @@ def run_pytest_subprocess(
     sdet: bool = False,  # noqa: sdet-rename-shim
     mcp_config_path: Path | None = None,
     domain_ui_mode: str = "off",
+    stream_stdout: bool = False,
 ) -> tuple[int, Path | None, str, str]:
     """Spawn pytest as a child process and return its result.
 
@@ -229,14 +230,29 @@ def run_pytest_subprocess(
         populated independently. This avoids relying on pytest's
         last-occurrence rule and gives the wrapper an exclusive tempfile
         to parse.
-      - capture_output=True, text=True, check=False.
+      - When ``stream_stdout`` is False (default behavior for CLI's -q and
+        --debug paths): ``capture_output=True, text=True, check=False``.
+        Stdout AND stderr captured; caller decides what to surface to the
+        operator. The reporter plugin (which writes to subprocess stdout)
+        ends up in ``captured_stdout`` -- only the --debug appendix surfaces
+        it. Under -q (no --debug) the CLI renders its own summary from the
+        JUnit XML and discards captured stdout (pytest's chatter stays
+        suppressed by design).
+      - When ``stream_stdout`` is True (CR-01 fix, default-UI path: no -q,
+        no --debug): pytest's stdout INHERITS the parent's fd so the
+        reporter plugin's live header / per-tool rows / summary writes
+        reach the operator's terminal as they happen. Stderr is still
+        captured so ``_dispatch_default_mode_or_error`` can show the last
+        20 lines on a crash. Returned ``captured_stdout`` is "" because
+        nothing was captured.
 
     Raw mode (raw=True):
       - argv = [sys.executable, '-m', 'pytest',
                 *_build_pytest_args(junit_xml, pytest_args)]
         No internal tempfile. No capture (stdout/stderr inherit so operator
         sees raw output live). Operator-supplied --junit-xml=PATH still
-        flows through _build_pytest_args.
+        flows through _build_pytest_args. ``stream_stdout`` is ignored here
+        (raw is already a superset of "inherit stdout").
       - check=False.
       - Returns (exit_code, None, "", "") -- caller does not render.
 
@@ -314,15 +330,35 @@ def run_pytest_subprocess(
     #   so a stray non-utf-8 byte never raises mid-capture -- it is replaced
     #   with U+FFFD and the renderer still gets a complete string to work with.
     child_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
-    proc = subprocess.run(
-        argv,
-        capture_output=True,
-        text=True,
-        check=False,
-        encoding="utf-8",
-        errors="replace",
-        env=child_env,
-    )
+    if stream_stdout:
+        # CR-01 fix: stream the child's stdout straight to the operator's
+        # terminal so the in-subprocess reporter plugin's live emissions
+        # (header / per-tool rows / summary) actually reach the operator.
+        # stderr is still captured so _dispatch_default_mode_or_error can
+        # show its last-20-lines diagnostic on a pytest crash.
+        # stdout=None means "inherit parent's stdout fd". stdin is left to
+        # subprocess.run's default (inherit) so SIGINT propagation is
+        # unaffected.
+        proc = subprocess.run(
+            argv,
+            stdout=None,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            encoding="utf-8",
+            errors="replace",
+            env=child_env,
+        )
+    else:
+        proc = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            check=False,
+            encoding="utf-8",
+            errors="replace",
+            env=child_env,
+        )
 
     # Fan-out: if operator wanted the XML at PATH, copy from the tempfile.
     if junit_xml is not None and tmp.exists():
@@ -334,6 +370,8 @@ def run_pytest_subprocess(
             # an explicit destination they own.
             pass
 
+    # Under stream_stdout, proc.stdout is None (no PIPE) -- coerce to "" so
+    # the downstream contract (str, not None) is preserved end-to-end.
     return (
         proc.returncode,
         tmp,
