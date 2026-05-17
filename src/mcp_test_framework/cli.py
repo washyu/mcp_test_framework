@@ -144,6 +144,86 @@ def _guard_against_site_packages_target(out_root: Path) -> None:
         )
 
 
+def _confirm_or_abort_non_empty_target(target_dir: Path) -> None:
+    """Confirmation gate before wipe-and-write codegen.
+
+    Decision tree:
+        - target_dir does not exist           -> return silently (caller creates)
+        - target_dir exists but is empty      -> return silently
+        - target_dir exists with files in TTY -> ``typer.confirm`` prompt;
+                                                 declining aborts exit 2
+        - target_dir exists with files non-TTY -> operator-tone error exit 2
+
+    The framework deliberately exposes no ``--yes`` / ``--force`` flag --
+    the only way to overwrite in a non-interactive context (CI, scripts,
+    piped stdin) is to delete the directory manually and re-run. Strongest
+    "never silently destroy data" posture.
+
+    Args:
+        target_dir: The directory ``_codegen.generate`` will wipe-and-write
+            into (typically ``out_root / slug``, NOT ``out_root`` itself --
+            operators may have unrelated content alongside the specific
+            server's subdirectory).
+    """
+    if not target_dir.exists():
+        return
+    # Cap the iteration so a pathological tree does not stall the CLI;
+    # the exact count flows into the prompt copy.
+    files: list[Path] = []
+    try:
+        for entry in target_dir.iterdir():
+            files.append(entry)
+            if len(files) >= 1000:
+                break
+    except OSError:
+        # Unreadable directory: fall through to the prompt anyway; the
+        # codegen call will produce a clearer error than we can here.
+        return
+    if not files:
+        return
+    file_count = len(files)
+    suffix = "+" if file_count >= 1000 else ""
+    if not sys.stdin.isatty():
+        _emit_operator_error(
+            summary=(
+                "gen-test-classes: refusing to overwrite non-empty directory "
+                "in non-interactive context"
+            ),
+            detail=[
+                f"the target directory `{target_dir}` contains "
+                f"{file_count}{suffix} entries and gen-test-classes cannot "
+                f"prompt for confirmation in this environment (no TTY on "
+                f"stdin).",
+                "the framework does not offer a force-overwrite flag for "
+                "this command -- the strongest 'never silently destroy "
+                "data' posture.",
+            ],
+            next_step=(
+                f"delete the contents of `{target_dir}` manually and re-run "
+                f"`mcp-contracts gen-test-classes`"
+            ),
+        )
+    proceed = typer.confirm(
+        f"{file_count}{suffix} entries exist in {target_dir}. Overwrite?",
+        default=False,
+    )
+    if not proceed:
+        _emit_operator_error(
+            summary=(
+                f"gen-test-classes: declined; not overwriting `{target_dir}`"
+            ),
+            detail=[
+                "you answered no to the overwrite prompt; no files were "
+                "written.",
+            ],
+            next_step=(
+                "delete the contents of the target directory manually if "
+                "you intend to regenerate, then re-run "
+                "`mcp-contracts gen-test-classes`"
+            ),
+        )
+
+
 def _emit_operator_error_for_validation(
     exc: ValidationError, *, source: str
 ) -> typing.NoReturn:
@@ -1211,6 +1291,14 @@ def gen_test_classes(
     from mcp_test_framework.test_code import _codegen
     from mcp_test_framework.test_code._slugs import server_slug
 
+    # Slug derivation must run BEFORE the overwrite-prompt gate so the
+    # prompt can reference the actual write target (`out_root / slug`,
+    # not `out_root` itself -- operators may have unrelated content
+    # alongside this specific server's subdirectory).
+    slug = server_slug(server_name)
+    target_dir = out_root / slug
+    _confirm_or_abort_non_empty_target(target_dir)
+
     # `out_root` was resolved + site-packages-guarded above, BEFORE the
     # handshake, so the same variable flows into _codegen.generate() here.
     server_version = getattr(server_info, "version", "") or ""
@@ -1231,7 +1319,6 @@ def gen_test_classes(
             ),
         )
 
-    slug = server_slug(server_name)
     typer.echo(f"gen-test-classes: wrote test-code classes for {server_name}\n")
     typer.echo(f"  server:    {server_name} v{server_version}")
     typer.echo(f"  slug:      {slug}")
