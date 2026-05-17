@@ -67,6 +67,11 @@ def _write_payload_with_config(tmp_path: Path) -> Path:
     tests_dir.mkdir()
     # Parametrize suffix [mytool] / [othertool] -> _extract_tool_name returns
     # the tool name -> _build_parsed_run_from_reports populates per_tool.
+    #
+    # CR-02 gate: the reporter's pytest_collection_finish suppresses its
+    # contract banner when no collected items have a [<tool>] parametrize
+    # suffix (contract-shape gate). Parametrize with two tool names
+    # below satisfies that gate -- the banner renders for this fixture.
     (tests_dir / "test_param.py").write_text(textwrap.dedent("""\
         import pytest
 

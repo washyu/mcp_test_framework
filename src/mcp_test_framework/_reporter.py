@@ -193,12 +193,25 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     # the CLI owns the scenario surface (test-code _render_scenario_pre_run_digest).
     # Without this gate, mcp-contracts run --test-code emits the CLI's
     # scenario banner immediately followed by the reporter's contract
-    # banner (with discovered_tools=[] because test-code items have no
-    # mcp_contract keyword) -- two banners per run.
-    contract_items = [
-        item for item in session.items if "mcp_contract" in item.keywords
-    ]
-    if not contract_items:
+    # banner (with discovered_tools=[] because test-code items collect
+    # from tests/test_code/) -- two banners per run.
+    #
+    # Scope detection: classify items by tool-extractability. Items whose
+    # nodeids carry a [<tool>] parametrize suffix are contract-shape
+    # (either framework-injected via _ContractsModule + mcp_contract
+    # marker, or operator-authored parametrized tests that have opted in
+    # via --mcp-domain-ui=force). Items WITHOUT a [<tool>] suffix that
+    # collect from tests/test_code/ or tests/sdet/ are scenario-shape
+    # (no banner; the CLI emits its scenario digest at the wrapper
+    # level). Items that are neither (e.g., framework self-tests under
+    # tests/framework/ when --with-framework is the only scope) also
+    # get no contract banner -- they have no per-tool dimension to
+    # report on.
+    has_contract_shape_items = any(
+        _runner._extract_tool_name(item.nodeid) is not None
+        for item in session.items
+    )
+    if not has_contract_shape_items:
         return  # Scenario / test-code / framework-only scope -- CLI owns the banner.
 
     server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
@@ -206,7 +219,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
         name
         for name in (
             _runner._extract_tool_name(item.nodeid)
-            for item in contract_items
+            for item in session.items
         )
         if name is not None
     )
