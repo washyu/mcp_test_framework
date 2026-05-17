@@ -115,6 +115,37 @@ def test_gen_test_classes_command_has_no_yes_or_force_flag() -> None:
     assert "--force" not in result.stdout
 
 
+def test_unreadable_non_empty_dir_aborts_with_operator_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Unreadable target dir must abort via _emit_operator_error (WR-02).
+
+    The safety gate's "never silently destroy data" posture would be broken
+    if the OSError branch silently returned and let codegen's wipe-and-write
+    fail later. Verify the gate fails loud here with path + cause context.
+    """
+    target = tmp_path / "unreadable"
+    target.mkdir()
+
+    def _raise_oserror(self: Path) -> object:
+        raise PermissionError("simulated unreadable directory")
+
+    monkeypatch.setattr(Path, "iterdir", _raise_oserror)
+    with pytest.raises(typer.Exit) as exc_info:
+        _confirm_or_abort_non_empty_target(target)
+    assert exc_info.value.exit_code == 2
+    captured = capsys.readouterr()
+    combined = captured.err + captured.out
+    # Names the path:
+    assert str(target) in combined
+    # Names the cause (OSError detail):
+    assert "iterdir" in combined or "simulated unreadable directory" in combined
+    # Points at the remediation (config field or permissions guidance):
+    assert "test_code.generated_root" in combined or "permissions" in combined
+
+
 @pytest.mark.parametrize(
     "n_files, expected_count_str, expected_suffix",
     [

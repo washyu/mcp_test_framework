@@ -179,10 +179,23 @@ def _confirm_or_abort_non_empty_target(target_dir: Path) -> None:
             files.append(entry)
             if len(files) > CAP:
                 break
-    except OSError:
-        # Unreadable directory: fall through to the prompt anyway; the
-        # codegen call will produce a clearer error than we can here.
-        return
+    except OSError as exc:
+        # Unreadable directory: fail the safety gate here with a path-aware
+        # operator error rather than letting codegen's wipe-and-write fail
+        # later. Preserves the gate as the load-bearing safety check (the
+        # "never silently destroy data" posture in this docstring's intent
+        # would otherwise be violated on the unreadable-but-non-empty branch).
+        _emit_operator_error(
+            summary=(
+                "gen-test-classes: cannot inspect target directory "
+                f"`{target_dir}`"
+            ),
+            detail=[f"the directory exists but iterdir() failed: {exc}"],
+            next_step=(
+                "fix permissions on the target directory or pick a different "
+                "`test_code.generated_root` in your config.yaml"
+            ),
+        )
     if not files:
         return
     file_count = min(len(files), CAP)
