@@ -113,3 +113,47 @@ def test_gen_test_classes_command_has_no_yes_or_force_flag() -> None:
     assert result.exit_code == 0
     assert "--yes" not in result.stdout
     assert "--force" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "n_files, expected_count_str, expected_suffix",
+    [
+        (999, "999", ""),
+        (1000, "1000", ""),
+        (1001, "1000", "+"),
+    ],
+)
+def test_cap_boundary_suffix_renders_accurately(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    n_files: int,
+    expected_count_str: str,
+    expected_suffix: str,
+) -> None:
+    """Cap-boundary regression (WR-03).
+
+    The 1000-entry cap loop must render "1000+" only when overflow ACTUALLY
+    occurred (>1000 entries on disk), not when the loop simply reached the
+    cap. We fake `iterdir` to control entry count without creating thousands
+    of real files on disk.
+    """
+    target = tmp_path / "populated"
+    target.mkdir()
+    fake_entries = [target / f"f{i}.py" for i in range(n_files)]
+    monkeypatch.setattr(Path, "iterdir", lambda self: iter(fake_entries))
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    with patch(
+        "mcp_test_framework.cli.typer.confirm", return_value=True
+    ) as mock_confirm:
+        _confirm_or_abort_non_empty_target(target)
+    call_args = mock_confirm.call_args
+    prompt_text = (
+        call_args.args[0] if call_args.args else call_args.kwargs.get("text", "")
+    )
+    expected_token = f"{expected_count_str}{expected_suffix}"
+    assert expected_token in prompt_text, (
+        f"expected prompt to contain `{expected_token}`; got: {prompt_text!r}"
+    )
+    if expected_suffix == "":
+        # Negative assertion: at the 1000-exact boundary, no "+" must leak.
+        assert f"{expected_count_str}+" not in prompt_text

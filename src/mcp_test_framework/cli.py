@@ -168,12 +168,16 @@ def _confirm_or_abort_non_empty_target(target_dir: Path) -> None:
     if not target_dir.exists():
         return
     # Cap the iteration so a pathological tree does not stall the CLI;
-    # the exact count flows into the prompt copy.
+    # the exact count flows into the prompt copy. Loop one entry past the
+    # cap so the "+" suffix accurately reflects whether overflow occurred
+    # (a directory with EXACTLY 1000 entries must render as "1000", not
+    # "1000+").
+    CAP = 1000
     files: list[Path] = []
     try:
         for entry in target_dir.iterdir():
             files.append(entry)
-            if len(files) >= 1000:
+            if len(files) > CAP:
                 break
     except OSError:
         # Unreadable directory: fall through to the prompt anyway; the
@@ -181,8 +185,8 @@ def _confirm_or_abort_non_empty_target(target_dir: Path) -> None:
         return
     if not files:
         return
-    file_count = len(files)
-    suffix = "+" if file_count >= 1000 else ""
+    file_count = min(len(files), CAP)
+    suffix = "+" if len(files) > CAP else ""
     if not sys.stdin.isatty():
         _emit_operator_error(
             summary=(
