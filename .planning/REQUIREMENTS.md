@@ -44,7 +44,7 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### Codegen Output Path (CODEGEN)
 
-- [ ] **CODEGEN-LIB-01**: Operator who runs `gen-test-classes` from a project with a `tests/` directory gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default — no config required. Operators in projects without a `tests/` directory get a friendly error directing them to set `cfg.test_code.generated_root` or use `--output-dir`.
+- [x] **CODEGEN-LIB-01**: Operator who runs `gen-test-classes` from a project with a `tests/` directory gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default — no config required. Operators in projects without a `tests/` directory get a friendly error directing them to set `cfg.test_code.generated_root` or use `--output-dir`.
 - [x] **CODEGEN-LIB-02**: `gen-test-classes` refuses to write under any `sys.path` directory containing the installed `mcp_test_framework` package (typically `site-packages/`); resolves the target path absolute at command-start and aborts with a friendly error if the resolved path is inside an installed-package tree.
 
 ### Reporter Plugin (REPORTER)
@@ -122,7 +122,7 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | LIB-08 | Phase 27 | Complete |
 | CFG-01 | Phase 27 | Complete |
 | CFG-02 | Phase 27 | Removed (Phase 27 D-01) |
-| CODEGEN-LIB-01 | Phase 28 | Pending |
+| CODEGEN-LIB-01 | Phase 28 | Complete |
 | CODEGEN-LIB-02 | Phase 28 | Complete |
 | REPORTER-01 | Phase 29 | Pending |
 | REPORTER-02 | Phase 29 | Pending |
