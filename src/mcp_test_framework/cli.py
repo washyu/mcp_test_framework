@@ -97,6 +97,53 @@ def _main() -> None:
 from mcp_test_framework._runner import _emit_operator_error  # noqa: E402
 
 
+def _guard_against_site_packages_target(out_root: Path) -> None:
+    """Pre-handshake site-packages guard.
+
+    Aborts ``gen-test-classes`` BEFORE the MCP handshake if the resolved
+    target output directory is a descendant of the framework's own
+    install root. Single robust check that works uniformly across:
+    standard site-packages installs, editable installs (``pip install -e .``),
+    vendored copies, Windows + Linux + venv + uv environments. No
+    special-casing of ``site-packages`` / ``dist-packages`` directory names.
+
+    No bypass flag and no config knob; operators who hit the guard must
+    change ``cfg.test_code.generated_root`` to a path outside the
+    framework's install root.
+
+    Args:
+        out_root: Fully resolved, absolute output root path (caller
+            already converted relative paths against the chosen base).
+
+    Raises:
+        typer.Exit (via _emit_operator_error) with code 2 if out_root
+        is a descendant of the framework install root.
+    """
+    import mcp_test_framework
+    framework_install_root = Path(mcp_test_framework.__file__).resolve().parent.parent
+    target_resolved = out_root.resolve()
+    if (
+        target_resolved == framework_install_root
+        or target_resolved.is_relative_to(framework_install_root)
+    ):
+        _emit_operator_error(
+            summary="gen-test-classes: refusing to write inside the framework's install tree",
+            detail=[
+                f"the resolved target path `{target_resolved}` is inside the "
+                f"framework's own install root `{framework_install_root}`.",
+                "the framework refuses to generate operator test code under its "
+                "own install tree -- generated files would be lost on the next "
+                "package upgrade and would shadow framework modules during import.",
+                "",
+                "the offending config field is `test_code.generated_root`.",
+            ],
+            next_step=(
+                "set `test_code.generated_root` in your config.yaml to a path "
+                "inside your own project tree (e.g. `tests/test_code/_generated`)"
+            ),
+        )
+
+
 def _emit_operator_error_for_validation(
     exc: ValidationError, *, source: str
 ) -> typing.NoReturn:
@@ -1022,6 +1069,17 @@ def gen_test_classes(
     """
     cfg, _ = _load_config(config)  # strict; fail-loud on absent config
     assert cfg is not None, "_load_config(strict) must return Config or raise"
+
+    # Resolve out_root BEFORE the handshake so the site-packages guard
+    # can abort without starting an MCP subprocess.
+    # `out_root` is config-driven; the framework never writes generated
+    # Python code inside its own install tree. Relative paths are
+    # resolved against CWD (mirrors the MCPTF_CONFIG_FILE convention).
+    out_root = cfg.test_code.generated_root
+    if not out_root.is_absolute():
+        out_root = Path.cwd() / out_root
+    _guard_against_site_packages_target(out_root)
+
     try:
         with asyncio.Runner() as runner:
             server_info, tools = runner.run(_run_codegen_handshake(cfg))
@@ -1073,12 +1131,8 @@ def gen_test_classes(
     from mcp_test_framework.test_code import _codegen
     from mcp_test_framework.test_code._slugs import server_slug
 
-    # `out_root` is config-driven; the framework never writes generated
-    # Python code inside its own `src/` tree. Relative paths are
-    # resolved against CWD (mirrors the MCPTF_CONFIG_FILE convention).
-    out_root = cfg.test_code.generated_root
-    if not out_root.is_absolute():
-        out_root = Path.cwd() / out_root
+    # `out_root` was resolved + site-packages-guarded above, BEFORE the
+    # handshake, so the same variable flows into _codegen.generate() here.
     server_version = getattr(server_info, "version", "") or ""
     try:
         counts = _codegen.generate(
