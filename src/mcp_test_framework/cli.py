@@ -250,13 +250,81 @@ def _emit_operator_error_for_validation(
     )
 
 
+def _read_mcp_config_file_from_pyproject(cwd: Path) -> tuple[Path | None, Path | None]:
+    """Read `[tool.pytest.ini_options] mcp_config_file` from pyproject.toml.
+
+    Mirrors the pytest-plugin ini-resolution behavior on the Typer CLI side
+    so `gen-test-classes` and `pytest` locate the operator's config through
+    the same single source of truth (the same ini key the plugin reads via
+    `config.getini("mcp_config_file")` at `pytest_configure`).
+
+    Fail-soft: missing pyproject.toml, malformed TOML, absent
+    `[tool.pytest.ini_options]` section, absent `mcp_config_file` key, or
+    empty-string value all return `(None, None)` so the caller falls
+    through to the next branch in the precedence chain.
+
+    Args:
+        cwd: Directory to look for `pyproject.toml` in. The pytest plugin
+            resolves relative ini values against `config.rootpath` (the
+            pyproject.toml's directory); this helper mirrors that by
+            resolving relative paths against the pyproject.toml's parent.
+
+    Returns:
+        Two-tuple `(resolved_config_path, pyproject_path)`:
+          - When the ini value is set and the resolved path exists:
+            `(Path-to-config, Path-to-pyproject.toml)`. Relative paths in
+            the ini value resolve against the pyproject.toml's directory.
+          - When the ini value is set but the resolved path does NOT
+            exist: calls `_emit_operator_error` and never returns
+            (fail-loud on typo; do NOT mask by silently falling through).
+          - All other fail-soft cases: `(None, None)`.
+    """
+    import tomllib
+    pyproject = cwd / "pyproject.toml"
+    if not pyproject.is_file():
+        return (None, None)
+    try:
+        with open(pyproject, "rb") as f:
+            data = tomllib.load(f)
+    except Exception:  # noqa: BLE001 -- silent fall-through on any TOML parse error
+        return (None, None)
+    raw = (
+        data.get("tool", {})
+        .get("pytest", {})
+        .get("ini_options", {})
+        .get("mcp_config_file", "")
+    )
+    raw = (raw or "").strip() if isinstance(raw, str) else ""
+    if not raw:
+        return (None, None)
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        candidate = pyproject.parent / candidate
+    if not candidate.is_file():
+        _emit_operator_error(
+            summary=f"config file not found via pyproject.toml: {candidate}",
+            detail=[
+                f"`[tool.pytest.ini_options] mcp_config_file` in {pyproject} "
+                f"points at `{raw}`, which resolves to `{candidate}`.",
+                "that path does not exist or is not a file.",
+            ],
+            next_step=(
+                "fix the `mcp_config_file` value in your pyproject.toml or "
+                "run `mcp-contracts config-init -o config.yaml` to generate "
+                "a starter config"
+            ),
+        )
+    return (candidate, pyproject)
+
+
 def _load_config(
     path: Path | None, *, allow_missing: bool = False
 ) -> tuple[Config | None, Path | None]:
     """Resolve the YAML config path and load Config().
 
     Precedence:
-        --config PATH > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
+        --config PATH > [tool.pytest.ini_options] mcp_config_file (pyproject.toml)
+        > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
 
     The resolved path is passed to Config() as a `yaml_file` kwarg;
     settings_customise_sources reads it from init_settings.init_kwargs --
@@ -307,30 +375,42 @@ def _load_config(
         resolved = path
         source_label = str(path)
     else:
-        # Branch 2: MCPTF_CONFIG_FILE.
-        env_path_str = os.environ.get("MCPTF_CONFIG_FILE")
-        if env_path_str:
-            env_path = Path(env_path_str)
-            if not env_path.is_file():
-                _emit_operator_error(
-                    summary=f"config file not found via MCPTF_CONFIG_FILE: {env_path}",
-                    detail=[
-                        "the path in MCPTF_CONFIG_FILE does not exist or is not a file.",
-                    ],
-                    next_step=(
-                        "check the path or unset MCPTF_CONFIG_FILE and run "
-                        "`mcp-test-framework config-init -o config.yaml` "
-                        "to generate a starter config"
-                    ),
-                )
-            resolved = env_path
-            source_label = str(env_path)
+        # Branch 1.5: pyproject.toml [tool.pytest.ini_options] mcp_config_file.
+        # Mirrors the pytest-plugin ini-resolution path so `gen-test-classes`
+        # and `pytest` locate the operator's config through the same single
+        # source of truth. Fail-soft on parse problems; fail-loud on a typo'd
+        # value (handled inside the helper via _emit_operator_error).
+        pyproject_path, _pyproject_source = _read_mcp_config_file_from_pyproject(
+            Path.cwd()
+        )
+        if pyproject_path is not None:
+            resolved = pyproject_path
+            source_label = str(pyproject_path)
         else:
-            # Branch 3: ./config.yaml autodiscovery.
-            cwd_config = Path.cwd() / "config.yaml"
-            if cwd_config.is_file():
-                resolved = cwd_config
-                source_label = str(cwd_config)
+            # Branch 2: MCPTF_CONFIG_FILE.
+            env_path_str = os.environ.get("MCPTF_CONFIG_FILE")
+            if env_path_str:
+                env_path = Path(env_path_str)
+                if not env_path.is_file():
+                    _emit_operator_error(
+                        summary=f"config file not found via MCPTF_CONFIG_FILE: {env_path}",
+                        detail=[
+                            "the path in MCPTF_CONFIG_FILE does not exist or is not a file.",
+                        ],
+                        next_step=(
+                            "check the path or unset MCPTF_CONFIG_FILE and run "
+                            "`mcp-test-framework config-init -o config.yaml` "
+                            "to generate a starter config"
+                        ),
+                    )
+                resolved = env_path
+                source_label = str(env_path)
+            else:
+                # Branch 3: ./config.yaml autodiscovery.
+                cwd_config = Path.cwd() / "config.yaml"
+                if cwd_config.is_file():
+                    resolved = cwd_config
+                    source_label = str(cwd_config)
 
     # Branch 4: nothing found.
     if resolved is None:
