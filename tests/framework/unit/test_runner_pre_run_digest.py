@@ -2,8 +2,13 @@
 
 Pins:
 - CASES_PER_CONTRACT_TOOL constant (must not silently drift)
-- AST-counted parametrize count in tests/contract/test_mcp_tool_contract.py
-  must equal the constant (drift guard: either side changing breaks this)
+- AST-counted parametrize count in src/mcp_test_framework/contracts/_tests.py
+  must equal the constant (drift guard: either side changing breaks this).
+  Phase 27 D-05 retarget: the legacy on-disk
+  ``tests/contract/test_mcp_tool_contract.py`` was deleted; the canonical
+  contract surface now lives inside the wheel-shipped
+  ``mcp_test_framework.contracts._tests`` module that the plugin
+  injects at collection time.
 - Digest height <= 10 lines at all N (D-12 invariant)
 - Banner / label / Test plan line shape (locked by Phase 14 D-07 + D-03)
 """
@@ -15,6 +20,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import mcp_test_framework.contracts._tests as _contracts_tests
 from mcp_test_framework._runner import (
     CASES_PER_CONTRACT_TOOL,
     RenderContext,
@@ -27,13 +33,13 @@ from mcp_test_framework.models import ToolConfig
 # tests/framework/unit/<here> -> tests/framework/fixtures
 # (precedent: test_runner_parser.py:31)
 _FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
-# tests/framework/unit/<here> -> repo_root/tests/contract/test_mcp_tool_contract.py
-_CONTRACT_FILE = (
-    Path(__file__).resolve().parents[3]
-    / "tests"
-    / "contract"
-    / "test_mcp_tool_contract.py"
-)
+# Phase 27 D-05: contract test bodies were extracted from
+# tests/contract/test_mcp_tool_contract.py (deleted) into the wheel-shipped
+# src/mcp_test_framework/contracts/_tests.py module. The drift guard reads
+# the same file the plugin's `pytest_collection` synthesizes its
+# `_ContractsModule` from -- so this constant-vs-AST regression now pins
+# the canonical injected surface, not a stale on-disk copy.
+_CONTRACT_FILE = Path(_contracts_tests.__file__)
 
 
 def _ctx(

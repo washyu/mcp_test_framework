@@ -215,68 +215,31 @@ class TestV111SkipFilter:
         yield
         _r._DISCOVERED_TOOL_NAMES = None
 
-    def test_resolve_tool_names_filters_out_skip_true_tools(self) -> None:
-        """v1.1.1-SKIP-FILTER: tools.<name>.skip:true removes the tool from
-        the parametrize input list (not just runtime-skips its 10 tests).
+    def test_allowlist_filters_out_skip_true_tools(self) -> None:
+        """v1.1.1-SKIP-FILTER: ``tools.<name>.skip: true`` removes the tool
+        from the parametrize input list (not just runtime-skips its 10 tests).
 
-        Phase 14 gap-closure (Plan 14-07): patch path retargeted from the
-        deleted `_conftest_module._DISCOVERED_TOOL_NAMES` seam to the new
-        canonical location at `mcp_test_framework._runner._DISCOVERED_TOOL_NAMES`
-        (Plan 14-05). Mirrors tests/unit/test_runner_migration.py.
+        Phase 27 retarget: the legacy ``tests/conftest.py:_resolve_tool_names``
+        helper is gone; the opt-in allowlist filter now lives inline in
+        ``src/mcp_test_framework/_plugin.py:pytest_collection`` as a
+        generator expression over ``cfg.tools.items()``. The test mirrors
+        the plugin's one-liner so the SAFE-01 contract stays pinned
+        independent of where the filter lives.
         """
-        from mcp_test_framework import _runner as _r
-        from tests.conftest import _resolve_tool_names
-
         from mcp_test_framework.models import TestCodeConfig
         config = Config(
-            test_code=TestCodeConfig(generated_root="tests/sdet/_generated"),
+            test_code=TestCodeConfig(generated_root="tests/test_code/_generated"),
             tools={
                 "a": ToolConfig(),
                 "b": ToolConfig(skip=True, skip_reason="testing the filter"),
                 "c": ToolConfig(),
             }
         )
-        _r._DISCOVERED_TOOL_NAMES = ["a", "b", "c"]
-        names = _resolve_tool_names(config)
-        assert names == ["a", "c"], (
-            f"expected skip:true tool 'b' filtered out; got {names!r}"
+        allowed = sorted(
+            name for name, tcfg in config.tools.items() if not tcfg.skip
         )
-        # Cleanup handled by the class-scoped autouse fixture.
-
-    @pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Phase 13 v2-schema rework dropped the `target:` block "
-            "(extra_forbidden). The v1.1.1 SAFE-01 explicit-override "
-            "semantics need a v2 equivalent before this test can be "
-            "retargeted -- tracked under Phase 13 verification follow-up "
-            "(NOT Phase 14 gap-closure scope per 14-HUMAN-UAT.md Gap 3 "
-            "diagnosis). Preserved-not-deleted so git blame survives the "
-            "Phase 13 follow-up."
-        ),
-    )
-    def test_resolve_tool_names_explicit_target_overrides_skip_true(self) -> None:
-        """v1.1.1-EXPLICIT-OVERRIDE: target.tool_name=X short-circuits before
-        the new filter, so an explicit single-target run still includes a
-        skip:true tool. Preserves the D-12 _preflight warning path
-        (fixtures.py:200-213).
-
-        XFAIL: Phase 13 v2-schema rework removed `target:` from the Config
-        schema (extra_forbidden). This test fails at Config construction time
-        with Pydantic ValidationError, not at the assertion. Retargeting
-        belongs in the Phase 13 verification follow-up, not the Phase 14
-        gap-closure.
-        """
-        from mcp_test_framework import _runner as _r  # noqa: F401 (kept for parity with sibling test)
-        from tests.conftest import _resolve_tool_names
-
-        config = Config(
-            tools={"b": ToolConfig(skip=True, skip_reason="testing override")},
-            target={"tool_name": "b"},
-        )
-        names = _resolve_tool_names(config)
-        assert names == ["b"], (
-            f"explicit target.tool_name='b' should win over skip:true; got {names!r}"
+        assert allowed == ["a", "c"], (
+            f"expected skip:true tool 'b' filtered out; got {allowed!r}"
         )
 
 
@@ -360,8 +323,15 @@ async def test_call_arguments_forwarded_to_call_tool_via_asyncmock() -> None:
     Imports the actual TEST-08 body Plan 02 modified, builds fake
     mcp_client + target_tool + tool_config, awaits the body, then asserts
     the AsyncMock received the configured args verbatim.
+
+    Phase 27 D-05 retarget: the legacy on-disk contract file was deleted
+    and its bodies extracted into ``mcp_test_framework.contracts._tests``
+    (the wheel-shipped module the plugin injects). Import the body from
+    the new location; the fixture-name renames (``mcp_target_tool``,
+    ``mcp_client``) are positional in the test signature so the
+    SimpleNamespace fakes still bind correctly.
     """
-    from tests.contract.test_mcp_tool_contract import test_empty_args_call_returns_non_error
+    from mcp_test_framework.contracts._tests import test_empty_args_call_returns_non_error
 
     configured_args = {"key": "value", "limit": 7}
     tool_config = ToolConfig(call_arguments=configured_args)

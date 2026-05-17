@@ -1,22 +1,21 @@
-"""Phase 14 Plan 05 migration: tests preserved from the deleted v1.1
-unit test file that pinned the in-pytest reporter plugin.
+"""SAFE-01 allowlist filter + MCPTF_CONFIG_FILE IPC channel regression tests.
 
 Covers:
-  - The in-pytest allowlist filter (Phase 13 SAFE-01) -- still relevant
-    because tests/conftest.py:_resolve_tool_names + the
-    _DISCOVERED_TOOL_NAMES cache is the load-bearing seam for opt-in
-    tool selection. The cache now lives in
-    src/mcp_test_framework/_runner.py (an importable module under src/),
-    so tests patch it via `from mcp_test_framework import _runner as _r;
-    _r._DISCOVERED_TOOL_NAMES = [...]` rather than the deleted plugin's
-    module-level cache.
-  - The MCPTF_CONFIG_FILE IPC handoff (Phase 13 CR-01) -- bare Config()
-    must read MCPTF_CONFIG_FILE so the in-process pytest session
-    inherits the operator's tools allowlist.
+  - The opt-in allowlist filter (Phase 13 SAFE-01) -- the filter logic
+    that used to live in ``tests/conftest.py:_resolve_tool_names`` is now
+    inlined in ``src/mcp_test_framework/_plugin.py:pytest_collection`` as
+    a generator expression over ``cfg.tools.items()``. These tests pin
+    the contract (skip:true excluded, empty tools means zero selection)
+    against the new in-plugin filter shape rather than the deleted
+    conftest helper.
+  - The MCPTF_CONFIG_FILE IPC handoff (Phase 13 CR-01 / Phase 27 D-11)
+    -- bare ``Config()`` must read the env var so the in-subprocess
+    pytest session inherits the operator's tools allowlist when the
+    legacy back-compat path is used.
 
 The state-(a)/(c) composer + locked constants tests that previously
-lived here are now covered by tests/test_runner_renderer.py and
-tests/test_runner_parser.py respectively (Phase 14 Plans 02-03).
+lived alongside these are covered by tests/test_runner_renderer.py and
+tests/test_runner_parser.py respectively.
 """
 from __future__ import annotations
 
@@ -25,11 +24,14 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _reset_discovery_cache():
-    """Phase 14 Plan 05: reset the migrated in-pytest discovery cache
-    after every test so tests stay independent. The cache now lives in
-    `mcp_test_framework._runner` (an importable module under src/); we
-    flip it directly via attribute assignment, matching the patch seam
-    the tests below exercise."""
+    """Reset the legacy discovery cache so tests stay independent.
+
+    The cache in ``mcp_test_framework._runner._DISCOVERED_TOOL_NAMES``
+    is a residual seam from the v1.1 in-pytest discovery pathway. The
+    Phase 27 plugin path discovers tools live inside ``pytest_collection``
+    and does not consult this cache, but other framework tests still
+    prime it, so the autouse reset keeps test ordering deterministic.
+    """
     from mcp_test_framework import _runner as _r
     _r._DISCOVERED_TOOL_NAMES = None
     yield
@@ -37,50 +39,58 @@ def _reset_discovery_cache():
 
 
 # ---------------------------------------------------------------------------
-# SAFE-01 allowlist filter (tests/conftest.py:_resolve_tool_names)
+# SAFE-01 allowlist filter (now inlined in _plugin.py:pytest_collection)
+#
+# Helper mirrors the plugin's one-liner so the contract is testable in
+# isolation without spawning pytest or the MCP server. Keep this shape
+# in sync with the generator expression in ``pytest_collection``:
+#
+#     allowed = sorted(
+#         name for name, tcfg in cfg.tools.items() if not tcfg.skip
+#     )
 # ---------------------------------------------------------------------------
 
 
+def _allowed_tools(cfg) -> list[str]:
+    """Verbatim mirror of the plugin's opt-in allowlist filter."""
+    return sorted(name for name, tcfg in cfg.tools.items() if not tcfg.skip)
+
+
 def test_safe_01_allowlist_includes_listed_unskipped() -> None:
-    """Phase 13 SAFE-01 state (b): listed + skip=False -> included."""
-    from mcp_test_framework import _runner as _r
+    """SAFE-01 state (b): listed + skip=False -> included."""
     from mcp_test_framework.models import ToolConfig
-    from tests.conftest import _resolve_tool_names
 
     class _FakeConfig:
         tools = {"tool_a": ToolConfig(), "tool_b": ToolConfig()}
-        mcp_server = None  # not reached because _DISCOVERED_TOOL_NAMES is primed
 
-    _r._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b", "tool_c"]
-    assert _resolve_tool_names(_FakeConfig()) == ["tool_a", "tool_b"]
+    assert _allowed_tools(_FakeConfig()) == ["tool_a", "tool_b"]
 
 
 def test_safe_01_allowlist_excludes_unlisted_and_skipped() -> None:
-    """Phase 13 SAFE-01 states (a) and (c): unlisted + skipped both excluded."""
-    from mcp_test_framework import _runner as _r
+    """SAFE-01 states (a) and (c): unlisted + skipped both excluded.
+
+    State (a) is enforced by the plugin's intersection step (discovered
+    AND allowed); this filter alone only enforces state (c) since
+    unlisted tools never appear in ``cfg.tools`` to begin with.
+    """
     from mcp_test_framework.models import ToolConfig
-    from tests.conftest import _resolve_tool_names
 
     class _FakeConfig:
         tools = {
             "tool_a": ToolConfig(skip=True, skip_reason="dangerous"),
-            # tool_b is unlisted -> state (a) -> excluded
+            # tool_b is unlisted -> state (a); not present in cfg.tools.
         }
 
-    _r._DISCOVERED_TOOL_NAMES = ["tool_a", "tool_b"]
-    assert _resolve_tool_names(_FakeConfig()) == []
+    assert _allowed_tools(_FakeConfig()) == []
 
 
 def test_safe_01_empty_tools_means_zero_selection() -> None:
-    """Phase 13 D-13: tools: {} -> every discovered tool drops out."""
-    from mcp_test_framework import _runner as _r
-    from tests.conftest import _resolve_tool_names
+    """``tools: {}`` -> every discovered tool drops out (plugin no-inject)."""
 
     class _FakeConfig:
         tools = {}
 
-    _r._DISCOVERED_TOOL_NAMES = ["x", "y", "z"]
-    assert _resolve_tool_names(_FakeConfig()) == []
+    assert _allowed_tools(_FakeConfig()) == []
 
 
 # ---------------------------------------------------------------------------

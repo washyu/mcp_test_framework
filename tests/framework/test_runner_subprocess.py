@@ -344,34 +344,43 @@ def test_build_pytest_args_with_framework_keeps_junit_and_passthrough_order():
 
 
 def test_plugins_list_does_not_register_reporter() -> None:
-    """Phase 14 Plan 05: conftest.py's pytest_plugins must not list the
-    deleted v1.1 plugin (the file is gone). Use a module-spec-based import
-    rather than `import tests.conftest` to keep the probe lightweight and
-    insulated from import side-effects.
+    """Phase 27 D-17: ``tests/conftest.py`` is hollowed (docstring-only).
 
-    Phase 15-04 fix: after Plan 15-01 moved this file from `tests/` to
-    `tests/framework/`, `parents[1]` resolves to `tests/` rather than the
-    project root. Use `parents[2]` to keep the conftest.py probe pointing
-    at `<repo_root>/tests/conftest.py`.
+    The framework's ``[project.entry-points.pytest11]`` declaration auto-
+    discovers ``mcp_test_framework._plugin`` (which re-exports fixtures
+    from ``mcp_test_framework.fixtures``); the v1.1 ``pytest_plugins``
+    declaration was deleted in Plan 27-05. This regression test pins the
+    invariant that:
+
+      1. The legacy v1.1 reporter plugin (``mcp_test_framework._reporter``)
+         is not re-registered anywhere in ``tests/conftest.py``.
+      2. ``tests/conftest.py`` declares no ``pytest_plugins`` list -- the
+         entry-point load path is the only mechanism for plugin
+         registration.
+
+    Phase 15-04 fix: after Plan 15-01 moved this file from ``tests/`` to
+    ``tests/framework/``, ``parents[1]`` resolves to ``tests/`` rather than
+    the project root; use ``parents[2]`` so the conftest probe points at
+    ``<repo_root>/tests/conftest.py``.
     """
     import importlib.util
     from pathlib import Path
     repo_root = Path(__file__).resolve().parents[2]
+    conftest_path = repo_root / "tests" / "conftest.py"
     spec = importlib.util.spec_from_file_location(
-        "_phase14_conftest_probe", repo_root / "tests" / "conftest.py"
+        "_phase27_conftest_probe", conftest_path
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    # Note: executing conftest standalone may have side-effects; if this
-    # turns out to be brittle, fall back to a grep-based file inspection.
     try:
         spec.loader.exec_module(module)
         plugins = getattr(module, "pytest_plugins", [])
     except Exception:
         # Fallback: parse the file text and search for the assignment.
-        text = (repo_root / "tests" / "conftest.py").read_text(encoding="utf-8")
-        assert "mcp_test_framework.fixtures" in text
+        text = conftest_path.read_text(encoding="utf-8")
         assert "mcp_test_framework._reporter" not in text
+        assert "pytest_plugins" not in text
         return
     assert "mcp_test_framework._reporter" not in plugins
-    assert plugins == ["mcp_test_framework.fixtures"]
+    # Hollowed conftest: no module-level pytest_plugins assignment.
+    assert plugins == []
