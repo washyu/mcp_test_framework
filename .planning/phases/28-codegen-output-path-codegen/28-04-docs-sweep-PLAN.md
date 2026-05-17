@@ -131,7 +131,7 @@ From .planning/REQUIREMENTS.md lines 45-48:
     Also update the Traceability table for CODEGEN-LIB-01 + CODEGEN-LIB-02 status from `Pending` to `Complete` ONLY after this plan ships. For this Wave 4 sweep, leave the status as `Pending` — the verification phase will flip these to `Complete` after running the full phase verification.
   </action>
   <verify>
-    <automated>node ./node_modules/@gsd-build/sdk/dist/cli.js query frontmatter.validate .planning/phases/28-codegen-output-path-codegen/28-04-docs-sweep-PLAN.md --schema plan</automated>
+    <automated>bash -c "grep -F 'fail-loud operator-tone error naming the missing field' .planning/REQUIREMENTS.md &amp;&amp; grep -F 'mcp-contracts config-init' .planning/REQUIREMENTS.md &amp;&amp; grep -F 'No `--output-dir` flag' .planning/REQUIREMENTS.md &amp;&amp; grep -F 'non-empty target dir is prompted before overwrite' .planning/REQUIREMENTS.md &amp;&amp; grep -F '[tool.pytest.ini_options] mcp_config_file' .planning/REQUIREMENTS.md &amp;&amp; ! grep -F 'tests/_generated/&lt;server_slug&gt;/' .planning/REQUIREMENTS.md &amp;&amp; ! grep -F 'by default — no config required' .planning/REQUIREMENTS.md"</automated>
   </verify>
   <acceptance_criteria>
     - .planning/REQUIREMENTS.md CODEGEN-LIB-01 line contains the literal string "fail-loud operator-tone error naming the missing field"
@@ -210,7 +210,7 @@ From .planning/REQUIREMENTS.md lines 45-48:
     (Note: this row's Plans column reads `0/4` because the four plans have just been authored; execute-phase will tick them off as plans complete. Status "In progress" reflects that planning is done, execution beginning.)
   </action>
   <verify>
-    <automated>node ./node_modules/@gsd-build/sdk/dist/cli.js query frontmatter.validate .planning/phases/28-codegen-output-path-codegen/28-04-docs-sweep-PLAN.md --schema plan</automated>
+    <automated>bash -c "grep -F 'refuses to invent an output path or write under its own install tree' .planning/ROADMAP.md &amp;&amp; grep -F 'BEFORE the MCP handshake' .planning/ROADMAP.md &amp;&amp; grep -F 'No bypass flag or config knob exists' .planning/ROADMAP.md &amp;&amp; grep -F '[tool.pytest.ini_options] mcp_config_file' .planning/ROADMAP.md &amp;&amp; grep -F '28-01-site-packages-guard-PLAN.md' .planning/ROADMAP.md &amp;&amp; grep -F '28-04-docs-sweep-PLAN.md' .planning/ROADMAP.md &amp;&amp; ! grep -F 'writes generated typed classes to a sensible default path' .planning/ROADMAP.md &amp;&amp; ! grep -F 'tests/_generated/' .planning/ROADMAP.md &amp;&amp; ! grep -F -- '--output-dir' .planning/ROADMAP.md"</automated>
   </verify>
   <acceptance_criteria>
     - .planning/ROADMAP.md Phase 28 Goal line contains the literal string "refuses to invent an output path or write under its own install tree, and reads the same `mcp_config_file` ini route pytest uses"
