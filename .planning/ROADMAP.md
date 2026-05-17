@@ -81,7 +81,8 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
  (completed 2026-05-17)
 - [x] **Phase 28: Codegen output path (CODEGEN)** — `gen-test-classes` refuses to invent an output path or write under its own install tree, prompts before overwriting non-empty targets, and reads the same `mcp_config_file` ini route pytest uses.
  (completed 2026-05-17)
-- [x] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission. (completed 2026-05-17)
+- [x] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
+ (completed 2026-05-17)
 - [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
 
 ## Phase Details
@@ -175,7 +176,11 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   2. Operator running `mcp-contracts run --config PATH` and operator running `pytest` against the same `[tool.pytest.ini_options] mcp_config_file = PATH` see identical pass/fail signal — CLI/library parity gated by a CI test that drives both routes against the same fixture config and asserts equivalent JUnit XML output.
   3. New operator reading the README sees library-mode usage first ("Add to your `pyproject.toml`, set one line in `[tool.pytest.ini_options]`, run pytest"); CLI usage demotes to an "Appendix: CLI usage" section; `docs/LIBRARY-MODE.md` is the primary reference document for the library API surface.
   4. Carry-forward live-UAT items close as part of the library-mode dogfood: README §test-code-scenarios PASS-sample re-captured against live homelab-mcp + Proxmox; Phase 17 SC1 confirmed at ~70 tools (`gen-test-classes` + `uv run pyright` on real generated dir); v1.2 Phase 13 (v2 config + migration walkthrough with `mcp_config_file` ini example) and Phase 14 (`test_runner_live_smoke.py` + visual domain UI checks under both CLI and library modes) UATs close.
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 30-01-PLAN.md — CLI/library parity test (CLOSE-02): tests/framework/parity/test_cli_vs_pytest_route.py + parity marker registration in tests/framework/conftest.py
+  - [ ] 30-02-PLAN.md — Docs rewrite + REQUIREMENTS amendments (CLOSE-01 text + CLOSE-03): docs/LIBRARY-MODE.md created, README.md leads with library mode + CLI demoted to Appendix, REQUIREMENTS.md CLOSE-01/CLOSE-03 text amended
+  - [ ] 30-03-PLAN.md — UAT capture protocols (CLOSE-04): 30-UAT.md authored with 4 carry-forward UAT sections (user-driven; non-blocking)
+  - [ ] 30-04-PLAN.md — Dogfood verification at v1.4 close (CLOSE-01 verification act): uv run pytest green, STATE.md updated
 
 ## Progress
 
@@ -216,4 +221,4 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete   | 2026-05-17 |
 | 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete   | 2026-05-17 |
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete    | 2026-05-17 |
-| 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |
+| 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/4 | Not started | - |
