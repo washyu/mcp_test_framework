@@ -145,7 +145,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   1. Operator running `mcp-contracts gen-test-classes` from a project with a `tests/` directory and no config set gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default; operator in a project without `tests/` gets a friendly error directing them to set `cfg.test_code.generated_root` or pass `--output-dir`.
   2. `gen-test-classes` refuses to write under any `sys.path` directory containing the installed `mcp_test_framework` package — the resolved absolute target path is checked at command start and aborts with a friendly error if it falls inside an installed-package tree.
 **Plans**: 4 plans
-  - [ ] 28-01-site-packages-guard-PLAN.md — Pre-handshake site-packages guard (CODEGEN-LIB-02)
+  - [x] 28-01-site-packages-guard-PLAN.md — Pre-handshake site-packages guard (CODEGEN-LIB-02)
   - [ ] 28-02-pyproject-ini-config-route-PLAN.md — gen-test-classes reads pyproject.toml mcp_config_file ini value
   - [ ] 28-03-overwrite-prompt-PLAN.md — Non-empty-dir overwrite prompt + non-TTY abort
   - [ ] 28-04-docs-sweep-PLAN.md — REQUIREMENTS.md + ROADMAP.md amendments to reflect actual Phase 28 scope
@@ -209,6 +209,6 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete   | 2026-05-17 |
-| 28. Codegen output path (CODEGEN) | v1.4 | 0/4 | In progress | - |
+| 28. Codegen output path (CODEGEN) | v1.4 | 1/4 | In Progress|  |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |

@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-05-17T04:03:33.652Z"
-last_activity: 2026-05-17 -- Phase 28 planning complete
+last_updated: "2026-05-17T04:14:34.796Z"
+last_activity: 2026-05-17
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 16
-  percent: 80
+  completed_plans: 17
+  percent: 85
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 scoping)
 
 **Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 27 — register-api-contracts-sub-package-test-extraction-lib
+**Current focus:** Phase 28 — codegen-output-path-codegen
 
 ## Current Position
 
-Phase: 27 (register-api-contracts-sub-package-test-extraction-lib) — EXECUTING
-Plan: 5 of 5
+Phase: 28 (codegen-output-path-codegen) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-17 -- Phase 28 planning complete
+Last activity: 2026-05-17
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Last activity: 2026-05-17 -- Phase 28 planning complete
 | Phase 27 P03 | 40 | 2 tasks | 1 files |
 | Phase 27 P04 | 25min | 3 tasks | 6 files |
 | Phase 27 PP05 | 20min | 4 tasks | 13 files |
+| Phase 28 P01 | ~8min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Plan 27-03: pytest_collection stash + session.genitems(collector) in pytest_collection_modifyitems is the locked two-hook attachment ritual; sentinel-walk-up from metafunc.definition.parent is required because metafunc.module returns the imported Python module not the _ContractsModule collector
 - [Phase ?]: Phase 27-04: _load_config refactored to tuple-return; CLI threads resolved path to subprocess via pytest -o mcp_config_file=PATH; one config-resolution route
 - [Phase ?]: Phase 27-04: _session_needs_preflight hybridized to mcp_contract marker OR _LIVE_PREFIXES nodeid; tests/contract/ retained transitionally until Plan 27-05
+- [Phase ?]: Plan 28-01: pre-handshake site-packages guard wired into gen-test-classes; out_root resolved + descendant-check fires BEFORE asyncio.Runner(); no bypass per D-09; planning-ID literals scrubbed from src/ per Plan 27-01 leak-gate precedent.
 
 ### Roadmap Evolution
 
@@ -216,6 +218,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T02:42:59.423Z
+Last session: 2026-05-17T04:14:28.188Z
 Stopped at: Phase 28 context gathered
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)
