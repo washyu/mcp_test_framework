@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
-stopped_at: Completed 28-02-pyproject-ini-config-route-PLAN.md
-last_updated: "2026-05-17T04:21:47.182Z"
+stopped_at: Completed 28-03-overwrite-prompt-PLAN.md
+last_updated: "2026-05-17T04:30:53.147Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 28 (codegen-output-path-codegen) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-17
 
@@ -78,6 +78,7 @@ Last activity: 2026-05-17
 | Phase 27 PP05 | 20min | 4 tasks | 13 files |
 | Phase 28 P01 | ~8min | 1 tasks | 2 files |
 | Phase 28 PP02 | 2.5min | 1 tasks | 2 files |
+| Phase 28 PPP03 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 27-04: _load_config refactored to tuple-return; CLI threads resolved path to subprocess via pytest -o mcp_config_file=PATH; one config-resolution route
 - [Phase ?]: Phase 27-04: _session_needs_preflight hybridized to mcp_contract marker OR _LIVE_PREFIXES nodeid; tests/contract/ retained transitionally until Plan 27-05
 - [Phase ?]: Plan 28-01: pre-handshake site-packages guard wired into gen-test-classes; out_root resolved + descendant-check fires BEFORE asyncio.Runner(); no bypass per D-09; planning-ID literals scrubbed from src/ per Plan 27-01 leak-gate precedent.
+- [Phase ?]: Plan 28-03: overwrite-prompt gate wired between slug derivation and _codegen.generate; no --yes/--force escape hatch (D-06 regression-guarded); missing-test_code.generated_root next-step flipped to canonical mcp-contracts config-init (D-02; v1->v2 + no-config-found messages left on v1.5 cleanup track because ERROR-STYLE.md still pins legacy name).
 
 ### Roadmap Evolution
 
@@ -219,6 +221,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T04:21:47.175Z
-Stopped at: Completed 28-02-pyproject-ini-config-route-PLAN.md
+Last session: 2026-05-17T04:30:53.138Z
+Stopped at: Completed 28-03-overwrite-prompt-PLAN.md
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)
