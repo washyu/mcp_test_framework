@@ -33,15 +33,18 @@ plugin; a later cleanup plan in this phase removes the duplicate guard in
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import warnings
 from pathlib import Path
 
 import pytest
+from _pytest.python import Module as _PytestModule
 from pydantic import ValidationError
 
 from mcp_test_framework._black_box_guard import check_black_box
 from mcp_test_framework.config import Config
+from mcp_test_framework.mcp_client import McpTestClient
 
 # Re-export the renamed prefixed fixtures from fixtures.py so the pytest
 # auto-discovery surfaces them without the operator needing
@@ -63,6 +66,56 @@ from mcp_test_framework.fixtures import (  # noqa: F401
     mcp_target_tool,
     tool_config,
 )
+
+
+# ---------------------------------------------------------------------------
+# Synthetic contracts-module collector
+#
+# Subclasses `_pytest.python.Module` so pytest collects from a real on-disk
+# file (preserves pytest-asyncio's `pytestmark` discovery on the underlying
+# `path`), then overrides the rendered `nodeid` to a synthetic label. The
+# Wave 0 spike validated this hybrid pattern under pytest-asyncio strict
+# mode with loop_scope="session".
+# ---------------------------------------------------------------------------
+
+class _ContractsModule(_PytestModule):
+    """Synthesized contracts module collector with overridden nodeid.
+
+    Underlying `path` points at the real `_tests.py` inside the installed
+    wheel so pytest-asyncio's `pytestmark = [pytest.mark.asyncio(loop_scope=
+    "session")]` discovery works normally. The `nodeid` property is
+    overridden to render as the synthetic literal `<mcp-contracts>` in
+    pytest's output instead of the wheel-internal filesystem path.
+    """
+
+    @property
+    def nodeid(self) -> str:  # type: ignore[override]
+        return "<mcp-contracts>"
+
+
+# ---------------------------------------------------------------------------
+# Brief MCP handshake for parametrize-time tool discovery
+#
+# Verbatim relocation of `tests/conftest.py:_discover_tools` (the legacy
+# parametrize-site discovery helper). Reuses `McpTestClient.__aenter__`
+# so the spawned subprocess inherits the per-instance temp-dir isolation
+# contract from the framework's core client.
+# ---------------------------------------------------------------------------
+
+async def _discover_tools_live(cfg: Config) -> list[str]:
+    """Brief MCP handshake to enumerate the server's tools.
+
+    Used by `pytest_collection` to determine which tools to parametrize
+    the synthesized contract tests over. Single short subprocess; the
+    isolation contract is inherited from `McpTestClient.__aenter__`.
+    """
+    async with McpTestClient(
+        cfg.mcp_server.command,
+        cfg.mcp_server.args,
+        cfg.mcp_server.timeout_seconds,
+    ) as client:
+        tools = await client.list_tools()
+    return [t.name for t in tools]
 
 
 # ---------------------------------------------------------------------------
@@ -172,16 +225,167 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+def pytest_collection(session: pytest.Session) -> None:
+    """Synthesize and stash the `<mcp-contracts>` virtual Module collector.
+
+    Runs once per session. Gated on the `_mcp_contracts_config` stash set
+    in `pytest_configure` when `mcp_config_file` ini is present:
+
+      - No stash -> silent no-op (operator opted out of library mode).
+      - Empty opt-in allowlist (all tools `skip=True` or `config.tools`
+        empty) -> silent no inject.
+      - No intersection between discovered server tools and the opt-in
+        allowlist -> silent no inject.
+      - Otherwise: brief MCP handshake, construct `_ContractsModule`
+        pointing at the real on-disk `contracts/_tests.py`, stash the
+        parametrize list + sentinel on the module, apply the
+        `mcp_contract` marker, append to a session-scoped collector
+        stash for `pytest_collection_modifyitems` to descend into.
+
+    The two-hook attachment ritual (stash here, descend +
+    re-apply-marker + append-items in `pytest_collection_modifyitems`)
+    is the spike-validated mechanism from Plan 27-01: pytest's default
+    `Session.collect()` walk does NOT descend into out-of-band-attached
+    collectors, and the module-level `add_marker` does NOT auto-propagate
+    to `Function` children in this construction path. Both gaps are
+    closed in the sibling hook below.
+    """
+    cfg = getattr(session.config, "_mcp_contracts_config", None)
+    if cfg is None:
+        return  # silent no-op carry-forward; operator opted out
+
+    # Opt-in allowlist: only tools explicitly listed with skip=False are
+    # eligible. Verbatim semantics from the legacy parametrize-site filter
+    # (project hotfix invariant: unselected tools are excluded at
+    # parametrize time, never via runtime `pytest.skip()`).
+    allowed = sorted(
+        name for name, tcfg in cfg.tools.items() if not tcfg.skip
+    )
+    if not allowed:
+        return  # empty allowlist, silent no inject
+
+    # Brief MCP handshake. Operator-tone fail-loud on discovery failure;
+    # pytest.exit(returncode=2) preserves the framework's setup-error
+    # convention (distinguishes from pass=0 / test-failure=1).
+    try:
+        discovered = asyncio.run(_discover_tools_live(cfg))
+    except FileNotFoundError:
+        pytest.exit(
+            f"MCP server command not on PATH: {cfg.mcp_server.command!r}\n"
+            f"\nnext: install {cfg.mcp_server.command!r} or set "
+            f"mcp_server.command in your config.yaml to a runnable binary",
+            returncode=2,
+        )
+    except Exception as exc:  # noqa: BLE001 -- mirrors legacy failure-mode parity
+        pytest.exit(
+            f"MCP tool discovery failed against {cfg.mcp_server.command!r} "
+            f"{cfg.mcp_server.args!r}: {exc!s}\n"
+            f"\nnext: verify the MCP server starts on its own via "
+            f"`{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}`",
+            returncode=2,
+        )
+
+    # Intersect: only tools the server advertises AND operator opted into.
+    parametrize_names = [n for n in allowed if n in discovered]
+    if not parametrize_names:
+        return  # nothing survives the intersection, silent no inject
+
+    # Synthesize the Module pointing at the real on-disk _tests.py inside
+    # the installed wheel. Lazy import keeps the contracts subpackage out
+    # of the plugin's module-load path when library mode is opted out.
+    from mcp_test_framework.contracts import _tests as _contracts_tests
+    tests_path = Path(_contracts_tests.__file__)
+
+    mod = _ContractsModule.from_parent(parent=session, path=tests_path)
+    # Sentinel for pytest_generate_tests to gate on.
+    mod._is_mcp_contracts_synthetic = True  # type: ignore[attr-defined]
+    # Parametrize list stashed for pytest_generate_tests to read.
+    mod._mcp_parametrize_tools = parametrize_names  # type: ignore[attr-defined]
+    # Apply marker on the module; the sibling collection-modify hook
+    # re-applies it explicitly per Function child (spike finding: the
+    # module-level marker does not auto-propagate to Function children
+    # in the out-of-band attachment path).
+    mod.add_marker(pytest.mark.mcp_contract)
+
+    # Stash on session for pytest_collection_modifyitems to descend into.
+    if not hasattr(session, "_mcp_synthetic_collectors"):
+        session._mcp_synthetic_collectors = []  # type: ignore[attr-defined]
+    session._mcp_synthetic_collectors.append(mod)  # type: ignore[attr-defined]
+
+
 def pytest_collection_modifyitems(
+    session: pytest.Session,
     config: pytest.Config,
     items: list[pytest.Item],
 ) -> None:
-    """Hook slot reserved for a future library-mode milestone's contract-test injection.
+    """Descend into stashed synthetic collectors and append their items.
 
-    Body is intentionally empty — locking the hook surface so a future
-    milestone only adds behavior, never declarations.
+    Pytest's default `Session.collect()` walk does NOT descend into
+    out-of-band-attached collectors stashed in `pytest_collection`. This
+    hook closes that gap by using `session.genitems(collector)` (the
+    same recursive descent pytest's own collection walk uses), which
+    invokes `_collect_one_node` -> `PyCollector._genfunctions` ->
+    `pytest_generate_tests` for every test function -- so the plugin's
+    `pytest_generate_tests` hook fires and indirect-parametrize on
+    `mcp_target_tool` is applied to each item.
+
+    The `mcp_contract` marker is re-applied per item explicitly: the
+    module-level `add_marker` on the synthetic collector does not
+    auto-propagate to `Function` children in this construction path
+    (Wave 0 spike Pitfall 2).
     """
-    # No-op.
+    extra = getattr(session, "_mcp_synthetic_collectors", []) or []
+    for collector in extra:
+        # session.genitems triggers the full `_genfunctions` chain (firing
+        # pytest_generate_tests on each test function) -- distinct from
+        # the bare collector.collect() which bypasses parametrize.
+        for item in session.genitems(collector):
+            item.add_marker(pytest.mark.mcp_contract)
+            items.append(item)
+
+
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """Indirect-parametrize `mcp_target_tool` for the synthesized contract tests.
+
+    Gated on the `_is_mcp_contracts_synthetic` sentinel so this hook ONLY
+    fires for framework-injected contract tests. Operator tests that
+    happen to request an `mcp_target_tool` fixture (unlikely) are
+    untouched.
+
+    Opt-in invariant: parametrize list is the pre-filtered
+    `_mcp_parametrize_tools` stash; excluded tools were never collected
+    in the first place (no runtime `pytest.skip()` for excluded tools).
+
+    Sentinel-reading nuance: `metafunc.module` is the imported Python
+    module object (`mcp_test_framework.contracts._tests`), NOT the
+    `_ContractsModule` collector instance where the sentinel is stashed.
+    We resolve the collector via the metafunc's definition node and walk
+    up to find the synthesized collector.
+    """
+    if "mcp_target_tool" not in metafunc.fixturenames:
+        return
+    # Walk up from the FunctionDefinition to find the enclosing
+    # _ContractsModule collector (which carries the sentinel + parametrize
+    # list); the imported `_tests` Python module on metafunc.module does
+    # not.
+    node = metafunc.definition
+    synth_collector = None
+    while node is not None:
+        if getattr(node, "_is_mcp_contracts_synthetic", False):
+            synth_collector = node
+            break
+        node = getattr(node, "parent", None)
+    if synth_collector is None:
+        return
+    names = getattr(synth_collector, "_mcp_parametrize_tools", [])
+    if not names:
+        return  # defensive: empty allowlist should not reach here
+    metafunc.parametrize(
+        "mcp_target_tool",
+        names,
+        indirect=True,
+        ids=names,
+    )
 
 
 # ---------------------------------------------------------------------------
