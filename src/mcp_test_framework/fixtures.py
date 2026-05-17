@@ -114,14 +114,13 @@ def mcp_config() -> Config:  # renamed from `config`; unprefixed alias lives in 
 # must skip preflight so it runs cleanly on a machine with no
 # homelab-mcp / Ollama configured.
 #
-# The transitional `tests/contract/` entry covers the legacy on-disk
-# contract test file (`tests/contract/test_mcp_tool_contract.py`) that
-# is still collected via `tests/conftest.py:pytest_generate_tests` and
-# does NOT carry the `mcp_contract` marker. A sibling plan deletes the
-# legacy collection wiring; once that lands, the `tests/contract/`
-# entry can drop and the marker branch alone covers contract tests.
+# Phase 27: `tests/contract/` removed — the plugin applies the
+# `mcp_contract` marker to every injected contract test;
+# `_session_needs_preflight` detects them via marker iteration. The
+# test-code-author paths (tests/test_code/ + legacy tests/sdet/) stay  # noqa: sdet-rename-shim
+# on path-prefix detection because they do NOT carry the contract
+# marker.
 _LIVE_PREFIXES: tuple[str, ...] = (
-    "tests/contract/",
     "tests/test_code/",
     "tests/sdet/",  # noqa: sdet-rename-shim
 )
@@ -143,10 +142,7 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
         scenarios under ``tests/test_code/`` (and the legacy
         ``tests/sdet/`` path retained for v1.4 dual-discovery), which do  # noqa: sdet-rename-shim
         NOT carry the contract marker but still drive a live MCP
-        session. Also covers the legacy on-disk
-        ``tests/contract/test_mcp_tool_contract.py`` collected via
-        ``tests/conftest.py:pytest_generate_tests`` during the
-        inter-plan window before that wiring is deleted.
+        session.
 
     Framework-only test suites (``tests/framework/...``) are pure-data and
     must NOT trigger preflight -- a developer with no homelab-mcp /
@@ -170,9 +166,8 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
         iter_markers = getattr(item, "iter_markers", None)
         if iter_markers is not None and any(iter_markers("mcp_contract")):
             return True
-        # SECONDARY: test-code-author paths + transitional legacy
-        # tests/contract/ collection. nodeid uses forward slashes on
-        # every platform pytest supports.
+        # SECONDARY: test-code-author paths only. nodeid uses forward
+        # slashes on every platform pytest supports.
         if item.nodeid.startswith(_LIVE_PREFIXES):
             return True
     return False
@@ -196,8 +191,9 @@ async def _preflight(request: pytest.FixtureRequest):
     120s httpx.Timeout the first time a judge call fires.
 
     The session-scope guard ``_session_needs_preflight`` short-circuits when
-    no items under live-MCP scopes (``tests/contract/``, ``tests/test_code/``,
-    or the legacy ``tests/sdet/`` retained for v1.4 dual-discovery) are  # noqa: sdet-rename-shim
+    no items carry the ``mcp_contract`` marker AND no items live under
+    test-code-author scopes (``tests/test_code/`` or the legacy
+    ``tests/sdet/`` retained for v1.4 dual-discovery) are  # noqa: sdet-rename-shim
     collected -- framework self-tests under ``tests/framework/...`` have no
     MCP/Ollama dependency and must not be gated by integration preconditions.
 

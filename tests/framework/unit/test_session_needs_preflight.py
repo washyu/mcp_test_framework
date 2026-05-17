@@ -1,22 +1,22 @@
 """Regression test for `_session_needs_preflight` live-MCP scope predicate.
 
 Phase 27 hybridizes the predicate from a pure nodeid-prefix check to
-a marker-OR-prefix check:
+a marker-OR-prefix check, then drops the transitional `tests/contract/`
+prefix in Plan 27-05 once the legacy on-disk collection wiring is
+deleted:
 
   - PRIMARY: items carrying `pytest.mark.mcp_contract` (applied by
     the plugin's `pytest_collection_modifyitems` to every
     framework-injected contract test, including the synthetic
     `<mcp-contracts>::test_*` nodeids that no path-prefix could match).
   - SECONDARY: items whose nodeid starts with `tests/test_code/` or
-    `tests/sdet/` (test-code-author scenarios that do NOT carry the
-    contract marker but still drive a live MCP session); plus
-    `tests/contract/` transitionally until the legacy on-disk
-    contract collection wiring is deleted.
+    `tests/sdet/` — test-code-author scenarios that do NOT carry the
+    contract marker but still drive a live MCP session.
 
 Pre-flip behavior pinned the path-prefix-only check fixed in
 quick-task 260513-chh. The marker branch covers the plugin's
 synthetic-nodeid contract tests; the path-prefix branch covers
-test-code-author and legacy-contract paths.
+test-code-author paths only.
 
 These tests use `types.SimpleNamespace` fakes for `request.session.items`
 so they import the predicate directly with no pytest fixture
@@ -93,15 +93,18 @@ def test_only_framework_runner_items_returns_false():
     )
 
 
-def test_one_contract_item_returns_true():
-    """Legacy on-disk tests/contract/ items still trigger preflight via the
-    transitional path-prefix branch until the legacy collection wiring is
-    deleted."""
+def test_legacy_tests_contract_prefix_is_not_live_scope():
+    """Plan 27-05: the transitional `tests/contract/` prefix is removed
+    from `_LIVE_PREFIXES`. Any item under that path now relies on the
+    `mcp_contract` marker branch (which the plugin auto-applies to every
+    injected contract test); a bare nodeid with no marker MUST NOT arm
+    preflight, otherwise the path-prefix would silently re-introduce the
+    transitional behavior."""
     assert (
         _session_needs_preflight(
             _fake_request_nodeids("tests/contract/test_homelab.py::test_y")
         )
-        is True
+        is False
     )
 
 
@@ -115,14 +118,20 @@ def test_one_sdet_item_returns_true():
     )
 
 
-def test_mixed_unit_plus_contract_returns_true():
-    """Live scope wins — any contract item in the collection arms preflight."""
+def test_mixed_unit_plus_marked_contract_returns_true():
+    """Live scope wins — any item carrying the `mcp_contract` marker
+    arms preflight, even when path-prefix items don't match (the
+    transitional `tests/contract/` entry was dropped in Plan 27-05; the
+    marker is the load-bearing channel for contract tests now)."""
     assert (
         _session_needs_preflight(
-            _fake_request_nodeids(
-                "tests/framework/unit/test_foo.py::test_x",
-                "tests/framework/unit/test_bar.py::test_y",
-                "tests/contract/test_homelab.py::test_live",
+            _fake_request(
+                _fake_item("tests/framework/unit/test_foo.py::test_x"),
+                _fake_item("tests/framework/unit/test_bar.py::test_y"),
+                _fake_item(
+                    "<mcp-contracts>::test_schema[alpha]",
+                    markers=("mcp_contract",),
+                ),
             )
         )
         is True

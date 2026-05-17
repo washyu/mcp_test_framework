@@ -1,4 +1,4 @@
-"""PACK-04: wheel-content regression gate.
+"""PACK-04 + LIB-08: wheel-content regression gate.
 
 Builds the project wheel into a tmp dir via `uv build --wheel`, then walks
 the resulting .whl (which is a zip) to assert the Phase 26 invariants:
@@ -8,11 +8,19 @@ the resulting .whl (which is a zip) to assert the Phase 26 invariants:
   - mcp_test_framework/contracts/__init__.py present (subpackage stub)
   - mcp_test_framework/contracts/py.typed present (subpackage PEP 561 marker)
   - mcp_test_framework/_plugin.py present (pytest11 entry-point target)
+  - mcp_test_framework/_black_box_guard.py present (Phase 27 relocation)
   - mcp_test_framework/_deprecated_script.py present (console-script shim)
   - No `tests/` directory leakage into the wheel
   - dist-info entry_points.txt declares the pytest11 plugin entry
   - dist-info entry_points.txt declares BOTH `mcp-contracts` and
     `mcp-test-framework` console scripts (D-05/D-06)
+
+LIB-08 (Phase 27): the wheel-introspection guard against banned SUT
+imports uses an AST walk (``ast.parse`` + iteration over ``ast.Import`` /
+``ast.ImportFrom`` nodes) rather than line-prefix grep, so concatenated
+imports, conditional imports inside ``if TYPE_CHECKING:`` blocks, and
+aliased imports (``from homelab_mcp.client import X as _X``) all fail
+loud — the line-prefix variant only caught the verbatim cases.
 
 Hatchling auto-includes non-`.py` files (including PEP 561 markers) under
 `packages = ["src/mcp_test_framework"]` (RESEARCH.md key finding); this
@@ -23,6 +31,7 @@ so the build runs once for all assertions.
 """
 from __future__ import annotations
 
+import ast
 import shutil
 import subprocess
 import zipfile
@@ -139,28 +148,68 @@ def test_wheel_declares_legacy_console_script_shim(built_wheel: Path) -> None:
     )
 
 
+def _ast_homelab_imports(source_text: str) -> list[str]:
+    """Walk an AST and return any `homelab_mcp[.*]` import references.
+
+    Catches every form ruff TID251 line-prefix patterns miss:
+      - ``import homelab_mcp`` / ``import homelab_mcp.client``
+      - ``import homelab_mcp.client as _c``
+      - ``from homelab_mcp import X`` / ``from homelab_mcp.client import Y``
+      - imports inside ``if TYPE_CHECKING:`` / ``if False:`` blocks
+      - imports inside function or class bodies (conditional / lazy)
+    """
+    matches: list[str] = []
+    try:
+        tree = ast.parse(source_text)
+    except SyntaxError:
+        # Skip on parse error — pytest-collected test files may include
+        # python-version conditional syntax; ruff catches static cases.
+        return matches
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.name or ""
+                if name == "homelab_mcp" or name.startswith("homelab_mcp."):
+                    matches.append(f"import {name}")
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if mod == "homelab_mcp" or mod.startswith("homelab_mcp."):
+                names = ", ".join(a.name for a in node.names)
+                matches.append(f"from {mod} import {names}")
+    return matches
+
+
 def test_wheel_source_has_no_homelab_mcp_imports(built_wheel: Path) -> None:
     """Framework-primitives principle: NO SUT-aware logic in the wheel.
 
-    Scans every .py source file inside the wheel for actual import
-    statements (`import homelab_mcp` or `from homelab_mcp ...`) -- must
-    return zero matches. This catches both accidental imports and the
-    case where the existing ruff banned-imports table is silenced.
+    LIB-08: scans every .py source file inside the wheel using an AST
+    walk (``ast.parse`` + iteration over ``ast.Import`` /
+    ``ast.ImportFrom``) — fail-loud on any reference to ``homelab_mcp``
+    or any submodule. The AST walk catches concatenated imports,
+    conditional imports inside ``TYPE_CHECKING:`` blocks, aliased
+    imports, and imports inside function bodies that the previous
+    line-prefix grep missed.
 
-    Line-prefix check (not substring) so docstrings/comments that mention
-    the principle by name don't false-positive.
+    Pitfall 6 ironic-leak guard: the test explicitly verifies that
+    ``_black_box_guard.py`` is in the wheel AND is scanned by the walk,
+    so the file whose entire job is to enforce the black-box rule cannot
+    itself sneak in a banned import.
     """
     with zipfile.ZipFile(built_wheel) as zf:
         py_sources = [n for n in zf.namelist() if n.endswith(".py")]
+        # Pitfall 6 regression: confirm the black-box guard file ships
+        # in the wheel and is scanned. If the file is renamed or moved,
+        # this assertion fires before the silent-skip can hide a leak.
+        guard_path = "mcp_test_framework/_black_box_guard.py"
+        assert guard_path in py_sources, (
+            f"ironic-leak guard: {guard_path} missing from wheel sources; "
+            f"the AST walk would silently skip a banned import inside it"
+        )
         for source in py_sources:
             text = zf.read(source).decode("utf-8", errors="replace")
-            for line in text.splitlines():
-                stripped = line.strip()
-                if (
-                    stripped.startswith("import homelab_mcp")
-                    or stripped.startswith("from homelab_mcp ")
-                    or stripped.startswith("from homelab_mcp.")
-                ):
-                    pytest.fail(
-                        f"framework-primitives violation: `{stripped}` in {source}"
-                    )
+            matches = _ast_homelab_imports(text)
+            if matches:
+                pytest.fail(
+                    f"framework-primitives violation in {source}: "
+                    f"{matches!r}"
+                )
