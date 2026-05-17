@@ -1,19 +1,35 @@
-"""Parametrized MCP contract test bodies (TEST-01..TEST-10).
+"""Parametrized MCP contract test bodies.
 
-Extracted from tests/contract/test_mcp_tool_contract.py per Phase 27 D-04.
-This module is NOT discovered via filesystem walk — the framework's
-pytest plugin (`mcp_test_framework._plugin`) injects it at collection
-time when `[tool.pytest.ini_options] mcp_config_file` is set in the
+Extracted from the framework's own contract suite per Phase 27. This
+module is NOT discovered via filesystem walk -- the framework's pytest
+plugin (`mcp_test_framework._plugin`) injects it at collection time
+when `[tool.pytest.ini_options] mcp_config_file` is set in the
 operator's pyproject.toml.
 
 The plugin synthesizes a `_ContractsModule` collector whose `path`
 points at this file (so pytest-asyncio sees `pytestmark` normally) but
 whose `nodeid` is overridden to render as
-`<mcp-contracts>::test_<name>[<tool>]` per CONTEXT.md D-08.
+`<mcp-contracts>::test_<name>[<tool>]` per Phase 27.
 
 Test bodies preserve v1.3 assertion semantics verbatim. Fixtures use
-the v1.4 `mcp_*` prefixed surface (Phase 26 D-15..D-19); `tool_config`
-stays unprefixed by design.
+the v1.4 `mcp_*` prefixed surface (Phase 26 fixture-prefix convention);
+`tool_config` stays unprefixed by design.
+
+Test surface (10 tests across 3 categories):
+
+  Category 1 -- deterministic schema:
+    test_target_tool_exists
+    test_schema_passes_structural_checks
+    test_description_min_length
+    test_every_parameter_has_description_and_type
+  Category 2 -- LLM-judged (score >= 4):
+    test_description_clarity
+    test_description_disambiguation
+    test_parameters_self_explanatory
+  Category 3 -- deterministic output conformance:
+    test_empty_args_call_returns_non_error
+    test_result_has_content_or_structured
+    test_text_content_parses_as_json
 """
 from __future__ import annotations
 
@@ -27,23 +43,25 @@ from mcp_test_framework.mcp_client import McpTestClient
 from mcp_test_framework.models import ToolConfig
 from mcp_test_framework.schema_validator import validate_tool_schema
 
-# UNMARKED per D-markers-1; preflight is the gate (D-preflight-1..4).
-# loop_scope="session" required so fixtures + tests share the session loop.
+# UNMARKED contract tests; the session-scoped autouse preflight fixture is
+# the gate that fails fast if Ollama or the MCP server is unreachable.
+# loop_scope="session" required so fixtures + tests share the session loop
+# (asyncio_default_fixture_loop_scope = "session" in pyproject.toml).
 pytestmark = [pytest.mark.asyncio(loop_scope="session")]
 
 
 # ===========================================================================
-# Category 1 -- deterministic schema (TEST-01..TEST-04)
+# Category 1 -- deterministic schema
 # ===========================================================================
 
 
 async def test_target_tool_exists(mcp_target_tool, tool_config: ToolConfig) -> None:
-    """TEST-01: configured TARGET_TOOL_NAME present in server tool list.
+    """Configured target tool is present in the server tool list.
 
-    Defense in depth: _preflight + the target_tool fixture (FIX-03) already
-    raised ToolNotFoundError if the tool was missing; reaching this body
-    means the fixture resolved. The explicit assertion gives a diagnostic
-    name to the test in pytest output.
+    Defense in depth: preflight + the target_tool fixture already raised
+    ToolNotFoundError if the tool was missing; reaching this body means
+    the fixture resolved. The explicit assertion gives a diagnostic name
+    to the test in pytest output.
     """
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
@@ -51,7 +69,7 @@ async def test_target_tool_exists(mcp_target_tool, tool_config: ToolConfig) -> N
 
 
 async def test_schema_passes_structural_checks(mcp_target_tool, tool_config: ToolConfig) -> None:
-    """TEST-02: validate_tool_schema returns no errors for the target tool."""
+    """validate_tool_schema returns no errors for the target tool."""
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     issues = validate_tool_schema(mcp_target_tool)
@@ -59,7 +77,7 @@ async def test_schema_passes_structural_checks(mcp_target_tool, tool_config: Too
 
 
 async def test_description_min_length(mcp_target_tool, tool_config: ToolConfig) -> None:
-    """TEST-03: description is non-empty and >= 20 chars."""
+    """Description is non-empty and >= 20 chars."""
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     desc = mcp_target_tool.description or ""
@@ -71,7 +89,7 @@ async def test_description_min_length(mcp_target_tool, tool_config: ToolConfig) 
 async def test_every_parameter_has_description_and_type(
     mcp_target_tool, tool_config: ToolConfig
 ) -> None:
-    """TEST-04: every input parameter has a description AND a type/oneOf/anyOf."""
+    """Every input parameter has a description AND a type/oneOf/anyOf."""
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     schema = mcp_target_tool.inputSchema or {}
@@ -86,7 +104,7 @@ async def test_every_parameter_has_description_and_type(
 
 
 # ===========================================================================
-# Category 2 -- LLM-judged (TEST-05..TEST-07; score >= 4 per spec)
+# Category 2 -- LLM-judged (score >= 4 per spec)
 # ===========================================================================
 
 
@@ -96,11 +114,11 @@ async def test_description_clarity(
     mcp_rubric_clarity,
     tool_config: ToolConfig,
 ) -> None:
-    """TEST-05: clarity score >= 4 against tool description.
+    """Clarity score >= 4 against tool description.
 
-    Subject = description; context carries tool_name + inputSchema (D-rubrics-3).
-    Per Phase 08 D-08/D-09: skip when `tool_config.skip` is set or when
-    `clarity` is not in the configured `judges` subset.
+    Subject = description; context carries tool_name + inputSchema.
+    Skips when `tool_config.skip` is set or when `clarity` is not in
+    the configured `judges` subset.
     """
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
@@ -128,9 +146,9 @@ async def test_description_disambiguation(
     mcp_rubric_disambiguation,
     tool_config: ToolConfig,
 ) -> None:
-    """TEST-06: disambiguation score >= 4 against tool description.
+    """Disambiguation score >= 4 against tool description.
 
-    Same subject/context shape as TEST-05 (D-rubrics-3).
+    Same subject/context shape as the clarity check.
     """
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
@@ -158,10 +176,10 @@ async def test_parameters_self_explanatory(
     mcp_rubric_parameters,
     tool_config: ToolConfig,
 ) -> None:
-    """TEST-07: parameters score >= 4. Subject = inputSchema JSON, NOT description (D-rubrics-3).
+    """Parameters score >= 4. Subject = inputSchema JSON, NOT description.
 
-    Rubric ID per D-10 / TOOLCFG-04 is `parameters` (the user-facing short
-    form), distinct from the prompt `dimension` `parameters_self_explanatory`.
+    Rubric ID is `parameters` (the user-facing short form), distinct from
+    the prompt `dimension` `parameters_self_explanatory`.
     """
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
@@ -184,7 +202,7 @@ async def test_parameters_self_explanatory(
 
 
 # ===========================================================================
-# Category 3 -- deterministic output conformance (TEST-08..TEST-10)
+# Category 3 -- deterministic output conformance
 # ===========================================================================
 
 
@@ -193,10 +211,10 @@ async def test_empty_args_call_returns_non_error(
     mcp_target_tool,
     tool_config: ToolConfig,
 ) -> None:
-    """TEST-08: call_tool with configured args returns isError=False.
+    """call_tool with configured args returns isError=False.
 
-    Per Phase 08 D-11: TEST-08/09/10 use tool_config.call_arguments (default
-    {}). With a tool whose inputSchema.required is non-empty, providing args
+    Output-category tests use tool_config.call_arguments (default {}).
+    With a tool whose inputSchema.required is non-empty, providing args
     via the `tools.<name>.call_arguments` registry block unblocks all three.
     """
     if tool_config.skip:
@@ -210,7 +228,7 @@ async def test_result_has_content_or_structured(
     mcp_target_tool,
     tool_config: ToolConfig,
 ) -> None:
-    """TEST-09: at least one content block OR non-null structuredContent."""
+    """At least one content block OR non-null structuredContent."""
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")
     result = await mcp_client.call_tool(mcp_target_tool.name, tool_config.call_arguments)
@@ -224,10 +242,11 @@ async def test_text_content_parses_as_json(
     mcp_target_tool,
     tool_config: ToolConfig,
 ) -> None:
-    """TEST-10: >=1 TextContent block parses as JSON; if structuredContent
-    AND target_tool.outputSchema both present, validate via Draft202012Validator
-    (D-test10-1, D-test10-2). Black-box safe: NO key assertions on
-    homelab-mcp internals.
+    """At least one TextContent block parses as JSON.
+
+    If structuredContent AND target_tool.outputSchema both present,
+    validate via Draft202012Validator. Black-box safe: NO key assertions
+    on homelab-mcp internals.
     """
     if tool_config.skip:
         pytest.skip(reason=tool_config.skip_reason or "tool skipped via config")

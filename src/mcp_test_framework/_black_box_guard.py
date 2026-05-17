@@ -1,14 +1,14 @@
 """Runtime sys.modules guard for the homelab-mcp black-box rule.
 
-Relocated from tests/conftest.py per Phase 27 D-18 / LIB-08 so the guard
-ships inside the installed wheel and fires for library-mode operators —
-not just for the framework's own test suite. Invoked from the plugin's
+Relocated from tests/conftest.py per Phase 27 so the guard ships inside
+the installed wheel and fires for library-mode operators -- not just for
+the framework's own test suite. Invoked from the plugin's
 pytest_configure after Config is loaded.
 
 The guard is GENERIC despite mentioning `homelab_mcp` by name: that
 string is the framework's MVP target SUT, and the black-box principle
-is what's being enforced (memory: project_framework_primitives_sdet_safety_principle).
-Generalizing to a config-driven allowlist is deferred to v1.5+.
+is what's being enforced (framework-primitives / SDET-safety principle).  # noqa: sdet-rename-shim
+Generalizing to a config-driven allowlist is deferred to a later milestone.
 """
 from __future__ import annotations
 
