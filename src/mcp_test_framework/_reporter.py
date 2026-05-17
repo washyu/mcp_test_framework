@@ -143,6 +143,16 @@ def pytest_collection_finish(session: pytest.Session) -> None:
         contract plugin or didn't set ``mcp_config_file`` ini), skip the
         header gracefully -- per-tool rows + summary still render at
         sessionfinish.
+      - Scope gate (CR-02): if no collected items carry the
+        ``mcp_contract`` keyword, the session is running under a non-
+        contract scope (test-code / scenario, ``--with-framework``-only,
+        operator's own pytest invocation against arbitrary tests). The
+        contract-shaped pre-run digest banner does not describe that
+        scope and the CLI already emits the test-code banner under
+        ``mcp-contracts run --test-code``. Short-circuit before the
+        header render -- per-tool rows + summary still emit at
+        ``pytest_sessionfinish`` for scenario buckets via the test_code
+        fall-through in ``_build_parsed_run_from_reports``.
     """
     if hasattr(session.config, "workerinput"):
         return
@@ -152,13 +162,24 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     if cfg is None:
         return  # Graceful degrade: no header; rows + summary still print.
 
+    # CR-02: contract-scope gate. The reporter owns the contract surface;
+    # the CLI owns the scenario surface (test-code _render_scenario_pre_run_digest).
+    # Without this gate, mcp-contracts run --test-code emits the CLI's
+    # scenario banner immediately followed by the reporter's contract
+    # banner (with discovered_tools=[] because test-code items have no
+    # mcp_contract keyword) -- two banners per run.
+    contract_items = [
+        item for item in session.items if "mcp_contract" in item.keywords
+    ]
+    if not contract_items:
+        return  # Scenario / test-code / framework-only scope -- CLI owns the banner.
+
     server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
     discovered = sorted(
         name
         for name in (
             _runner._extract_tool_name(item.nodeid)
-            for item in session.items
-            if "mcp_contract" in item.keywords
+            for item in contract_items
         )
         if name is not None
     )
