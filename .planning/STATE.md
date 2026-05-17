@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
-status: executing
+status: verifying
 stopped_at: Completed 28-03-overwrite-prompt-PLAN.md
-last_updated: "2026-05-17T04:30:53.147Z"
+last_updated: "2026-05-17T04:36:14.421Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 
 Phase: 28 (codegen-output-path-codegen) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-17
 
 ## Performance Metrics
@@ -79,6 +79,7 @@ Last activity: 2026-05-17
 | Phase 28 P01 | ~8min | 1 tasks | 2 files |
 | Phase 28 PP02 | 2.5min | 1 tasks | 2 files |
 | Phase 28 PPP03 | 4min | 2 tasks | 3 files |
+| Phase 28 P04 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 27-04: _session_needs_preflight hybridized to mcp_contract marker OR _LIVE_PREFIXES nodeid; tests/contract/ retained transitionally until Plan 27-05
 - [Phase ?]: Plan 28-01: pre-handshake site-packages guard wired into gen-test-classes; out_root resolved + descendant-check fires BEFORE asyncio.Runner(); no bypass per D-09; planning-ID literals scrubbed from src/ per Plan 27-01 leak-gate precedent.
 - [Phase ?]: Plan 28-03: overwrite-prompt gate wired between slug derivation and _codegen.generate; no --yes/--force escape hatch (D-06 regression-guarded); missing-test_code.generated_root next-step flipped to canonical mcp-contracts config-init (D-02; v1->v2 + no-config-found messages left on v1.5 cleanup track because ERROR-STYLE.md still pins legacy name).
+- [Phase ?]: Plan 28-04 docs sweep complete; CODEGEN-LIB-02 preserved verbatim; stale smart-default removed
 
 ### Roadmap Evolution
 
@@ -221,6 +223,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T04:30:53.138Z
+Last session: 2026-05-17T04:35:51.196Z
 Stopped at: Completed 28-03-overwrite-prompt-PLAN.md
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)

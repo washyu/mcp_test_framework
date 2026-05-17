@@ -79,7 +79,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
  (completed 2026-05-16)
 - [x] **Phase 27: pytest-native ini config + contracts test injection + dogfood (LIB)** — The load-bearing technical bet. Operator sets `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` and the framework plugin injects parametrized contract tests into their pytest collection via a `_ContractsModule(_PytestModule)` virtual-module synthesis.
  (completed 2026-05-17)
-- [ ] **Phase 28: Codegen output path (CODEGEN)** — `gen-test-classes` refuses to invent an output path or write under its own install tree, prompts before overwriting non-empty targets, and reads the same `mcp_config_file` ini route pytest uses.
+- [x] **Phase 28: Codegen output path (CODEGEN)** — `gen-test-classes` refuses to invent an output path or write under its own install tree, prompts before overwriting non-empty targets, and reads the same `mcp_config_file` ini route pytest uses. (completed 2026-05-17)
 - [ ] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
 - [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
 
@@ -149,7 +149,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 28-01-site-packages-guard-PLAN.md — Pre-handshake site-packages guard (CODEGEN-LIB-02)
   - [x] 28-02-pyproject-ini-config-route-PLAN.md — gen-test-classes reads pyproject.toml mcp_config_file ini value
   - [x] 28-03-overwrite-prompt-PLAN.md — Non-empty-dir overwrite prompt + non-TTY abort
-  - [ ] 28-04-docs-sweep-PLAN.md — REQUIREMENTS.md + ROADMAP.md amendments to reflect actual Phase 28 scope
+  - [x] 28-04-docs-sweep-PLAN.md — REQUIREMENTS.md + ROADMAP.md amendments to reflect actual Phase 28 scope
 
 ### Phase 29: Live domain-UI reporter plugin
 **Goal**: Operator who wants the v1.2/v1.3-style MCP domain UI output (header / per-tool rows / summary) under library mode passes `--mcp-domain-ui` to pytest and gets it driven by live `pytest_runtest_logreport` events. Default OFF so operators see pytest-native output; CI/no-TTY environments default OFF even with the flag set unless `--mcp-domain-ui=force` is passed.
@@ -210,6 +210,6 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
 | 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete   | 2026-05-17 |
-| 28. Codegen output path (CODEGEN) | v1.4 | 3/4 | In Progress|  |
+| 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete   | 2026-05-17 |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |
