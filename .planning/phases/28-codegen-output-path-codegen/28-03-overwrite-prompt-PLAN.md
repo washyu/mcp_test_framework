@@ -7,6 +7,7 @@ depends_on: [28-01, 28-02]
 files_modified:
   - src/mcp_test_framework/cli.py
   - tests/framework/unit/test_gen_test_classes_overwrite_prompt.py
+  - tests/framework/unit/test_missing_generated_root_error.py
 autonomous: true
 requirements:
   - CODEGEN-LIB-01
@@ -14,29 +15,40 @@ must_haves:
   truths:
     - "Operator running `mcp-contracts gen-test-classes` in a TTY against a target directory that does not exist sees codegen proceed silently (no prompt)."
     - "Operator running in a TTY against a target directory that exists but is empty sees codegen proceed silently (no prompt)."
-    - "Operator running in a TTY against a target directory that contains files is prompted via `typer.confirm` showing the file count and target path; declining aborts with exit code 2."
+    - "D-05: Operator running in a TTY against a target directory that contains files is prompted via `typer.confirm` showing the file count and target path; declining aborts with exit code 2. Missing dir → create silently; empty dir → write silently."
+    - "D-04: `generated_root: Path = Field(...)` REQUIRED and its empty-string field validator stay as-is in `models.py`; no new pydantic-level validators added (no absolute/relative enforcement, no `..`-segment rejection). All command-time policy (existence, writability, guard, non-empty prompt) lives in `cli.py:gen_test_classes`, NOT in pydantic."
     - "Operator running in a non-TTY context (CI, scripts, piped stdin) against a non-empty target directory sees `gen-test-classes` abort with exit code 2 and an operator-tone error explaining that the directory must be cleaned manually."
     - "No `--yes` / `--force` flag exists for `gen-test-classes` (per D-06)."
+    - "Operator who loads a config YAML missing `test_code.generated_root` sees an operator-tone error whose body contains the literal strings `test_code.generated_root` AND `mcp-contracts config-init` (per D-02)."
   artifacts:
     - path: "src/mcp_test_framework/cli.py"
-      provides: "`_confirm_or_abort_non_empty_target(target_dir)` helper called from `gen_test_classes` AFTER the site-packages guard but BEFORE the `_codegen.generate` call."
+      provides: "`_confirm_or_abort_non_empty_target(target_dir)` helper called from `gen_test_classes` AFTER the site-packages guard but BEFORE the `_codegen.generate` call; `_emit_operator_error_for_validation` missing-required-field branch verified (or rewritten) to name `test_code.generated_root` and point at `mcp-contracts config-init`."
       contains: "def _confirm_or_abort_non_empty_target("
     - path: "tests/framework/unit/test_gen_test_classes_overwrite_prompt.py"
       provides: "Unit tests covering: empty-dir silent write, missing-dir silent write, non-empty-tty-accept-proceeds, non-empty-tty-decline-aborts-2, non-empty-non-tty-aborts-2, no --yes flag exists on the command."
       contains: "def test_non_empty_dir_in_non_tty_aborts_with_exit_2"
+    - path: "tests/framework/unit/test_missing_generated_root_error.py"
+      provides: "Regression test asserting the missing-`test_code.generated_root` error names the field path and points at `mcp-contracts config-init` (D-02)."
+      contains: "def test_missing_generated_root_error_names_field_and_config_init"
   key_links:
     - from: "src/mcp_test_framework/cli.py::gen_test_classes"
       to: "src/mcp_test_framework/cli.py::_confirm_or_abort_non_empty_target"
       via: "direct call after handshake + server_name resolution, on the resolved `out_root / slug` path, BEFORE `_codegen.generate(...)`"
       pattern: "_confirm_or_abort_non_empty_target\\("
+    - from: "src/mcp_test_framework/cli.py::_emit_operator_error_for_validation"
+      to: "operator-facing missing-required-field error text"
+      via: "literal strings `test_code.generated_root` AND `mcp-contracts config-init` in the rendered error body (D-02)"
+      pattern: "mcp-contracts config-init"
 ---
 
 <objective>
 Wrap the wipe-and-write `_codegen.generate(...)` call with a confirmation gate. If the target directory does not exist, create silently. If empty, write silently. If non-empty AND running in a TTY, prompt via `typer.confirm` with file count and target path; decline aborts exit 2. If non-empty AND non-TTY (CI, scripts, piped stdin), abort with operator-tone error exit 2 — no `--yes` flag exists.
 
-Purpose: D-05 + D-06. Strongest "never silently destroy data" stance. The only way to overwrite in CI is to delete the directory first.
+Also: audit the existing missing-required-field error path against D-02 / `docs/ERROR-STYLE.md`. The error MUST name the missing field by full path (`test_code.generated_root`) AND point at `mcp-contracts config-init`. If today's text already satisfies both, no code change is required and the audit result is documented. If it does not, rewrite `_emit_operator_error_for_validation`'s missing-field branch (or the equivalent rendering site) so both literal strings appear in operator-facing output.
 
-Output: new `_confirm_or_abort_non_empty_target(target_dir)` helper in cli.py, wired into `gen_test_classes` between the slug-derivation step and the `_codegen.generate` call. Unit test file covering all five scenarios plus a regression test that no `--yes` / `--force` flag exists on the command.
+Purpose: D-05 + D-06 (overwrite prompt) AND D-02 (operator-tone error refresh for missing `generated_root`). Strongest "never silently destroy data" stance. The only way to overwrite in CI is to delete the directory first. The fail-loud-on-missing-field error path is the operator's first contact with `gen-test-classes`; it must speak in operator terms.
+
+Output: new `_confirm_or_abort_non_empty_target(target_dir)` helper in cli.py, wired into `gen_test_classes` between the slug-derivation step and the `_codegen.generate` call. Unit test file covering all five overwrite scenarios plus a regression test that no `--yes` / `--force` flag exists on the command. Regression test asserting the missing-`test_code.generated_root` error names the field and `mcp-contracts config-init` (with rewrite of the rendering site if today's text fails the audit).
 </objective>
 
 <execution_context>
@@ -90,6 +102,32 @@ Important: the target the prompt checks is `out_root / slug` (where `_codegen.ge
 `slug = server_slug(server_name)` lives at cli.py around line 1100; the existing `typer.echo(f"  target:    {out_root / slug}/")` (around line 1104) is the printout that already confirms `out_root / slug` is the actual write target.
 
 Note on slug derivation timing: the slug is only known AFTER the handshake completes (depends on `serverInfo.name`). So the prompt CANNOT fire before the handshake — only after slug derivation. That is the only piece of "destructive" logic that happens after handshake; everything else (config errors, server-name errors) happens before. The prompt placement is therefore minimal-additional-server-startup-cost.
+
+<!-- D-02 audit target: existing missing-required-field error rendering. -->
+
+From src/mcp_test_framework/cli.py lines 172-185 (current `_emit_operator_error_for_validation` missing-field branch):
+```python
+if err_type in ("missing", "value_error.missing"):
+    _emit_operator_error(
+        summary=f"config file is missing a required field: {loc}",
+        detail=[
+            f"the field `{loc}` is required but was not found in {source}.",
+            "",
+            "see config.example.yaml for the expected shape, or regenerate "
+            "a starter file with config-init.",
+        ],
+        next_step=(
+            "copy the relevant block from config.example.yaml or run "
+            "`mcp-test-framework config-init -o config.yaml`"
+        ),
+    )
+```
+
+Audit observations the executor must verify by running the live capture in Task 2:
+- The literal string `test_code.generated_root` appears in the rendered output ONLY IF Pydantic surfaces `loc = ("test_code", "generated_root")` (which becomes `loc = "test_code.generated_root"`). This depends on whether `TestCodeConfig` is included by `Config()` even when the YAML has no `test_code` block, OR whether the missing-field path fires at `test_code` (one level up) instead of `test_code.generated_root`.
+- The literal string `mcp-contracts config-init` does NOT appear in today's text — `next_step` currently says `mcp-test-framework config-init -o config.yaml` (legacy CLI name).
+
+Likely audit outcome: today's error names `test_code.generated_root` correctly when the YAML has `test_code: {}` but no `generated_root`; the legacy `mcp-test-framework config-init` invocation is stale and must be rewritten to `mcp-contracts config-init` to satisfy D-02. The executor confirms both branches via live capture before patching.
 </interfaces>
 </context>
 
@@ -343,18 +381,203 @@ If any existing gen-test-classes test fails, the regression is likely that the h
   </done>
 </task>
 
+<task type="auto" tdd="true">
+  <name>Task 2: Audit + (likely) rewrite the missing-`test_code.generated_root` operator error to name the field and point at `mcp-contracts config-init` (D-02)</name>
+  <files>src/mcp_test_framework/cli.py, tests/framework/unit/test_missing_generated_root_error.py</files>
+  <read_first>
+    - src/mcp_test_framework/cli.py lines 100-203 — the full `_emit_operator_error_for_validation` function, including the `missing` / `value_error.missing` branch at lines 172-185 where today's rendering of "config file is missing a required field" lives.
+    - docs/ERROR-STYLE.md — full file. The audit checks tone (operator-terms-only, lowercase summary, no internal jargon), field-path naming, and the `next:` imperative-verb shape against this template.
+    - src/mcp_test_framework/models.py around line 190 (`TestCodeConfig.generated_root: Path = Field(...)`) — confirms the field path Pydantic surfaces is `("test_code", "generated_root")`, which joins to `test_code.generated_root` in the `loc` formatter at cli.py line 133.
+    - .planning/phases/28-codegen-output-path-codegen/28-CONTEXT.md `<domain>` item 6 and `<decisions>` D-02 — the literal acceptance bar.
+    - tests/framework/unit/test_sdet_config_model.py and tests/framework/unit/test_config_sdet_field.py — existing missing-`test_code` / missing-`generated_root` test patterns the new test file should mirror in style (file naming, CliRunner usage, capsys / capfd capture conventions).
+  </read_first>
+  <behavior>
+    - Test 1 (field path appears): a YAML config that has a `test_code:` block but is missing `generated_root` (e.g. `test_code: {}`) triggers an operator-tone error whose stderr/stdout contains the literal string `test_code.generated_root`.
+    - Test 2 (next-step points at mcp-contracts config-init): the SAME error invocation contains the literal string `mcp-contracts config-init` in its rendered output.
+    - Test 3 (no legacy CLI name in next-step): the SAME error invocation does NOT contain `mcp-test-framework config-init` (the legacy command name from the v1.4 deprecation shim — operator-facing next-step copy must point at the new name).
+    - Test 4 (exit code): the command exits with code 2 (config / validation error class).
+
+    All four assertions cover the same invocation; they may live in a single `def test_missing_generated_root_error_names_field_and_config_init` body.
+  </behavior>
+  <action>
+    Step A — Audit (live capture, no code change yet):
+
+    Capture today's rendered error text by exercising the path under test. From a fresh REPL or a throwaway script run via `uv run python -c "..."`:
+
+    ```python
+    import io
+    import contextlib
+    from pathlib import Path
+    import yaml
+    import typer
+    from mcp_test_framework.config import Config  # or the appropriate import path
+
+    cfg_path = Path("/tmp/audit_no_generated_root.yaml")
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 2,
+        "mcp_server": {"command": "irrelevant", "args": []},
+        "test_code": {},
+        "tools": {},
+    }))
+    # Trigger the same code path the CLI uses (model_validate via Config init).
+    # Adapt the call to whichever Config-construction path _load_config takes
+    # in src/mcp_test_framework/cli.py.
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf), contextlib.redirect_stdout(buf):
+        try:
+            Config(yaml_file=cfg_path)
+        except (typer.Exit, SystemExit):
+            pass
+    print("---CAPTURED ERROR TEXT---")
+    print(buf.getvalue())
+    ```
+
+    Alternatively (cleaner): use Typer's CliRunner with `mcp-contracts run --config /tmp/audit_no_generated_root.yaml` and capture `result.stdout + result.stderr`.
+
+    Compare the captured text against the D-02 acceptance bar:
+    1. Does it contain `test_code.generated_root` verbatim?
+    2. Does it contain `mcp-contracts config-init` verbatim (not `mcp-test-framework config-init`)?
+    3. Is the summary lowercase and operator-tone (no pydantic jargon)?
+
+    Document the audit outcome in the SUMMARY.md output: "audit result: <strings found/missing>; <patched/no patch needed>".
+
+    Step B — Patch (only if audit failed any of 1/2/3):
+
+    Based on the pre-audit reading of cli.py lines 172-185, the expected outcome is:
+    - `test_code.generated_root` IS present (the `loc` formatter on line 133 joins the Pydantic loc tuple with `.`, and `Field(...)` REQUIRED status surfaces the leaf field path when `test_code: {}` is provided).
+    - `mcp-contracts config-init` is NOT present — today's `next_step` says `mcp-test-framework config-init -o config.yaml` (legacy CLI name).
+
+    If the audit confirms the legacy-name issue, edit `src/mcp_test_framework/cli.py` `_emit_operator_error_for_validation` `missing` branch (lines 172-185). Replace the `next_step` block:
+
+    Find:
+    ```python
+            next_step=(
+                "copy the relevant block from config.example.yaml or run "
+                "`mcp-test-framework config-init -o config.yaml`"
+            ),
+    ```
+
+    Replace with:
+    ```python
+            next_step=(
+                "copy the relevant block from config.example.yaml or run "
+                "`mcp-contracts config-init -o config.yaml`"
+            ),
+    ```
+
+    The detail block already names `{loc}` (which renders as `test_code.generated_root`) and points at `config-init`; only the CLI binary name needs to flip from the legacy `mcp-test-framework` to the v1.4 canonical `mcp-contracts`. This is consistent with the Phase 25 / Phase 27 deprecation pattern (legacy name kept as a working shim until v1.5, but operator-facing next-step copy uses the new name).
+
+    Also scan the rest of `_emit_operator_error_for_validation` (lines 100-203) for any other `mcp-test-framework config-init` occurrences in operator-facing next-step copy. If found, flip those too (they're all in operator-facing next-step lines; commands and shims in the actual code stay legacy-compatible).
+
+    If the audit shows `test_code.generated_root` is NOT surfaced (e.g. Pydantic flags `test_code` one level up), additionally restructure the missing-field branch so the detail block reads:
+    ```python
+        detail=[
+            f"the field `test_code.generated_root` is required but was not found in {source}.",
+            ...
+        ],
+    ```
+    (Use a hard-coded `test_code.generated_root` only inside an `if loc in ("test_code", "test_code.generated_root"):` sub-branch — the generic missing-field path still uses `{loc}` for other fields.)
+
+    Step C — Create the regression test `tests/framework/unit/test_missing_generated_root_error.py`:
+
+    ```python
+    """Regression test for Phase 28 D-02: missing `test_code.generated_root` error."""
+    from __future__ import annotations
+
+    from pathlib import Path
+
+    import pytest
+    import yaml
+    from typer.testing import CliRunner
+
+    from mcp_test_framework.cli import app
+
+
+    def _write_no_generated_root_config(tmp_path: Path) -> Path:
+        cfg_path = tmp_path / "config.yaml"
+        payload = {
+            "version": 2,
+            "mcp_server": {"command": "irrelevant", "args": []},
+            "test_code": {},  # NO generated_root field
+            "tools": {},
+        }
+        cfg_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+        return cfg_path
+
+
+    def test_missing_generated_root_error_names_field_and_config_init(
+        tmp_path: Path,
+    ) -> None:
+        """D-02: missing-`test_code.generated_root` error must name the field path
+        AND point at `mcp-contracts config-init` for scaffold generation."""
+        cfg_path = _write_no_generated_root_config(tmp_path)
+        runner = CliRunner(mix_stderr=False)
+        # `run` is the strict-config command; `gen-test-classes` also works but
+        # `run` is the most common operator entry into this error path.
+        result = runner.invoke(app, ["run", "--config", str(cfg_path)])
+
+        # Combine stderr + stdout — operator-tone errors may emit on either.
+        combined = result.stdout + (result.stderr or "")
+
+        assert result.exit_code == 2, (
+            f"expected exit 2 for missing required field; got {result.exit_code}.\n"
+            f"output:\n{combined}"
+        )
+        # D-02 literal-string requirements:
+        assert "test_code.generated_root" in combined, (
+            "operator error must name the missing field by full path; got:\n" + combined
+        )
+        assert "mcp-contracts config-init" in combined, (
+            "operator next-step must point at `mcp-contracts config-init`; got:\n" + combined
+        )
+        # Negative assertion: legacy CLI name must not appear in next-step copy.
+        assert "mcp-test-framework config-init" not in combined, (
+            "operator next-step must use canonical `mcp-contracts`, not the legacy "
+            "v1.4-deprecated `mcp-test-framework` command name; got:\n" + combined
+        )
+    ```
+
+    Step D — Run:
+
+    ```
+    uv run pytest tests/framework/unit/test_missing_generated_root_error.py -xvs
+    uv run pytest tests/framework/ -x
+    ```
+
+    If the new test fails on the third assertion (legacy CLI name still present), Step B was incomplete — grep cli.py for `mcp-test-framework config-init` and flip remaining operator-facing next-step occurrences.
+
+    If the new test fails on the second assertion (`mcp-contracts config-init` missing), confirm the edit landed in the exact branch the missing-field error takes. Use the live capture from Step A to identify which branch fires.
+  </action>
+  <verify>
+    <automated>uv run pytest tests/framework/unit/test_missing_generated_root_error.py -xvs</automated>
+  </verify>
+  <acceptance_criteria>
+    - tests/framework/unit/test_missing_generated_root_error.py exists with `def test_missing_generated_root_error_names_field_and_config_init`
+    - That test passes: rendered error contains literals `test_code.generated_root` AND `mcp-contracts config-init`, and does NOT contain `mcp-test-framework config-init` in operator-facing next-step copy
+    - Exit code from the failing-config CLI invocation is 2
+    - src/mcp_test_framework/cli.py `_emit_operator_error_for_validation` missing-field branch: any operator-facing `mcp-test-framework config-init` next-step copy has been flipped to `mcp-contracts config-init` (verify with grep — there should be zero `mcp-test-framework config-init` occurrences inside next_step= bodies in cli.py after the patch)
+    - `uv run pytest tests/framework/ -x` continues to pass (no regression — in particular `tests/framework/unit/test_error_style.py` and any source-text regression test pinning the v1->v2 migration message stays GREEN, since that branch is the version-mismatch branch, not the missing-field branch)
+    - SUMMARY.md documents the audit result: which literal strings were found in pre-patch capture, and whether the patch was applied
+  </acceptance_criteria>
+  <done>
+    - Audit captured live error text and compared against D-02 bar; rewrite applied if needed; regression test pins both required literals; no regression elsewhere in the framework suite.
+  </done>
+</task>
+
 </tasks>
 
 <verification>
 - `uv run pytest tests/framework/unit/test_gen_test_classes_overwrite_prompt.py -x -v` exits 0
+- `uv run pytest tests/framework/unit/test_missing_generated_root_error.py -xvs` exits 0
 - `uv run pytest tests/framework/ -x` exits 0
 - Grep confirms `_confirm_or_abort_non_empty_target` is defined once and called once from `gen_test_classes`
 - `mcp-contracts gen-test-classes --help` text contains no `--yes` or `--force` token
 - The call ordering in `gen_test_classes` is: load config → resolve out_root → site-packages guard → handshake → server-name check → slug derivation → confirm-or-abort → `_codegen.generate(...)`
+- Grep `grep -n "mcp-test-framework config-init" src/mcp_test_framework/cli.py` returns zero matches inside any `next_step=` body (operator-facing copy uses the canonical `mcp-contracts` name)
 </verification>
 
 <success_criteria>
-Non-empty target directory triggers a prompt in interactive contexts and an exit-2 abort in non-interactive contexts. No `--yes` / `--force` escape hatch. D-05 + D-06 satisfied. The "never silently destroy data" posture is intact.
+Non-empty target directory triggers a prompt in interactive contexts and an exit-2 abort in non-interactive contexts. No `--yes` / `--force` escape hatch. D-05 + D-06 satisfied. The "never silently destroy data" posture is intact. Missing-`test_code.generated_root` operator error names the field path and points at `mcp-contracts config-init` per D-02 (the operator's first contact with the fail-loud-on-missing-field path now speaks operator language end-to-end).
 </success_criteria>
 
 <output>
@@ -363,4 +586,8 @@ After completion, create `.planning/phases/28-codegen-output-path-codegen/28-03-
 - The wiring point in `gen_test_classes` (between slug derivation and `_codegen.generate`)
 - The deliberate absence of `--yes` / `--force` (D-06 regression-tested)
 - The file-count cap of 1000 (CONTEXT.md discretion: bounded scan cost)
+- The D-02 audit result: which literals were found in pre-patch capture (`test_code.generated_root` / `mcp-contracts config-init` / `mcp-test-framework config-init`), and the diff applied to `_emit_operator_error_for_validation` if any
+- Confirmation that the new regression test pins both required literals plus the legacy-name negative
 </output>
+</content>
+</invoke>
