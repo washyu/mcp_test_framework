@@ -84,6 +84,7 @@ def _build_pytest_args(
     *,
     with_framework: bool = False,
     sdet: bool = False,  # noqa: sdet-rename-shim
+    mcp_config_path: Path | None = None,
 ) -> list[str]:
     """Translate the public ``--junit-xml=PATH`` spelling into pytest's
     ``--junitxml=PATH`` (no-dash internal spelling) and assemble the argv
@@ -111,6 +112,17 @@ def _build_pytest_args(
         path. ``with_framework=True`` remains ALWAYS additive on top of
         whichever scope is active. The wrapper-owned ``--test-code`` /
         ``--sdet`` flags never reach pytest's argv.  # noqa: sdet-rename-shim
+
+    Config-path threading:
+      - ``mcp_config_path`` (when set) is forwarded to the subprocess pytest
+        via two argv elements ``[\"-o\", f\"mcp_config_file={path}\"]``.
+        Pytest's ``-o key=value`` mechanism overrides ini values at runtime;
+        the in-subprocess plugin's ``pytest_configure`` reads
+        ``mcp_config_file`` via ``config.getini`` and constructs
+        ``Config(yaml_file=path)``. This is the same code path the operator's
+        ``[tool.pytest.ini_options] mcp_config_file = PATH`` drives in
+        library mode -- one config-resolution mechanism end-to-end across
+        CLI and library modes (no env-var write).
     """  # noqa: sdet-rename-shim
     forwarded = list(pytest_args or [])
     if sdet:  # noqa: sdet-rename-shim
@@ -132,6 +144,16 @@ def _build_pytest_args(
     if junit_xml is not None:
         args.append(f"--junitxml={junit_xml}")
     args.extend(forwarded)
+    if mcp_config_path is not None:
+        # Pass the resolved config path to the in-subprocess plugin via
+        # pytest's `-o key=value` runtime ini override. Two separate argv
+        # elements -- subprocess.run takes a list, no shell interpretation,
+        # no quoting concerns. The subprocess plugin's `pytest_configure`
+        # reads `mcp_config_file` via `config.getini` and constructs
+        # `Config(yaml_file=path)`. Same mechanism the operator's
+        # `[tool.pytest.ini_options]` drives in library mode -- one
+        # config-resolution route end-to-end.
+        args.extend(["-o", f"mcp_config_file={mcp_config_path}"])
     return args
 
 
@@ -166,6 +188,7 @@ def run_pytest_subprocess(
     raw: bool,
     with_framework: bool = False,
     sdet: bool = False,  # noqa: sdet-rename-shim
+    mcp_config_path: Path | None = None,
 ) -> tuple[int, Path | None, str, str]:
     """Spawn pytest as a child process and return its result.
 
@@ -195,13 +218,25 @@ def run_pytest_subprocess(
       - check=False.
       - Returns (exit_code, None, "", "") -- caller does not render.
 
+    Config-path threading:
+      ``mcp_config_path`` (when set) is forwarded through
+      ``_build_pytest_args`` so the subprocess pytest's argv carries
+      ``-o "mcp_config_file=PATH"``. This is the CLI-side mirror of the
+      operator's library-mode ``[tool.pytest.ini_options] mcp_config_file =
+      PATH`` -- a single config-resolution mechanism end-to-end across CLI
+      and library modes (no env-var write at any layer).
+
     Does NOT catch KeyboardInterrupt: SIGINT propagates so Typer emits 130
     (AsyncExitStack teardown contract).
     """
     if raw:
         # Raw mode -- no internal tempfile, no capture.
         inner_args = _build_pytest_args(
-            junit_xml, pytest_args, with_framework=with_framework, sdet=sdet  # noqa: sdet-rename-shim
+            junit_xml,
+            pytest_args,
+            with_framework=with_framework,
+            sdet=sdet,  # noqa: sdet-rename-shim
+            mcp_config_path=mcp_config_path,
         )
         argv = [sys.executable, "-m", "pytest", *inner_args]
         # Force the child pytest to WRITE utf-8 bytes even on Windows (where
@@ -232,7 +267,11 @@ def run_pytest_subprocess(
     # operator junit_xml is deliberately suppressed inside _build_pytest_args
     # so only the wrapper's tempfile is exposed to pytest as --junitxml.
     inner_args = _build_pytest_args(
-        None, pytest_args, with_framework=with_framework, sdet=sdet  # noqa: sdet-rename-shim
+        None,
+        pytest_args,
+        with_framework=with_framework,
+        sdet=sdet,  # noqa: sdet-rename-shim
+        mcp_config_path=mcp_config_path,
     )
     argv = [
         sys.executable,
