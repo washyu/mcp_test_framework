@@ -77,7 +77,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
  (completed 2026-05-16)
 - [x] **Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton** — Smallest atomic capability that unblocks plugin auto-discovery, typed imports, and the wheel-level black-box guarantee.
  (completed 2026-05-16)
-- [ ] **Phase 27: pytest-native ini config + contracts test injection + dogfood (LIB)** — The load-bearing technical bet. Operator sets `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` and the framework plugin injects parametrized contract tests into their pytest collection via a `_ContractsModule(_PytestModule)` virtual-module synthesis.
+- [x] **Phase 27: pytest-native ini config + contracts test injection + dogfood (LIB)** — The load-bearing technical bet. Operator sets `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` and the framework plugin injects parametrized contract tests into their pytest collection via a `_ContractsModule(_PytestModule)` virtual-module synthesis. (completed 2026-05-17)
 - [ ] **Phase 28: Codegen output path (CODEGEN)** — Config seam closed in Phase 27; remaining work is a `tests/_generated/` default that refuses to write into `site-packages/` for `gen-test-classes`.
 - [ ] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
 - [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
@@ -134,7 +134,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 27-02-PLAN.md — Plugin `pytest_addoption` ini key + `pytest_configure` (Config load, black-box guard, MCPTF_CONFIG_FILE deprecation warning)
   - [x] 27-03-PLAN.md — Plugin `pytest_collection` synthetic Module injection + `pytest_generate_tests` indirect parametrize + marker auto-application
   - [x] 27-04-PLAN.md — CLI subprocess `-o "mcp_config_file=PATH"` rewire + `_preflight` predicate flip to marker-based detection
-  - [ ] 27-05-PLAN.md — Framework dogfood (pyproject ini) + delete legacy `tests/contract/` + REQUIREMENTS/ROADMAP amendments
+  - [x] 27-05-PLAN.md — Framework dogfood (pyproject ini) + delete legacy `tests/contract/` + REQUIREMENTS/ROADMAP amendments
 
 ### Phase 28: Codegen output path (CODEGEN)
 **Goal**: `gen-test-classes` writes generated typed classes to a sensible default path inside the operator's project (never into `site-packages/`). Library-mode config seam (CFG-01, CFG-02) was closed in Phase 27 (D-01: `register()` API dropped; ini route is the single config source); Phase 28 is now codegen-output-path policy only.
@@ -203,7 +203,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
-| 27. register() API + contracts sub-package + test extraction | v1.4 | 4/5 | In Progress|  |
+| 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete   | 2026-05-17 |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |
