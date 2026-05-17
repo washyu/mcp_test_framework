@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 27 context gathered (pivoted from register() to ini-driven config)
-last_updated: "2026-05-17T00:11:59.891Z"
+last_updated: "2026-05-17T00:19:04.419Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 12
-  percent: 75
+  completed_plans: 13
+  percent: 81
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 27 (register-api-contracts-sub-package-test-extraction-lib) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-17
 
@@ -72,6 +72,7 @@ Last activity: 2026-05-17
 | Phase 26 P26-03 | ~3min | 2 tasks | 4 files | Wave 1: three PEP 561 py.typed markers + contracts/__init__.py stub (docstring-only; register() reserved for Phase 27 per D-14)
 | Phase 26 P26-02 | ~25min | 3 tasks | 3 files | Wave 2: _plugin.py (pytest11 + 3 hook stubs + 7 fixture re-exports + 6 deprecation aliases) + _deprecated_script.py (console-script shim with lazy cli-import inside main()) + fixtures.py (6 renames + 8 cross-ref repairs including _preflight getfixturevalue string)
 | Phase 27 P01 | 45 | 3 tasks | 3 files |
+| Phase 27 P02 | 15 | - tasks | - files |
 
 ## Accumulated Context
 
@@ -125,6 +126,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: [Phase 25]: Phase 25 (RENAME) closed end-to-end -- 6 plans / 6 waves; RENAME-01 through RENAME-06 shipped. Public import surface locked behind CI gate (tests/framework/test_sdet_rename_leak_gate.py). Phase 26 (PACK) unblocked.
 - [Phase ?]: Plan 27-01: Wave 0 spike PASSED -- hybrid _ContractsModule(_PytestModule) injection pattern is GO for Plans 27-02 and 27-03.
 - [Phase ?]: Plan 27-01: Operator-facing -k selection against <mcp-contracts> requires substring match (e.g. -k mcp) since pytest -k parser treats - as binary operator.
+- [Phase ?]: 27-02: Config loader driven via Config(yaml_file=str(path)) explicit kwarg; rejected env-var-magic internal-workaround on principle.
+- [Phase ?]: 27-02: Planning-ID gate (D-NN/LIB-NN/TEST-NN regex) takes precedence over plan's verbatim docstring instructions in src/; scrub before commit (repeat of Plan 27-01 deviation).
 
 ### Roadmap Evolution
 
@@ -207,6 +210,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T00:11:40.756Z
+Last session: 2026-05-17T00:18:41.017Z
 Stopped at: Phase 27 context gathered (pivoted from register() to ini-driven config)
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)

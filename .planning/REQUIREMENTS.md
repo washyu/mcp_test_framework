@@ -28,10 +28,10 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### Library API — `register()` and Test Injection (LIB)
 
-- [ ] **LIB-01**: Operator can write three lines in `tests/conftest.py` — `from mcp_test_framework.contracts import register; register(server_command=[...], tools=[...], judge="ollama://...")` — and have parametrized contract tests appear in their `pytest` collection. `register()` accepts only explicit typed kwargs (NO `**kwargs`); signature snapshot test pins the public surface.
+- [x] **LIB-01**: Operator can write three lines in `tests/conftest.py` — `from mcp_test_framework.contracts import register; register(server_command=[...], tools=[...], judge="ollama://...")` — and have parametrized contract tests appear in their `pytest` collection. `register()` accepts only explicit typed kwargs (NO `**kwargs`); signature snapshot test pins the public surface.
 - [ ] **LIB-02**: Operator's `pytest --collect-only` lists every injected contract test with stable nodeids of the form `<contracts-module>::test_<name>[<tool>]` — without spawning the MCP server (collection phase only).
 - [x] **LIB-03**: Each contract test runs against every tool listed in `register(tools=[...])` (or every discovered tool if the operator opts into auto-discovery) and produces the same pass/fail signal as today's `mcp-test-framework run` against the same server. Contract test bodies extracted verbatim from `tests/contract/test_mcp_tool_contract.py` into `src/mcp_test_framework/contracts/_tests.py`; v1.3 assertion semantics unchanged.
-- [ ] **LIB-04**: Operator's pytest selects framework-injected contract tests with `pytest -m mcp_contract` (or excludes with `-m "not mcp_contract"`); marker is auto-applied at injection time. `pytest_collect_file` hook synthesizes a virtual `_ContractsModule` from `_REGISTRATIONS`; `_INJECTED` one-shot latch prevents double-injection across reruns.
+- [x] **LIB-04**: Operator's pytest selects framework-injected contract tests with `pytest -m mcp_contract` (or excludes with `-m "not mcp_contract"`); marker is auto-applied at injection time. `pytest_collect_file` hook synthesizes a virtual `_ContractsModule` from `_REGISTRATIONS`; `_INJECTED` one-shot latch prevents double-injection across reruns.
 - [ ] **LIB-05**: Operator can run `register()` once per `conftest.py`; calling it twice raises a friendly `RegistrationError` naming the prior call's source location. Frame-validation rejects calls outside `conftest.py` or outside the collection phase.
 - [x] **LIB-06**: Operator's existing fixtures named `config`, `judge`, `client`, `target_tool` do not collide with framework fixtures — all public framework fixtures namespaced with `mcp_` prefix (`mcp_config`, `mcp_judge`, `mcp_client`, `mcp_target_tool`). Unprefixed names kept as compatibility aliases in v1.4; removed in v1.5.
 - [ ] **LIB-07**: Operator's `_preflight` autouse session-scoped MCP-readiness check fires only when `_REGISTRATIONS` is non-empty AND a test carrying `@pytest.mark.mcp_contract` is being collected. Predicate flips from path-prefix (`tests/contract/`) to marker-based detection.
@@ -112,10 +112,10 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | PACK-02 | Phase 26 | Complete |
 | PACK-03 | Phase 26 | Complete |
 | PACK-04 | Phase 26 | Complete |
-| LIB-01 | Phase 27 | Pending |
+| LIB-01 | Phase 27 | Complete |
 | LIB-02 | Phase 27 | Pending |
 | LIB-03 | Phase 27 | Complete |
-| LIB-04 | Phase 27 | Pending |
+| LIB-04 | Phase 27 | Complete |
 | LIB-05 | Phase 27 | Pending |
 | LIB-06 | Phase 27 | Complete |
 | LIB-07 | Phase 27 | Pending |
