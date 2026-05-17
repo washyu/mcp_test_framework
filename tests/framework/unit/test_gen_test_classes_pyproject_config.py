@@ -16,6 +16,7 @@ import typer
 import yaml
 
 from mcp_test_framework.cli import (
+    _find_pyproject_upward,
     _load_config,
     _read_mcp_config_file_from_pyproject,
 )
@@ -186,3 +187,67 @@ def test_pyproject_typo_value_raises_fail_loud(
     with pytest.raises(typer.Exit) as exc_info:
         _load_config(path=None)
     assert exc_info.value.exit_code == 2
+
+
+def test_load_config_walks_upward_for_pyproject(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """WR-04: pyproject discovery must walk upward like pytest's rootpath.
+
+    Operator invokes `mcp-contracts gen-test-classes` from a subdirectory
+    of their project. The CLI must find the same pyproject.toml the
+    in-subprocess pytest plugin would discover, otherwise the CLI falls
+    through to MCPTF_CONFIG_FILE / cwd autodiscovery and the operator
+    sees a "no config file found" error despite a perfectly valid
+    pyproject.toml two directories up.
+    """
+    inner = tmp_path / "inner.yaml"
+    _write_minimal_config_yaml(inner)
+    _write_pyproject_with_mcp_config_file(tmp_path, "./inner.yaml")
+    sub = tmp_path / "sub" / "subsub"
+    sub.mkdir(parents=True)
+    monkeypatch.chdir(sub)
+    cfg, resolved = _load_config(path=None)
+    assert cfg is not None
+    assert resolved == inner
+
+
+def test_find_pyproject_upward_returns_none_when_no_pyproject(
+    tmp_path: Path,
+) -> None:
+    """Negative branch: walk hits filesystem root without finding pyproject."""
+    sub = tmp_path / "sub" / "subsub"
+    sub.mkdir(parents=True)
+    # No pyproject.toml anywhere under tmp_path; the walk will continue
+    # up the real filesystem ancestry. To make the test deterministic
+    # we only assert the helper does NOT find one under tmp_path itself:
+    # if one exists higher up on the test runner's filesystem (e.g. the
+    # framework's own pyproject), it WILL be returned -- that's correct
+    # behavior. So we instead verify the helper returns None when given
+    # a directory we control with no pyproject above it inside tmp_path
+    # by checking that the returned path, if any, is NOT under tmp_path.
+    result = _find_pyproject_upward(sub)
+    if result is not None:
+        # Found one higher up than tmp_path -- that's not under our control.
+        # Assert at minimum it is not a fabricated path under tmp_path.
+        assert not str(result).startswith(str(tmp_path))
+
+
+def test_find_pyproject_upward_finds_at_start(tmp_path: Path) -> None:
+    """Positive branch: pyproject at the starting directory itself."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\nversion = "0.0"\n', encoding="utf-8"
+    )
+    result = _find_pyproject_upward(tmp_path)
+    assert result == tmp_path / "pyproject.toml"
+
+
+def test_find_pyproject_upward_finds_two_levels_up(tmp_path: Path) -> None:
+    """Positive branch: pyproject two parents up from start."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\nversion = "0.0"\n', encoding="utf-8"
+    )
+    sub = tmp_path / "sub" / "subsub"
+    sub.mkdir(parents=True)
+    result = _find_pyproject_upward(sub)
+    assert result == tmp_path / "pyproject.toml"

@@ -347,6 +347,31 @@ def _emit_operator_error_for_validation(
     )
 
 
+def _find_pyproject_upward(start: Path) -> Path | None:
+    """Walk upward from `start` looking for `pyproject.toml`.
+
+    Mirrors pytest's `rootpath` / `rootdir_fallback` discovery: pytest looks
+    for `pyproject.toml` (and other ini sources) by walking up from each
+    test path's parent directory. The Typer CLI must use the same upward
+    discovery so an operator invoking `mcp-contracts gen-test-classes` (or
+    `run`) from any subdirectory of their project resolves to the SAME
+    pyproject.toml the in-subprocess pytest plugin will see.
+
+    Args:
+        start: Directory to begin the upward walk from (typically
+            `Path.cwd()`).
+
+    Returns:
+        The discovered `pyproject.toml` path, or `None` if no
+        `pyproject.toml` is found between `start` and the filesystem root.
+    """
+    for candidate in (start, *start.parents):
+        pp = candidate / "pyproject.toml"
+        if pp.is_file():
+            return pp
+    return None
+
+
 def _read_mcp_config_file_from_pyproject(cwd: Path) -> tuple[Path | None, Path | None]:
     """Read `[tool.pytest.ini_options] mcp_config_file` from pyproject.toml.
 
@@ -475,11 +500,20 @@ def _load_config(
         # Branch 1.5: pyproject.toml [tool.pytest.ini_options] mcp_config_file.
         # Mirrors the pytest-plugin ini-resolution path so `gen-test-classes`
         # and `pytest` locate the operator's config through the same single
-        # source of truth. Fail-soft on parse problems; fail-loud on a typo'd
-        # value (handled inside the helper via _emit_operator_error).
-        pyproject_path, _pyproject_source = _read_mcp_config_file_from_pyproject(
-            Path.cwd()
-        )
+        # source of truth. Walk upward from cwd to find pyproject.toml so an
+        # operator invoking the CLI from a subdirectory of their project
+        # sees the SAME pyproject the in-subprocess pytest plugin would
+        # discover via its own rootpath walk (cwd-only lookup would silently
+        # diverge for non-rootdir invocations). Fail-soft on parse problems;
+        # fail-loud on a typo'd value (handled inside the helper via
+        # _emit_operator_error).
+        _discovered_pyproject = _find_pyproject_upward(Path.cwd())
+        if _discovered_pyproject is not None:
+            pyproject_path, _pyproject_source = _read_mcp_config_file_from_pyproject(
+                _discovered_pyproject.parent
+            )
+        else:
+            pyproject_path = None
         if pyproject_path is not None:
             resolved = pyproject_path
             source_label = str(pyproject_path)
