@@ -201,12 +201,12 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     # (either framework-injected via _ContractsModule + mcp_contract
     # marker, or operator-authored parametrized tests that have opted in
     # via --mcp-domain-ui=force). Items WITHOUT a [<tool>] suffix that
-    # collect from tests/test_code/ or tests/sdet/ are scenario-shape
-    # (no banner; the CLI emits its scenario digest at the wrapper
-    # level). Items that are neither (e.g., framework self-tests under
-    # tests/framework/ when --with-framework is the only scope) also
-    # get no contract banner -- they have no per-tool dimension to
-    # report on.
+    # collect from tests/test_code/ or the legacy tests/sdet/ shim are  # noqa: sdet-rename-shim
+    # scenario-shape (no banner; the CLI emits its scenario digest at
+    # the wrapper level). Items that are neither (e.g., framework self-
+    # tests under tests/framework/ when --with-framework is the only
+    # scope) also get no contract banner -- they have no per-tool
+    # dimension to report on.
     has_contract_shape_items = any(
         _runner._extract_tool_name(item.nodeid) is not None
         for item in session.items
