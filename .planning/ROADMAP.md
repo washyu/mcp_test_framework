@@ -133,7 +133,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 27-01-PLAN.md — Wave 0 spike (`_ContractsModule` hybrid synthesis pattern) + extract `_tests.py` + relocate `_black_box_guard.py`
   - [x] 27-02-PLAN.md — Plugin `pytest_addoption` ini key + `pytest_configure` (Config load, black-box guard, MCPTF_CONFIG_FILE deprecation warning)
   - [x] 27-03-PLAN.md — Plugin `pytest_collection` synthetic Module injection + `pytest_generate_tests` indirect parametrize + marker auto-application
-  - [ ] 27-04-PLAN.md — CLI subprocess `-o "mcp_config_file=PATH"` rewire + `_preflight` predicate flip to marker-based detection
+  - [x] 27-04-PLAN.md — CLI subprocess `-o "mcp_config_file=PATH"` rewire + `_preflight` predicate flip to marker-based detection
   - [ ] 27-05-PLAN.md — Framework dogfood (pyproject ini) + delete legacy `tests/contract/` + REQUIREMENTS/ROADMAP amendments
 
 ### Phase 28: Config seam + codegen output path
@@ -205,7 +205,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
 | 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
 | 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
-| 27. register() API + contracts sub-package + test extraction | v1.4 | 3/5 | In Progress|  |
+| 27. register() API + contracts sub-package + test extraction | v1.4 | 4/5 | In Progress|  |
 | 28. Config seam + codegen output path | v1.4 | 0/TBD | Not started | - |
 | 29. Live domain-UI reporter plugin | v1.4 | 0/TBD | Not started | - |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 0/TBD | Not started | - |

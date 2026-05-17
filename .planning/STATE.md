@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 27 context gathered (pivoted from register() to ini-driven config)
-last_updated: "2026-05-17T00:33:42.370Z"
+last_updated: "2026-05-17T00:47:51.394Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 14
-  percent: 88
+  completed_plans: 15
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 27 (register-api-contracts-sub-package-test-extraction-lib) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-17
 
@@ -74,6 +74,7 @@ Last activity: 2026-05-17
 | Phase 27 P01 | 45 | 3 tasks | 3 files |
 | Phase 27 P02 | 15 | - tasks | - files |
 | Phase 27 P03 | 40 | 2 tasks | 1 files |
+| Phase 27 P04 | 25min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: 27-02: Config loader driven via Config(yaml_file=str(path)) explicit kwarg; rejected env-var-magic internal-workaround on principle.
 - [Phase ?]: 27-02: Planning-ID gate (D-NN/LIB-NN/TEST-NN regex) takes precedence over plan's verbatim docstring instructions in src/; scrub before commit (repeat of Plan 27-01 deviation).
 - [Phase ?]: Plan 27-03: pytest_collection stash + session.genitems(collector) in pytest_collection_modifyitems is the locked two-hook attachment ritual; sentinel-walk-up from metafunc.definition.parent is required because metafunc.module returns the imported Python module not the _ContractsModule collector
+- [Phase ?]: Phase 27-04: _load_config refactored to tuple-return; CLI threads resolved path to subprocess via pytest -o mcp_config_file=PATH; one config-resolution route
+- [Phase ?]: Phase 27-04: _session_needs_preflight hybridized to mcp_contract marker OR _LIVE_PREFIXES nodeid; tests/contract/ retained transitionally until Plan 27-05
 
 ### Roadmap Evolution
 
@@ -212,6 +215,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T00:33:35.549Z
+Last session: 2026-05-17T00:47:21.354Z
 Stopped at: Phase 27 context gathered (pivoted from register() to ini-driven config)
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)

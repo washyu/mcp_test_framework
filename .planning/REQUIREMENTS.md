@@ -34,7 +34,7 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 - [x] **LIB-04**: Operator's pytest selects framework-injected contract tests with `pytest -m mcp_contract` (or excludes with `-m "not mcp_contract"`); marker is auto-applied at injection time. `pytest_collect_file` hook synthesizes a virtual `_ContractsModule` from `_REGISTRATIONS`; `_INJECTED` one-shot latch prevents double-injection across reruns.
 - [ ] **LIB-05**: Operator can run `register()` once per `conftest.py`; calling it twice raises a friendly `RegistrationError` naming the prior call's source location. Frame-validation rejects calls outside `conftest.py` or outside the collection phase.
 - [x] **LIB-06**: Operator's existing fixtures named `config`, `judge`, `client`, `target_tool` do not collide with framework fixtures — all public framework fixtures namespaced with `mcp_` prefix (`mcp_config`, `mcp_judge`, `mcp_client`, `mcp_target_tool`). Unprefixed names kept as compatibility aliases in v1.4; removed in v1.5.
-- [ ] **LIB-07**: Operator's `_preflight` autouse session-scoped MCP-readiness check fires only when `_REGISTRATIONS` is non-empty AND a test carrying `@pytest.mark.mcp_contract` is being collected. Predicate flips from path-prefix (`tests/contract/`) to marker-based detection.
+- [x] **LIB-07**: Operator's `_preflight` autouse session-scoped MCP-readiness check fires only when `_REGISTRATIONS` is non-empty AND a test carrying `@pytest.mark.mcp_contract` is being collected. Predicate flips from path-prefix (`tests/contract/`) to marker-based detection.
 - [x] **LIB-08**: Framework's black-box rule (no `homelab-mcp` or arbitrary SUT imports from `src/`) is enforceable in a wheel install — `sys.modules` runtime guard relocated from `tests/conftest.py` into `src/mcp_test_framework/_black_box_guard.py` and invoked from `register()`; wheel-introspection AST-walk CI test fails on banned imports inside `src/`.
 
 ### Config Seam (CFG)
@@ -118,7 +118,7 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | LIB-04 | Phase 27 | Complete |
 | LIB-05 | Phase 27 | Pending |
 | LIB-06 | Phase 27 | Complete |
-| LIB-07 | Phase 27 | Pending |
+| LIB-07 | Phase 27 | Complete |
 | LIB-08 | Phase 27 | Complete |
 | CFG-01 | Phase 28 | Pending |
 | CFG-02 | Phase 28 | Pending |
