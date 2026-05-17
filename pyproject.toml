@@ -30,6 +30,11 @@ mcp-test-framework = "mcp_test_framework._deprecated_script:main"
 # their conftest. Module body is created in Plan 26-02; this declaration
 # only references it (the wheel-shape gate in 26-04 verifies both halves).
 mcp_test_framework = "mcp_test_framework._plugin"
+# Phase 29 D-04 / REPORTER-02: second pytest11 key for the live domain-UI
+# reporter. Independently disable-able via
+# `pytest -p no:mcp_test_framework_reporter` while keeping the contract
+# fixtures registered under the key above.
+mcp_test_framework_reporter = "mcp_test_framework._reporter"
 
 # PEP 735 dev dependency group -- the canonical 2026 location for tooling.
 # Do NOT use the legacy `[tool.uv].dev-dependencies` block, and do NOT use
