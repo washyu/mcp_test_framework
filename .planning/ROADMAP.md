@@ -65,7 +65,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 ### 🚧 v1.4 Library Mode Delivery (In Progress)
 
-**Milestone Goal:** Reframe the framework as an importable Python test package — operator adds it to their MCP server's `pyproject.toml`, writes three lines in `conftest.py`, runs their existing `pytest`. Playwright-for-MCPs.
+**Milestone Goal:** Reframe the framework as an importable Python test package — operator adds it to their MCP server's `pyproject.toml`, sets one line in `[tool.pytest.ini_options]` pointing at their YAML config, runs their existing `pytest`. Pytest-native MCP contract testing.
 
 **Phase Numbering:**
 - Integer phases (25, 26, 27, ...): Planned milestone work
@@ -77,10 +77,10 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
  (completed 2026-05-16)
 - [x] **Phase 26: Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton** — Smallest atomic capability that unblocks plugin auto-discovery, typed imports, and the wheel-level black-box guarantee.
  (completed 2026-05-16)
-- [ ] **Phase 27: `register()` API + contracts sub-package + test extraction (LIB)** — The load-bearing technical bet. Operator's three-line `register()` call injects parametrized contract tests into their pytest collection via `pytest_collect_file` virtual-module synthesis.
-- [ ] **Phase 28: Config seam + codegen output path** — Library-mode config flow (kwargs > pyproject > defaults; `MCPTF_CONFIG_FILE` ignored) and a `tests/_generated/` default that refuses to write into `site-packages/`.
+- [ ] **Phase 27: pytest-native ini config + contracts test injection + dogfood (LIB)** — The load-bearing technical bet. Operator sets `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` and the framework plugin injects parametrized contract tests into their pytest collection via a `_ContractsModule(_PytestModule)` virtual-module synthesis.
+- [ ] **Phase 28: Codegen output path (CODEGEN)** — Config seam closed in Phase 27; remaining work is a `tests/_generated/` default that refuses to write into `site-packages/` for `gen-test-classes`.
 - [ ] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
-- [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's own `tests/contract/conftest.py` calls `register()` (library-mode dogfood); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
+- [ ] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass.
 
 ## Phase Details
 
@@ -119,16 +119,16 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 26-04-PLAN.md — Wheel-introspection regression gate + cli-version regression test
   - [x] 26-05-PLAN.md — Docs sweep + TestPyPI dry-run + acceptance verification + ROADMAP SC1 amendment
 
-### Phase 27: `register()` API + contracts sub-package + test extraction (LIB)
-**Goal**: Operator writes three lines in `tests/conftest.py` — `from mcp_test_framework.contracts import register; register(server_command=[...], tools=[...], judge=...)` — and parametrized contract tests appear in their pytest collection with the same pass/fail signal as today's CLI. Load-bearing technical bet of v1.4.
-**Depends on**: Phase 26 (plugin entry-point is the precondition for hook registration; `register()` injection requires the plugin to be auto-loaded).
-**Requirements**: LIB-01, LIB-02, LIB-03, LIB-04, LIB-05, LIB-06, LIB-07, LIB-08
+### Phase 27: pytest-native ini config + contracts test injection + dogfood (LIB)
+**Goal**: Operator sets one line in `pyproject.toml` — `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` — and parametrized contract tests appear in their pytest collection with the same pass/fail signal as today's CLI. Load-bearing technical bet of v1.4.
+**Depends on**: Phase 26 (plugin entry-point is the precondition for hook registration; ini-driven injection requires the plugin to be auto-loaded).
+**Requirements**: LIB-01, LIB-02, LIB-03, LIB-04, LIB-05, LIB-06, LIB-07, LIB-08, CFG-01, CFG-02
 **Success Criteria** (what must be TRUE):
-  1. Operator writes `register(server_command=[...], tools=[...], judge="ollama://...")` in `tests/conftest.py` and runs `pytest --collect-only`; injected contract tests appear with stable nodeids of the form `<contracts-module>::test_<name>[<tool>]` — and no MCP server subprocess is spawned during collection.
-  2. Operator runs `pytest` and every contract test runs against every tool listed in `register(tools=[...])` and emits the same pass/fail signal as today's `mcp-test-framework run` against the same server (test bodies extracted verbatim; v1.3 assertion semantics unchanged).
-  3. Operator can run `pytest -m mcp_contract` (or `pytest -m "not mcp_contract"`) and the selection works — every injected item carries the marker; the `_preflight` autouse fires only when `register()` is non-empty AND `mcp_contract`-marked tests are being collected, never against operator's unrelated tests.
-  4. Operator calling `register()` twice in one conftest sees a friendly `RegistrationError` naming the prior call's source location; calling it outside `conftest.py` or outside collection phase also raises a friendly error. `register()` accepts only explicit typed kwargs (NO `**kwargs`); signature is pinned by a snapshot test.
-  5. Operator installing the framework into a vanilla project sees the black-box rule enforced in the wheel install — `sys.modules` runtime guard fires from `register()`; wheel-introspection AST-walk CI test fails on banned SUT imports inside `src/`.
+  1. Operator sets `[tool.pytest.ini_options] mcp_config_file = PATH` in `pyproject.toml` and runs `pytest --collect-only`; injected contract tests appear with stable nodeids of the form `<mcp-contracts>::test_<name>[<tool>]` — and no MCP server subprocess is spawned during collection.
+  2. Operator runs `pytest` and every contract test runs against every tool listed in `config.tools` with `skip: false` and emits the same pass/fail signal as today's `mcp-contracts run` against the same server (test bodies extracted verbatim; v1.3 assertion semantics unchanged).
+  3. Operator can run `pytest -m mcp_contract` (or `pytest -m "not mcp_contract"`) and the selection works — every injected item carries the marker; the `_preflight` autouse fires only when at least one `mcp_contract`-marked item is being collected, never against operator's unrelated tests.
+  4. Operator setting `mcp_config_file` to a non-existent path sees a friendly `pytest.exit` operator-tone error with `returncode=2` (D-14). Operator with a malformed YAML sees a friendly validation error (D-15). Operator with `MCPTF_CONFIG_FILE` set in their environment sees a one-time `DeprecationWarning` pointing at the new ini route (D-09).
+  5. Operator installing the framework into a vanilla project sees the black-box rule enforced in the wheel install — `sys.modules` runtime guard fires from the plugin's `pytest_configure`; wheel-introspection AST-walk CI test fails on banned SUT imports anywhere inside `src/`.
 **Plans**: 5 plans
   - [x] 27-01-PLAN.md — Wave 0 spike (`_ContractsModule` hybrid synthesis pattern) + extract `_tests.py` + relocate `_black_box_guard.py`
   - [x] 27-02-PLAN.md — Plugin `pytest_addoption` ini key + `pytest_configure` (Config load, black-box guard, MCPTF_CONFIG_FILE deprecation warning)
@@ -136,15 +136,13 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 27-04-PLAN.md — CLI subprocess `-o "mcp_config_file=PATH"` rewire + `_preflight` predicate flip to marker-based detection
   - [ ] 27-05-PLAN.md — Framework dogfood (pyproject ini) + delete legacy `tests/contract/` + REQUIREMENTS/ROADMAP amendments
 
-### Phase 28: Config seam + codegen output path
-**Goal**: Operator's library-mode config flow is settled — `register()` kwargs are the single source of truth, `MCPTF_CONFIG_FILE` cannot silently leak from a sibling project, and `gen-test-classes` writes generated classes to a sensible default path inside the operator's project (never into `site-packages/`).
-**Depends on**: Phase 27 (`register()` kwarg surface is the source of truth for config seam; codegen path defaults use the cwd-relative `tests/` convention introduced alongside `register()`).
-**Requirements**: CFG-01, CFG-02, CODEGEN-LIB-01, CODEGEN-LIB-02
+### Phase 28: Codegen output path (CODEGEN)
+**Goal**: `gen-test-classes` writes generated typed classes to a sensible default path inside the operator's project (never into `site-packages/`). Library-mode config seam (CFG-01, CFG-02) was closed in Phase 27 (D-01: `register()` API dropped; ini route is the single config source); Phase 28 is now codegen-output-path policy only.
+**Depends on**: Phase 27 (`mcp_config_file` ini route is the source of truth for config; `gen-test-classes` reads `cfg.test_code.generated_root` from the same Config object).
+**Requirements**: CODEGEN-LIB-01, CODEGEN-LIB-02
 **Success Criteria** (what must be TRUE):
-  1. Operator running `pytest` in a project where `MCPTF_CONFIG_FILE` is set (e.g. leaked from a sibling CI job) and `register()` is called sees a friendly error directing them to remove the env var — library mode IGNORES the env var entirely.
-  2. Operator can pass `register(config_file=PATH)` as an explicit escape hatch for YAML-driven config; kwargs override the file's values; precedence is `register()` kwargs > `[tool.pytest.ini_options]` > file > defaults; source-of-truth is frozen into the internal intent record.
-  3. Operator running `mcp-test-framework gen-test-classes` from a project with a `tests/` directory and no config set gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default; operator in a project without `tests/` gets a friendly error directing them to set `cfg.test_code.generated_root` or pass `--output-dir`.
-  4. `gen-test-classes` refuses to write under any `sys.path` directory containing the installed `mcp_test_framework` package — the resolved absolute target path is checked at command start and aborts with a friendly error if it falls inside an installed-package tree.
+  1. Operator running `mcp-contracts gen-test-classes` from a project with a `tests/` directory and no config set gets generated classes under `<cwd>/tests/_generated/<server_slug>/` by default; operator in a project without `tests/` gets a friendly error directing them to set `cfg.test_code.generated_root` or pass `--output-dir`.
+  2. `gen-test-classes` refuses to write under any `sys.path` directory containing the installed `mcp_test_framework` package — the resolved absolute target path is checked at command start and aborts with a friendly error if it falls inside an installed-package tree.
 **Plans**: TBD
 
 ### Phase 29: Live domain-UI reporter plugin
@@ -159,14 +157,14 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
 **Plans**: TBD
 
 ### Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite
-**Goal**: Library mode is dogfooded by the framework's own CI (`tests/contract/conftest.py` calls `register()`); CLI continues to ship but README and `docs/LIBRARY-MODE.md` lead with library-mode usage; carry-forward live-UAT items from v1.2 / v1.3 close (README PASS-sample re-capture, Phase 17 SC1 at ~70 tools, Phase 13 + 14 live-stack UATs) close as part of the dogfood pass.
-**Depends on**: Phase 27 (`register()` exists), Phase 28 (config seam + codegen path settled), Phase 29 (reporter shape known so docs can describe it accurately). Last phase of v1.4.
+**Goal**: Library mode is dogfooded by the framework's own CI (framework `pyproject.toml` sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` — pre-empted by Phase 27 D-06); CLI continues to ship but README and `docs/LIBRARY-MODE.md` lead with library-mode usage; carry-forward live-UAT items from v1.2 / v1.3 close (README PASS-sample re-capture, Phase 17 SC1 at ~70 tools, Phase 13 + 14 live-stack UATs) close as part of the dogfood pass.
+**Depends on**: Phase 27 (ini config route exists; framework dogfood already landed in Phase 27 D-06), Phase 28 (codegen path settled), Phase 29 (reporter shape known so docs can describe it accurately). Last phase of v1.4.
 **Requirements**: CLOSE-01, CLOSE-02, CLOSE-03, CLOSE-04
 **Success Criteria** (what must be TRUE):
-  1. Framework's own `tests/contract/conftest.py` calls `register(config=Config())` and the existing `tests/conftest.py:pytest_generate_tests` is deleted — all contract-test parametrization flows through the plugin's hooks; library-mode dogfood loop is proven end-to-end.
-  2. Operator running `mcp-test-framework run` and operator running `pytest` against the same `register()` call see identical pass/fail signal — CLI/library parity gated by a CI test that enumerates Typer flags via `inspect.signature` and asserts every flag has a matching `register()` kwarg or is documented as CLI-only.
-  3. New operator reading the README sees library-mode usage first ("Add to your `pyproject.toml`, write three lines in `conftest.py`, run pytest"); CLI usage demotes to an "Appendix: CLI usage" section; `docs/LIBRARY-MODE.md` is the primary reference document for the library API surface.
-  4. Carry-forward live-UAT items close as part of the library-mode dogfood: README §test-code-scenarios PASS-sample re-captured against live homelab-mcp + Proxmox; Phase 17 SC1 confirmed at ~70 tools (`gen-test-classes` + `uv run pyright` on real generated dir); v1.2 Phase 13 (v2 config + migration walkthrough with `register()` example) and Phase 14 (`test_runner_live_smoke.py` + visual domain UI checks under both CLI and library modes) UATs close.
+  1. Framework's own `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (landed in Phase 27 D-06 / D-07 pre-emption); Phase 30 verifies the dogfood loop is still green at v1.4 close. CLI-mode path (`mcp-contracts run`) continues to subprocess pytest with JUnit XML round-trip and shares the same `ParsedRun` domain model and renderer helpers.
+  2. Operator running `mcp-contracts run --config PATH` and operator running `pytest` against the same `[tool.pytest.ini_options] mcp_config_file = PATH` see identical pass/fail signal — CLI/library parity gated by a CI test that drives both routes against the same fixture config and asserts equivalent JUnit XML output.
+  3. New operator reading the README sees library-mode usage first ("Add to your `pyproject.toml`, set one line in `[tool.pytest.ini_options]`, run pytest"); CLI usage demotes to an "Appendix: CLI usage" section; `docs/LIBRARY-MODE.md` is the primary reference document for the library API surface.
+  4. Carry-forward live-UAT items close as part of the library-mode dogfood: README §test-code-scenarios PASS-sample re-captured against live homelab-mcp + Proxmox; Phase 17 SC1 confirmed at ~70 tools (`gen-test-classes` + `uv run pyright` on real generated dir); v1.2 Phase 13 (v2 config + migration walkthrough with `mcp_config_file` ini example) and Phase 14 (`test_runner_live_smoke.py` + visual domain UI checks under both CLI and library modes) UATs close.
 **Plans**: TBD
 
 ## Progress
