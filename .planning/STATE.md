@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Library Mode Delivery
 status: executing
 stopped_at: Phase 27 context gathered (pivoted from register() to ini-driven config)
-last_updated: "2026-05-17T00:19:04.419Z"
+last_updated: "2026-05-17T00:33:42.370Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 14
+  percent: 88
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 
 ## Current Position
 
 Phase: 27 (register-api-contracts-sub-package-test-extraction-lib) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-17
 
@@ -73,6 +73,7 @@ Last activity: 2026-05-17
 | Phase 26 P26-02 | ~25min | 3 tasks | 3 files | Wave 2: _plugin.py (pytest11 + 3 hook stubs + 7 fixture re-exports + 6 deprecation aliases) + _deprecated_script.py (console-script shim with lazy cli-import inside main()) + fixtures.py (6 renames + 8 cross-ref repairs including _preflight getfixturevalue string)
 | Phase 27 P01 | 45 | 3 tasks | 3 files |
 | Phase 27 P02 | 15 | - tasks | - files |
+| Phase 27 P03 | 40 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Plan 27-01: Operator-facing -k selection against <mcp-contracts> requires substring match (e.g. -k mcp) since pytest -k parser treats - as binary operator.
 - [Phase ?]: 27-02: Config loader driven via Config(yaml_file=str(path)) explicit kwarg; rejected env-var-magic internal-workaround on principle.
 - [Phase ?]: 27-02: Planning-ID gate (D-NN/LIB-NN/TEST-NN regex) takes precedence over plan's verbatim docstring instructions in src/; scrub before commit (repeat of Plan 27-01 deviation).
+- [Phase ?]: Plan 27-03: pytest_collection stash + session.genitems(collector) in pytest_collection_modifyitems is the locked two-hook attachment ritual; sentinel-walk-up from metafunc.definition.parent is required because metafunc.module returns the imported Python module not the _ContractsModule collector
 
 ### Roadmap Evolution
 
@@ -210,6 +212,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T00:18:41.017Z
+Last session: 2026-05-17T00:33:35.549Z
 Stopped at: Phase 27 context gathered (pivoted from register() to ini-driven config)
 Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)
