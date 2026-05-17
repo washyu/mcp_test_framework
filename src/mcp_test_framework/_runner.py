@@ -38,6 +38,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+import pytest
 import typer
 
 from .rubrics import RUBRIC_IDS
@@ -630,6 +631,226 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
         if bucket.verdict != "FAIL":
             bucket.verdict = "PASS"
 
+    return run
+
+
+def _classname_from_nodeid(nodeid: str) -> str:
+    """Derive a JUnit-style classname from a pytest report.nodeid.
+
+    pytest's ``TestReport`` does not carry the JUnit ``classname`` directly,
+    but the same information is encoded in ``report.nodeid``. Strip the
+    ``::<test_func>[<param>]`` tail, drop the ``.py`` suffix, and replace
+    path separators with ``.``.
+
+    Example:
+        ``tests/test_code/test_lifecycle.py::test_create`` ->
+        ``tests.test_code.test_lifecycle``.
+
+    Used by ``_build_parsed_run_from_reports`` to apply the scenario
+    fall-through branch (live event-driven path) symmetrically with
+    ``parse_junit_xml``'s reading of ``<testcase classname="...">``.
+    """
+    head = nodeid.split("::", 1)[0]  # file path part, before any ::
+    if head.endswith(".py"):
+        head = head[:-3]
+    return head.replace("\\", "/").replace("/", ".")
+
+
+# Live event-driven adapter colocated with parse_junit_xml. Produces an
+# identical-shape ParsedRun from the accumulator the reporter plugin
+# maintains in pytest_runtest_logreport.
+def _build_parsed_run_from_reports(reports: list[pytest.TestReport]) -> ParsedRun:
+    """Build a ParsedRun from accumulated TestReport objects (live event-driven path).
+
+    Companion to ``parse_junit_xml``: same output dataclass, same renderer
+    contract, different input source. Where the JUnit parser consumes one
+    ``<testcase>`` element per test, this adapter consumes pytest's
+    ``TestReport`` events (three phases per test: ``setup``, ``call``,
+    ``teardown``) and buckets them by ``report.nodeid`` BEFORE aggregating
+    (Pitfall 1: a naive per-event loop counts each test 3x or overwrites
+    a call-phase FAIL with a later teardown-phase PASS).
+
+    Aggregation (any-fail-wins; mirror of parse_junit_xml docstring rules):
+      1. Any phase report with ``failed=True`` -> verdict = FAIL (sticky).
+         ``failure_message`` is sourced from ``user_properties`` keys
+         ``mcptf_error_code`` + ``mcptf_error_message`` when present
+         (formatted as ``"[code] message"`` to byte-match parse_junit_xml
+         line 605), else from the first line of the failing report's
+         ``longrepr``. ``failure_body`` carries the full ``longrepr`` text.
+      2. Else any phase report with ``skipped=True`` (setup or call) ->
+         verdict = SKIP if no PASS/FAIL already set; ``skip_reasons``
+         records the deduplicated, prefix-stripped reason (the
+         ``pytest.skip(reason=...)`` longrepr is a 3-tuple
+         ``(file, lineno, "Skipped: reason")``; the ``Skipped: `` prefix
+         is stripped via ``_strip_pytest_skipped_prefix``).
+      3. Else all phases passed -> verdict = PASS (unless FAIL already
+         sticky).
+
+    Order-independence: a tool's verdict is the same regardless of the
+    order in which reports arrive -- FAIL is sticky; PASS dominates SKIP
+    (matching parse_junit_xml's ``_has_pass`` book-keeping).
+
+    Scenario fall-through: nodeids without a ``[<tool>]`` parametrize
+    suffix produce a synthetic bucket key ``"<group>::<row_label>"`` when
+    the classname (derived from the nodeid file path) starts with
+    ``tests.test_code.test_`` OR ``tests.sdet.test_`` (legacy dual-
+    discovery window). Mirrors parse_junit_xml lines 540-563 verbatim so
+    the renderer sees identical bucket shapes across both input paths.
+
+    Pitfall 4 (ToolCallError on user_properties): SDET-authored scenarios
+    set ``mcptf_error_code`` / ``mcptf_error_message`` /
+    ``mcptf_error_raw`` via ``record_property`` (from
+    ``tests/test_code/conftest.py:pytest_exception_interact``). The JUnit
+    path reads these from ``<property>`` children; the live path reads
+    them from ``report.user_properties`` (a list of ``(name, value)``
+    tuples). The ``failure_message`` text MUST be byte-identical across
+    both adapters so renderer tests remain valid.
+
+    Args:
+        reports: All ``TestReport`` events accumulated during a pytest
+            session (every test contributes one report per phase).
+
+    Returns:
+        ``ParsedRun`` -- field-equal to ``parse_junit_xml`` output for
+        the same logical run (verified by paired-fixture parity test in
+        ``tests/framework/unit/test_runner_reports_adapter.py``).
+    """
+    # Bucket by nodeid first (Pitfall 1). One bucket == one test, regardless
+    # of how many phase events were emitted for it.
+    by_nodeid: dict[str, dict[str, pytest.TestReport]] = {}
+    for r in reports:
+        by_nodeid.setdefault(r.nodeid, {})[r.when] = r
+
+    run = ParsedRun()
+
+    # Transient per-tool "any case passed?" tracker -- matches parse_junit_xml's
+    # _has_pass book-keeping so SKIP cannot demote PASS within the same tool.
+    _has_pass: dict[str, bool] = {}
+
+    for nodeid, phases in by_nodeid.items():
+        tool = _extract_tool_name(nodeid)
+        if tool is None:
+            # Scenario fall-through: mirror parse_junit_xml:540-563 verbatim.
+            # tests/test_code/ are hand-authored (no parametrize bracket);
+            # tests/sdet/ is the v1.4 dual-discovery legacy path. Both share
+            # the same synthetic bucket shape so the renderer's per-tool
+            # block stays input-agnostic.
+            classname = _classname_from_nodeid(nodeid)
+            if (
+                classname.startswith("tests.test_code.test_")
+                or classname.startswith("tests.sdet.test_")  # noqa: sdet-rename-shim
+            ):
+                group = classname.rsplit(".", 1)[-1].removeprefix("test_")
+                func = nodeid.rsplit("::", 1)[-1]
+                if "[" in func:
+                    func = func[: func.index("[")]
+                row_label = func.removeprefix("test_")
+                tool = f"{group}::{row_label}"
+            else:
+                continue  # legacy: nodeids without [<tool>] suffix excluded.
+
+        bucket = run.per_tool.setdefault(
+            tool, ToolVerdict(name=tool, verdict="PASS")
+        )
+        bucket.case_count += 1
+        # Sum durations across all phase events for this nodeid (matches
+        # JUnit <testcase time="..."> which is the consolidated test time).
+        bucket.duration += sum(
+            float(getattr(r, "duration", 0.0) or 0.0) for r in phases.values()
+        )
+
+        setup = phases.get("setup")
+        call = phases.get("call")
+        teardown = phases.get("teardown")
+
+        # Any-fail-wins (Pattern 3 precedence). Call dominates the failing
+        # report selection when present; setup/teardown promote to FAIL too.
+        any_failed = next(
+            (r for r in (call, setup, teardown) if r is not None and r.failed),
+            None,
+        )
+        if any_failed is not None:
+            bucket.verdict = "FAIL"
+            # Read mcptf_error_code / mcptf_error_message from user_properties
+            # (Pitfall 4). The formatting -- "[code] message" when code
+            # present, else bare message -- is byte-identical to
+            # parse_junit_xml line 605 so renderer tests remain valid.
+            code: str | None = None
+            msg_field: str | None = None
+            for name, value in (any_failed.user_properties or []):
+                if name == "mcptf_error_code":
+                    if isinstance(value, str):
+                        code = value or None
+                    elif value is None:
+                        code = None
+                    else:
+                        code = str(value)
+                elif name == "mcptf_error_message":
+                    msg_field = value if isinstance(value, str) else str(value)
+            prop_msg: str | None = None
+            if msg_field is not None:
+                prop_msg = f"[{code}] {msg_field}" if code else msg_field
+
+            # longrepr fallback for failure_message (operator surface: first
+            # line only, matching the parse_junit_xml <failure message="...">
+            # single-line attribute shape).
+            lr = getattr(any_failed, "longrepr", None)
+            longrepr_msg: str | None = None
+            if lr is not None:
+                lr_text = str(lr)
+                if lr_text.strip():
+                    longrepr_msg = lr_text.splitlines()[0]
+
+            if prop_msg is not None and bucket.failure_message is None:
+                bucket.failure_message = prop_msg
+            elif longrepr_msg and bucket.failure_message is None:
+                bucket.failure_message = longrepr_msg
+
+            # failure_body: full longrepr text (gated to --debug by renderer).
+            if lr is not None and bucket.failure_body is None:
+                body = str(lr).strip()
+                if body:
+                    bucket.failure_body = body
+            continue
+
+        # Skip handling: setup-skip or call-skip (mirror parse_junit_xml:617-625).
+        skip_report = next(
+            (r for r in (setup, call) if r is not None and r.skipped),
+            None,
+        )
+        if skip_report is not None:
+            lr = getattr(skip_report, "longrepr", None)
+            reason: str | None = None
+            if isinstance(lr, tuple) and len(lr) >= 3:
+                # pytest.skip(reason=...) longrepr is (file, lineno, "Skipped: reason")
+                reason = _strip_pytest_skipped_prefix(str(lr[2]))
+            elif lr is not None:
+                reason = _strip_pytest_skipped_prefix(str(lr))
+            if reason and reason not in bucket.skip_reasons:
+                bucket.skip_reasons.append(reason)
+            # Demote to SKIP only when no FAIL set AND no PASS case seen
+            # (matches parse_junit_xml:623 _has_pass guard).
+            if bucket.verdict != "FAIL" and not _has_pass.get(tool, False):
+                bucket.verdict = "SKIP"
+            continue
+
+        # All phases passed (or only teardown ran and it passed) -> PASS.
+        _has_pass[tool] = True
+        if bucket.verdict != "FAIL":
+            bucket.verdict = "PASS"
+
+    # Aggregate totals from the bucketed verdicts. Differs semantically from
+    # parse_junit_xml which reads <testsuite> attributes: here we compute
+    # from the per-tool dict so the numbers always match what the renderer
+    # will display. total_errors is 0 on this path (TestReport-driven
+    # aggregation does not distinguish error from failure at the phase
+    # level; parse_junit_xml's distinction comes from JUnit's separate
+    # <error> vs <failure> XML children).
+    run.total_cases = sum(v.case_count for v in run.per_tool.values())
+    run.total_failures = sum(1 for v in run.per_tool.values() if v.verdict == "FAIL")
+    run.total_skipped = sum(1 for v in run.per_tool.values() if v.verdict == "SKIP")
+    run.total_time = sum(v.duration for v in run.per_tool.values())
+    run.total_errors = 0
     return run
 
 
