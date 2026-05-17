@@ -86,6 +86,7 @@ def _build_pytest_args(
     with_framework: bool = False,
     sdet: bool = False,  # noqa: sdet-rename-shim
     mcp_config_path: Path | None = None,
+    domain_ui_mode: str = "off",
 ) -> list[str]:
     """Translate the public ``--junit-xml=PATH`` spelling into pytest's
     ``--junitxml=PATH`` (no-dash internal spelling) and assemble the argv
@@ -125,6 +126,10 @@ def _build_pytest_args(
         library mode -- one config-resolution mechanism end-to-end across
         CLI and library modes (no env-var write).
     """  # noqa: sdet-rename-shim
+    if domain_ui_mode not in ("off", "auto", "force"):
+        raise ValueError(
+            f"domain_ui_mode must be one of 'off'/'auto'/'force', got {domain_ui_mode!r}"
+        )
     forwarded = list(pytest_args or [])
     if sdet:  # noqa: sdet-rename-shim
         # --test-code SWAPS the operator-surface scope (NOT additive).
@@ -145,6 +150,17 @@ def _build_pytest_args(
     if junit_xml is not None:
         args.append(f"--junitxml={junit_xml}")
     args.extend(forwarded)
+    if domain_ui_mode != "off":
+        # Phase 29 D-05 / REPORTER-01: CLI tells the in-subprocess reporter
+        # plugin whether to render the domain UI. "force" = always render
+        # (matches CLI's existing "always show domain UI" UX, even in piped
+        # CI stdout where the reporter's auto mode would otherwise off itself).
+        # "off" = reporter stays silent (the -q quiet path uses this so CLI
+        # owns the summary-only render). REVISION Rule A: --debug wins over
+        # -q, so `-q --debug` yields mode="force" (computed in cli.py:run).
+        # Appended AFTER `forwarded` so the explicit CLI choice wins over any
+        # operator-supplied --mcp-domain-ui via pytest's last-occurrence rule.
+        args.append(f"--mcp-domain-ui={domain_ui_mode}")
     if mcp_config_path is not None:
         # Pass the resolved config path to the in-subprocess plugin via
         # pytest's `-o key=value` runtime ini override. Two separate argv
@@ -190,6 +206,7 @@ def run_pytest_subprocess(
     with_framework: bool = False,
     sdet: bool = False,  # noqa: sdet-rename-shim
     mcp_config_path: Path | None = None,
+    domain_ui_mode: str = "off",
 ) -> tuple[int, Path | None, str, str]:
     """Spawn pytest as a child process and return its result.
 
@@ -238,6 +255,7 @@ def run_pytest_subprocess(
             with_framework=with_framework,
             sdet=sdet,  # noqa: sdet-rename-shim
             mcp_config_path=mcp_config_path,
+            domain_ui_mode=domain_ui_mode,
         )
         argv = [sys.executable, "-m", "pytest", *inner_args]
         # Force the child pytest to WRITE utf-8 bytes even on Windows (where
@@ -273,6 +291,7 @@ def run_pytest_subprocess(
         with_framework=with_framework,
         sdet=sdet,  # noqa: sdet-rename-shim
         mcp_config_path=mcp_config_path,
+        domain_ui_mode=domain_ui_mode,
     )
     argv = [
         sys.executable,
