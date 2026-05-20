@@ -288,3 +288,31 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.5: Framework self-test pollution when MCPTF_CONFIG_FILE is set (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-05-19 during Phase 30 UAT-4 closure):** `tests/framework/test_tool_config.py::TestV111SkipFilter::test_allowlist_filters_out_skip_true_tools` passes in isolation and passes when targeted with `-o mcp_config_file=./config_safe_run.yaml`. It FAILS only under the full library-mode run (`pytest -o mcp_config_file=... --mcp-domain-ui=force`) when the operators PowerShell session also has `$env:MCPTF_CONFIG_FILE = "config.yaml"` set (left over from the UAT-1 workaround for the test-code scenarios import-time bare Config() call).
+
+The symptom is a cross-test pollution that only surfaces when bare `Config()` callers fire BEFORE the SkipFilter test runs. The test constructs its own `Config(test_code=..., tools={"a":..., "b":..., "c":...})` and expects `allowed == ["a","c"]`. The failure mode is consistent with another test (or framework code path) mutating shared state that the SkipFilter assertion ends up reading.
+
+Likely culprits (NOT investigated -- candidate hypotheses):
+  1. Pydantic-settings nested-dict merge between init_kwargs and YAML source: when bare-ish `Config(tools={...})` is called with `MCPTF_CONFIG_FILE` set, the source pipeline merges the YAMLs `tools:` (49-skip allowlist) with the init_kwargs `tools` instead of fully overriding. If true, every test that constructs Config with a custom `tools` dict is potentially polluted by the operators shell env.
+  2. Some test outside `TestV111SkipFilter` is mutating module-global state that the SkipFilter reads. The `_reset_discovery_cache` autouse fixture covers `_runner._DISCOVERED_TOOL_NAMES` -- maybe a different cache exists (e.g. `_plugin._MCP_SERVER_INFO`, a pydantic-settings sources cache) that doesnt get reset.
+  3. Order-dependent leak from the contract plugins `pytest_configure` interacting with framework-test imports.
+
+**Why this matters:** The frameworks own self-tests are not robust to operator env. An operator running `pytest` in their normal shell (with `MCPTF_CONFIG_FILE` set per docs/LIBRARY-MODE.md) can see spurious self-test failures that arent actually framework bugs. This will surface again every time someone tries to verify library-mode behavior against a populated config.
+
+**Workaround for the current run:** `Remove-Item env:MCPTF_CONFIG_FILE` (PowerShell: `$env:MCPTF_CONFIG_FILE = $null` -- wait, in PowerShell to unset use `Remove-Item env:MCPTF_CONFIG_FILE`; setting to empty string keeps it set per memory `project_worktree_config.md`) and re-run library mode -- the SkipFilter test should pass.
+
+**Proposed resolution scope:**
+- Reproduce in a clean shell to confirm the env-var dependency (the diagnosis above is inferred, not verified).
+- Add a `monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)` to a session-scoped autouse fixture under `tests/framework/conftest.py` that strips operator env from every framework self-test by default. SDET-authored tests opt back in if needed.
+- If the root cause IS pydantic-settings deep-merging, audit every framework self-test that constructs Config with a custom `tools` dict and either pin them via `Config(yaml_file=tmp_yaml)` (explicit YAML source) or strip the env via monkeypatch.
+- Pairs naturally with 999.3 (always-on isolation) -- both stem from the same problem: framework code paths leaking host env into spawn / test surfaces. 999.3 is operator-facing; 999.5 is framework-internal.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
