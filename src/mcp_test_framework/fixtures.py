@@ -87,17 +87,25 @@ def _pytest_exit_operator_tone(
 
 
 @pytest.fixture(scope="session")
-def mcp_config() -> Config:  # renamed from `config`; unprefixed alias lives in _plugin.py
-    """Load YAML config once per session.
+def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `config`; unprefixed alias lives in _plugin.py
+    """Return the session's loaded ``Config``.
 
-    Precedence: init kwarg > ``MCPTF_CONFIG_FILE`` path-pointer > YAML > defaults.
-
-    Under ``mcp-test-framework run``, the CLI resolver (``cli.py:_load_config``)
-    writes the resolved YAML path to ``MCPTF_CONFIG_FILE`` before launching
-    ``pytest.main()``. This bare ``Config()`` then picks up that path via the
-    fallback in ``Config.settings_customise_sources``. Env vars do NOT inject
-    scalar config values -- ``MCPTF_CONFIG_FILE`` is a path pointer only.
+    Resolution order:
+      1. ``session.config._mcp_contracts_config`` -- the stash set by
+         ``_plugin.pytest_configure`` when ``[tool.pytest.ini_options]
+         mcp_config_file = PATH`` is present (library mode) OR when the CLI
+         subprocesses pytest with ``-o "mcp_config_file=PATH"`` (CLI mode).
+         This is the canonical path post-Phase-27: one config-resolution
+         route end-to-end, no env-var write.
+      2. Bare ``Config()`` -- legacy fallback for tests that bypass the
+         plugin entirely (e.g. framework self-tests that construct their
+         own ``Config`` via ``yaml_file=`` and never hit this fixture).
+         ``settings_customise_sources`` still honours ``MCPTF_CONFIG_FILE``
+         as a path-pointer for backwards compat with v1.3.
     """
+    cfg = getattr(request.session.config, "_mcp_contracts_config", None)
+    if cfg is not None:
+        return cfg
     return Config()
 
 
