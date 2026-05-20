@@ -54,9 +54,9 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### CLI Demotion + Carry-Forward UAT + Docs (CLOSE)
 
-- [ ] **CLOSE-01**: Framework's own `tests/contract/conftest.py` calls `register(config=Config())` — proving the library-mode dogfood loop end-to-end. `tests/conftest.py`'s `pytest_generate_tests` is removed; all contract-test parametrization flows through the plugin's hooks. CLI-mode path (`mcp-test-framework run`) continues to subprocess pytest with JUnit XML round-trip and shares the same `ParsedRun` domain model and renderer helpers.
+- [ ] **CLOSE-01**: Framework's own `pyproject.toml` sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (landed in Phase 27 D-06); Phase 30 verifies the dogfood loop is still green at v1.4 close. CLI-mode path (`mcp-contracts run`) continues to subprocess pytest with JUnit XML round-trip and shares the same `ParsedRun` domain model and renderer helpers.
 - [ ] **CLOSE-02**: Operator running `mcp-contracts run --config PATH` sees identical pass/fail signal to operator running `pytest` against the same `[tool.pytest.ini_options] mcp_config_file = PATH` — CLI/library parity gated by a CI test that drives both routes against the same fixture config and asserts equivalent JUnit XML output.
-- [ ] **CLOSE-03**: New operator reading the README sees library-mode usage first ("Add to your `pyproject.toml`, write three lines in `conftest.py`, run pytest"); CLI usage demotes to an "Appendix: CLI usage" section; `docs/LIBRARY-MODE.md` is the primary reference document for the library API surface.
+- [ ] **CLOSE-03**: New operator reading the README sees library-mode usage first ("Add to your `pyproject.toml`, set one line in `[tool.pytest.ini_options]`, run pytest"); CLI usage demotes to an "Appendix: CLI usage" section; `docs/LIBRARY-MODE.md` is the primary reference document for the library API surface.
 - [ ] **CLOSE-04**: Carry-forward live-UAT items from v1.2 / v1.3 close as part of the library-mode dogfood pass:
   - README §test-code-scenarios PASS-sample re-capture (the post-Phase-24 capture deferred via Plan 24-02 regen-failed contract; needs operator shell with Proxmox keyring access)
   - Phase 17 SC1 live-stack confirmation at ~70-tool scale (`gen-test-classes` against live homelab-mcp + `uv run pyright` on real generated dir)
