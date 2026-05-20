@@ -24,7 +24,7 @@ def config() -> Config:
     return Config(test_code=_TEST_CODE_STUB)
 
 
-def pytest_configure(pytestconfig: pytest.Config) -> None:
+def pytest_configure(config: pytest.Config) -> None:  # noqa: D401
     """Phase 30 CLOSE-02: register the framework-internal `parity` marker.
 
     The marker is a recursion guard for `tests/framework/parity/test_cli_vs_pytest_route.py`:
@@ -35,8 +35,12 @@ def pytest_configure(pytestconfig: pytest.Config) -> None:
     Registered here (framework-self-test conftest) rather than `pyproject.toml`'s
     `[tool.pytest.ini_options] markers = [...]` so the marker stays framework-internal
     and is NOT surfaced on operator-facing `pytest --markers` output.
+
+    Note: the hook parameter is named `config` per pytest's hookspec contract
+    (pluggy validates parameter names against the spec). The fixture named `config`
+    defined above is session-scoped and does not conflict at hook scope.
     """
-    pytestconfig.addinivalue_line(
+    config.addinivalue_line(
         "markers",
         "parity: framework-internal recursion guard for the CLI/library "
         "parity test (tests/framework/parity/). Inner subprocesses exclude "
