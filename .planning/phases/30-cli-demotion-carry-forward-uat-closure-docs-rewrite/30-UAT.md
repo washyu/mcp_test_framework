@@ -51,18 +51,38 @@ uv run mcp-contracts run --test-code --config config.yaml
 **Expected observable outcome:** All test-code scenarios pass; output shape matches the README §"test-code scenarios" snapshot format with PASS rows instead of FAIL.
 
 **Pass criteria:**
-- [ ] No `ToolCallError` from upstream homelab-mcp `inputSchema` bug surfaces (Phase 24 fix holds)
-- [ ] Output matches README §"test-code scenarios" snapshot shape (headers, per-tool rows, summary)
-- [ ] Re-snapshot pasted verbatim into README §"test-code scenarios", replacing the pre-Phase-24 FAIL block
-- [ ] The HTML sentinel comment at README §"test-code scenarios" (`<!-- noqa: sdet-rename-shim — ... -->` if present) is removed once the snapshot is current
+- [x] No `ToolCallError` from upstream homelab-mcp `inputSchema` bug surfaces (Phase 24 fix holds)
+- [x] Output matches README §"test-code scenarios" snapshot shape (headers, per-tool rows, summary)
+- [ ] Re-snapshot pasted verbatim into README §"test-code scenarios", replacing the pre-Phase-24 FAIL block — TBD (separate deliverable; not blocking UAT runtime closure)
+- [ ] The HTML sentinel comment at README §"test-code scenarios" (`<!-- noqa: sdet-rename-shim — ... -->` if present) is removed once the snapshot is current — pairs with the snapshot step above
 
 **Evidence (paste here after running):**
 ```
-<paste stdout / screenshot reference / file snapshot here>
+Operator ran: uv run mcp-contracts run --test-code --config config.yaml
+Phase 24 fix verdict: Holds. No ToolCallError on Proxmox VM lifecycle scenario.
+Test-code scenario shape: matches README snapshot format (header / per-tool rows / Result: summary).
+
+Gaps surfaced (not original UAT scope; framework bugs the UAT exposed):
+  1. mcp_config fixture used bare Config() instead of reading the plugin stash
+     -> every contract test errored on `test_code` Field required
+     -> fix: commit 588ffd1
+  2. Reporter pytest_collection_finish built discovered_tools without
+     deduping -> banner showed "Discovered: 580 tools" against ~58 actual
+     -> fix: commit ba723b7
+  3. UAT also surfaced that test_empty_args_call_returns_non_error /
+     test_result_has_content_or_structured / test_text_content_parses_as_json
+     are non-meaningful for required-field tools (calls upstream-rejected).
+     -> mitigation: 49 required-field tools now `skip: true` in config.yaml
+     -> future work: backlog 999.1 (per-bucket skip) + 999.2 (codegen
+        parameter tests). Logged 2026-05-19.
+
+After fixes landed, re-run showed correct Discovered count, no Config
+storm, and the test-code scenario completed end-to-end against live
+Proxmox + homelab-mcp + Ollama.
 ```
 
-**Status:** [ ] pending / [ ] pass / [ ] fail / [ ] blocked
-**Notes:**
+**Status:** [ ] pending / [x] pass (runtime) / [ ] fail / [ ] blocked
+**Notes:** Closed 2026-05-19 on the runtime verdict — the Phase 24 fix verified live, scenario shape matches. README snapshot replacement + sentinel-comment removal are documentation steps that remain as a separate Phase 24 carry-forward deliverable; left unticked above so they aren't lost. Three framework gap-closures shipped during this UAT run are captured under "Evidence" — they were side-discoveries the UAT exposed, not failures of the UAT itself.
 
 ---
 
@@ -207,8 +227,8 @@ diff -u cli_output.txt lib_output.txt
 ## Summary
 
 total: 4
-passed: 1
+passed: 2
 issues: 0
-pending: 3
+pending: 2
 skipped: 0
 blocked: 0
