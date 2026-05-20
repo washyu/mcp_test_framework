@@ -197,22 +197,27 @@ Pre-Phase-25 PACK shim notice text (Phase 26 deprecation copy) is unaffected —
 - `config.yaml` with at least 2-3 enabled tools
 
 **Commands:**
+
+⚠ **PowerShell 5.1 gotcha:** Do NOT use `*>&1 | Tee-Object` here. PowerShell 5.1 wraps every stderr line from a native exe (uv, pytest, homelab-mcp's stdio startup print) in a `NativeCommandError` and **breaks the pipeline** before pytest finishes. Earlier captures hit this and looked like a homelab-mcp crash — it isn't. Use `cmd /c` for file capture, or just paste from the console.
+
+PowerShell with `cmd /c` redirection (file capture, no stderr-wrap):
 ```powershell
-# CLI mode (PowerShell — Windows-first dev environment per CLAUDE.md)
-uv run mcp-contracts run --config config.yaml *>&1 | Tee-Object -FilePath cli_output.txt
-
-# Library mode (force the reporter even in non-TTY contexts)
-uv run pytest -o "mcp_config_file=./config.yaml" --mcp-domain-ui=force *>&1 | Tee-Object -FilePath lib_output.txt
-
-# Visual diff
+cmd /c "uv run mcp-contracts run --config config.yaml > cli_output.txt 2>&1"
+cmd /c "uv run pytest -o ""mcp_config_file=./config.yaml"" --mcp-domain-ui=force > lib_output.txt 2>&1"
 Compare-Object (Get-Content cli_output.txt) (Get-Content lib_output.txt)
 ```
 
-Or POSIX equivalent:
+POSIX equivalent:
 ```bash
 uv run mcp-contracts run --config config.yaml > cli_output.txt 2>&1
 uv run pytest -o "mcp_config_file=./config.yaml" --mcp-domain-ui=force > lib_output.txt 2>&1
 diff -u cli_output.txt lib_output.txt
+```
+
+Bare-console alternative (run, copy-paste the output yourself):
+```powershell
+uv run mcp-contracts run --config config.yaml
+uv run pytest -o "mcp_config_file=./config.yaml" --mcp-domain-ui=force
 ```
 
 **Expected observable outcome:**
