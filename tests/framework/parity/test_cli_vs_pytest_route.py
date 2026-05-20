@@ -69,19 +69,23 @@ def _parse_outcomes(xml_path: Path) -> dict[str, str]:
     suite = root.find("testsuite") if root.tag == "testsuites" else root
     if suite is None:
         return {}
+    PRIORITY: dict[str, int] = {"failed": 0, "error": 1, "skipped": 2, "passed": 3}
     out: dict[str, str] = {}
     for tc in suite.iter("testcase"):
         classname = tc.get("classname", "")
         name = tc.get("name", "")
         nodeid = f"{classname}::{name}" if classname else name
         if tc.find("failure") is not None:
-            out[nodeid] = "failed"
+            outcome = "failed"
         elif tc.find("error") is not None:
-            out[nodeid] = "error"
+            outcome = "error"
         elif tc.find("skipped") is not None:
-            out[nodeid] = "skipped"
+            outcome = "skipped"
         else:
-            out[nodeid] = "passed"
+            outcome = "passed"
+        # any-fail-wins: only update if new outcome has strictly higher priority
+        if nodeid not in out or PRIORITY[outcome] < PRIORITY[out[nodeid]]:
+            out[nodeid] = outcome
     return out
 
 
@@ -99,7 +103,7 @@ def test_cli_route_equals_pytest_route(tmp_path: Path) -> None:
             sys.executable, "-m", "mcp_test_framework.cli", "run",
             "--config", "config.test.yaml",
             f"--junit-xml={xml_a}",
-            "--", "-m", "not parity",
+            "--", "-m", "not parity and not live_homelab and not live_ollama",
         ],
         cwd=repo_root, capture_output=True, text=True, check=False,
     )
@@ -110,8 +114,8 @@ def test_cli_route_equals_pytest_route(tmp_path: Path) -> None:
             sys.executable, "-m", "pytest",
             "-o", "mcp_config_file=./config.test.yaml",
             f"--junitxml={xml_b}",
-            "-m", "not parity",
-            "tests/",
+            "-m", "not parity and not live_homelab and not live_ollama",
+            "tests/contract",   # match Route A scope
         ],
         cwd=repo_root, capture_output=True, text=True, check=False,
     )
@@ -151,6 +155,16 @@ def test_cli_route_equals_pytest_route(tmp_path: Path) -> None:
         f"Route A stdout (tail):\n{proc_a.stdout[-2000:]}"
     )
 
+    assert outcomes_b, (
+        "Parity test ran against an empty outcomes dict — Route B produced "
+        "zero `<testcase>` entries in its JUnit XML. This may mean the "
+        "`mcp_config_file` ini override did not resolve correctly, or the "
+        "`tests/contract` scope collected no tests. Verify the `-o "
+        "`mcp_config_file=` argument and that the contract test suite is "
+        "populated before invoking the parity gate.\n"
+        f"Route B returncode: {proc_b.returncode}\n"
+        f"Route B stdout (tail):\n{proc_b.stdout[-2000:]}"
+    )
     assert outcomes_a == outcomes_b, (
         "CLI vs pytest-route outcome divergence (CLOSE-02 parity broken).\n"
         f"Only in Route A: {set(outcomes_a) - set(outcomes_b)}\n"
