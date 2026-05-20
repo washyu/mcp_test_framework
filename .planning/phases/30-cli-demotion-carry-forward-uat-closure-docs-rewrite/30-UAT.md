@@ -1,9 +1,9 @@
 ---
-status: pending
+status: partial
 phase: 30-cli-demotion-carry-forward-uat-closure-docs-rewrite
 source: [30-CONTEXT.md, 30-VERIFICATION.md]
 started: 2026-05-17T00:00:00Z
-updated: 2026-05-17T00:00:00Z
+updated: 2026-05-19T00:00:00Z
 ---
 
 ## About this document
@@ -77,26 +77,39 @@ uv run mcp-contracts run --test-code --config config.yaml
 - `pyright` installed (dev dep)
 - A `config.yaml` with `test_code.generated_root` set to a writable path
 
+**Notes on output shape:**
+- The slug is derived from the live server's `serverInfo.name` via `server_slug()` ([src/mcp_test_framework/test_code/_slugs.py:24](src/mcp_test_framework/test_code/_slugs.py:24)) — lowercase, non-alphanumerics → underscore, runs collapsed. For `homelab-mcp` this resolves to `homelab_mcp`.
+- `gen-test-classes` writes one file per tool named after the tool itself (`<tool_name>.py`), NOT `test_<tool_name>.py`. The original glob in this protocol was wrong (would always match zero); use `*.py` or rely on the operator-mode tally printed by the command itself.
+- The framework's *library* code lives at `src/mcp_test_framework/test_code/` (Phase 25 SDET→test_code rename). The codegen *output* lives at `tests/test_code/_generated/<slug>/`. Same `test_code` name, two different roles — known operator-vs-dev confusion source, candidate doc nit.
+
 **Commands:**
 ```bash
 uv run mcp-contracts gen-test-classes --config config.yaml
-uv run pyright <path-from-cfg.test_code.generated_root>/<server_slug>/
+uv run pyright <test_code.generated_root>/<server_slug>/
+# Concrete for homelab-mcp:
+#   uv run pyright tests/test_code/_generated/homelab_mcp/
 ```
 
-**Expected observable outcome:** `gen-test-classes` writes ~70 typed Pydantic Params + Response class pairs; `pyright` reports zero errors / zero warnings.
+**Expected observable outcome:** `gen-test-classes` writes one typed Pydantic Params + Response pair per advertised tool (one `.py` per tool); `pyright` reports zero errors / zero warnings.
 
 **Pass criteria:**
-- [ ] Generated file count matches live tool count (e.g., `Get-ChildItem <path> -Recurse -Filter 'test_*.py' | Measure-Object -Line` ≈ 70 on PowerShell, or `find <path> -name 'test_*.py' | wc -l` on POSIX)
-- [ ] `pyright` exit code 0
-- [ ] No `# type: ignore` or `# pyright: ignore` lines in generated code
+- [x] Generated `.py` file count matches live tool count (use `Get-ChildItem <path> -Recurse -Filter '*.py' | Measure-Object` on PowerShell or `find <path> -name '*.py' | wc -l` on POSIX; subtract 1 for the `__init__.py` if present)
+- [x] `pyright` exit code 0
+- [x] No `# type: ignore` or `# pyright: ignore` lines in generated code
 
 **Evidence (paste here after running):**
 ```
-<paste stdout / screenshot reference / file snapshot here>
+Slug observed:           homelab_mcp
+Generated path:          tests/test_code/_generated/homelab_mcp/
+Generated file count:    59 .py files (58 tools + 1 __init__.py) — matches the 58 tools enabled in config.yaml
+pyright result:          0 errors, 0 warnings
+type-ignore scrub:       no `# type: ignore` / `# pyright: ignore` lines in generated code
+
+Operator note: confusion observed between src/mcp_test_framework/test_code/ (framework library) and tests/test_code/_generated/<slug>/ (codegen output). Pyright was initially run against the wrong directory. Doc nit captured.
 ```
 
-**Status:** [ ] pending / [ ] pass / [ ] fail / [ ] blocked
-**Notes:**
+**Status:** [ ] pending / [x] pass / [ ] fail / [ ] blocked
+**Notes:** Closed 2026-05-19. Tool count 58 vs the ~70 Phase 17 estimate reflects the operator's `config.yaml` allowlist size, not a homelab-mcp regression — the server advertises ~70; only 58 are opted in. UAT closes against the configured allowlist scope.
 
 ---
 
@@ -194,8 +207,8 @@ diff -u cli_output.txt lib_output.txt
 ## Summary
 
 total: 4
-passed: 0
+passed: 1
 issues: 0
-pending: 4
+pending: 3
 skipped: 0
 blocked: 0
