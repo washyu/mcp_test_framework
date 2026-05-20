@@ -6,7 +6,7 @@
 - ✅ **v1.1 Multi-Tool + Isolation + JUnit** — Phases 06–11 (shipped 2026-05-08) — see [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Operator-First Design** — Phases 12–16 (shipped 2026-05-12) — see [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 Homelab Scenario Testing** — Phases 17–24 (shipped 2026-05-15) — see [v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
-- 🚧 **v1.4 Library Mode Delivery** — Phases 25–30 (in progress)
+- 🚧 **v1.4 Library Mode Delivery** — Phases 25–34 (in progress)
 
 ## Phases
 
@@ -84,6 +84,10 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
 - [x] **Phase 29: Live domain-UI reporter plugin** — `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events; CI/no-TTY auto-OFF; xdist master-only emission.
  (completed 2026-05-17)
 - [x] **Phase 30: CLI demotion + carry-forward UAT closure + docs rewrite** — Framework's `pyproject.toml` already sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (Phase 27 D-06 pre-empt of original CLOSE-01 scope); README leads with library mode; carry-forward live-UAT items from v1.2 / v1.3 close as part of the dogfood pass. (completed 2026-05-20)
+- [ ] **Phase 31: Per-test-bucket / per-judge opt-in granularity in ToolConfig** (promoted from 999.1 on 2026-05-19) — Add `ToolConfig.skip_buckets: list[Literal["schema","judge","output"]]` so the output bucket can be skipped for required-field tools while schema + judge buckets still run. Optional auto-skip-output-when-required heuristic (off by default).
+- [ ] **Phase 32: Always-on host isolation blocks live-UAT + SDET credential paths** (promoted from 999.3 on 2026-05-19) — Make isolation opt-in (`host_isolation: strict | passthrough`, default `strict`). Passthrough serializes spawns (no xdist) and allows operator HOME / keyring to flow through for live-stack UATs. SEED-022: operator's explicit choice = operator's safety responsibility.
+- [ ] **Phase 33: Drop v1-schema support — remove migration command + README/docs references** (promoted from 999.4 on 2026-05-19) — Decommission-by-deletion of the v1→v2 migration path: scrub `cli.py` migration message, delete `docs/MIGRATION-v1-to-v2.md`, scrub README/ERROR-STYLE/LIBRARY-MODE references, relax framework self-tests that pin the v1-rejection verbiage.
+- [ ] **Phase 34: Framework self-test pollution when MCPTF_CONFIG_FILE is set** (promoted from 999.5 on 2026-05-19) — Strip operator env from framework self-tests by default (`monkeypatch.delenv("MCPTF_CONFIG_FILE")` in `tests/framework/conftest.py` autouse fixture); audit Config(tools=...) callers for pydantic-settings deep-merge leakage from the operator's shell env into the `tools` allowlist.
 
 ## Phase Details
 
@@ -182,10 +186,59 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30.
   - [x] 30-03-PLAN.md — UAT capture protocols (CLOSE-04): 30-UAT.md authored with 4 carry-forward UAT sections (user-driven; non-blocking)
   - [x] 30-04-PLAN.md — Dogfood verification at v1.4 close (CLOSE-01 verification act): uv run pytest green, STATE.md updated
 
+### Phase 31: Per-test-bucket / per-judge opt-in granularity in ToolConfig
+**Goal**: Operator can opt out of the output-conformance bucket per-tool while keeping the deterministic schema bucket and the LLM judge bucket running — without losing judge signal the way today's whole-tool `skip: true` does.
+**Depends on**: Phase 30 (v1.4 dogfood loop is green; promotion from 999.1 captured during Phase 30 UAT-1).
+**Requirements**: TBD (capture during /gsd-spec-phase or /gsd-discuss-phase)
+**Promoted from**: 999.1 on 2026-05-19 — captured during Phase 30 UAT-1.
+**Context**: `ToolConfig.skip: true` is whole-tool only. Proposal: `ToolConfig.skip_buckets: list[Literal["schema","judge","output"]] = []`. Also consider an opt-in auto-skip-output-when-required heuristic (top-level flag, off by default) that detects required-field tools and skips the empty-args bucket without per-tool enumeration. SEED-022 preserved — operator still chooses; framework gets a more precise lever. Pairs with backlog 999.2 (codegen-driven parameter-test generation).
+**Plans**: TBD (run /gsd-plan-phase 31)
+
+### Phase 32: Always-on host isolation blocks live-UAT + SDET credential paths
+**Goal**: Operator can run live-stack UATs and SDET-authored credential-touching scenarios without `_isolation.py` stripping their HOME / USERPROFILE / keyring backend on every spawn — by opting into a `passthrough` isolation mode.
+**Depends on**: Phase 30 (v1.4 dogfood loop is green; promotion from 999.3 captured during Phase 30 UAT-1/UAT-2 closure). Best landed alongside Phase 34 (framework-internal half of the same isolation problem).
+**Requirements**: TBD
+**Promoted from**: 999.3 on 2026-05-19 — captured during Phase 30 UAT-1 + UAT-2 closure.
+**Constraint locked by operator**: No keyring faking. No credential-mock layer added to the framework.
+**Proposed direction (not locked)**: `host_isolation: strict | passthrough` config field, default `strict`. `passthrough` inherits operator env + HOME for live runs; operator's explicit choice = operator's safety responsibility (SEED-022). Likely cost: `passthrough` mode must serialize subprocess spawns (no xdist parallelism) — single MCP session at a time. Also flushes a class of bare `Config()` callers that depend on host env.
+**Plans**: TBD (run /gsd-plan-phase 32)
+
+### Phase 33: Drop v1-schema support — remove migration command + README references
+**Goal**: Operator-facing surface no longer references the v1→v2 migration path. The framework has never been published and there are no live operators carrying v1-schema configs; preserve a generic "unsupported version" rejection in `config.py` but delete the migration messaging.
+**Depends on**: Phase 30 (Retired UAT-3 in `.planning/phases/30.../30-UAT.md` is the closed-by-deletion pair).
+**Requirements**: TBD
+**Promoted from**: 999.4 on 2026-05-19 — captured during Phase 30 UAT-3 retire.
+**Scope of removal** (inventoried 2026-05-19):
+  - `src/mcp_test_framework/config.py:74` — `version: int = 2` stays; tighten `_validate_version` validator at lines 193-201 so the message no longer references migration.
+  - `src/mcp_test_framework/cli.py:252-307` — delete the v1→v2 migration message block in the operator-error mapper and the special-case detection that triggers it.
+  - `docs/MIGRATION-v1-to-v2.md` — delete the whole doc.
+  - `docs/ERROR-STYLE.md` — scrub MIGRATION-v1-to-v2 references.
+  - `README.md §Configuration` — remove migration callout / hint.
+  - `docs/LIBRARY-MODE.md` — sweep for migration references.
+  - Framework self-tests that pin the v1-rejection message — delete or relax to "rejects unsupported version with a clean operator-tone error".
+**Risk acknowledgement**: One-way decision. Acceptable given there are no live v1-schema operators.
+**Plans**: TBD (run /gsd-plan-phase 33)
+
+### Phase 34: Framework self-test pollution when MCPTF_CONFIG_FILE is set
+**Goal**: `tests/framework/` is robust to operator env. An operator running `pytest` in their normal shell (with `MCPTF_CONFIG_FILE` set per `docs/LIBRARY-MODE.md`) sees no spurious self-test failures that aren't actually framework bugs.
+**Depends on**: Phase 30 (symptom captured during UAT-4 closure). Best landed alongside Phase 32 (operator-facing half of the same env-leak problem).
+**Requirements**: TBD
+**Promoted from**: 999.5 on 2026-05-19 — captured during Phase 30 UAT-4 closure.
+**Symptom**: `tests/framework/test_tool_config.py::TestV111SkipFilter::test_allowlist_filters_out_skip_true_tools` passes in isolation; FAILS only under the full library-mode run when `$env:MCPTF_CONFIG_FILE = "config.yaml"` is set in the operator's shell.
+**Likely culprits** (NOT investigated):
+  1. Pydantic-settings nested-dict merge between init_kwargs and YAML source — when bare-ish `Config(tools={...})` is called with `MCPTF_CONFIG_FILE` set, the source pipeline may merge YAML's `tools:` allowlist with the init_kwargs `tools` instead of fully overriding.
+  2. Some test outside `TestV111SkipFilter` is mutating module-global state that the SkipFilter reads. The `_reset_discovery_cache` autouse covers `_runner._DISCOVERED_TOOL_NAMES` — maybe a different cache exists (e.g. `_plugin._MCP_SERVER_INFO`, a pydantic-settings sources cache) that doesn't get reset.
+  3. Order-dependent leak from the contract plugin's `pytest_configure` interacting with framework-test imports.
+**Proposed resolution scope**:
+  - Reproduce in a clean shell to confirm the env-var dependency.
+  - Add `monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)` to a session-scoped autouse fixture under `tests/framework/conftest.py`.
+  - If root cause is pydantic-settings deep-merging, audit every framework self-test that constructs Config with a custom `tools` dict.
+**Plans**: TBD (run /gsd-plan-phase 34)
+
 ## Progress
 
 **Execution Order (v1.4):**
-Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal phases (e.g., 27.1) reserved for INSERTED urgent fixes between integer phases.
+Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34. Decimal phases (e.g., 27.1) reserved for INSERTED urgent fixes between integer phases.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -222,19 +275,12 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete   | 2026-05-17 |
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete    | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete   | 2026-05-20 |
+| 31. Per-test-bucket / per-judge opt-in granularity in ToolConfig | v1.4 | 0/0 | Planned | — |
+| 32. Always-on host isolation blocks live-UAT + SDET credential paths | v1.4 | 0/0 | Planned | — |
+| 33. Drop v1-schema support — remove migration command + README references | v1.4 | 0/0 | Planned | — |
+| 34. Framework self-test pollution when MCPTF_CONFIG_FILE is set | v1.4 | 0/0 | Planned | — |
 
 ## Backlog
-
-### Phase 999.1: Per-test-bucket / per-judge opt-in granularity in ToolConfig (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-1):** `ToolConfig.skip: true` is whole-tool only. The operator wants per-bucket granularity so the output-conformance bucket (`test_empty_args_call_returns_non_error`, `test_result_has_content_or_structured`, `test_text_content_parses_as_json`) can be skipped for tools whose inputSchema declares required fields, while the deterministic schema bucket and the LLM judge bucket still run. Current workarounds: (a) `skip: true` on the whole tool — loses judge signal; (b) author `call_arguments:` per tool. Proposal: add `ToolConfig.skip_buckets: list[Literal["schema","judge","output"]] = []` so the operator can opt out by bucket. Also consider an auto-skip-output-when-required heuristic (off by default, opt-in via top-level flag) so the framework can detect required-field tools and silently skip the empty-args bucket without per-tool enumeration. SEED-022 (framework primitives; SDET owns safety) stays intact — the operator still chooses; the framework just gets a more precise lever.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ### Phase 999.2: Codegen-driven parameter-test generation for required-field tools (BACKLOG)
 
@@ -242,77 +288,7 @@ Plans:
 **Requirements:** TBD
 **Plans:** 0 plans
 
-**Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with backlog 999.1 (per-bucket skip) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.3: Always-on host isolation blocks live-UAT + SDET credential paths (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-1 + UAT-2 closure):** `_isolation.py` documents itself as `Isolation is ALWAYS-ON. No toggle, no --no-isolation CLI escape hatch.` On every spawn it (a) strips operator env to an allowlist, (b) redirects HOME / USERPROFILE / TEMP to a temp dir, (c) sets `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null`. This is great for hermetic contract testing but **breaks every live-stack UAT that needs real credentials**: `homelab-mcp` spawned inside the framework cannot reach the operators `~/.homelab_mcp/` config or Proxmox keyring entry, even though `uvx homelab-mcp credentials list` from the operators shell sees them. Same property will block SDET-authored scenarios that exercise real infrastructure.
-
-**Constraint locked by operator:** No keyring faking. We will not add a credential-mock layer to the framework.
-
-**Proposed direction (NOT locked):** Make isolation opt-in instead of always-on. A top-level config field like `host_isolation: strict | passthrough` defaulting to `strict` (todays behavior) with `passthrough` allowing the operator to inherit their hosts env + HOME for live-UAT runs. The operators explicit choice = operators safety responsibility (SEED-022). Likely cost: `passthrough` mode must serialize subprocess spawns (no parallel xdist) because operator credentials become a shared resource -- single MCP session at a time. Acceptable trade for the live-UAT story. Also flushes a class of related gaps: bare `Config()` callers (mcp_config fixture before commit 588ffd1, the test-code scenarios `_load_generated_homelab_mcp` at module import time) all depend on host env -- under passthrough mode the operators MCPTF_CONFIG_FILE survives the spawn naturally; under strict mode the plugin stash route is the only correct path. Decide both axes together so future Config() bare callers dont silently leak operator env in strict mode.
-
-**Adjacent observation (homelab-mcp upstream, not framework):** During the same UAT-1 run the scenario sweep code logged `list_proxmox_resources failed: vm is not one of [qemu,lxc,node,storage,pool]` -- the scenario passes an invalid resource_type. Not blocking 999.3 but worth a one-line fix when the live-UAT path is unblocked. Operator captured in UAT notes for upstream reporting.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.4: Drop v1-schema support — remove migration command + README references (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-3 retire):** Framework has never been published; there are no live operators carrying v1-schema configs. The v1 -> v2 migration code path was preserved through v1.2/v1.3/v1.4 in case external operators existed; UAT-3 was the planned live verification of that path. Decision: there is no one to migrate. Drop v1-schema support entirely instead of carrying it forward. Decommission-by-deletion replaces UAT-3.
-
-**Scope of removal (inventoried 2026-05-19):**
-
-- `src/mcp_test_framework/config.py:74` — `version: int = 2` field stays, but the `_validate_version` validator at line 193-201 (`config version {v} not supported by this build, expected 2`) can be tightened (still useful as a rejection for typos, but the message no longer references migration).
-- `src/mcp_test_framework/cli.py:252-307` — the entire v1→v2 migration message block in the operator-error mapper (the `# Locked v1 -> v2 migration message` section, the "matters: in v1 a tool with no entry runs by default, in v2 it skips" line, the `docs/MIGRATION-v1-to-v2.md` cross-reference). Delete the message + the special-case detection that triggers it.
-- `docs/MIGRATION-v1-to-v2.md` — delete the whole doc.
-- `docs/ERROR-STYLE.md` — scrub MIGRATION-v1-to-v2 references.
-- `README.md §Configuration` — remove the migration callout / hint, reference v2 directly.
-- `docs/LIBRARY-MODE.md` — sweep for migration references; library-mode docs should describe v2 only.
-- Any framework self-tests that pin the v1-rejection message text need to either delete the test (preferred) or relax to "rejects unsupported version with a clean operator-tone error" without asserting the migration verbiage.
-
-**Risk acknowledgement:** This is one-way — once v1-schema rejection is generic ("unsupported version, run config-init"), an operator who somehow has a v1 config gets less specific guidance. Acceptable given there are no such operators.
-
-**Pairs with:** Retired UAT-3 in `.planning/phases/30-cli-demotion-carry-forward-uat-closure-docs-rewrite/30-UAT.md` (closed-by-deletion). When 999.4 lands, the UAT entry can be left as historical evidence of the decision.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.5: Framework self-test pollution when MCPTF_CONFIG_FILE is set (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-4 closure):** `tests/framework/test_tool_config.py::TestV111SkipFilter::test_allowlist_filters_out_skip_true_tools` passes in isolation and passes when targeted with `-o mcp_config_file=./config_safe_run.yaml`. It FAILS only under the full library-mode run (`pytest -o mcp_config_file=... --mcp-domain-ui=force`) when the operators PowerShell session also has `$env:MCPTF_CONFIG_FILE = "config.yaml"` set (left over from the UAT-1 workaround for the test-code scenarios import-time bare Config() call).
-
-The symptom is a cross-test pollution that only surfaces when bare `Config()` callers fire BEFORE the SkipFilter test runs. The test constructs its own `Config(test_code=..., tools={"a":..., "b":..., "c":...})` and expects `allowed == ["a","c"]`. The failure mode is consistent with another test (or framework code path) mutating shared state that the SkipFilter assertion ends up reading.
-
-Likely culprits (NOT investigated -- candidate hypotheses):
-  1. Pydantic-settings nested-dict merge between init_kwargs and YAML source: when bare-ish `Config(tools={...})` is called with `MCPTF_CONFIG_FILE` set, the source pipeline merges the YAMLs `tools:` (49-skip allowlist) with the init_kwargs `tools` instead of fully overriding. If true, every test that constructs Config with a custom `tools` dict is potentially polluted by the operators shell env.
-  2. Some test outside `TestV111SkipFilter` is mutating module-global state that the SkipFilter reads. The `_reset_discovery_cache` autouse fixture covers `_runner._DISCOVERED_TOOL_NAMES` -- maybe a different cache exists (e.g. `_plugin._MCP_SERVER_INFO`, a pydantic-settings sources cache) that doesnt get reset.
-  3. Order-dependent leak from the contract plugins `pytest_configure` interacting with framework-test imports.
-
-**Why this matters:** The frameworks own self-tests are not robust to operator env. An operator running `pytest` in their normal shell (with `MCPTF_CONFIG_FILE` set per docs/LIBRARY-MODE.md) can see spurious self-test failures that arent actually framework bugs. This will surface again every time someone tries to verify library-mode behavior against a populated config.
-
-**Workaround for the current run:** `Remove-Item env:MCPTF_CONFIG_FILE` (PowerShell: `$env:MCPTF_CONFIG_FILE = $null` -- wait, in PowerShell to unset use `Remove-Item env:MCPTF_CONFIG_FILE`; setting to empty string keeps it set per memory `project_worktree_config.md`) and re-run library mode -- the SkipFilter test should pass.
-
-**Proposed resolution scope:**
-- Reproduce in a clean shell to confirm the env-var dependency (the diagnosis above is inferred, not verified).
-- Add a `monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)` to a session-scoped autouse fixture under `tests/framework/conftest.py` that strips operator env from every framework self-test by default. SDET-authored tests opt back in if needed.
-- If the root cause IS pydantic-settings deep-merging, audit every framework self-test that constructs Config with a custom `tools` dict and either pin them via `Config(yaml_file=tmp_yaml)` (explicit YAML source) or strip the env via monkeypatch.
-- Pairs naturally with 999.3 (always-on isolation) -- both stem from the same problem: framework code paths leaking host env into spawn / test surfaces. 999.3 is operator-facing; 999.5 is framework-internal.
+**Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with Phase 31 (per-bucket skip, promoted from 999.1 on 2026-05-19) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
