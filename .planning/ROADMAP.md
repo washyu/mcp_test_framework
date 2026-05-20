@@ -263,3 +263,28 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Drop v1-schema support — remove migration command + README references (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-05-19 during Phase 30 UAT-3 retire):** Framework has never been published; there are no live operators carrying v1-schema configs. The v1 -> v2 migration code path was preserved through v1.2/v1.3/v1.4 in case external operators existed; UAT-3 was the planned live verification of that path. Decision: there is no one to migrate. Drop v1-schema support entirely instead of carrying it forward. Decommission-by-deletion replaces UAT-3.
+
+**Scope of removal (inventoried 2026-05-19):**
+
+- `src/mcp_test_framework/config.py:74` — `version: int = 2` field stays, but the `_validate_version` validator at line 193-201 (`config version {v} not supported by this build, expected 2`) can be tightened (still useful as a rejection for typos, but the message no longer references migration).
+- `src/mcp_test_framework/cli.py:252-307` — the entire v1→v2 migration message block in the operator-error mapper (the `# Locked v1 -> v2 migration message` section, the "matters: in v1 a tool with no entry runs by default, in v2 it skips" line, the `docs/MIGRATION-v1-to-v2.md` cross-reference). Delete the message + the special-case detection that triggers it.
+- `docs/MIGRATION-v1-to-v2.md` — delete the whole doc.
+- `docs/ERROR-STYLE.md` — scrub MIGRATION-v1-to-v2 references.
+- `README.md §Configuration` — remove the migration callout / hint, reference v2 directly.
+- `docs/LIBRARY-MODE.md` — sweep for migration references; library-mode docs should describe v2 only.
+- Any framework self-tests that pin the v1-rejection message text need to either delete the test (preferred) or relax to "rejects unsupported version with a clean operator-tone error" without asserting the migration verbiage.
+
+**Risk acknowledgement:** This is one-way — once v1-schema rejection is generic ("unsupported version, run config-init"), an operator who somehow has a v1 config gets less specific guidance. Acceptable given there are no such operators.
+
+**Pairs with:** Retired UAT-3 in `.planning/phases/30-cli-demotion-carry-forward-uat-closure-docs-rewrite/30-UAT.md` (closed-by-deletion). When 999.4 lands, the UAT entry can be left as historical evidence of the decision.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)

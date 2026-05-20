@@ -170,41 +170,19 @@ Operator note: confusion observed between src/mcp_test_framework/test_code/ (fra
 
 ### UAT-3: v1.2 Phase 13 v2 config + migration walkthrough — library-mode example
 
-**Background:** Phase 13 v1→v2 schema migration; live UAT was deferred at v1.2 close. Phase 30 closes it by demonstrating the migration walkthrough using the library-mode `mcp_config_file` ini route.
+**Background:** Phase 13 v1→v2 schema migration; live UAT was deferred at v1.2 close. Phase 30 was originally going to close it by demonstrating the migration walkthrough using the library-mode `mcp_config_file` ini route.
 
 **Carried from:** Phase 13 13-VERIFICATION.md `human_needed` row.
 
-**Pre-reqs:**
-- A v1-schema `config.yaml` to migrate (legacy fixture or hand-crafted)
-- pyproject.toml with `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"` set
+**Status:** [ ] pending / [ ] pass / [ ] fail / [ ] blocked / [x] skipped
 
-**Commands:**
-```bash
-# Start with v1-schema config; observe migration error
-uv run pytest --collect-only
+**Skip reason (decided 2026-05-19):** The framework has not been published to PyPI and has no live operators carrying v1-schema configs. Verifying a migration path from a schema that no one is using is wasted effort. Decision: **drop v1-schema support entirely** in a follow-up cleanup (backlog 999.4). The migration command, the `version: 1` rejection path in `Config`, and the README §Configuration migration callouts can all come out of the codebase. Once 999.4 lands, this UAT becomes permanently retired (not re-filed).
 
-# Apply the migration per docs/MIGRATION-v1-to-v2.md
-uv run mcp-contracts config-init -o config.yaml.new
+Pre-Phase-25 PACK shim notice text (Phase 26 deprecation copy) is unaffected — that's a SDET→test_code rename concern, not a schema concern.
 
-# Compare new vs old; merge by hand or replace
-uv run pytest --collect-only
-```
-
-**Expected observable outcome:** First `pytest --collect-only` emits a fail-loud v1→v2 migration error naming `version: 1` and pointing at the migration doc; second `pytest --collect-only` succeeds and shows injected contract tests.
-
-**Pass criteria:**
-- [ ] Migration error names the schema version field
-- [ ] Migration error references `mcp-contracts config-init` as the next step
-- [ ] After migration, contract tests collect under `<mcp-contracts>::test_*[*]` nodeids
-- [ ] No `MCPTF_CONFIG_FILE` env var set during the walkthrough (proves library-mode is the documented route)
-
-**Evidence (paste here after running):**
-```
-<paste stdout / screenshot reference / file snapshot here>
-```
-
-**Status:** [ ] pending / [ ] pass / [ ] fail / [ ] blocked
-**Notes:**
+**Pass criteria:** N/A — UAT retired.
+**Evidence:** N/A.
+**Notes:** Closed-by-deletion. The deliverable that this UAT was verifying will be deleted in 999.4 along with the supporting code paths.
 
 ---
 
@@ -264,6 +242,6 @@ diff -u cli_output.txt lib_output.txt
 total: 4
 passed: 2
 issues: 0
-pending: 2
-skipped: 0
+pending: 1
+skipped: 1
 blocked: 0
