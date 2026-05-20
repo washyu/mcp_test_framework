@@ -82,6 +82,7 @@ Last activity: 2026-05-20 -- Phase 30 execution started
 | Phase 28 P04 | 4min | 2 tasks | 2 files |
 | Phase 29 P29-01 | 6min | 2 tasks | 2 files |
 | Phase 29 P29-03 | ~12min | 3 tasks | 5 files |
+| Phase 30 P04 | ~7min | 3 tasks | 1 files | dogfood verification: passed=670, skipped=3, xfailed=1, failed=0, errored=0; config.test.yaml empty tools: confirmed; parity test collected (1 under -m parity), default-deselected (0 under default addopts) |
 
 ## Accumulated Context
 
@@ -144,6 +145,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Plan 28-03: overwrite-prompt gate wired between slug derivation and _codegen.generate; no --yes/--force escape hatch (D-06 regression-guarded); missing-test_code.generated_root next-step flipped to canonical mcp-contracts config-init (D-02; v1->v2 + no-config-found messages left on v1.5 cleanup track because ERROR-STYLE.md still pins legacy name).
 - [Phase ?]: Plan 28-04 docs sweep complete; CODEGEN-LIB-02 preserved verbatim; stale smart-default removed
 - [Phase ?]: Phase 29 Plan 01 — planning IDs scrubbed from src/ to satisfy leak gate
+- [Phase 30 P04]: dogfood verification green at v1.4 close -- Phase 27 D-06 ini line (`mcp_config_file = "./config.test.yaml"`) intact; `uv run pytest` returns exit 0 with 670 passed / 3 skipped / 0 failed / 0 errored; Plan 01 parity test correctly collected under -m parity (1 item) and default-deselected under pyproject addopts (0 items); empty allowlist in config.test.yaml verified (zero `<mcp-contracts>::test_*` items collected). CLOSE-01 dogfood verification thread closed (text amendment lives in Plan 30-02).
 
 ### Roadmap Evolution
 
@@ -226,6 +228,6 @@ Items acknowledged via the v1.3 close pre-flight artifact audit and deferred:
 
 ## Session Continuity
 
-Last session: 2026-05-17T20:36:47.205Z
-Stopped at: Phase 30 context gathered
-Resume next: `/gsd-verify-phase 25` to run phase-level verification, then `/gsd-execute-phase 26` (Packaging foundation — entry-point + py.typed + dist-name + plugin skeleton)
+Last session: 2026-05-20T01:25:00.000Z
+Stopped at: Phase 30 Plan 30-04 dogfood verification complete
+Resume next: `/gsd-verify-phase 30` then `/gsd-complete-milestone v1.4`
