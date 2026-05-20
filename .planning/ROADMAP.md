@@ -222,3 +222,16 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete   | 2026-05-17 |
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete    | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete   | 2026-05-20 |
+
+## Backlog
+
+### Phase 999.1: Per-test-bucket / per-judge opt-in granularity in ToolConfig (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-05-19 during Phase 30 UAT-1):** `ToolConfig.skip: true` is whole-tool only. The operator wants per-bucket granularity so the output-conformance bucket (`test_empty_args_call_returns_non_error`, `test_result_has_content_or_structured`, `test_text_content_parses_as_json`) can be skipped for tools whose inputSchema declares required fields, while the deterministic schema bucket and the LLM judge bucket still run. Current workarounds: (a) `skip: true` on the whole tool — loses judge signal; (b) author `call_arguments:` per tool. Proposal: add `ToolConfig.skip_buckets: list[Literal["schema","judge","output"]] = []` so the operator can opt out by bucket. Also consider an auto-skip-output-when-required heuristic (off by default, opt-in via top-level flag) so the framework can detect required-field tools and silently skip the empty-args bucket without per-tool enumeration. SEED-022 (framework primitives; SDET owns safety) stays intact — the operator still chooses; the framework just gets a more precise lever.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
