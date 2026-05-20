@@ -54,7 +54,7 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 ### CLI Demotion + Carry-Forward UAT + Docs (CLOSE)
 
-- [ ] **CLOSE-01**: Framework's own `pyproject.toml` sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (landed in Phase 27 D-06); Phase 30 verifies the dogfood loop is still green at v1.4 close. CLI-mode path (`mcp-contracts run`) continues to subprocess pytest with JUnit XML round-trip and shares the same `ParsedRun` domain model and renderer helpers.
+- [x] **CLOSE-01**: Framework's own `pyproject.toml` sets `[tool.pytest.ini_options] mcp_config_file = "./config.test.yaml"` (landed in Phase 27 D-06); Phase 30 verifies the dogfood loop is still green at v1.4 close. CLI-mode path (`mcp-contracts run`) continues to subprocess pytest with JUnit XML round-trip and shares the same `ParsedRun` domain model and renderer helpers.
 - [ ] **CLOSE-02**: Operator running `mcp-contracts run --config PATH` sees identical pass/fail signal to operator running `pytest` against the same `[tool.pytest.ini_options] mcp_config_file = PATH` — CLI/library parity gated by a CI test that drives both routes against the same fixture config and asserts equivalent JUnit XML output.
 - [ ] **CLOSE-03**: New operator reading the README sees library-mode usage first ("Add to your `pyproject.toml`, set one line in `[tool.pytest.ini_options]`, run pytest"); CLI usage demotes to an "Appendix: CLI usage" section; `docs/LIBRARY-MODE.md` is the primary reference document for the library API surface.
 - [ ] **CLOSE-04**: Carry-forward live-UAT items from v1.2 / v1.3 close as part of the library-mode dogfood pass:
@@ -126,7 +126,7 @@ REQ → Phase mapping populated by roadmapper 2026-05-15. All 28 v1.4 requiremen
 | CODEGEN-LIB-02 | Phase 28 | Complete |
 | REPORTER-01 | Phase 29 | Complete |
 | REPORTER-02 | Phase 29 | Complete |
-| CLOSE-01 | Phase 30 | Pending |
+| CLOSE-01 | Phase 30 | Complete |
 | CLOSE-02 | Phase 30 | Pending |
 | CLOSE-03 | Phase 30 | Pending |
 | CLOSE-04 | Phase 30 | Pending |
