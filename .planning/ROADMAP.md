@@ -246,3 +246,20 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: Always-on host isolation blocks live-UAT + SDET credential paths (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-05-19 during Phase 30 UAT-1 + UAT-2 closure):** `_isolation.py` documents itself as `Isolation is ALWAYS-ON. No toggle, no --no-isolation CLI escape hatch.` On every spawn it (a) strips operator env to an allowlist, (b) redirects HOME / USERPROFILE / TEMP to a temp dir, (c) sets `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null`. This is great for hermetic contract testing but **breaks every live-stack UAT that needs real credentials**: `homelab-mcp` spawned inside the framework cannot reach the operators `~/.homelab_mcp/` config or Proxmox keyring entry, even though `uvx homelab-mcp credentials list` from the operators shell sees them. Same property will block SDET-authored scenarios that exercise real infrastructure.
+
+**Constraint locked by operator:** No keyring faking. We will not add a credential-mock layer to the framework.
+
+**Proposed direction (NOT locked):** Make isolation opt-in instead of always-on. A top-level config field like `host_isolation: strict | passthrough` defaulting to `strict` (todays behavior) with `passthrough` allowing the operator to inherit their hosts env + HOME for live-UAT runs. The operators explicit choice = operators safety responsibility (SEED-022). Likely cost: `passthrough` mode must serialize subprocess spawns (no parallel xdist) because operator credentials become a shared resource -- single MCP session at a time. Acceptable trade for the live-UAT story. Also flushes a class of related gaps: bare `Config()` callers (mcp_config fixture before commit 588ffd1, the test-code scenarios `_load_generated_homelab_mcp` at module import time) all depend on host env -- under passthrough mode the operators MCPTF_CONFIG_FILE survives the spawn naturally; under strict mode the plugin stash route is the only correct path. Decide both axes together so future Config() bare callers dont silently leak operator env in strict mode.
+
+**Adjacent observation (homelab-mcp upstream, not framework):** During the same UAT-1 run the scenario sweep code logged `list_proxmox_resources failed: vm is not one of [qemu,lxc,node,storage,pool]` -- the scenario passes an invalid resource_type. Not blocking 999.3 but worth a one-line fix when the live-UAT path is unblocked. Operator captured in UAT notes for upstream reporting.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)

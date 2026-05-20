@@ -1,0 +1,198 @@
+version: 2
+
+ollama:
+  base_url: http://192.168.10.81:11434
+  model: qwen3.6:latest
+  timeout_seconds: 120
+
+mcp_server:
+  command: uvx
+  args: [homelab-mcp]
+  timeout_seconds: 30
+
+judge_timeout_seconds: 120
+
+# ---------------------------------------------------------------------------
+# tools opt-in allowlist (SEED-022: framework is a primitive; operator owns
+# safety). Phase 30 UAT-1 surfaced that the contract suite calls every
+# enabled tool with empty args during the output-conformance bucket
+# (test_empty_args_call_returns_non_error, test_result_has_content_or_structured,
+# test_text_content_parses_as_json). For tools whose inputSchema declares
+# required: [...] fields, the call is rejected by homelab-mcp upstream
+# (safe) -- but it would still fire against a poorly-coded MCP that
+# validates AFTER side effects.
+#
+# Policy here: only tools that succeed on an empty-args call stay
+# enabled. Required-param tools are skipped until either:
+#   (a) per-tool call_arguments: are authored with dry-run-safe values, or
+#   (b) the framework grows per-test skip granularity ("skip output-
+#       conformance bucket for tools with required-fields") so the judge
+#       + schema buckets can still run against them.
+# Both are tracked as Phase 30 follow-ups.
+# ---------------------------------------------------------------------------
+tools:
+  # --- enabled: empty-args call is safe + meaningful ---
+  list_keyring_credentials: {}
+  suggest_deployments: {}
+  analyze_network_topology: {}
+  create_infrastructure_backup: {}
+  get_network_sitemap: {}
+  list_available_services: {}
+  list_registered_servers: {}
+  purge_failed_discoveries: {}
+  scan_infrastructure_drift: {}
+
+  # --- skipped: required inputSchema fields; empty-args call would always
+  #     error (homelab-mcp upstream catches it today, but the framework
+  #     should not depend on that for safety). Re-enable per tool by
+  #     authoring `call_arguments: {<field>: <safe-value>}`. ---
+  bulk_discover_and_map:
+    skip: true
+    skip_reason: "requires 'targets'; needs call_arguments for safe empty call"
+  check_ansible_service:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  check_service_requirements:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  clone_proxmox_vm:
+    skip: true
+    skip_reason: "requires 'node'; destructive without args; needs call_arguments"
+  control_vm:
+    skip: true
+    skip_reason: "requires 'device_id'; destructive without args; needs call_arguments"
+  create_proxmox_lxc:
+    skip: true
+    skip_reason: "requires 'node'; destructive without args; needs call_arguments"
+  create_proxmox_vm:
+    skip: true
+    skip_reason: "requires 'node'; destructive without args; needs call_arguments"
+  decommission_device:
+    skip: true
+    skip_reason: "requires 'device_id'; destructive without args; needs call_arguments"
+  decommission_device_preview:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  delete_proxmox_vm:
+    skip: true
+    skip_reason: "requires 'node'; destructive without args; needs call_arguments"
+  delete_proxmox_vm_preview:
+    skip: true
+    skip_reason: "requires 'node'; needs call_arguments for safe empty call"
+  deploy_infrastructure:
+    skip: true
+    skip_reason: "requires 'deployment_plan'; destructive without args; needs call_arguments"
+  deploy_vm:
+    skip: true
+    skip_reason: "requires 'device_id'; destructive without args; needs call_arguments"
+  destroy_terraform_service:
+    skip: true
+    skip_reason: "requires 'service_name'; destructive without args; needs call_arguments"
+  destroy_terraform_service_preview:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  discover_and_map:
+    skip: true
+    skip_reason: "requires 'hostname'; needs call_arguments for safe empty call"
+  get_device_changes:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  get_proxmox_node_status:
+    skip: true
+    skip_reason: "requires 'node'; needs call_arguments for safe empty call"
+  get_proxmox_script_info:
+    skip: true
+    skip_reason: "requires 'script_name'; needs call_arguments for safe empty call"
+  get_proxmox_vm_status:
+    skip: true
+    skip_reason: "requires 'node'; needs call_arguments for safe empty call"
+  get_service_info:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  get_service_status:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  get_vm_logs:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  get_vm_status:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  install_service:
+    skip: true
+    skip_reason: "requires 'service_name'; destructive without args; needs call_arguments"
+  list_proxmox_resources:
+    skip: true
+    skip_reason: "requires Proxmox credentials registered via 'homelab-mcp credentials add'; needs call_arguments / live setup"
+  list_vms:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  manage_proxmox_vm:
+    skip: true
+    skip_reason: "requires 'node'; destructive without args; needs call_arguments"
+  plan_terraform_service:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  purge_devices:
+    skip: true
+    skip_reason: "requires 'filter_type'; destructive without args; needs call_arguments"
+  purge_devices_preview:
+    skip: true
+    skip_reason: "requires 'filter_type'; needs call_arguments for safe empty call"
+  refresh_terraform_service:
+    skip: true
+    skip_reason: "requires 'service_name'; needs call_arguments for safe empty call"
+  register_server:
+    skip: true
+    skip_reason: "requires 'hostname'; destructive without args; needs call_arguments"
+  remove_device:
+    skip: true
+    skip_reason: "requires 'device_id'; destructive without args; needs call_arguments"
+  remove_device_preview:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  remove_vm:
+    skip: true
+    skip_reason: "requires 'device_id'; destructive without args; needs call_arguments"
+  remove_vm_preview:
+    skip: true
+    skip_reason: "requires 'device_id'; needs call_arguments for safe empty call"
+  rollback_infrastructure_changes:
+    skip: true
+    skip_reason: "requires 'backup_id'; destructive without args; needs call_arguments"
+  rollback_infrastructure_changes_preview:
+    skip: true
+    skip_reason: "requires 'backup_id'; needs call_arguments for safe empty call"
+  run_ansible_playbook:
+    skip: true
+    skip_reason: "requires 'service_name'; destructive without args; needs call_arguments"
+  scale_services:
+    skip: true
+    skip_reason: "requires 'scaling_plan'; destructive without args; needs call_arguments"
+  search_proxmox_scripts:
+    skip: true
+    skip_reason: "requires 'query'; needs call_arguments for safe empty call"
+  ssh_discover:
+    skip: true
+    skip_reason: "requires 'hostname'; needs call_arguments for safe empty call"
+  ssh_execute_command:
+    skip: true
+    skip_reason: "requires 'hostname'; destructive without args; needs call_arguments"
+  start_interactive_shell:
+    skip: true
+    skip_reason: "requires 'hostname'; needs call_arguments for safe empty call"
+  update_device_config:
+    skip: true
+    skip_reason: "requires 'device_id'; destructive without args; needs call_arguments"
+  update_device_fingerprint:
+    skip: true
+    skip_reason: "requires 'hostname'; destructive without args; needs call_arguments"
+  update_device_fingerprint_preview:
+    skip: true
+    skip_reason: "requires 'hostname'; needs call_arguments for safe empty call"
+  validate_infrastructure_changes:
+    skip: true
+    skip_reason: "requires 'change_plan'; needs call_arguments for safe empty call"
+
+test_code:
+  generated_root: "tests/test_code/_generated"
