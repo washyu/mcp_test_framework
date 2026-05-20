@@ -215,13 +215,20 @@ def pytest_collection_finish(session: pytest.Session) -> None:
         return  # Scenario / test-code / framework-only scope -- CLI owns the banner.
 
     server_cmd = f"{cfg.mcp_server.command} {' '.join(cfg.mcp_server.args)}".strip()
+    # Dedupe: every contract test parametrizes over the same tool list, so a
+    # tool with N contract cases produces N session.items with the same
+    # [<tool>] suffix. RenderContext.discovered_tools is a per-tool surface;
+    # without `set()` the banner shows N*tools and the downstream "Running"
+    # filter iterates duplicates, inflating both counts.
     discovered = sorted(
-        name
-        for name in (
-            _runner._extract_tool_name(item.nodeid)
-            for item in session.items
-        )
-        if name is not None
+        {
+            name
+            for name in (
+                _runner._extract_tool_name(item.nodeid)
+                for item in session.items
+            )
+            if name is not None
+        }
     )
     judges = _runner._compose_judges_from_tool_configs(cfg.tools)
     _STATE.ctx = _runner.RenderContext(
