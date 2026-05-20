@@ -134,6 +134,21 @@ def pytest_configure(config: pytest.Config) -> None:
         return
     if choice == "auto" and not bool(getattr(_ORIGINAL_STDOUT, "isatty", lambda: False)()):
         return
+    # Windows-redirect glyph guard: when pytest runs library-mode and the
+    # operator pipes stdout to a file via `cmd /c "pytest ... > out.txt"`,
+    # Windows defaults sys.stdout to cp1252 which cannot encode the
+    # renderer's U+2717 (✗) / U+2714 (✓) / U+2013 (–) / U+2014 (—) glyphs.
+    # The CLI's wrapper (cli.py:run) does the same reconfigure for the
+    # CLI route; this mirrors it for library mode so the operator gets
+    # the same render across both routes. Guarded with
+    # hasattr() because pytest's capsys wrapper does not implement
+    # reconfigure(); errors='replace' degrades to '?' rather than crashing
+    # on truly hostile streams.
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
     # WR-04: defensive re-init guard. The module-global _STATE assumes one
     # pytest session per process and is torn down in pytest_unconfigure.
     # That assumption holds for the operator's normal `pytest` / `mcp-
