@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: planning
-last_updated: "2026-05-23T05:00:00.000Z"
-last_activity: 2026-05-23
+status: Roadmap created — awaiting `/gsd-plan-phase 31`
+stopped_at: Phase 31 context gathered
+last_updated: "2026-05-23T16:24:51.421Z"
+last_activity: 2026-05-23 — v1.5 ROADMAP.md created (5 phases / 24 reqs / 100% coverage)
 progress:
-  total_phases: 5
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -115,6 +115,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-23T05:00:00.000Z
-Stopped at: v1.5 ROADMAP.md created (5 phases / 24 reqs / 100% coverage)
+Last session: 2026-05-23T16:24:51.412Z
+Stopped at: Phase 31 context gathered
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
