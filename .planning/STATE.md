@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: Roadmap created — awaiting `/gsd-plan-phase 31`
+status: executing
 stopped_at: Phase 31 context gathered
-last_updated: "2026-05-23T16:24:51.421Z"
-last_activity: 2026-05-23 — v1.5 ROADMAP.md created (5 phases / 24 reqs / 100% coverage)
+last_updated: "2026-05-23T23:11:26.294Z"
+last_activity: 2026-05-23 -- Phase 31 execution started
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 **Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
-**Current focus:** v1.5 roadmap created — 5 phases (31–35) / 24 reqs (SHIM×9, BUCKET×5, ISOL×6, V1DROP×4). Cleanup + hardening milestone closing v1.4 dogfood feedback (per-bucket skip + isolation passthrough) and retiring v1.4-introduced deprecation shims locked at v1.5 expiry; decommissioning v1-schema migration path. Out of v1.5: xdist (SEED-002), OpenAI-compat judge (SEED-005), rubrics-as-data (SEED-003 + Phase 16 D-11), 999.2 codegen param-tests, 999.5 self-test env pollution.
+**Current focus:** Phase 31 — config-surface-cleanup-drop-mcptf-config-file-cfg-sdet-alias
 
 ## Current Position
 
-Phase: Not started (roadmap created; planning Phase 31 next)
-Plan: —
-Status: Roadmap created — awaiting `/gsd-plan-phase 31`
-Last activity: 2026-05-23 — v1.5 ROADMAP.md created (5 phases / 24 reqs / 100% coverage)
+Phase: 31 (config-surface-cleanup-drop-mcptf-config-file-cfg-sdet-alias) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 31
+Last activity: 2026-05-23 -- Phase 31 execution started
 
 ## Performance Metrics
 
