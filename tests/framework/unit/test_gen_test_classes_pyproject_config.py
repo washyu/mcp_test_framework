@@ -95,18 +95,25 @@ def test_config_flag_overrides_pyproject_ini(
     assert resolved == flag_explicit
 
 
-def test_env_var_still_works_when_no_pyproject_ini(
+def test_env_var_no_longer_routed_when_no_pyproject_ini(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Phase 31 SHIM-05 D-05 inversion: with no --config, no pyproject
+    ini key, and no ./config.yaml, the resolver fails SAFE-03 even when
+    MCPTF_CONFIG_FILE points at a valid YAML. The env-var branch is gone.
+    """
     env_path = tmp_path / "env.yaml"
     _write_minimal_config_yaml(env_path)
     # pyproject.toml exists but has no [tool.pytest.ini_options]
     _write_pyproject_with_mcp_config_file(tmp_path, None)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(env_path))
     monkeypatch.chdir(tmp_path)
-    cfg, resolved = _load_config(path=None)
-    assert cfg is not None
-    assert resolved == env_path
+    # The resolver must fail-loud via SAFE-03 because no cwd config.yaml
+    # exists. The env-pointed YAML is NEVER consulted.
+    import typer
+    with pytest.raises(typer.Exit) as exc_info:
+        _load_config(path=None)
+    assert exc_info.value.exit_code == 2
 
 
 def test_missing_pyproject_falls_through_to_cwd_autodiscovery(

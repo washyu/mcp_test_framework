@@ -272,17 +272,25 @@ def test_safe_03_no_config_found_fails_loud_with_locked_message(
     assert "config-init -o config.yaml" in result.stderr
 
 
-def test_safe_04_mcptf_config_file_typo_exits_2(
+def test_phase_31_mcptf_config_file_typo_no_longer_routed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Phase 13 SAFE-04: typo'd MCPTF_CONFIG_FILE mirrors --config typo."""
+    """Phase 31 SHIM-05 D-05 inversion of legacy SAFE-04 env-var branch.
+
+    Pre-Phase-31: a typo'd MCPTF_CONFIG_FILE raised the SAFE-04 env-var
+    branch error inside ``cli._load_config``.
+    Post-Phase-31: the env-var branch is deleted. With no --config and
+    no ./config.yaml, the resolver falls through to the SAFE-03
+    no-config-found body regardless of MCPTF_CONFIG_FILE contents.
+    """
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(tmp_path / "missing.yaml"))
     runner = _runner()
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 2
-    assert "MCPTF_CONFIG_FILE" in result.stderr
-    assert "does not exist" in result.stderr
+    # SAFE-03 surface fires; env-var-specific wording is gone.
+    assert "no config file found: ./config.yaml" in result.stderr
+    assert "config file not found via MCPTF_CONFIG_FILE" not in result.stderr
 
 
 def test_safe_02_cwd_autodiscovery_picks_up_local_config(
@@ -390,14 +398,17 @@ def test_safe_06_v1_config_emits_locked_migration_message(
     assert "config-init -o config.yaml.new" in result.stderr
 
 
-def test_safe_06_v1_config_via_env_var_emits_locked_migration_message(
+def test_phase_31_v1_config_via_env_var_no_longer_routed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Phase 13 SAFE-06 (revision iteration 1): the source-label
-    substitution must work via the MCPTF_CONFIG_FILE entry path, not
-    only via --config. The LOCKED message echoes <path> back to the
-    operator; pin both paths so the env-var route cannot regress
-    silently."""
+    """Phase 31 SHIM-05 D-05 inversion of legacy SAFE-06 env-var route.
+
+    Pre-Phase-31: setting MCPTF_CONFIG_FILE to a v1 config triggered the
+    SAFE-06 locked migration message via the env-var entry path.
+    Post-Phase-31: the env-var entry path is gone. With no --config and
+    no ./config.yaml, the resolver fails SAFE-03 (no config found); the
+    v1 config at the env-pointed path is never read.
+    """
     cfg = tmp_path / "old.yaml"
     cfg.write_text(
         "version: 1\n"
@@ -411,12 +422,10 @@ def test_safe_06_v1_config_via_env_var_emits_locked_migration_message(
     runner = _runner()
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 2
-    assert "config file uses an older format:" in result.stderr
-    # Source-label substitution: the env-var path must appear verbatim.
-    assert str(cfg) in result.stderr
-    assert "schema version 2 (opt-in" in result.stderr
-    assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
-    assert "config-init -o config.yaml.new" in result.stderr
+    # The env-pointed v1 config is NEVER opened; the resolver falls
+    # straight to SAFE-03.
+    assert "no config file found: ./config.yaml" in result.stderr
+    assert "config file uses an older format:" not in result.stderr
 
 
 def test_cli_errors_static_call_sites_no_banned_tokens() -> None:

@@ -118,8 +118,12 @@ def _build_synthetic_slug_dir(tmp_path: Path) -> Path:
 def _write_config_with_generated_root(tmp_path: Path, generated_root: Path) -> Path:
     """Write a minimal v2 config.yaml with sdet.generated_root pinned.
 
-    Returns the YAML path; caller must monkeypatch MCPTF_CONFIG_FILE to it so
-    the bare ``Config()`` call inside ``mcp_session`` picks it up.
+    Returns the YAML path. Pre-Phase-31: caller monkeypatched
+    MCPTF_CONFIG_FILE so the bare ``Config()`` call inside
+    ``mcp_session`` picked it up. Post-Phase-31 (SHIM-05 D-05) the
+    env-var fallback is gone; callers now use
+    ``_install_session_config`` to monkeypatch the symbol the fixture
+    reads.
     """
     yaml_path = tmp_path / "_test_config.yaml"
     yaml_path.write_text(
@@ -133,6 +137,30 @@ def _write_config_with_generated_root(tmp_path: Path, generated_root: Path) -> P
         encoding="utf-8",
     )
     return yaml_path
+
+
+def _install_session_config(
+    monkeypatch: pytest.MonkeyPatch, yaml_path: Path
+) -> None:
+    """Phase 31 SHIM-05 D-05 test-side wiring shim.
+
+    The ``mcp_session`` fixture calls ``Config()`` bare. Pre-Phase-31 the
+    env-var path-pointer fallback hydrated this from
+    ``MCPTF_CONFIG_FILE``; post-Phase-31 the fallback is gone. To keep
+    these legacy-shape tests passing without reshaping the production
+    fixture in this phase, monkeypatch the ``Config`` symbol the fixture
+    imports so the bare call resolves to ``Config(yaml_file=...)``
+    behind the scenes.
+    """
+    from mcp_test_framework.test_code import session as _session_mod
+    from mcp_test_framework.config import Config as _RealConfig
+
+    def _config_with_yaml(*args, **kwargs):
+        if "yaml_file" not in kwargs and not args:
+            return _RealConfig(yaml_file=str(yaml_path))
+        return _RealConfig(*args, **kwargs)
+
+    monkeypatch.setattr(_session_mod, "Config", _config_with_yaml)
 
 
 # --- D-01: fixture shape ---------------------------------------------------
@@ -216,7 +244,7 @@ async def test_mcp_session_activates_registry_on_entry(
 
     slug_dir = _build_synthetic_slug_dir(tmp_path)
     yaml_path = _write_config_with_generated_root(tmp_path, tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
+    _install_session_config(monkeypatch, yaml_path)
 
     client = _make_fake_client(_SYNTHETIC_SERVER_NAME)
     yielded, snapshot = await _run_fixture(mcp_session, client)
@@ -245,7 +273,7 @@ async def test_mcp_session_restores_prior_state_on_teardown(
 
     _build_synthetic_slug_dir(tmp_path)
     yaml_path = _write_config_with_generated_root(tmp_path, tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
+    _install_session_config(monkeypatch, yaml_path)
 
     # Set non-default prior state
     prior_client_marker = MagicMock(name="prior_client")
@@ -279,7 +307,7 @@ async def test_mcp_session_fail_loud_on_missing_generated_module(
     empty_root = tmp_path / "empty_root"
     empty_root.mkdir()
     yaml_path = _write_config_with_generated_root(tmp_path, empty_root)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
+    _install_session_config(monkeypatch, yaml_path)
 
     client = _make_fake_client("missing-server")
     func = _unwrap(mcp_session)
