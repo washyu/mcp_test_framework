@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 phase: 30-cli-demotion-carry-forward-uat-closure-docs-rewrite
 source: [30-CONTEXT.md, 30-VERIFICATION.md]
 started: 2026-05-17T00:00:00Z
-updated: 2026-05-19T00:00:00Z
+updated: 2026-05-22T00:00:00Z
 ---
 
 ## About this document
