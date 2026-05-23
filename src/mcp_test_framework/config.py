@@ -12,11 +12,11 @@ and hands it to ``YamlConfigSettingsSource``. ``--config`` and
 ``Config(...)`` is constructed. The library-mode entry point
 (``[tool.pytest.ini_options] mcp_config_file = PATH``) is resolved in
 ``_plugin.py:pytest_configure``. Env vars NEVER inject scalar values into
-the model and -- as of Phase 31 SHIM-05 -- never direct the YAML loader
-to a file either; the previously honored ``*_CONFIG_FILE`` env-var
-path-pointer fallback is gone. A loud DeprecationWarning fires from the
-plugin when the deprecated env var is set in the environment so
-operators are not silently confused.
+the model and -- as of v1.5 -- never direct the YAML loader to a file
+either; the previously honored ``*_CONFIG_FILE`` env-var path-pointer
+fallback is gone. A loud DeprecationWarning fires from the plugin when
+the deprecated env var is set in the environment so operators are not
+silently confused.
 
 ``.env`` is dead-letter for the framework's config layer. Sub-model
 ``validation_alias=AliasChoices(...)`` declarations on ``OllamaConfig`` etc.
@@ -227,7 +227,7 @@ class Config(BaseSettings):
         """
         # Locked pop pattern (probe-verified).
         yaml_file = init_settings.init_kwargs.pop("yaml_file", None)
-        # Phase 31 SHIM-05 D-05: the previous env-var
+        # v1.5: the previous env-var
         # path-pointer fallback was deleted. The env var is inert as a
         # value source. The CLI route threads its resolved path through
         # ``-o mcp_config_file=PATH`` (see ``_runner._build_pytest_args``);

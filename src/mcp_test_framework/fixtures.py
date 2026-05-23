@@ -100,7 +100,7 @@ def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `confi
       2. Bare ``Config()`` -- legacy fallback for tests that bypass the
          plugin entirely (e.g. framework self-tests that construct their
          own ``Config`` via ``yaml_file=`` and never hit this fixture).
-         Phase 31 SHIM-05 dropped the env-var path-pointer fallback in
+         v1.5 dropped the env-var path-pointer fallback in
          ``settings_customise_sources``; the only surviving routes are
          ``--config PATH`` (CLI) and ``[tool.pytest.ini_options]
          mcp_config_file = PATH`` (library).

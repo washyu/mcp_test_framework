@@ -147,8 +147,9 @@ def pytest_configure(config: pytest.Config) -> None:
 
     # Emit DeprecationWarning if MCPTF_CONFIG_FILE is set in env.
     #
-    # NOTE for Phase 35 SHIM-09 regression-gate author: this MCPTF_CONFIG_FILE
-    # detection is grandfathered in src/ for v1.5 (CONTEXT D-09); EOL in v1.6.
+    # NOTE for the future EOL planner: this MCPTF_CONFIG_FILE detection is
+    # grandfathered in src/ for v1.5; planned removal lands in v1.6
+    # alongside the other operator-facing env-var removals.
     if os.environ.get("MCPTF_CONFIG_FILE"):
         _original_formatwarning = warnings.formatwarning
 
@@ -167,7 +168,7 @@ def pytest_configure(config: pytest.Config) -> None:
         warnings.formatwarning = _mcptf_formatwarning
         try:
             warnings.warn(
-                # D-06 verbatim wording; the literal substring
+                # Verbatim operator-tone wording; the literal substring
                 # "no longer honored as of v1.5" must remain intact on one
                 # source line so source-side regression scans pass.
                 "MCPTF_CONFIG_FILE is set in your environment but"
