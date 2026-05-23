@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Library Mode Delivery
-status: completed
-stopped_at: v1.4 milestone closed (Phase 30 shipped 2026-05-22)
-last_updated: "2026-05-23T04:00:00.000Z"
-last_activity: 2026-05-22
+milestone: v1.5
+milestone_name: Shim Retirement + Operator Escape Hatches
+status: planning
+last_updated: "2026-05-23T04:31:33.854Z"
+last_activity: 2026-05-23
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,8 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 ## Current Position
 
-Milestone closed. Run `/gsd-new-milestone` to begin v1.5 scoping (questioning → research → requirements → roadmap).
-Last activity: 2026-05-23
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-23 — Milestone v1.5 started
 
 ## Performance Metrics
 

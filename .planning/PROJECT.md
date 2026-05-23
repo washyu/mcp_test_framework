@@ -8,15 +8,17 @@ A pytest-based Python framework for testing MCP (Model Context Protocol) servers
 
 A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in the framework's `src/` tree (SEED-022).
 
-## Current Milestone: Planning v1.5
+## Current Milestone: v1.5 Shim Retirement + Operator Escape Hatches
 
-v1.4 Library Mode Delivery shipped 2026-05-22. v1.5 not yet scoped — run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap.
+**Goal:** Retire v1.4-introduced deprecation shims (locked at v1.5 expiry), decommission the unused v1-schema migration path, and ship the two operator escape hatches (per-bucket skip + isolation passthrough) that v1.4 dogfood revealed as needed.
 
-**Carry-forward debt expected to fold into v1.5 scoping:**
-- Drop v1.4-introduced deprecation shims (sdet package shim, `--sdet` / `gen-sdet-classes` CLI shims, `cfg.sdet.*` alias, `MCPTF_CONFIG_FILE` env-var route, unprefixed fixture aliases, `mcp-test-framework` console-script alias).
-- Promote backlog 999.1 (per-bucket skip), 999.2 (codegen-driven parameter tests), 999.3 (opt-in host isolation), 999.4 (drop v1-schema support), 999.5 (framework self-test env pollution) as scope allows.
-- Phase 16 D-11 `--debug` per-judge breakdown block still dormant (cohort with SEED-003 dynamic rubrics).
-- xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005), URL-style judge kwarg sugar — all deferred at v1.4 scoping with the rationale that they land cleaner on a now-stable library-mode API.
+**Target features:**
+- Drop v1.4 deprecation shims — `sdet` package shim, `--sdet` / `gen-sdet-classes` CLI shims, `cfg.sdet.*` config alias, `MCPTF_CONFIG_FILE` env-var route, unprefixed fixture aliases (`config`/`judge`/`client`/`target_tool`), `mcp-test-framework` console-script alias.
+- 999.1 Per-bucket skip in `ToolConfig` — `skip_buckets: list[Literal["schema","judge","output"]] = []` so required-field tools opt out of the empty-args output bucket while preserving schema + judge signal.
+- 999.3 Opt-in host isolation passthrough — `host_isolation: strict|passthrough` config field (default `strict`); passthrough inherits operator env/HOME for live-UAT (locked: no keyring faking) and serializes spawns (no xdist). Audits bare `Config()` callers in scope.
+- 999.4 Drop v1-schema support — decommission-by-deletion: remove `docs/MIGRATION-v1-to-v2.md`, scrub README + ERROR-STYLE.md refs, relax self-tests pinning v1-rejection verbiage.
+
+**Explicit non-goals (deferred to v1.6+):** SEED-002 xdist parallelism, SEED-005 OpenAI-compat judge backend, SEED-003 + Phase 16 D-11 dynamic rubrics + per-judge breakdown, 999.2 codegen-driven param-test gen, 999.5 self-test env pollution fix (likely re-surfaces during 999.3; will assess then).
 
 ## Current State
 
@@ -127,12 +129,11 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 
 ### Active
 
-Scoped for v1.4 — see "Current Milestone" above. Carry-forward debt to fold in:
+Scoped for v1.5 — see "Current Milestone" above. REQ-IDs land in `.planning/REQUIREMENTS.md` after roadmap creation.
 
-- [ ] README §SDET-scenarios PASS-sample re-capture (live-UAT with Proxmox keyring access — partial SERIALIZER-DOC-01)
-- [ ] Phase 17 SC1 live-stack confirmation at ~70-tool scale (`gen-sdet-classes` against live homelab-mcp + `uv run pyright` on real generated dir)
-- [ ] v1.2 carry-forward live-stack UATs: Phase 13 (v2 config + migration walkthrough), Phase 14 (`test_runner_live_smoke.py` + visual domain UI checks)
-- [ ] 20 dormant seeds in backlog parking lot — re-triage (SEED-001/002/003/005/006/012/013/015/016/017/018/021/023 etc.; SEED-010 absorbed Phase 15, SEED-011 absorbed Phase 14)
+Carry-forward outside v1.5 scope:
+- 15 dormant seeds in backlog parking lot — re-triage at v1.5 close (SEED-001/002/003/005/006/012/013/016/017/018/021 etc.)
+- Backlog 999.2 (codegen-driven param-test gen) + 999.5 (self-test env pollution) — deferred; 999.5 likely re-surfaces during 999.3 isolation work.
 
 ### Out of Scope
 
@@ -226,4 +227,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-22 — v1.4 Library Mode Delivery shipped. Primary surface is pytest-native: operator sets `[tool.pytest.ini_options] mcp_config_file = PATH` in `pyproject.toml` and the `mcp-contracts` plugin injects parametrized contract tests into their own `pytest` collection (no `register()` API — dropped at Phase 27 D-01 in favor of the ini route). Public API surface renamed (sdet → test_code) and locked. CLI demoted to appendix; `docs/LIBRARY-MODE.md` is the primary reference. v1.5 not yet scoped; carry-forward debt = drop v1.4 deprecation shims + promote backlog 999.1/.2/.3/.4/.5.*
+*Last updated: 2026-05-22 — v1.5 Shim Retirement + Operator Escape Hatches scoped. Theme: close v1.4 dogfood feedback (per-bucket skip + isolation passthrough) and retire the v1.4-introduced deprecation shims locked at v1.5 expiry; decommission v1-schema migration path. Out of v1.5: xdist (SEED-002), OpenAI-compat judge (SEED-005), rubrics-as-data (SEED-003 + Phase 16 D-11), 999.2 codegen param-tests, 999.5 self-test env pollution.*
