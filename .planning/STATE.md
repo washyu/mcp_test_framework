@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Library Mode Delivery
-status: executing
-stopped_at: Phase 30 Plan 30-04 dogfood verification complete
-last_updated: "2026-05-23T03:56:34.918Z"
-last_activity: 2026-05-23
+status: completed
+stopped_at: v1.4 milestone closed (Phase 30 shipped 2026-05-22)
+last_updated: "2026-05-23T04:00:00.000Z"
+last_activity: 2026-05-22
 progress:
-  total_phases: 11
+  total_phases: 6
   completed_phases: 6
   total_plans: 27
   completed_plans: 27
@@ -18,16 +18,14 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-15 after v1.3 milestone close + v1.4 scoping)
+See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
-**Core value:** A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 30 — cli-demotion-carry-forward-uat-closure-docs-rewrite
+**Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
+**Current focus:** Planning v1.5 — candidate cohort: drop v1.4 deprecation shims (sdet shim, MCPTF_CONFIG_FILE, unprefixed fixtures, mcp-test-framework console-script alias) + promote backlog 999.1/999.2/999.3/999.4/999.5 + Phase 16 D-11 per-judge breakdown + SEED-002 (xdist) + SEED-005 (OpenAI-compat judge) + SEED-003 (dynamic rubrics).
 
 ## Current Position
 
-Phase: 30 (cli-demotion-carry-forward-uat-closure-docs-rewrite) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute
+Milestone closed. Run `/gsd-new-milestone` to begin v1.5 scoping (questioning → research → requirements → roadmap).
 Last activity: 2026-05-23
 
 ## Performance Metrics
