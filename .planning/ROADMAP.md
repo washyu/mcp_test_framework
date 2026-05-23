@@ -7,6 +7,7 @@
 - ✅ **v1.2 Operator-First Design** — Phases 12–16 (shipped 2026-05-12) — see [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 Homelab Scenario Testing** — Phases 17–24 (shipped 2026-05-15) — see [v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
 - ✅ **v1.4 Library Mode Delivery** — Phases 25–30 (shipped 2026-05-22) — see [v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md)
+- 🚧 **v1.5 Shim Retirement + Operator Escape Hatches** — Phases 31–35 (in planning)
 
 ## Phases
 
@@ -75,18 +76,76 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 </details>
 
-### 🚧 v1.5 (Next) — TBD
+### 🚧 v1.5 Shim Retirement + Operator Escape Hatches (Phases 31–35) — IN PROGRESS
 
-Milestone not yet scoped. Run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap.
+- [ ] **Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission** — Tighten the config surface around `mcp_config_file` ini route as the sole library-mode config source; delete the v1→v2 migration path; relax pinned-message self-tests.
+- [ ] **Phase 32: Surface-shim removals — CLI + package + fixtures + discovery** — Delete the v1.4-introduced `sdet`-flavored CLI, package, fixture, console-script, and discovery shims; operator hits operator-tone migration errors pointing at the post-v1.4 names.
+- [ ] **Phase 33: Per-bucket skip granularity in `ToolConfig` (999.1)** — Operator escape hatch for required-field tools: opt out of the output bucket per tool while preserving schema + judge signal; collection-time filtering; digest + `--explain` reflect per-bucket skip; docs walkthrough.
+- [ ] **Phase 34: Opt-in host isolation passthrough (999.3)** — Audit bare `Config()` callers; ship `host_isolation: strict | passthrough` so live-UAT + SDET scenarios reach operator credentials; passthrough clamps xdist to 1; SEED-022 safety delegation surfaced in docs.
+- [ ] **Phase 35: Zero-shim regression gate (capstone)** — Single CI-runnable sweep across import / CLI / config / fixture / discovery surfaces pinning zero matches for every retired shim; blocks reintroduction.
 
-Carry-forward items expected to land in v1.5 (see MILESTONES.md `v1.4 → Carry-forward debt`):
-- Drop v1.4-introduced deprecation shims (sdet package shim, --sdet/gen-sdet-classes CLI shims, cfg.sdet.* alias, MCPTF_CONFIG_FILE env-var route, unprefixed fixture aliases, mcp-test-framework console-script alias).
-- Promote backlog 999.1 / 999.2 / 999.3 / 999.4 / 999.5 as scope allows.
+## Phase Details
+
+### Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission
+**Goal**: Operator's config surface is reduced to one config-resolution route (`mcp_config_file` ini key for library mode + `mcp-contracts run --config PATH` for CLI), one schema version (v2), one valid `test_code:` key — no env-var route, no `sdet:` alias, no v1→v2 migration verbiage anywhere in src/, docs/, or self-tests.
+**Depends on**: Nothing (lands first; all other v1.5 phases work against the cleaned surface)
+**Requirements**: SHIM-04, SHIM-05, V1DROP-01, V1DROP-02, V1DROP-03, V1DROP-04
+**Success Criteria** (what must be TRUE):
+  1. Operator pointing `MCPTF_CONFIG_FILE=/path/config.yaml` at `pytest` sees no config loaded from that path — the env var is silently inert (removed); the operator-tone error guidance points at the `mcp_config_file` ini key + `mcp-contracts run --config`.
+  2. Operator's `config.yaml` with a top-level `sdet:` block is rejected at load time with an operator-tone Pydantic `extra="forbid"` error naming `test_code:` as the correct key — no `Field(alias="sdet")` resolution path remains.
+  3. Operator's `config.yaml` declaring `version: 1` is rejected with a generic operator-tone error pointing at `mcp-contracts config-init` — no migration verbiage, no `docs/MIGRATION-v1-to-v2.md` cross-reference.
+  4. `docs/MIGRATION-v1-to-v2.md` no longer exists on disk; README and `docs/ERROR-STYLE.md` and `docs/LIBRARY-MODE.md` reference `version: 2` directly with no migration callout.
+  5. `uv run pytest tests/framework/` is green at v1.5 baseline with no self-test pinned to the legacy v1-rejection migration-message text.
+**Plans**: TBD
+
+### Phase 32: Surface-shim removals — CLI + package + fixtures + discovery
+**Goal**: Every v1.4-introduced `sdet`-flavored surface shim is gone; operator invoking any legacy name hits an operator-tone error pointing at the post-v1.4 name.
+**Depends on**: Phase 31 (cleaned config surface; `_validate_version` and `extra="forbid"` already tightened before fixture/CLI removals layer in)
+**Requirements**: SHIM-01, SHIM-02, SHIM-03, SHIM-06, SHIM-07, SHIM-08
+**Success Criteria** (what must be TRUE):
+  1. Operator running `from mcp_test_framework.sdet import mcp_session` sees `ModuleNotFoundError` with an operator-tone message pointing at `mcp_test_framework.test_code`; the `sdet` package directory and barrel exports no longer ship.
+  2. Operator running `mcp-contracts run --sdet` or `mcp-contracts gen-sdet-classes` hits a Typer UsageError naming `--test-code` / `gen-test-classes`; the legacy flag/command are no longer registered.
+  3. Operator running `mcp-test-framework run` cannot start the framework — the legacy console-script entry-point is gone from `pyproject.toml` `[project.scripts]`; `mcp-contracts` is the sole console script.
+  4. Operator's tests under `tests/sdet/` are no longer auto-discovered (only `tests/test_code/` is); operator-authored tests referencing the unprefixed `config` / `judge` / `client` / `target_tool` fixtures fail at fixture-resolution time with the prefixed names (`mcp_config` / `mcp_judge` / `mcp_client` / `mcp_target_tool`) surfaced in the error.
+**Plans**: TBD
+
+### Phase 33: Per-bucket skip granularity in `ToolConfig` (999.1)
+**Goal**: Operator can opt out of named test buckets (`schema`, `judge`, `output`) per tool in `config.yaml` while leaving other buckets enabled — the required-field-tool escape hatch identified during Phase 30 UAT-1.
+**Depends on**: Phase 31 (validator + `extra="forbid"` settled; new schema field lands on a stable config surface)
+**Requirements**: BUCKET-01, BUCKET-02, BUCKET-03, BUCKET-04, BUCKET-05
+**Success Criteria** (what must be TRUE):
+  1. Operator setting `tools.<name>.skip_buckets: ["output"]` in `config.yaml` sees the tool's schema + judge tests run while the output-bucket tests do not appear in `pytest --collect-only` output (collection-time filtering — same hotfix pattern as v1.1.1 / 260508-p0b; not rendered as runtime-SKIPPED rows).
+  2. Operator typing `skip_buckets: ["otput"]` (or any other unknown bucket) sees a Pydantic validation error at load time naming the three valid buckets (`schema`, `judge`, `output`).
+  3. Operator running with `--explain` sees a grep-able per-tool block listing which buckets were skipped and the config field that drove the skip; the pre-run digest reflects per-bucket skip counts alongside the existing whole-tool skip counts.
+  4. Operator reading README + `docs/LIBRARY-MODE.md` finds a worked example showing a required-field tool skipping only the `output` bucket while schema + judge still run.
+**Plans**: TBD
+
+### Phase 34: Opt-in host isolation passthrough (999.3)
+**Goal**: Operator can opt into `host_isolation: passthrough` so live-UAT and SDET scenarios reach the operator's real credentials, HOME, and keyring — at the explicit cost of xdist parallelism — while every bare `Config()` caller in src/ + tests/ is audited so neither mode silently leaks env across the seam.
+**Depends on**: Phase 31 (config schema surface stable — new `host_isolation` field lands on settled `extra="forbid"` model)
+**Requirements**: ISOL-01, ISOL-02, ISOL-03, ISOL-04, ISOL-05, ISOL-06
+**Success Criteria** (what must be TRUE):
+  1. Operator setting `host_isolation: passthrough` in `config.yaml` and running the framework sees the spawned MCP subprocess inherit the operator's real HOME / USERPROFILE / TEMP / full env vars (allowlist + tempdir redirect bypassed); `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` is NOT injected, so the operator's keyring backend is reachable.
+  2. Operator leaving `host_isolation` unset (or setting `strict`) sees v1.0–v1.4 always-on isolation behavior unchanged: 4-entry allowlist + `MCP_*` prefix + tempdir HOME redirect + null keyring backend.
+  3. Operator running `pytest -n 4` with `host_isolation: passthrough` sees worker count clamped to 1 with an operator-tone explanation that passthrough sacrifices parallelism for credential reachability; `strict` mode preserves xdist compatibility.
+  4. Every bare `Config()` constructor call site in `src/` and `tests/` is identified, documented (which mode it implicitly assumes), and routed through the resolved-config seam so neither mode silently leaks operator env or surprises the operator with a missing-passthrough path.
+  5. Operator reading README + `docs/LIBRARY-MODE.md` finds the `strict`-vs-`passthrough` trade-off documented, the SEED-022 safety-delegation cited, the no-keyring-faking lock surfaced, and the passthrough xdist-incompatibility called out in the same section.
+**Plans**: TBD
+
+### Phase 35: Zero-shim regression gate (capstone)
+**Goal**: A single CI-runnable test sweeps every retired-shim surface and returns zero matches — pinning the v1.5 zero-shim state so accidental reintroduction blocks at PR time.
+**Depends on**: Phase 31 + Phase 32 (the gate asserts the zero state across both config-surface and CLI/package/fixture/discovery removals — must land after every other SHIM/V1DROP ships)
+**Requirements**: SHIM-09
+**Success Criteria** (what must be TRUE):
+  1. Operator running `uv run pytest tests/framework/` sees a single regression-gate test pass that sweeps the importable surface (`mcp_test_framework.sdet`), CLI surface (`--sdet`, `gen-sdet-classes`, `mcp-test-framework`), config surface (`cfg.sdet.*`, `MCPTF_CONFIG_FILE`), fixture names (`config` / `judge` / `client` / `target_tool` unprefixed), and discovery surface (`tests/sdet/`) and returns zero matches across all five.
+  2. Reintroducing any retired shim (e.g. re-adding `--sdet` to the Typer CLI or re-adding `Field(alias="sdet")` to the config model) fails the gate locally and in CI; the failure message names which surface regressed.
+  3. Gate is a single file under `tests/framework/` with no shared fixtures or runtime cost beyond regex sweeps + import probes — runs in <1s standalone.
+**Plans**: TBD
 
 ## Progress
 
-**Execution Order (v1.4):**
-Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal phases (e.g., 27.1) reserved for INSERTED urgent fixes between integer phases.
+**Execution Order (v1.5):**
+Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKET) and Phase 34 (ISOL) are nominally independent of each other and both depend only on Phase 31's settled config surface — order between them is interchangeable; canonical order is 33 then 34. Phase 35 lands LAST (regression gate cannot pass until every other v1.5 shim ships). Decimal phases (e.g., 31.1) reserved for INSERTED urgent fixes between integer phases.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -117,25 +176,19 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29 → 30. Decimal 
 | 22. Scrub requirement-ID leaks from src/ | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 23. Test suite debt cleanup | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 24. Tool call serializer omits unset optional params | v1.3 | 3/3 | Complete | 2026-05-15 |
-| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete    | 2026-05-16 |
-| 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete    | 2026-05-16 |
-| 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete   | 2026-05-17 |
-| 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete   | 2026-05-17 |
-| 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete    | 2026-05-17 |
-| 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete   | 2026-05-20 |
+| 25. Public-API rename (SEED-023) — sdet → test_code | v1.4 | 6/6 | Complete | 2026-05-16 |
+| 26. Packaging foundation -- entry-point + py.typed + dist-name + plugin skeleton | v1.4 | 5/5 | Complete | 2026-05-16 |
+| 27. register() API + contracts sub-package + test extraction | v1.4 | 5/5 | Complete | 2026-05-17 |
+| 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete | 2026-05-17 |
+| 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete | 2026-05-17 |
+| 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
+| 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 0/0 | Not started | — |
+| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 0/0 | Not started | — |
+| 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/0 | Not started | — |
+| 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
+| 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
 
 ## Backlog
-
-### Phase 999.1: Per-test-bucket / per-judge opt-in granularity in ToolConfig (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-1):** `ToolConfig.skip: true` is whole-tool only. The operator wants per-bucket granularity so the output-conformance bucket (`test_empty_args_call_returns_non_error`, `test_result_has_content_or_structured`, `test_text_content_parses_as_json`) can be skipped for tools whose inputSchema declares required fields, while the deterministic schema bucket and the LLM judge bucket still run. Current workarounds: (a) `skip: true` on the whole tool — loses judge signal; (b) author `call_arguments:` per tool. Proposal: add `ToolConfig.skip_buckets: list[Literal["schema","judge","output"]] = []` so the operator can opt out by bucket. Also consider an auto-skip-output-when-required heuristic (off by default, opt-in via top-level flag) so the framework can detect required-field tools and silently skip the empty-args bucket without per-tool enumeration. SEED-022 (framework primitives; SDET owns safety) stays intact — the operator still chooses; the framework just gets a more precise lever.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ### Phase 999.2: Codegen-driven parameter-test generation for required-field tools (BACKLOG)
 
@@ -143,49 +196,7 @@ Plans:
 **Requirements:** TBD
 **Plans:** 0 plans
 
-**Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with backlog 999.1 (per-bucket skip) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.3: Always-on host isolation blocks live-UAT + SDET credential paths (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-1 + UAT-2 closure):** `_isolation.py` documents itself as `Isolation is ALWAYS-ON. No toggle, no --no-isolation CLI escape hatch.` On every spawn it (a) strips operator env to an allowlist, (b) redirects HOME / USERPROFILE / TEMP to a temp dir, (c) sets `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null`. This is great for hermetic contract testing but **breaks every live-stack UAT that needs real credentials**: `homelab-mcp` spawned inside the framework cannot reach the operators `~/.homelab_mcp/` config or Proxmox keyring entry, even though `uvx homelab-mcp credentials list` from the operators shell sees them. Same property will block SDET-authored scenarios that exercise real infrastructure.
-
-**Constraint locked by operator:** No keyring faking. We will not add a credential-mock layer to the framework.
-
-**Proposed direction (NOT locked):** Make isolation opt-in instead of always-on. A top-level config field like `host_isolation: strict | passthrough` defaulting to `strict` (todays behavior) with `passthrough` allowing the operator to inherit their hosts env + HOME for live-UAT runs. The operators explicit choice = operators safety responsibility (SEED-022). Likely cost: `passthrough` mode must serialize subprocess spawns (no parallel xdist) because operator credentials become a shared resource -- single MCP session at a time. Acceptable trade for the live-UAT story. Also flushes a class of related gaps: bare `Config()` callers (mcp_config fixture before commit 588ffd1, the test-code scenarios `_load_generated_homelab_mcp` at module import time) all depend on host env -- under passthrough mode the operators MCPTF_CONFIG_FILE survives the spawn naturally; under strict mode the plugin stash route is the only correct path. Decide both axes together so future Config() bare callers dont silently leak operator env in strict mode.
-
-**Adjacent observation (homelab-mcp upstream, not framework):** During the same UAT-1 run the scenario sweep code logged `list_proxmox_resources failed: vm is not one of [qemu,lxc,node,storage,pool]` -- the scenario passes an invalid resource_type. Not blocking 999.3 but worth a one-line fix when the live-UAT path is unblocked. Operator captured in UAT notes for upstream reporting.
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.4: Drop v1-schema support — remove migration command + README references (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Context (captured 2026-05-19 during Phase 30 UAT-3 retire):** Framework has never been published; there are no live operators carrying v1-schema configs. The v1 -> v2 migration code path was preserved through v1.2/v1.3/v1.4 in case external operators existed; UAT-3 was the planned live verification of that path. Decision: there is no one to migrate. Drop v1-schema support entirely instead of carrying it forward. Decommission-by-deletion replaces UAT-3.
-
-**Scope of removal (inventoried 2026-05-19):**
-
-- `src/mcp_test_framework/config.py:74` — `version: int = 2` field stays, but the `_validate_version` validator at line 193-201 (`config version {v} not supported by this build, expected 2`) can be tightened (still useful as a rejection for typos, but the message no longer references migration).
-- `src/mcp_test_framework/cli.py:252-307` — the entire v1→v2 migration message block in the operator-error mapper (the `# Locked v1 -> v2 migration message` section, the "matters: in v1 a tool with no entry runs by default, in v2 it skips" line, the `docs/MIGRATION-v1-to-v2.md` cross-reference). Delete the message + the special-case detection that triggers it.
-- `docs/MIGRATION-v1-to-v2.md` — delete the whole doc.
-- `docs/ERROR-STYLE.md` — scrub MIGRATION-v1-to-v2 references.
-- `README.md §Configuration` — remove the migration callout / hint, reference v2 directly.
-- `docs/LIBRARY-MODE.md` — sweep for migration references; library-mode docs should describe v2 only.
-- Any framework self-tests that pin the v1-rejection message text need to either delete the test (preferred) or relax to "rejects unsupported version with a clean operator-tone error" without asserting the migration verbiage.
-
-**Risk acknowledgement:** This is one-way — once v1-schema rejection is generic ("unsupported version, run config-init"), an operator who somehow has a v1 config gets less specific guidance. Acceptable given there are no such operators.
-
-**Pairs with:** Retired UAT-3 in `.planning/phases/30-cli-demotion-carry-forward-uat-closure-docs-rewrite/30-UAT.md` (closed-by-deletion). When 999.4 lands, the UAT entry can be left as historical evidence of the decision.
+**Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with v1.5 Phase 33 (per-bucket skip) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
@@ -207,13 +218,13 @@ Likely culprits (NOT investigated -- candidate hypotheses):
 
 **Why this matters:** The frameworks own self-tests are not robust to operator env. An operator running `pytest` in their normal shell (with `MCPTF_CONFIG_FILE` set per docs/LIBRARY-MODE.md) can see spurious self-test failures that arent actually framework bugs. This will surface again every time someone tries to verify library-mode behavior against a populated config.
 
-**Workaround for the current run:** `Remove-Item env:MCPTF_CONFIG_FILE` (PowerShell: `$env:MCPTF_CONFIG_FILE = $null` -- wait, in PowerShell to unset use `Remove-Item env:MCPTF_CONFIG_FILE`; setting to empty string keeps it set per memory `project_worktree_config.md`) and re-run library mode -- the SkipFilter test should pass.
+**Note (post-v1.5 Phase 31):** SHIM-05 removes the `MCPTF_CONFIG_FILE` env-var route entirely in v1.5; the specific repro under "operator shell has MCPTF_CONFIG_FILE set" may no longer reach the framework via the env-var path after Phase 31. The underlying class-of-bug (pydantic-settings deep-merge between init_kwargs and any YAML source under bare `Config()` callers) survives the env-var removal — re-assess at v1.5 close (Phase 34 ISOL-05 audit will surface the bare-caller inventory).
 
 **Proposed resolution scope:**
-- Reproduce in a clean shell to confirm the env-var dependency (the diagnosis above is inferred, not verified).
-- Add a `monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)` to a session-scoped autouse fixture under `tests/framework/conftest.py` that strips operator env from every framework self-test by default. SDET-authored tests opt back in if needed.
+- Reproduce in a clean shell post-Phase-31 to confirm whether the env-var removal closes the symptom or only the surface trigger.
+- Add a `monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)` to a session-scoped autouse fixture under `tests/framework/conftest.py` (defensive even post-removal).
 - If the root cause IS pydantic-settings deep-merging, audit every framework self-test that constructs Config with a custom `tools` dict and either pin them via `Config(yaml_file=tmp_yaml)` (explicit YAML source) or strip the env via monkeypatch.
-- Pairs naturally with 999.3 (always-on isolation) -- both stem from the same problem: framework code paths leaking host env into spawn / test surfaces. 999.3 is operator-facing; 999.5 is framework-internal.
+- Pairs naturally with v1.5 Phase 34 (always-on isolation) -- both stem from the same problem: framework code paths leaking host env into spawn / test surfaces. Phase 34 is operator-facing; 999.5 is framework-internal.
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

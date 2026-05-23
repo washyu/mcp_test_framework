@@ -77,12 +77,44 @@ Decommission-by-deletion: the framework has never been published, no live v1-sch
 
 ## Traceability
 
-Populated by gsd-roadmapper. Each REQ-ID maps to exactly one phase below.
+Each REQ-ID maps to exactly one phase. Populated by gsd-roadmapper 2026-05-23.
 
 | REQ-ID | Phase | Plan(s) |
 |--------|-------|---------|
-| _(populated after roadmap creation)_ | | |
+| SHIM-01 | Phase 32 | TBD |
+| SHIM-02 | Phase 32 | TBD |
+| SHIM-03 | Phase 32 | TBD |
+| SHIM-04 | Phase 31 | TBD |
+| SHIM-05 | Phase 31 | TBD |
+| SHIM-06 | Phase 32 | TBD |
+| SHIM-07 | Phase 32 | TBD |
+| SHIM-08 | Phase 32 | TBD |
+| SHIM-09 | Phase 35 | TBD |
+| BUCKET-01 | Phase 33 | TBD |
+| BUCKET-02 | Phase 33 | TBD |
+| BUCKET-03 | Phase 33 | TBD |
+| BUCKET-04 | Phase 33 | TBD |
+| BUCKET-05 | Phase 33 | TBD |
+| ISOL-01 | Phase 34 | TBD |
+| ISOL-02 | Phase 34 | TBD |
+| ISOL-03 | Phase 34 | TBD |
+| ISOL-04 | Phase 34 | TBD |
+| ISOL-05 | Phase 34 | TBD |
+| ISOL-06 | Phase 34 | TBD |
+| V1DROP-01 | Phase 31 | TBD |
+| V1DROP-02 | Phase 31 | TBD |
+| V1DROP-03 | Phase 31 | TBD |
+| V1DROP-04 | Phase 31 | TBD |
+
+**Coverage:** 24 / 24 reqs mapped (100%).
+
+**Phase distribution:**
+- Phase 31 (config-surface cleanup): 6 reqs — SHIM-04, SHIM-05, V1DROP-01..04
+- Phase 32 (surface-shim removals): 6 reqs — SHIM-01, SHIM-02, SHIM-03, SHIM-06, SHIM-07, SHIM-08
+- Phase 33 (per-bucket skip): 5 reqs — BUCKET-01..05
+- Phase 34 (isolation passthrough): 6 reqs — ISOL-01..06
+- Phase 35 (regression gate): 1 req — SHIM-09 (capstone)
 
 ---
 
-*Defined 2026-05-22 at v1.5 milestone start (24 reqs across 4 categories; cleanup/hardening milestone closing v1.4 dogfood feedback).*
+*Defined 2026-05-22 at v1.5 milestone start (24 reqs across 4 categories; cleanup/hardening milestone closing v1.4 dogfood feedback). Traceability populated 2026-05-23 at roadmap creation.*
