@@ -86,6 +86,49 @@ def test_error_style_safe_06_body_matches_cli_wiring() -> None:
     assert "config-init -o config.yaml.new" in cli_text
 
 
+def test_error_style_sdet_rejection_message(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Phase 31 SHIM-04: a `sdet:`-keyed config triggers the D-02 three-part
+    operator-tone rejection message via the
+    `_emit_operator_error_for_validation` dispatcher branch added in Task 2.
+
+    Pins the verbatim summary/detail/next_step text from CONTEXT D-02.
+    Future drift -- in either cli.py or this test -- breaks the assertion."""
+    import typer
+    from pydantic import ValidationError
+
+    from mcp_test_framework.cli import _emit_operator_error_for_validation
+    from mcp_test_framework.config import Config
+
+    cfg = tmp_path / "sdet.yaml"
+    cfg.write_text(
+        "version: 2\nsdet:\n  generated_root: out\n",
+        encoding="utf-8",
+    )
+    try:
+        Config(yaml_file=str(cfg))
+    except ValidationError as exc:
+        with pytest.raises(typer.Exit) as exit_info:
+            _emit_operator_error_for_validation(exc, source=str(cfg))
+        assert exit_info.value.exit_code == 2
+        captured = capsys.readouterr()
+        text = captured.out + captured.err
+        # Verbatim D-02 wording (operator-approved during /gsd-discuss-phase).
+        assert "unknown config key: sdet" in text
+        assert (
+            "the `sdet:` key was renamed to `test_code:` in v1.4 and removed in v1.5."
+            in text
+        )
+        assert "your existing block under `sdet:` ports forward unchanged" in text
+        assert "rename the `sdet:` key to `test_code:` in your config.yaml" in text
+    else:
+        raise AssertionError(
+            "Config(yaml_file=...) with sdet: key should have raised ValidationError"
+        )
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 
