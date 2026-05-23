@@ -8,29 +8,26 @@ A pytest-based Python framework for testing MCP (Model Context Protocol) servers
 
 A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in the framework's `src/` tree (SEED-022).
 
-## Current Milestone: v1.4 Library Mode Delivery
+## Current Milestone: Planning v1.5
 
-**Goal:** Reframe the framework as an importable Python test package — operator adds it to their MCP server's `pyproject.toml`, writes three lines in `conftest.py`, runs their existing `pytest`. Playwright-for-MCPs.
+v1.4 Library Mode Delivery shipped 2026-05-22. v1.5 not yet scoped — run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap.
 
-**Target features:**
-- **Library-mode delivery (SEED-015)** — `register()` API in `src/mcp_test_framework/contracts/` is the primary entry point; extracts the contract pass (schema + Ollama description judge + output conformance) from `tests/contract/` into importable parametrized tests; pytest plugin entry point (`pytest11`) auto-loads session fixtures; domain UI as opt-in reporter plugin (not CLI post-pass).
-- **Test-code / SDET scenarios ship in the same package** — `mcp_session`, `tool().call()`, `<Tool>Params`/`<Tool>Response` codegen as the secondary surface for operator-authored scenarios.
-- **Public-API rename: `sdet` → `test_code` (SEED-023)** — lock the public import surface (`mcp_test_framework.test_code`, `gen-test-classes`, `--test-code` flag, `tests/test_code/`) before it hardens into "API-this-can't-change" territory.
-- **CLI demotes to optional convenience** — `mcp-test-framework run|list-tools|config-init|version` stay for CI one-liners and discovery; not the primary surface.
-- **Carry-forward UAT closure** — validate generated wrappers actually work and are useful at real scale via the library-mode dogfood: README §SDET-scenarios PASS-sample re-capture, Phase 17 SC1 (~70-tool live), v1.2 Phase 13 + Phase 14 live-stack UATs.
-
-**Out for v1.4 (push to v1.5+):** pytest-xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005). Both land cleaner on a stable library-mode API.
+**Carry-forward debt expected to fold into v1.5 scoping:**
+- Drop v1.4-introduced deprecation shims (sdet package shim, `--sdet` / `gen-sdet-classes` CLI shims, `cfg.sdet.*` alias, `MCPTF_CONFIG_FILE` env-var route, unprefixed fixture aliases, `mcp-test-framework` console-script alias).
+- Promote backlog 999.1 (per-bucket skip), 999.2 (codegen-driven parameter tests), 999.3 (opt-in host isolation), 999.4 (drop v1-schema support), 999.5 (framework self-test env pollution) as scope allows.
+- Phase 16 D-11 `--debug` per-judge breakdown block still dormant (cohort with SEED-003 dynamic rubrics).
+- xdist parallelism (SEED-002), OpenAI-compat judge backend (SEED-005), URL-style judge kwarg sugar — all deferred at v1.4 scoping with the rationale that they land cleaner on a now-stable library-mode API.
 
 ## Current State
 
-**Shipped:** v1.3 Homelab Scenario Testing (2026-05-15)
+**Shipped:** v1.4 Library Mode Delivery (2026-05-22)
 
-- 27 phases shipped (v1.0 + v1.1 + v1.2 + v1.3), 111+ plans across all four milestones, 114/114 requirements satisfied (29 + 25 + 31 + 29; 2 of the v1.3 entries close-by-design on a manual live-UAT — see Deferred Items)
-- v1.3 delivered: codegen surface (`gen-sdet-classes` → typed `<Tool>Params`/`<Tool>Response`), SDET test surface (`tests/sdet/`, `mcp_session`, `tool()`, `--sdet` flag), `ToolCallError` typed errors with em-dash FAIL surfacing + `--debug` appendix, stateful primitives (yield-fixture cleanup contract, pytest-order recipe), `_render_per_tool_rows` scenario integration, config-driven generated root (`cfg.sdet.generated_root` — framework `src/` contains zero SUT-specific code), `exclude_unset=True` serializer (SEED-022 user-intent discriminator), planning-ID scrub from `src/` and `--help`, test suite green-up to 578 passed
-- v1.3 carry-forward debt: README §SDET-scenarios PASS-sample re-capture deferred to manual live-UAT (Plan 24-02 regen-failed contract); Phase 17 SC1 live-stack confirmation at ~70-tool scale; v1.2 Phase 13+14 live-stack UATs (homelab-mcp on PATH) remain open
-- ~19,100+ LOC Python (post-v1.3 — +46,207 / −983 across 218 files in v1.3 alone; src/ proper ~6,100 LOC, tests dominate the rest)
-- v1.3 generalizations: SDET persona is first-class (`docs/SDET-AUTHORING.md` walkthrough, CLAUDE.md dual-persona note, README §SDET scenarios with renderer-parity output); `src/mcp_test_framework/sdet/generated/` deleted from disk (operator-controlled output path); planning-system provenance scrubbed from operator-facing surfaces
-- Live green: `uv run mcp-test-framework run` against live `homelab-mcp` (via `uvx`) + Ollama at `127.0.0.1:11434`; framework self-tests green at 578 passed / 1 skipped / 17 deselected / 2 xfailed
+- 33 phases shipped (v1.0 + v1.1 + v1.2 + v1.3 + v1.4), 138 plans across five milestones, 142/144 requirements satisfied (29 + 25 + 31 + 29 + 28; LIB-05 + CFG-02 removed-by-decision at Phase 27 D-01)
+- v1.4 delivered: framework is now an importable pytest plugin shipped as `mcp-contracts`. Operator adds the wheel to `pyproject.toml`, sets one line in `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"`, and parametrized contract tests appear in their own `pytest` collection. Public API surface renamed (`sdet` → `test_code`) and locked. PyPI dist name corrected (`mvp-test-framework` → `mcp-contracts`); py.typed markers ship; wheel-introspection CI gate live. Domain UI available behind opt-in `--mcp-domain-ui` reporter plugin driven by live `pytest_runtest_logreport` events. Codegen output path is operator-owned (no smart default; pre-handshake site-packages guard). CLI demoted to README appendix; `docs/LIBRARY-MODE.md` is the primary reference. Framework dogfoods library mode via its own `pyproject.toml`.
+- v1.4 carry-forward UATs closed during the dogfood pass: README test-code-scenarios PASS-sample verified post-Phase-24 (UAT-1), Phase 17 SC1 confirmed at 58 enabled tools with pyright clean (UAT-2), Phase 14 CLI/library parity verified at 7-identical-contract-failure resolution (UAT-4). UAT-3 (v1→v2 migration walkthrough) retired-by-deletion (closed via backlog 999.4).
+- ~53,000+ LOC Python overall (v1.4 alone added +34,284 / −2,120 across 181 files — dominated by `src/mcp_test_framework/_plugin.py` + `_reporter.py` + `contracts/` sub-package + tests + docs rewrite)
+- v1.4 generalizations: load-bearing technical bet (`_ContractsModule(_PytestModule)` virtual-module synthesis injecting `<mcp-contracts>::test_<name>[<tool>]` nodeids) shipped without an architecture rewrite. Pytest-asyncio strict-mode loop wiring intact under plugin auto-discovery. Single config-resolution route (`mcp_config_file` ini key) across CLI and library modes; one render path via in-subprocess reporter.
+- Live green: `uv run mcp-contracts run --config config.yaml` and `uv run pytest -o "mcp_config_file=config.yaml"` produce equivalent JUnit XML against live `homelab-mcp` (via `uvx`) + Ollama at `127.0.0.1:11434`; framework self-tests green at 670 passed / 3 skipped / 1 xfailed / 0 failed / 0 errored.
 
 ## Long-term Vision
 
@@ -229,4 +226,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 — v1.4 Library Mode Delivery scoped. Primary surface becomes `mcp_test_framework.contracts.register()` (importable contract pass — schema + Ollama description judge + output conformance), with test-code / SDET scenarios shipping in the same package as the secondary surface. SEED-015 + SEED-023 (sdet→test_code rename) + carry-forward UAT closure. xdist + OpenAI-compat judge pushed to v1.5+.*
+*Last updated: 2026-05-22 — v1.4 Library Mode Delivery shipped. Primary surface is pytest-native: operator sets `[tool.pytest.ini_options] mcp_config_file = PATH` in `pyproject.toml` and the `mcp-contracts` plugin injects parametrized contract tests into their own `pytest` collection (no `register()` API — dropped at Phase 27 D-01 in favor of the ini route). Public API surface renamed (sdet → test_code) and locked. CLI demoted to appendix; `docs/LIBRARY-MODE.md` is the primary reference. v1.5 not yet scoped; carry-forward debt = drop v1.4 deprecation shims + promote backlog 999.1/.2/.3/.4/.5.*

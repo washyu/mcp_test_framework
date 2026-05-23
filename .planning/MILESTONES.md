@@ -1,5 +1,44 @@
 # Milestones — mcp_test_framework
 
+## v1.4 — Library Mode Delivery
+
+**Shipped:** 2026-05-22
+**Phases:** 6 (25, 26, 27, 28, 29, 30)
+**Plans:** 27 / 27 complete
+**Requirements:** 28 / 28 satisfied (LIB-05 + CFG-02 removed-by-decision per Phase 27 D-01; register() API dropped)
+**Source diff:** +34,284 / −2,120 across 181 files (`src/`, `tests/`, `docs/`, `.planning/`)
+**Timeline:** 2026-05-15 → 2026-05-22 (7 days, 174 commits)
+**Tag:** `v1.4`
+
+**Delivered:** The framework is now an importable pytest plugin shipped as `mcp-contracts`. An operator adds the wheel to their MCP server's `pyproject.toml`, sets one line in `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"`, and runs their existing `pytest` — parametrized contract tests appear in their collection, the live MCP server is spawned only when contract items are selected, and the v1.2/v1.3-style domain UI is available behind an opt-in `--mcp-domain-ui` flag. The CLI continues to ship but demotes to an appendix in the README.
+
+**Theme:** Reframe the framework around the operator's existing test runner. Don't make them adopt a parallel CLI; make their `pytest` do the contract pass natively. Lock the public API surface (rename `sdet` → `test_code` before PyPI publish) and prove the library-mode loop by dogfooding it with the framework's own CI.
+
+**Key accomplishments:**
+
+- **Phase 25 — Public-API rename (`sdet` → `test_code`).** Package directory renamed via `git mv`; `gen-sdet-classes` / `--sdet` / `cfg.sdet.*` retained as one-milestone deprecation shims (drop in v1.5); `docs/SDET-AUTHORING.md` renamed to `docs/TEST-CODE-AUTHORING.md`; CI-runnable `test_sdet_rename_leak_gate.py` blocks regression on the public surface. Irreversibility window closed before Phase 26 PyPI-targeted wheel work.
+- **Phase 26 — Packaging foundation.** Dist name corrected from placeholder `mvp-test-framework` to shipping name `mcp-contracts` (the `mcp-test-framework` name is held by an unrelated PyPI project — D-03); `[project.entry-points.pytest11]` declared; `py.typed` PEP 561 markers ship in every operator-imported subpackage; wheel-introspection CI gate fails on missing markers or `tests/` leakage; framework fixtures namespaced (`mcp_config`, `mcp_judge`, `mcp_client`, `mcp_target_tool`) with unprefixed aliases through v1.5.
+- **Phase 27 — pytest-native ini config + contracts injection.** `[tool.pytest.ini_options] mcp_config_file = PATH` is the single library-mode config source. The plugin's `pytest_collection` synthesizes a `_ContractsModule(_PytestModule)` that injects 10 contract tests × N tools as `<mcp-contracts>::test_<name>[<tool>]` nodeids — pure-Python collection, no MCP subprocess spawned. `mcp_contract` marker auto-applied per item; `_preflight` autouse predicate flipped from path-prefix to marker detection. CLI mode now subprocesses `pytest -o "mcp_config_file=PATH"` — one config-resolution route end-to-end. `register()` API dropped in favor of the ini route (D-01); MCPTF_CONFIG_FILE env-var path deprecated with one-milestone warning. Framework dogfoods library mode via its own `pyproject.toml`.
+- **Phase 28 — Codegen output path.** `gen-test-classes` fails loud when `cfg.test_code.generated_root` is unset (no smart default; framework knows nothing about operator layout); pre-handshake site-packages guard refuses to write under the installed package tree; non-empty target prompts via `typer.confirm` in a TTY, aborts exit 2 in non-TTY contexts (no `--yes` / `--force` escape hatch). CLI reads the same `mcp_config_file` ini route as pytest — `gen-test-classes` and `pytest` resolve config identically.
+- **Phase 29 — Live domain-UI reporter plugin.** `--mcp-domain-ui` opt-in reporter driven by live `pytest_runtest_logreport` events (no JUnit XML round-trip); default OFF; CI / no-TTY environments auto-OFF unless `--mcp-domain-ui=force`; xdist controller-only emission; second `[project.entry-points.pytest11]` key so operators can `-p no:mcp_test_framework_reporter` while keeping contract fixtures. `mcp-contracts run` now drives the in-subprocess reporter via `--mcp-domain-ui=force` — library and CLI modes converge on a single render path.
+- **Phase 30 — CLI demotion + carry-forward UAT closure + docs rewrite.** README leads with library-mode usage; CLI demoted to "Appendix: CLI usage"; `docs/LIBRARY-MODE.md` is the primary reference. CLI/library parity gated by `tests/framework/parity/test_cli_vs_pytest_route.py`. Carry-forward live-UAT items closed during the dogfood pass: README test-code-scenarios PASS-sample verified post-Phase-24 (UAT-1), Phase 17 SC1 confirmed at 58 enabled tools (UAT-2), Phase 14 CLI/library parity verified at 7-identical-contract-failure resolution (UAT-4); UAT-3 (Phase 13 v1→v2 migration walkthrough) retired-by-deletion since the framework has never been published and there are no live v1-schema operators (closed-by-deletion via backlog 999.4).
+
+**Carry-forward debt → v1.5:**
+
+- Drop deprecation shims locked at v1.4 introduction: `mcp-test-framework` console-script alias, `gen-sdet-classes` / `--sdet` CLI shims, `cfg.sdet.*` config alias, `tests/sdet/` discovery fallback, `from mcp_test_framework.sdet import ...` package shim, `MCPTF_CONFIG_FILE` env-var route, unprefixed fixture name aliases (`config`, `judge`, `client`, `target_tool`).
+- Backlog items captured during Phase 30 UAT closure (4 of 5 promoted then demoted back when v1.4 was right-sized to its actual delivery):
+  - **999.1** — Per-test-bucket / per-judge opt-in granularity in `ToolConfig` (preserve judge signal while skipping output bucket for required-field tools).
+  - **999.2** — Codegen-driven parameter-test generation for required-field tools (auto-emit typed SDET scenarios from inputSchema example values).
+  - **999.3** — Always-on host isolation blocks live-UAT + SDET credential paths (opt-in `host_isolation: passthrough` mode; operator's explicit choice = operator's safety responsibility per SEED-022).
+  - **999.4** — Drop v1-schema support — remove `docs/MIGRATION-v1-to-v2.md`, scrub README/ERROR-STYLE references, relax framework self-tests that pin the v1-rejection verbiage.
+  - **999.5** — Framework self-test pollution when `MCPTF_CONFIG_FILE` is set (pydantic-settings deep-merge audit + `monkeypatch.delenv` autouse in `tests/framework/conftest.py`).
+- Phase 16 D-11 `--debug` per-judge breakdown block still dormant (cohort with SEED-003).
+- Pre-v1.3 quick-task files (260508-p0b, 260512-dcs, 260513-chh) missing from `.planning/quick/` — acknowledged at v1.3 close; carry forward.
+
+**Archives:** [v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md) · [v1.4-REQUIREMENTS.md](milestones/v1.4-REQUIREMENTS.md)
+
+---
+
 ## v1.3 Homelab Scenario Testing (Shipped: 2026-05-15)
 
 **Phases completed:** 9 phases, 42 plans, 62 tasks
