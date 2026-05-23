@@ -100,8 +100,10 @@ def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `confi
       2. Bare ``Config()`` -- legacy fallback for tests that bypass the
          plugin entirely (e.g. framework self-tests that construct their
          own ``Config`` via ``yaml_file=`` and never hit this fixture).
-         ``settings_customise_sources`` still honours ``MCPTF_CONFIG_FILE``
-         as a path-pointer for backwards compat with v1.3.
+         Phase 31 SHIM-05 dropped the env-var path-pointer fallback in
+         ``settings_customise_sources``; the only surviving routes are
+         ``--config PATH`` (CLI) and ``[tool.pytest.ini_options]
+         mcp_config_file = PATH`` (library).
     """
     cfg = getattr(request.session.config, "_mcp_contracts_config", None)
     if cfg is not None:
@@ -158,11 +160,11 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
 
     Historical note: an earlier version keyed solely on a path prefix
     (``tests/unit/``) that no longer exists in the current layout. The
-    stale check always returned True and forced operators to either set
-    ``MCPTF_CONFIG_FILE`` or pass ``--noconftest``. The predicate was
-    inverted to a live-scope allowlist, and now hybridized with marker
-    detection so plugin-injected synthetic nodeids are covered without
-    a brittle nodeid grammar dependency.
+    stale check always returned True and forced operators to either
+    point the framework at a config file or pass ``--noconftest``. The
+    predicate was inverted to a live-scope allowlist, and now hybridized
+    with marker detection so plugin-injected synthetic nodeids are
+    covered without a brittle nodeid grammar dependency.
     """
     items = getattr(request.session, "items", []) or []
     if not items:
@@ -209,13 +211,13 @@ async def _preflight(request: pytest.FixtureRequest):
     ``request.getfixturevalue`` AFTER the live-MCP scope check, instead of
     as a direct parameter. With ``test_code.generated_root`` now required on
     Config, a bare ``Config()`` constructed for framework-only test
-    sessions (no ``MCPTF_CONFIG_FILE`` set) would fail with the canonical
+    sessions (no operator config) would fail with the canonical
     missing-required-field error (see docs/ERROR-STYLE.md) before the
     short-circuit could run. Fetching the fixture only inside the
     live-MCP branch preserves the missing-config fail-loud behavior where
     it matters (operator-facing live runs) while keeping framework
-    self-tests green without requiring every framework test to set
-    ``MCPTF_CONFIG_FILE``.
+    self-tests green without requiring every framework test to point at
+    a config file.
     """
     if not _session_needs_preflight(request):
         yield
@@ -226,15 +228,17 @@ async def _preflight(request: pytest.FixtureRequest):
     # --- Check 1: MCP binary on PATH ---------------------------------------
     if shutil.which(config.mcp_server.command) is None:
         # Enrich the bare "not found on PATH" with a hint pointing users at
-        # MCPTF_CONFIG_FILE / config.example.yaml. Keep in sync with
-        # tests/conftest.py:_resolve_tool_names (same hint).
+        # the canonical two-route config surface + config.example.yaml.
+        # Keep in sync with tests/conftest.py:_resolve_tool_names (same hint).
         pytest.exit(
             f"MCP command {config.mcp_server.command!r} not found on PATH"
             f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
-            "If you intended to use a different command, point "
-            "MCPTF_CONFIG_FILE at a config.yaml that defines "
-            "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
-            "The repo ships `config.example.yaml` you can copy and edit.",
+            "If you intended to use a different command, set "
+            "`[tool.pytest.ini_options] mcp_config_file = PATH` in "
+            "pyproject.toml or pass `--config PATH` to `mcp-contracts run`, "
+            "pointing at a config.yaml that defines mcp_server.command "
+            "(e.g. `command: uvx, args: [homelab-mcp]`). The repo ships "
+            "`config.example.yaml` you can copy and edit.",
             returncode=2,
         )
 
@@ -318,19 +322,22 @@ async def _preflight(request: pytest.FixtureRequest):
             f"MCP handshake with {config.mcp_server.command!r} failed: "
             f"{exc.__class__.__name__}: {exc}"
         )
-        # Same MCPTF_CONFIG_FILE / config.example.yaml hint as Check 1 above
-        # and tests/conftest.py:_resolve_tool_names, in the rare case Check 1's
-        # shutil.which passed but McpTestClient's belt-and-suspenders re-check
-        # raised FileNotFoundError anyway.
+        # Same canonical-two-route / config.example.yaml hint as Check 1
+        # above and tests/conftest.py:_resolve_tool_names, in the rare case
+        # Check 1's shutil.which passed but McpTestClient's belt-and-
+        # suspenders re-check raised FileNotFoundError anyway.
         if isinstance(exc, FileNotFoundError) and str(exc).startswith(
             "MCP server command not on PATH:"
         ):
             msg += (
                 f"\n\nHint: {config.mcp_server.command!r} was not found on PATH. "
-                "If you intended to use a different command, point "
-                "MCPTF_CONFIG_FILE at a config.yaml that defines "
-                "mcp_server.command (e.g. `command: uvx, args: [homelab-mcp]`). "
-                "The repo ships `config.example.yaml` you can copy and edit."
+                "If you intended to use a different command, set "
+                "`[tool.pytest.ini_options] mcp_config_file = PATH` in "
+                "pyproject.toml or pass `--config PATH` to "
+                "`mcp-contracts run`, pointing at a config.yaml that "
+                "defines mcp_server.command (e.g. `command: uvx, args: "
+                "[homelab-mcp]`). The repo ships `config.example.yaml` "
+                "you can copy and edit."
             )
         pytest.exit(msg, returncode=2)
 
