@@ -149,9 +149,9 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     """D-20: YAML overlay path reaches `tools:` block correctly.
 
     Phase 23 (Cluster A): YAML must declare `version: 2` post the Phase 13
-    v1->v2 migration; bare Config() in this body needs sdet supplied via
+    v1->v2 migration; bare Config() in this body needs test_code supplied via
     YAML (the YAML source layers in atop init kwargs). The YAML now
-    carries the `sdet:` block alongside the `tools:` block to mirror what
+    carries the `test_code:` block alongside the `tools:` block to mirror what
     the operator-facing scaffold emits.
     """
     yaml_path = tmp_path / "config.yaml"
@@ -159,7 +159,7 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
         textwrap.dedent(
             """
             version: 2
-            sdet:
+            test_code:
               generated_root: "tests/sdet/_generated"
             tools:
               foo_tool:
@@ -172,10 +172,6 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
         ).strip() + "\n",
         encoding="utf-8",
     )
-    # v1.5: MCPTF_CONFIG_FILE is no longer a path-pointer fallback; load
-    # via the explicit yaml_file= kwarg the resolver in cli._load_config
-    # now uses end-to-end.
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
     cfg = Config(yaml_file=str(yaml_path))
     assert cfg.version == 2
     assert "foo_tool" in cfg.tools
@@ -388,12 +384,16 @@ def _run_pytest_with_tools_yaml(
         encoding="utf-8",
     )
 
-    env = {**os.environ, "MCPTF_CONFIG_FILE": str(yaml_path)}
+    # v1.5: MCPTF_CONFIG_FILE env-var is inert; thread config through the
+    # surviving D-10 IPC channel (`-o mcp_config_file=PATH`) per Phase 31
+    # SHIM-05. Backlog 999.5 follow-up: the underlying pydantic-settings
+    # deep-merge class-of-bug is Phase 34 ISOL-05's responsibility.
     cmd = [
         sys.executable, "-m", "pytest",
         "tests/test_mcp_tool_contract.py",
         "-v",
         "-W", "default::UserWarning",
+        "-o", f"mcp_config_file={yaml_path}",
         # Override the default addopts marker filter so the inner pytest
         # run actually exercises live tests (the OUTER test is marked
         # @live_homelab/@live_ollama -- the gate is at the outer level).
@@ -402,7 +402,7 @@ def _run_pytest_with_tools_yaml(
     if extra_args:
         cmd.extend(extra_args)
     return subprocess.run(
-        cmd, env=env, capture_output=True, text=True, timeout=300
+        cmd, env=os.environ.copy(), capture_output=True, text=True, timeout=300
     )
 
 

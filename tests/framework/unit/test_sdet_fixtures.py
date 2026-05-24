@@ -131,7 +131,7 @@ def _write_config_with_generated_root(tmp_path: Path, generated_root: Path) -> P
             {
                 "version": 2,
                 "mcp_server": {"command": "uvx", "args": ["x"], "timeout_seconds": 30},
-                "sdet": {"generated_root": str(generated_root)},
+                "test_code": {"generated_root": str(generated_root)},
             }
         ),
         encoding="utf-8",

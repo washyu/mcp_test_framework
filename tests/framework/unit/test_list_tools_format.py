@@ -202,14 +202,14 @@ def test_json_full_orthogonal(
         '  timeout_seconds: 30\n'
         'judge_timeout_seconds: 120\n'
         'version: 2\n'
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        'test_code:\n  generated_root: "tests/sdet/_generated"\n'
         'tools: {}\n',
         encoding="utf-8",
     )
     for var in (
         "OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_TIMEOUT_SECONDS",
         "MCP_SERVER_COMMAND", "MCP_SERVER_ARGS", "MCP_SERVER_TIMEOUT_SECONDS",
-        "JUDGE_TIMEOUT_SECONDS", "TARGET_TOOL_NAME", "MCPTF_CONFIG_FILE",
+        "JUDGE_TIMEOUT_SECONDS", "TARGET_TOOL_NAME",
     ):
         monkeypatch.delenv(var, raising=False)
 

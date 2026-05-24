@@ -53,8 +53,8 @@ import textwrap
 from mcp_test_framework.config import Config
 from mcp_test_framework.models import TestCodeConfig
 
-# Phase 21.1 RELOC-01: Config.sdet is REQUIRED. Tests in this file that
-# construct Config(...) must supply an sdet stub (or set it in YAML).
+# Phase 21.1 RELOC-01: Config.test_code is REQUIRED. Tests in this file that
+# construct Config(...) must supply a test_code stub (or set it in YAML).
 _TEST_CODE_STUB = TestCodeConfig(generated_root="tests/sdet/_generated")
 
 
@@ -72,7 +72,7 @@ def test_config_yaml_homelab_override(tmp_path):
         homelab:
           proxmox:
             dogfood_vmid_range: [9200, 9209]
-        sdet:
+        test_code:
           generated_root: "tests/sdet/_generated"
     """))
     cfg = Config(yaml_file=str(path))
@@ -86,7 +86,7 @@ def test_config_yaml_typo_rejected(tmp_path):
         homelab:
           proxmox:
             dogfood_vmd_range: [1, 2]
-        sdet:
+        test_code:
           generated_root: "tests/sdet/_generated"
     """))
     with pytest.raises(ValidationError) as excinfo:

@@ -38,8 +38,8 @@ def _make_valid_config(tmp_path: Path) -> Path:
         "version: 2\n"
         "ollama:\n  base_url: http://127.0.0.1:11434\n  model: q\n"
         "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\n"
-        # Phase 21.1 RELOC-01: sdet.generated_root is now required on Config.
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        # Phase 21.1 RELOC-01: test_code.generated_root is required on Config.
+        'test_code:\n  generated_root: "tests/sdet/_generated"\n'
         "tools: {}\n",
         encoding="utf-8",
     )
@@ -107,7 +107,6 @@ def test_run_raw_sdet_argv_has_tests_test_code(tmp_path, monkeypatch) -> None:
     """`run --raw --test-code` -> subprocess argv contains tests/test_code,
     not tests/contract. Phase 25 RENAME-04: primary scope is tests/test_code/."""
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)  # No tests/sdet/ in cwd -> dual-discovery inactive.
     captured: dict = {}
     monkeypatch.setattr(
@@ -128,7 +127,6 @@ def test_run_raw_sdet_argv_has_tests_test_code(tmp_path, monkeypatch) -> None:
 def test_run_raw_sdet_with_framework_argv_has_both(tmp_path, monkeypatch) -> None:
     """`run --raw --test-code --with-framework` -> argv has tests/test_code AND tests/framework."""
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
@@ -152,7 +150,6 @@ def test_run_raw_no_sdet_argv_has_tests_contract(tmp_path, monkeypatch) -> None:
     Phase 16 default-path zero-diff guard.
     """
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
@@ -176,7 +173,6 @@ def test_run_sdet_dispatches_scenario_digest(tmp_path, monkeypatch) -> None:
     """D-06: `run --test-code` (non-raw) prints the SDET digest banner, NOT the
     tool-flavored 'MCP Test Framework' banner."""
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
@@ -206,7 +202,6 @@ def test_run_no_sdet_uses_tool_digest(tmp_path, monkeypatch) -> None:
     contract banner is absent from CliRunner output.
     """
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
@@ -236,7 +231,6 @@ def test_run_default_no_sdet_raw_argv_has_tests_contract(
     """D-04 baseline: `run --raw` (no --test-code) argv carries tests/contract,
     not tests/test_code. Phase 16 default-path zero-diff regression."""
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
@@ -257,7 +251,6 @@ def test_run_with_framework_only_argv_has_contract_and_framework(
     """D-05 baseline: `run --raw --with-framework` (no --test-code) argv has
     tests/contract + tests/framework (additive on the contract scope)."""
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(
@@ -280,7 +273,6 @@ def test_run_sdet_q_argv_has_tests_test_code(tmp_path, monkeypatch) -> None:
     which is wrapper-owned). Pinned here to document the asymmetry:
     --test-code is wrapper-only, -q passes through to pytest."""
     cfg_path = _make_valid_config(tmp_path)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(cfg_path))
     monkeypatch.chdir(tmp_path)
     captured: dict = {}
     monkeypatch.setattr(

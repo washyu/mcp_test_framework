@@ -69,8 +69,8 @@ def _make_valid_config(tmp_path: Path, tools: dict | None = None) -> Path:
         "version: 2\n"
         "ollama:\n  base_url: http://127.0.0.1:11434\n  model: q\n"
         "mcp_server:\n  command: uvx\n  args: [homelab-mcp]\n"
-        # Phase 21.1 RELOC-01: sdet.generated_root is now required on Config.
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        # Phase 21.1 RELOC-01: test_code.generated_root is required on Config.
+        'test_code:\n  generated_root: "tests/sdet/_generated"\n'
         + tools_yaml,
         encoding="utf-8",
     )

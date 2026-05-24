@@ -16,9 +16,9 @@ CI-safe: pure-data, no live MCP, no subprocess. Locks the codegen contract
 against silent regressions.
 
 Operates entirely under tmp_path. Does NOT touch any operator-managed
-generated tree at ``cfg.sdet.generated_root`` (Phase 21.1 RELOC-04 removed
-the in-tree ``src/`` generated artifacts; the operator now controls the
-location via ``sdet.generated_root`` in their ``config.yaml``).
+generated tree at ``cfg.test_code.generated_root`` (Phase 21.1 RELOC-04
+removed the in-tree ``src/`` generated artifacts; the operator now controls
+the location via ``test_code.generated_root`` in their ``config.yaml``).
 """
 from __future__ import annotations
 

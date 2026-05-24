@@ -39,7 +39,7 @@ def _write_config(
     generated_root: Path | None = None,
 ) -> Path:
     """Build a config.yaml under tmp_path including the Phase 21.1 RELOC-01
-    required ``sdet.generated_root`` field. Defaults to ``<tmp_path>/_generated``.
+    required ``test_code.generated_root`` field. Defaults to ``<tmp_path>/_generated``.
     """
     if generated_root is None:
         generated_root = tmp_path / "_generated"
@@ -53,7 +53,7 @@ def _write_config(
         },
         # Phase 21.1 RELOC-01: required field. Tests point it at tmp_path so
         # no test writes generated .py files into the installed framework dir.
-        "sdet": {"generated_root": str(generated_root)},
+        "test_code": {"generated_root": str(generated_root)},
     }
     cfg_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
     return cfg_path
@@ -219,12 +219,12 @@ def test_live_homelab_emit_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert "tools:     0 generated" not in result.output
 
 
-def test_write_config_helper_includes_sdet_generated_root(tmp_path: Path) -> None:
+def test_write_config_helper_includes_test_code_generated_root(tmp_path: Path) -> None:
     """Phase 21.1 RELOC-03 regression guard: future test authors must keep
-    the ``sdet.generated_root`` field populated in ``_write_config`` payloads.
+    the ``test_code.generated_root`` field populated in ``_write_config`` payloads.
     """
     cfg_path = _write_config(tmp_path, command="some-command")
     payload = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-    assert "sdet" in payload
-    assert "generated_root" in payload["sdet"]
-    assert payload["sdet"]["generated_root"]  # non-empty
+    assert "test_code" in payload
+    assert "generated_root" in payload["test_code"]
+    assert payload["test_code"]["generated_root"]  # non-empty
