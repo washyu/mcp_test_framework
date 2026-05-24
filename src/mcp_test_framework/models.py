@@ -204,9 +204,8 @@ class TestCodeConfig(BaseModel):
 
     Path resolution: if the value is not absolute, it is interpreted
     relative to the current working directory at the time the config is
-    loaded. Matches the existing convention used for ``MCPTF_CONFIG_FILE``
-    path resolution. Operators using a worktree should set an absolute
-    path or change directory before invoking the CLI.
+    loaded. Operators using a worktree should set an absolute path or
+    change directory before invoking the CLI.
     """
 
     # ``__test__ = False`` tells pytest NOT to collect this Pydantic config

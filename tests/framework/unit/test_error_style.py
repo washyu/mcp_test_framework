@@ -57,18 +57,19 @@ def test_error_style_safe_03_body_matches_cli_wiring() -> None:
     assert "a starter config, then edit it to enable the tools you want to test" in cli_text
 
 
-def test_error_style_safe_04_body_matches_cli_wiring() -> None:
-    """Phase 13 SAFE-04 (env-var branch): cli.py's MCPTF_CONFIG_FILE-typo
-    branch lead and detail must match the locked shape verbatim. The
-    SAFE-04 surface is not pre-locked in ERROR-STYLE.md (it's the
-    parallel-of-SAFE-04-as-defined-for-the-flag-typo), so we pin the
-    wording the plan committed to."""
+def test_error_style_safe_04_env_var_branch_is_gone() -> None:
+    """Phase 31 SHIM-05 D-05 inversion: the env-var-typo branch in cli.py
+    was deleted; the resolver no longer has an MCPTF_CONFIG_FILE arm.
+
+    Replaces the legacy ``test_error_style_safe_04_body_matches_cli_wiring``
+    which pinned the deleted error wording.
+    """
     cli_text = (
         _repo_root() / "src" / "mcp_test_framework" / "cli.py"
     ).read_text("utf-8")
-    assert "config file not found via MCPTF_CONFIG_FILE:" in cli_text
-    assert "the path in MCPTF_CONFIG_FILE does not exist or is not a file." in cli_text
-    assert "check the path or unset MCPTF_CONFIG_FILE and run" in cli_text
+    assert "config file not found via MCPTF_CONFIG_FILE:" not in cli_text
+    assert "the path in MCPTF_CONFIG_FILE does not exist" not in cli_text
+    assert "unset MCPTF_CONFIG_FILE" not in cli_text
 
 
 def test_error_style_safe_06_body_matches_cli_wiring() -> None:

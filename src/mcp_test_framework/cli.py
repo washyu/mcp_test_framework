@@ -11,8 +11,8 @@ Implements the CLI surface documented in docs/mcp_test_framework_mvp_spec.md §C
 Behavior contracts encoded in this module:
 
 - `_load_config(path)` resolves the YAML path
-  (--config > MCPTF_CONFIG_FILE > ./config.yaml) and passes it as a
-  `yaml_file` kwarg to Config(). It returns a (Config, resolved_path)
+  (--config > pyproject.toml mcp_config_file > ./config.yaml) and passes
+  it as a `yaml_file` kwarg to Config(). It returns a (Config, resolved_path)
   tuple; `run()` threads the resolved path to the subprocess pytest via
   `_runner.run_pytest_subprocess(mcp_config_path=...)` so the subprocess
   picks up the same YAML through pytest's `-o "mcp_config_file=PATH"`
@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
 import shutil
 import sys
@@ -473,7 +472,7 @@ def _load_config(
 
     Precedence:
         --config PATH > [tool.pytest.ini_options] mcp_config_file (pyproject.toml)
-        > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
+        > ./config.yaml > fail-loud.
 
     The resolved path is passed to Config() as a `yaml_file` kwarg;
     settings_customise_sources reads it from init_settings.init_kwargs --
@@ -487,8 +486,8 @@ def _load_config(
             raising the no-config-found operator error. This is the
             bootstrap path: the recovery command
             (`config-init -o config.yaml`) must itself run from an
-            unconfigured directory. An explicit-but-broken --config or
-            MCPTF_CONFIG_FILE STILL raises (typo, not bootstrap).
+            unconfigured directory. An explicit-but-broken --config STILL
+            raises (typo, not bootstrap).
             Defaults to False; only `run` keeps the strict no-config
             surface.
 
@@ -505,7 +504,7 @@ def _load_config(
             mechanism (one config-resolution route end-to-end).
     """
     resolved: Path | None = None
-    source_label: str = ""  # "--config" / "MCPTF_CONFIG_FILE" / "./config.yaml"
+    source_label: str = ""  # "--config" / pyproject.toml / "./config.yaml"
 
     # Branch 1: --config wins.
     if path is not None:
@@ -545,32 +544,13 @@ def _load_config(
             resolved = pyproject_path
             source_label = str(pyproject_path)
         else:
-            # Branch 2: MCPTF_CONFIG_FILE.
-            env_path_str = os.environ.get("MCPTF_CONFIG_FILE")
-            if env_path_str:
-                env_path = Path(env_path_str)
-                if not env_path.is_file():
-                    _emit_operator_error(
-                        summary=f"config file not found via MCPTF_CONFIG_FILE: {env_path}",
-                        detail=[
-                            "the path in MCPTF_CONFIG_FILE does not exist or is not a file.",
-                        ],
-                        next_step=(
-                            "check the path or unset MCPTF_CONFIG_FILE and run "
-                            "`mcp-test-framework config-init -o config.yaml` "
-                            "to generate a starter config"
-                        ),
-                    )
-                resolved = env_path
-                source_label = str(env_path)
-            else:
-                # Branch 3: ./config.yaml autodiscovery.
-                cwd_config = Path.cwd() / "config.yaml"
-                if cwd_config.is_file():
-                    resolved = cwd_config
-                    source_label = str(cwd_config)
+            # Branch 2: ./config.yaml autodiscovery.
+            cwd_config = Path.cwd() / "config.yaml"
+            if cwd_config.is_file():
+                resolved = cwd_config
+                source_label = str(cwd_config)
 
-    # Branch 4: nothing found.
+    # Branch 3: nothing found.
     if resolved is None:
         if allow_missing:
             # Bootstrap path: config-init and list-tools may run from an
@@ -694,7 +674,7 @@ def run(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to a YAML config (overrides MCPTF_CONFIG_FILE and ./config.yaml autodiscovery).",
+        help="Path to a YAML config (overrides ./config.yaml autodiscovery).",
     ),
     junit_xml: Path | None = typer.Option(
         None,
@@ -1047,7 +1027,7 @@ def list_tools(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to a YAML config (overrides MCPTF_CONFIG_FILE and ./config.yaml autodiscovery).",
+        help="Path to a YAML config (overrides ./config.yaml autodiscovery).",
     ),
     as_json: bool = typer.Option(
         False,
@@ -1085,8 +1065,9 @@ def list_tools(
     subprocess on teardown, and the wrapper exits with code 130 (no
     message printed).
 
-    From a directory with no config (no --config, no MCPTF_CONFIG_FILE,
-    no ./config.yaml), `list-tools` uses framework defaults rather than
+    From a directory with no config (no --config, no pyproject.toml
+    `mcp_config_file`, no ./config.yaml), `list-tools` uses framework
+    defaults rather than
     failing loud. The fail-loud no-config error applies to `run` only --
     `list-tools` is deliberately bootstrap-friendly so an operator can
     probe a server before opting tools in.
@@ -1142,7 +1123,7 @@ def config_init(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to a YAML config (overrides MCPTF_CONFIG_FILE and ./config.yaml autodiscovery).",
+        help="Path to a YAML config (overrides ./config.yaml autodiscovery).",
     ),
     output: Path | None = typer.Option(
         None,
@@ -1320,8 +1301,7 @@ def gen_test_classes(
         None,
         "--config",
         help=(
-            "Path to a YAML config (overrides MCPTF_CONFIG_FILE and "
-            "./config.yaml autodiscovery)."
+            "Path to a YAML config (overrides ./config.yaml autodiscovery)."
         ),
     ),
 ) -> None:
@@ -1332,7 +1312,7 @@ def gen_test_classes(
     server advertises, where `test_code.generated_root` is the required path
     declared in your config.yaml. Wipe-and-write: rerunning replaces
     the directory wholesale. Honors the standard config-source
-    precedence: --config > MCPTF_CONFIG_FILE > ./config.yaml > fail-loud.
+    precedence: --config > ./config.yaml > fail-loud.
 
     Exit codes:
       0   success
@@ -1347,7 +1327,7 @@ def gen_test_classes(
     # can abort without starting an MCP subprocess.
     # `out_root` is config-driven; the framework never writes generated
     # Python code inside its own install tree. Relative paths are
-    # resolved against CWD (mirrors the MCPTF_CONFIG_FILE convention).
+    # resolved against CWD.
     out_root = cfg.test_code.generated_root
     if not out_root.is_absolute():
         out_root = Path.cwd() / out_root
@@ -1449,8 +1429,7 @@ def _gen_sdet_classes_shim(  # noqa: sdet-rename-shim
         None,  # noqa: sdet-rename-shim
         "--config",  # noqa: sdet-rename-shim
         help=(  # noqa: sdet-rename-shim
-            "Path to a YAML config (overrides MCPTF_CONFIG_FILE and "  # noqa: sdet-rename-shim
-            "./config.yaml autodiscovery)."  # noqa: sdet-rename-shim
+            "Path to a YAML config (overrides ./config.yaml autodiscovery)."  # noqa: sdet-rename-shim
         ),  # noqa: sdet-rename-shim
     ),  # noqa: sdet-rename-shim
 ) -> None:  # noqa: sdet-rename-shim

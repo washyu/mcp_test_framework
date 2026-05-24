@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 import warnings
 from pathlib import Path
 
@@ -145,15 +146,41 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
     # Emit DeprecationWarning if MCPTF_CONFIG_FILE is set in env.
+    #
+    # NOTE for the future EOL planner: this MCPTF_CONFIG_FILE detection is
+    # grandfathered in src/ for v1.5; planned removal lands in v1.6
+    # alongside the other operator-facing env-var removals.
     if os.environ.get("MCPTF_CONFIG_FILE"):
-        warnings.warn(
-            "MCPTF_CONFIG_FILE env var is deprecated since v1.4 and will be "
-            "removed in v1.5 — use `[tool.pytest.ini_options] mcp_config_file = "
-            "PATH` in pyproject.toml or pass `--config PATH` to mcp-contracts "
-            "run instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        _original_formatwarning = warnings.formatwarning
+
+        def _mcptf_formatwarning(message, category, filename, lineno, line=None):
+            # Operator-tone single-block render. Bypasses pytest's default
+            # "<file>:<line>: DeprecationWarning: <msg>" shape so the warning
+            # is unambiguously distinct from pytest's own deprecation chatter.
+            prefix = "[mcp-contracts]"
+            try:
+                if sys.stderr.isatty():
+                    prefix = f"\x1b[31m{prefix}\x1b[0m"
+            except Exception:
+                pass
+            return f"\n{prefix} {message}\n\n"
+
+        warnings.formatwarning = _mcptf_formatwarning
+        try:
+            warnings.warn(
+                # Verbatim operator-tone wording; the literal substring
+                # "no longer honored as of v1.5" must remain intact on one
+                # source line so source-side regression scans pass.
+                "MCPTF_CONFIG_FILE is set in your environment but"
+                " no longer honored as of v1.5;"
+                " configure via `[tool.pytest.ini_options]"
+                " mcp_config_file = PATH` in pyproject.toml or pass"
+                " `--config PATH` to `mcp-contracts run`.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        finally:
+            warnings.formatwarning = _original_formatwarning
 
     # Read ini; empty string = operator opted out, silent no-op.
     raw = (config.getini("mcp_config_file") or "").strip()

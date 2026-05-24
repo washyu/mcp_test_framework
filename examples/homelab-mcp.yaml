@@ -1,6 +1,7 @@
 # Worked reference for the homelab-mcp server.
-# Copy to config.yaml at your project root, or point MCPTF_CONFIG_FILE at it.
-# Precedence: CLI > env > YAML > defaults.
+# Copy to config.yaml at your project root, or pass via --config /
+# [tool.pytest.ini_options] mcp_config_file.
+# Precedence: CLI > YAML > defaults.
 
 ollama:
   base_url: http://127.0.0.1:11434

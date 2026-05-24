@@ -391,6 +391,46 @@ def test_no_cwd_config_yaml_auto_discovery_and_no_fail_loud(
     )
 
 
+def test_phase_31_mcptf_config_file_env_inert_as_value_source(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Phase 31 SHIM-05 D-05: MCPTF_CONFIG_FILE env var is no longer honored
+    as a path-pointer fallback.
+
+    Pre-Phase-31 behavior: ``settings_customise_sources`` fell back to
+    ``os.environ.get("MCPTF_CONFIG_FILE")`` when ``yaml_file`` was absent.
+    Post-Phase-31: the fallback is deleted. A YAML at the env-pointed path
+    is NOT loaded; model defaults win.
+
+    Locks D-05 (env-var inert as value source). The surviving D-06
+    DeprecationWarning lives in ``_plugin.pytest_configure`` (verified by
+    a separate test on the plugin path).
+    """
+    _clear_env(monkeypatch)
+    canary_yaml = tmp_path / "canary.yaml"
+    canary_yaml.write_text(
+        "version: 2\n"
+        "mcp_server:\n  command: sentinel-phase-31-env-canary\n"
+        "ollama:\n  base_url: http://x:11434\n  model: m\n"
+        "tools: {}\n"
+        + _TEST_CODE_YAML_BLOCK,
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(canary_yaml))
+
+    cfg = Config(test_code=_TEST_CODE_STUB)
+
+    # If the env-var fallback survived, the canary command would land in cfg.
+    assert cfg.mcp_server.command != "sentinel-phase-31-env-canary", (
+        "Phase 31 SHIM-05 D-05 regression: MCPTF_CONFIG_FILE env var is "
+        "still honored as a path-pointer fallback by "
+        "settings_customise_sources. The canary YAML at the env-pointed "
+        "path leaked into Config().mcp_server.command."
+    )
+    # Model default lands.
+    assert cfg.mcp_server.command == "homelab-mcp"
+
+
 def test_phase_13_d_11_target_block_in_yaml_rejected(tmp_path: Path) -> None:
     """Phase 13 D-11: v2 has no `target:` field. A leftover v1 `target:`
     block triggers extra=forbid at load time (defense-in-depth alongside

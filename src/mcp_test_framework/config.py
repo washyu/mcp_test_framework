@@ -2,26 +2,27 @@
 
 Precedence:
 
-    CLI/init kwargs (yaml_file=PATH) > MCPTF_CONFIG_FILE (path pointer)
-    > YAML overlay at the resolved PATH > defaults
+    CLI/init kwargs (yaml_file=PATH) > YAML overlay at PATH > defaults
 
 The resolver in ``cli.py:_load_config`` passes the resolved YAML path as an
 explicit ``yaml_file`` kwarg to ``Config(...)``. The custom
 ``settings_customise_sources`` below reads that kwarg from ``init_settings``
-and hands it to ``YamlConfigSettingsSource``. ``MCPTF_CONFIG_FILE`` is read
-as a PATH POINTER only -- a fallback for cases where ``Config()`` is
-instantiated without the kwarg (notably the in-process pytest session
-launched by ``pytest.main`` from ``cli.py:run``). Env vars NEVER inject
-scalar values into the model; they only direct the YAML loader to a file.
-``--config`` and ``./config.yaml`` autodiscovery are resolved in ``cli.py``
-BEFORE ``Config(...)`` is constructed.
+and hands it to ``YamlConfigSettingsSource``. ``--config`` and
+``./config.yaml`` autodiscovery are resolved in ``cli.py`` BEFORE
+``Config(...)`` is constructed. The library-mode entry point
+(``[tool.pytest.ini_options] mcp_config_file = PATH``) is resolved in
+``_plugin.py:pytest_configure``. Env vars NEVER inject scalar values into
+the model and -- as of v1.5 -- never direct the YAML loader to a file
+either; the previously honored ``*_CONFIG_FILE`` env-var path-pointer
+fallback is gone. A loud DeprecationWarning fires from the plugin when
+the deprecated env var is set in the environment so operators are not
+silently confused.
 
 ``.env`` is dead-letter for the framework's config layer.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -102,13 +103,13 @@ class Config(BaseSettings):
         """
         # Locked pop pattern (probe-verified).
         yaml_file = init_settings.init_kwargs.pop("yaml_file", None)
-        # IPC fallback: when no explicit ``yaml_file`` kwarg is given, fall
-        # back to ``MCPTF_CONFIG_FILE`` so the in-process pytest session
-        # spawned by ``cli.py:run`` picks up the operator's resolved path.
-        # This env var is a PATH POINTER, not a value source -- it can only
-        # direct the YAML loader to a file, never inject scalar config values.
-        if yaml_file is None:
-            yaml_file = os.environ.get("MCPTF_CONFIG_FILE")
+        # v1.5: the previous env-var
+        # path-pointer fallback was deleted. The env var is inert as a
+        # value source. The CLI route threads its resolved path through
+        # ``-o mcp_config_file=PATH`` (see ``_runner._build_pytest_args``);
+        # the library route reads it from ``[tool.pytest.ini_options]
+        # mcp_config_file = PATH`` (see ``_plugin.pytest_configure``).
+        # Both routes pass ``yaml_file=`` here; no env var detour.
         sources: list[PydanticBaseSettingsSource] = [init_settings]
         if yaml_file and Path(yaml_file).is_file():
             sources.append(

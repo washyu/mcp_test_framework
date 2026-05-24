@@ -71,10 +71,20 @@ def test_dotenv_example_no_legacy_overlay_decls() -> None:
     assert not found, f"legacy v1.1 env-var declarations still present: {found}"
 
 
-def test_dotenv_example_keeps_mcptf_config_file_hint() -> None:
-    """The framework still reads MCPTF_CONFIG_FILE in v1.2."""
+def test_dotenv_example_no_mcptf_config_file_mention() -> None:
+    """Phase 31 SHIM-05 D-05: .env.example no longer documents
+    ``MCPTF_CONFIG_FILE`` as a config-resolution route.
+
+    The env var is inert as a value source as of v1.5; the only two
+    operator routes are ``--config PATH`` and
+    ``[tool.pytest.ini_options] mcp_config_file = PATH``, neither of
+    which lives in ``.env``.
+    """
     text = DOTENV.read_text(encoding="utf-8")
-    assert "MCPTF_CONFIG_FILE" in text
+    assert "MCPTF_CONFIG_FILE" not in text, (
+        ".env.example must not mention MCPTF_CONFIG_FILE (Phase 31 "
+        "SHIM-05 D-05: env var is inert as a value source)."
+    )
 
 
 def test_dotenv_example_line_count_reasonable() -> None:
