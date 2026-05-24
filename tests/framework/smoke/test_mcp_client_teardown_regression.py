@@ -75,8 +75,8 @@ def test_mcp_client_teardown_no_cancel_scope_error() -> None:
 
     Skip semantics:
       - Skip if `uvx` is not on PATH (cannot run homelab-mcp).
-      - Skip if `config.yaml` is absent at repo root (no MCPTF_CONFIG_FILE
-        to inherit).
+      - Skip if `config.yaml` is absent at repo root (the child pytest
+        needs an explicit `mcp_config_file` ini override to find it).
       - Skip if child returncode is 2 (preflight gated the run; not a
         regression — `_preflight` is the source of truth for env readiness).
     """
@@ -86,7 +86,11 @@ def test_mcp_client_teardown_no_cancel_scope_error() -> None:
     if not config_file.exists():
         pytest.skip("config.yaml absent at repo root — skip live regression")
 
-    env = {**os.environ, "MCPTF_CONFIG_FILE": str(config_file)}
+    # v1.5: thread the config via `-o mcp_config_file=PATH` (the same
+    # IPC channel the CLI wrapper uses end-to-end). MCPTF_CONFIG_FILE
+    # env-var fallback was removed in v1.5.
+    env = {**os.environ}
+    env.pop("MCPTF_CONFIG_FILE", None)
     result = subprocess.run(
         [
             sys.executable, "-m", "pytest",
@@ -95,6 +99,7 @@ def test_mcp_client_teardown_no_cancel_scope_error() -> None:
             "-x",
             "--tb=short",
             "-p", "no:cacheprovider",
+            "-o", f"mcp_config_file={config_file}",
         ],
         cwd=str(_REPO_ROOT),
         env=env,
