@@ -172,8 +172,11 @@ def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
         ).strip() + "\n",
         encoding="utf-8",
     )
+    # v1.5: MCPTF_CONFIG_FILE is no longer a path-pointer fallback; load
+    # via the explicit yaml_file= kwarg the resolver in cli._load_config
+    # now uses end-to-end.
     monkeypatch.setenv("MCPTF_CONFIG_FILE", str(yaml_path))
-    cfg = Config()
+    cfg = Config(yaml_file=str(yaml_path))
     assert cfg.version == 2
     assert "foo_tool" in cfg.tools
     foo = cfg.tools["foo_tool"]
