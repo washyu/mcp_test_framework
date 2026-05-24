@@ -70,7 +70,7 @@ run. Use `-m mcp_contract` to select only the injected contract tests, or
 `-m "not mcp_contract"` to exclude them.
 
 For full depth on the plugin — auto-discovery wiring, marker surface, fixture
-surface, reporter opt-in, migration from `MCPTF_CONFIG_FILE` — see
+surface, reporter opt-in — see
 [`docs/LIBRARY-MODE.md`](docs/LIBRARY-MODE.md).
 
 ### Domain UI reporter (opt-in)
@@ -327,9 +327,8 @@ Default `mcp-contracts run` collects only `tests/contract/`; the
 Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
 
 Library-mode operators set the config path via `[tool.pytest.ini_options]
-mcp_config_file = "./config.yaml"` in `pyproject.toml` — this is the
-recommended path. The `MCPTF_CONFIG_FILE` environment variable is deprecated
-in v1.4 and removed in v1.5; migrate to the ini route above.
+mcp_config_file = "./config.yaml"` in `pyproject.toml`. CLI operators pass
+`--config PATH` to `mcp-contracts run`.
 
 | Env Var | Default | Purpose |
 |---------|---------|---------|
@@ -340,14 +339,14 @@ in v1.4 and removed in v1.5; migrate to the ini route above.
 | `MCP_SERVER_ARGS` | `[]` (JSON list) | Args passed to the launcher (JSON list). |
 | `MCP_SERVER_TIMEOUT_SECONDS` | `30` | Per-SDK-call timeout for stdio operations. |
 | `JUDGE_TIMEOUT_SECONDS` | `120` | Outer-budget cap on judge calls. |
-| `MCPTF_CONFIG_FILE` | unset | Optional path to a YAML config overlay (sits below env in precedence). |
 
 Configure the framework via `config.yaml` — generate a starter with
 `mcp-contracts config-init -o config.yaml` and pass it via
 `--config config.yaml`. Env vars are reserved for CI-secret passthrough only
 (see `.env.example`); they no longer override config values. The framework
 does not auto-discover a `config.yaml` in the current directory; the path
-must be explicit (via `--config` or the `MCPTF_CONFIG_FILE` env var).
+must be explicit (via `--config` for the CLI or
+`[tool.pytest.ini_options] mcp_config_file = PATH` for library mode).
 
 ## Per-tool configuration
 
@@ -606,7 +605,7 @@ The snippet pins actions with major-version tags (`@v5`, `@v6`, `@v2`); operator
 
 ## Links
 
-- [Library mode reference](docs/LIBRARY-MODE.md) — plugin auto-discovery, `mcp_config_file` ini value, fixture surface, reporter, codegen CLI, migration from `MCPTF_CONFIG_FILE`
+- [Library mode reference](docs/LIBRARY-MODE.md) — plugin auto-discovery, `mcp_config_file` ini value, fixture surface, reporter, codegen CLI
 - [Test-code authoring](docs/TEST-CODE-AUTHORING.md) — module-scope fixtures, codegen regen, cross-file ordering, conditional skip recipe, `ToolCallError` surface
 - [Extending the framework](docs/EXTENDING.md) — add a new rubric, swap the judge backend, bootstrap flow for a new MCP server
 - [Error tone style](docs/ERROR-STYLE.md) — operator-facing error message conventions

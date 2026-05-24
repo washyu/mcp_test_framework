@@ -208,7 +208,7 @@ is the lightest-weight way to extend coverage: zero code changes. The schema is
 [Per-tool configuration](../README.md#per-tool-configuration) in the README for
 the field reference. This section walks the workflow.
 
-**Where to drop the recipe:** `config.yaml` (or whichever YAML overlay your `MCPTF_CONFIG_FILE` / `--config` points at). No edits to `tests/conftest.py` or framework source are required.
+**Where to drop the recipe:** `config.yaml` (or whichever YAML overlay your `--config` flag points at). No edits to `tests/conftest.py` or framework source are required.
 
 1. **Discover.** Run `uv run mcp-test-framework list-tools --config config.yaml` to see every tool the connected server advertises.
 2. **Decide.** For each tool, decide whether to `skip`, restrict the `judges` subset, or pre-fill `call_arguments`. Tools you say nothing about run with all rubrics and an empty argument map (the safe defaults).
