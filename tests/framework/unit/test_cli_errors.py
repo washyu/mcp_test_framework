@@ -160,7 +160,7 @@ def test_list_tools_mcp_spawn_failure(
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
         'version: 2\n'
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        'test_code:\n  generated_root: "tests/test_code/_generated"\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -195,7 +195,7 @@ def test_config_init_mcp_spawn_failure(
         '  timeout_seconds: 5\n'
         'judge_timeout_seconds: 120\n'
         'version: 2\n'
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        'test_code:\n  generated_root: "tests/test_code/_generated"\n'
         'tools: {}\n',
         encoding="utf-8",
     )
@@ -302,7 +302,7 @@ def test_safe_02_cwd_autodiscovery_picks_up_local_config(
         "version: 2\n"
         "ollama:\n  base_url: http://127.0.0.1:11434\n  model: qwen3.6:latest\n"
         "mcp_server:\n  command: /bin/true\n  args: []\n"
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        'test_code:\n  generated_root: "tests/test_code/_generated"\n'
         "tools: {}\n",
         encoding="utf-8",
     )
@@ -368,16 +368,17 @@ def test_run_still_fails_loud_in_empty_dir(
 def test_safe_06_v1_config_emits_locked_migration_message(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Phase 13 SAFE-06: loading a v1 config exits 2 with the LOCKED
-    ERROR-STYLE message body (docs/ERROR-STYLE.md:57-73).
+    """Phase 31 V1DROP-03: loading a v1 config exits 2 with the D-11
+    generic operator-tone rejection (CONTEXT D-11).
 
-    Phase 23 D-03 (env-pollution audit): cli._load_config mutates
-    os.environ["MCPTF_CONFIG_FILE"] directly (cli.py:299) so that the
-    in-process pytest session sees the resolved path. monkeypatch.delenv
-    here gives MonkeyPatch a baseline to restore on test teardown --
-    without it the SUT's mutation persists into later tests, e.g.
-    test_homelab_config.test_config_default_homelab loading a stale
-    tmp_path/old.yaml at version: 1 and tripping the version validator.
+    The legacy migration-walkthrough body (v1-vs-v2 walkthrough +
+    cross-reference to the retired migration doc) is gone in this plan;
+    the v1-rejection is now a minimal three-part operator-tone error
+    pointing at `config-init` as the recovery mechanism.
+
+    Phase 23 D-03 baseline (preserved): cli._load_config previously
+    mutated MCPTF_CONFIG_FILE; monkeypatch.delenv keeps the historical
+    isolation contract even though Phase 31 unwired that mutation.
     """
     monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     cfg = tmp_path / "old.yaml"
@@ -392,10 +393,12 @@ def test_safe_06_v1_config_emits_locked_migration_message(
     runner = _runner()
     result = runner.invoke(app, ["run", "--config", str(cfg)])
     assert result.exit_code == 2
-    assert "config file uses an older format:" in result.stderr
-    assert "schema version 2 (opt-in" in result.stderr
-    assert "docs/MIGRATION-v1-to-v2.md" in result.stderr
-    assert "config-init -o config.yaml.new" in result.stderr
+    # D-11 verbatim wording (operator-approved during /gsd-discuss-phase).
+    assert "unsupported config version" in result.stderr
+    assert "this build supports schema version 2" in result.stderr
+    assert "config-init -o config.yaml" in result.stderr
+    # Legacy migration-walkthrough phrases must NOT reappear.
+    assert "the difference matters" not in result.stderr
 
 
 def test_phase_31_v1_config_via_env_var_no_longer_routed(
