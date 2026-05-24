@@ -9,9 +9,8 @@ injected contract-test surface.
 
 This document covers the operator-facing API surface: the `mcp_config_file`
 ini value, the plugin's auto-discovery wiring, the injected virtual test nodes,
-the marker surface, the fixture surface, the optional domain-UI reporter, the
-`gen-test-classes` codegen CLI, and the migration path away from the legacy
-`MCPTF_CONFIG_FILE` environment variable. For the test-code-author surface
+the marker surface, the fixture surface, the optional domain-UI reporter, and
+the `gen-test-classes` codegen CLI. For the test-code-author surface
 (`mcp_session`, `tool()`, `ToolCallError`, scenario authoring conventions),
 see [`docs/TEST-CODE-AUTHORING.md`](TEST-CODE-AUTHORING.md).
 
@@ -114,9 +113,6 @@ Resolution priority table:
 When the ini value is unset, the plugin emits no tests and does not modify
 your collection in any way. You opt in by setting the ini value; you opt out
 by removing it. There is no config-discovery or auto-detect behavior.
-
-Note: the `MCPTF_CONFIG_FILE` environment variable is deprecated in v1.4 and
-removed in v1.5. See the migration section below.
 
 ## Plugin auto-discovery
 
@@ -289,38 +285,6 @@ classes in your own scenario files rather than editing generated source.
 See [`docs/TEST-CODE-AUTHORING.md`](TEST-CODE-AUTHORING.md) for the full
 import patterns, the typed `Params` / `Response` attribute surface, and the
 scenario authoring walkthrough that builds on generated classes.
-
-## Migration from `MCPTF_CONFIG_FILE` env var
-
-In v1.3 and earlier, operators set `MCPTF_CONFIG_FILE` to point at a config
-file without passing `--config` on each invocation. This environment variable
-is deprecated in v1.4 — setting it emits a one-time `DeprecationWarning` at
-the start of each run. The variable is removed in v1.5.
-
-Migration:
-
-```toml
-# Before (v1.3 / v1.4-with-warning):
-# Shell or .env file: MCPTF_CONFIG_FILE=./config.yaml
-
-# After (v1.4 onward — set in pyproject.toml):
-[tool.pytest.ini_options]
-mcp_config_file = "./config.yaml"
-```
-
-For the `mcp-contracts run` CLI, use `--config ./config.yaml` directly:
-
-```bash
-# Before:
-MCPTF_CONFIG_FILE=./config.yaml uv run mcp-contracts run
-
-# After:
-uv run mcp-contracts run --config ./config.yaml
-```
-
-The ini-route approach (the `[tool.pytest.ini_options]` value) is the
-recommended path for library-mode operators. For CLI-only operators, the
-`--config` flag on each subcommand is the explicit equivalent.
 
 ## Error tone
 

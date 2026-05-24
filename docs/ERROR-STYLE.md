@@ -56,21 +56,13 @@ implementations copy them verbatim — copy exactly, do not reword.
 
 ### Config uses an older schema version
 
-    config file uses an older format: <path>
+    unsupported config version <version>
 
-    this release of mcp-test-framework expects schema version 2 (opt-in
-    tool selection); your config is version 1 (opt-out). the difference
-    matters: in v1 a tool with no entry runs by default, in v2 it skips
-    by default.
+    this build supports schema version 2.
+    your config declares version <version>, which is no longer accepted.
 
-    your existing per-tool settings (`call_arguments`, `judges`,
-    `skip_reason`) port forward unchanged -- only the implicit default
-    flips. the migration walkthrough at docs/MIGRATION-v1-to-v2.md shows
-    the steps.
-
-    next: run `mcp-test-framework config-init -o config.yaml.new` to see
-          the v2 layout, port your tool entries across, then replace your
-          existing config
+    next: run `mcp-contracts config-init -o config.yaml` to generate a
+          current scaffold
 
 ## Banned strings (manual review checklist)
 
