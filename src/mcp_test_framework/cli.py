@@ -247,9 +247,9 @@ def _emit_operator_error_for_validation(
 
     Mapping rules:
     - version mismatch (config version N not supported by this build) ->
-        "config file uses an older format" framing. The current build
-        accepts version 2 and rejects v1; the message names the actual
-        mismatch and points at the migration walkthrough.
+        D-11 generic operator-tone rejection (V1DROP-03). The current build
+        accepts only version 2; the message names the actual mismatch and
+        points at `config-init` as the recovery mechanism.
     - missing required field -> point at config.example.yaml
     - other validation errors -> generic detail block with the field path
 
@@ -289,27 +289,22 @@ def _emit_operator_error_for_validation(
         return cleaned
 
     if loc == "version" and "not supported by this build" in msg:
-        # Locked v1 -> v2 migration message -- the canonical text lives in
-        # docs/ERROR-STYLE.md and is pinned by a source-text regression test
-        # under tests/unit/test_error_style.py. Do not reword: keep this
-        # body in sync with the ERROR-STYLE.md spec if you edit it.
+        # v1-rejection: generic operator-tone (V1DROP-03); historical
+        # migration verbiage retired in Phase 31. Parse the actual version
+        # value from the Pydantic error message body --
+        # `_validate_version` raises with "config version {v} not supported
+        # by this build"; extract for substitution into the D-11 wording.
+        m = re.search(r"config version (\S+) not supported", msg)
+        version_val = m.group(1) if m else "?"
         _emit_operator_error(
-            summary=f"config file uses an older format: {source}",
+            summary=f"unsupported config version {version_val}",
             detail=[
-                "this release of mcp-test-framework expects schema version 2 (opt-in",
-                "tool selection); your config is version 1 (opt-out). the difference",
-                "matters: in v1 a tool with no entry runs by default, in v2 it skips",
-                "by default.",
-                "",
-                "your existing per-tool settings (`call_arguments`, `judges`,",
-                "`skip_reason`) port forward unchanged -- only the implicit default",
-                "flips. the migration walkthrough at docs/MIGRATION-v1-to-v2.md shows",
-                "the steps.",
+                "this build supports schema version 2.",
+                f"your config declares version {version_val}, which is no longer accepted.",
             ],
             next_step=(
-                "run `mcp-test-framework config-init -o config.yaml.new` to see "
-                "the v2 layout, port your tool entries across, then replace your "
-                "existing config"
+                "run `mcp-contracts config-init -o config.yaml` to generate a "
+                "current scaffold"
             ),
         )
     # SHIM-04 (Phase 31): the v1.4-introduced `cfg.sdet.*` alias is removed
