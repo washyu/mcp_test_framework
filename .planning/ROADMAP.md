@@ -78,7 +78,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 ### 🚧 v1.5 Shim Retirement + Operator Escape Hatches (Phases 31–35) — IN PROGRESS
 
-- [ ] **Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission** — Tighten the config surface around `mcp_config_file` ini route as the sole library-mode config source; delete the v1→v2 migration path; relax pinned-message self-tests.
+- [x] **Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission** — Tighten the config surface around `mcp_config_file` ini route as the sole library-mode config source; delete the v1→v2 migration path; relax pinned-message self-tests. (completed 2026-05-24)
 - [ ] **Phase 32: Surface-shim removals — CLI + package + fixtures + discovery** — Delete the v1.4-introduced `sdet`-flavored CLI, package, fixture, console-script, and discovery shims; operator hits operator-tone migration errors pointing at the post-v1.4 names.
 - [ ] **Phase 33: Per-bucket skip granularity in `ToolConfig` (999.1)** — Operator escape hatch for required-field tools: opt out of the output bucket per tool while preserving schema + judge signal; collection-time filtering; digest + `--explain` reflect per-bucket skip; docs walkthrough.
 - [ ] **Phase 34: Opt-in host isolation passthrough (999.3)** — Audit bare `Config()` callers; ship `host_isolation: strict | passthrough` so live-UAT + SDET scenarios reach operator credentials; passthrough clamps xdist to 1; SEED-022 safety delegation surfaced in docs.
@@ -96,14 +96,14 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
   3. Operator's `config.yaml` declaring `version: 1` is rejected with a generic operator-tone error pointing at `mcp-contracts config-init` — no migration verbiage, no `docs/MIGRATION-v1-to-v2.md` cross-reference.
   4. `docs/MIGRATION-v1-to-v2.md` no longer exists on disk; README and `docs/ERROR-STYLE.md` and `docs/LIBRARY-MODE.md` reference `version: 2` directly with no migration callout.
   5. `uv run pytest tests/framework/` is green at v1.5 baseline with no self-test pinned to the legacy v1-rejection migration-message text.
-**Plans:** 4/6 plans executed
+**Plans:** 6/6 plans complete
 Plans:
 - [x] 31-01-PLAN.md - SHIM-04: Remove sdet: alias machinery + add operator-tone rejection branch
 - [x] 31-02-PLAN.md - SHIM-05: Unwire MCPTF_CONFIG_FILE + D-06 plugin warning + D-08 formatwarning visibility upgrade
 - [x] 31-03-PLAN.md - V1DROP-03/04: Rewrite v1-rejection message to D-11 + relax paired self-tests
 - [x] 31-04-PLAN.md - V1DROP-01/04: Delete docs/MIGRATION-v1-to-v2.md + test_migration_doc.py
-- [ ] 31-05-PLAN.md - V1DROP-02: Doc cross-ref scrub (README, ERROR-STYLE, LIBRARY-MODE, EXTENDING)
-- [ ] 31-06-PLAN.md - V1DROP-04: SDET YAML swaps + remaining self-test cleanup
+- [x] 31-05-PLAN.md - V1DROP-02: Doc cross-ref scrub (README, ERROR-STYLE, LIBRARY-MODE, EXTENDING)
+- [x] 31-06-PLAN.md - V1DROP-04: SDET YAML swaps + remaining self-test cleanup
 
 ### Phase 32: Surface-shim removals — CLI + package + fixtures + discovery
 **Goal**: Every v1.4-introduced `sdet`-flavored surface shim is gone; operator invoking any legacy name hits an operator-tone error pointing at the post-v1.4 name.
@@ -189,7 +189,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 28. Codegen output path (CODEGEN) | v1.4 | 4/4 | Complete | 2026-05-17 |
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
-| 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 4/6 | In Progress|  |
+| 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
 | 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 0/0 | Not started | — |
 | 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/0 | Not started | — |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
