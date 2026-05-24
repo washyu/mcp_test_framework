@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: executing
-stopped_at: Phase 31 complete
-last_updated: "2026-05-24T00:00:00.000Z"
-last_activity: 2026-05-24 -- Phase 31 execution complete (6/6 plans landed)
+status: completed
+stopped_at: Phase 32 context gathered
+last_updated: "2026-05-24T17:27:08.614Z"
+last_activity: 2026-05-24 -- Phase 31 execution complete (6/6 plans landed; 687 framework tests pass)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 6
   completed_plans: 6
-  percent: 14
+  percent: 100
 ---
 
 # Project State
@@ -116,6 +116,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-23T16:24:51.412Z
-Stopped at: Phase 31 context gathered
+Last session: 2026-05-24T17:27:08.606Z
+Stopped at: Phase 32 context gathered
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
