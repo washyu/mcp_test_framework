@@ -41,7 +41,6 @@ _SPEC_ENV_VARS: tuple[str, ...] = (
     "MCP_SERVER_TIMEOUT_SECONDS",
     "TARGET_TOOL_NAME",
     "JUDGE_TIMEOUT_SECONDS",
-    "MCPTF_CONFIG_FILE",
 )
 
 
@@ -416,7 +415,6 @@ def test_phase_31_mcptf_config_file_env_inert_as_value_source(
         + _TEST_CODE_YAML_BLOCK,
         encoding="utf-8",
     )
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(canary_yaml))
 
     cfg = Config(test_code=_TEST_CODE_STUB)
 

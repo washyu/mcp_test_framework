@@ -87,10 +87,8 @@ def test_mcp_client_teardown_no_cancel_scope_error() -> None:
         pytest.skip("config.yaml absent at repo root — skip live regression")
 
     # v1.5: thread the config via `-o mcp_config_file=PATH` (the same
-    # IPC channel the CLI wrapper uses end-to-end). MCPTF_CONFIG_FILE
-    # env-var fallback was removed in v1.5.
+    # IPC channel the CLI wrapper uses end-to-end).
     env = {**os.environ}
-    env.pop("MCPTF_CONFIG_FILE", None)
     result = subprocess.run(
         [
             sys.executable, "-m", "pytest",

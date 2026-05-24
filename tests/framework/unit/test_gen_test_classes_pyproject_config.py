@@ -1,10 +1,10 @@
 """Unit tests for the pyproject.toml mcp_config_file route in _load_config.
 
-Covers the new precedence branch that reads
-`[tool.pytest.ini_options] mcp_config_file` from pyproject.toml between the
-`--config` flag and the `MCPTF_CONFIG_FILE` env-var branches. Fail-soft on
-parse problems; fail-loud when the ini value resolves to a missing file
-(typo defense — do NOT silently mask by falling through to other branches).
+Covers the precedence branch that reads
+`[tool.pytest.ini_options] mcp_config_file` from pyproject.toml below the
+`--config` flag. Fail-soft on parse problems; fail-loud when the ini value
+resolves to a missing file (typo defense — do NOT silently mask by falling
+through to other branches).
 """
 from __future__ import annotations
 
@@ -66,7 +66,9 @@ def _write_pyproject_with_mcp_config_file(
 
 @pytest.fixture(autouse=True)
 def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
+    # No env vars participate in config resolution as of v1.5;
+    # this fixture is a no-op kept for blame continuity.
+    return None
 
 
 def test_gen_test_classes_uses_pyproject_ini_when_no_config_flag(
@@ -106,7 +108,6 @@ def test_env_var_no_longer_routed_when_no_pyproject_ini(
     _write_minimal_config_yaml(env_path)
     # pyproject.toml exists but has no [tool.pytest.ini_options]
     _write_pyproject_with_mcp_config_file(tmp_path, None)
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(env_path))
     monkeypatch.chdir(tmp_path)
     # The resolver must fail-loud via SAFE-03 because no cwd config.yaml
     # exists. The env-pointed YAML is NEVER consulted.
@@ -298,9 +299,8 @@ def test_load_config_walks_upward_for_pyproject(
     Operator invokes `mcp-contracts gen-test-classes` from a subdirectory
     of their project. The CLI must find the same pyproject.toml the
     in-subprocess pytest plugin would discover, otherwise the CLI falls
-    through to MCPTF_CONFIG_FILE / cwd autodiscovery and the operator
-    sees a "no config file found" error despite a perfectly valid
-    pyproject.toml two directories up.
+    through to cwd autodiscovery and the operator sees a "no config file
+    found" error despite a perfectly valid pyproject.toml two directories up.
     """
     inner = tmp_path / "inner.yaml"
     _write_minimal_config_yaml(inner)

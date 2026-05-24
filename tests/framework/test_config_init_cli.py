@@ -62,10 +62,10 @@ def test_refuse_overwrite_without_force(tmp_path: Path) -> None:
 
 @pytest.mark.live_homelab
 def test_default_emits_scaffold_to_stdout() -> None:
-    """D-22 / TOOLCFG-02 / TOOLCFG-04: default mode prints version: 1 + tools: scaffold."""
+    """D-22 / TOOLCFG-02 / TOOLCFG-04: default mode prints version: 2 + tools: scaffold."""
     result = _invoke("config-init")
     assert result.exit_code == 0, result.output
-    assert "version: 1" in result.output
+    assert "version: 2" in result.output
     assert "tools:" in result.output
     # Locked rubric-ID order in scaffold per CONTEXT.md <specifics> + TOOLCFG-04.
     assert "judges: [clarity, disambiguation, parameters]" in result.output
@@ -80,7 +80,7 @@ def test_output_writes_to_file(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert target.exists()
     body = target.read_text(encoding="utf-8")
-    assert "version: 1" in body
+    assert "version: 2" in body
     assert "tools:" in body
 
 
@@ -92,7 +92,7 @@ def test_overwrite_with_force_succeeds(tmp_path: Path) -> None:
     result = _invoke("config-init", "--output", str(target), "--force")
     assert result.exit_code == 0, result.output
     body = target.read_text(encoding="utf-8")
-    assert "version: 1" in body
+    assert "version: 2" in body
     assert body != "# old content\n"
 
 
@@ -125,7 +125,6 @@ def test_scaffold_round_trips_through_config(
                 started = False
     target.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
 
-    monkeypatch.setenv("MCPTF_CONFIG_FILE", str(target))
     from mcp_test_framework.config import Config
     from mcp_test_framework.models import TestCodeConfig
     # Phase 23 D-01 (Cluster A) Pattern S2: Config.test_code is REQUIRED post

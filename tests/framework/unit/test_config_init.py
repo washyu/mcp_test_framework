@@ -97,13 +97,13 @@ def test_scaffold_loadable_via_config(
 ) -> None:
     """CLEAN-05 acceptance: the scaffold loads via Config(yaml_file=...).
 
-    Phase 13 D-06: MCPTF_CONFIG_FILE is no longer a Config() source; the
-    resolver in cli.py passes the resolved path as an explicit kwarg.
+    Phase 13 D-06: env-vars are not Config() sources; the resolver in
+    cli.py passes the resolved path as an explicit kwarg.
     """
     for var in (
         "OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_TIMEOUT_SECONDS",
         "MCP_SERVER_COMMAND", "MCP_SERVER_ARGS", "MCP_SERVER_TIMEOUT_SECONDS",
-        "JUDGE_TIMEOUT_SECONDS", "TARGET_TOOL_NAME", "MCPTF_CONFIG_FILE",
+        "JUDGE_TIMEOUT_SECONDS", "TARGET_TOOL_NAME",
     ):
         monkeypatch.delenv(var, raising=False)
     cfg_path = tmp_path / "config.yaml"
@@ -160,7 +160,6 @@ _SPEC_ENV_VARS = (
     "MCP_SERVER_TIMEOUT_SECONDS",
     "JUDGE_TIMEOUT_SECONDS",
     "TARGET_TOOL_NAME",
-    "MCPTF_CONFIG_FILE",
 )
 
 

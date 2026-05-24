@@ -133,7 +133,7 @@ def test_phase_31_bare_config_does_not_pick_up_mcptf_config_file(
         "mcp_server:\n"
         "  command: uvx\n"
         "  args: [homelab-mcp]\n"
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        'test_code:\n  generated_root: "tests/sdet/_generated"\n'
         "tools:\n"
         "  list_registered_servers:\n"
         "    skip: false\n",
@@ -190,7 +190,7 @@ def test_resolver_returns_resolved_path_and_does_not_write_env_var(
         "mcp_server:\n"
         "  command: uvx\n"
         "  args: [homelab-mcp]\n"
-        'sdet:\n  generated_root: "tests/sdet/_generated"\n'
+        'test_code:\n  generated_root: "tests/sdet/_generated"\n'
         "tools:\n"
         "  alpha:\n"
         "    skip: false\n"
@@ -221,3 +221,31 @@ def test_resolver_returns_resolved_path_and_does_not_write_env_var(
     # closes.
     import os as _os
     assert _os.environ.get("MCPTF_CONFIG_FILE") is None
+
+
+def test_phase_31_build_pytest_args_emits_mcp_config_file_ini_override(
+    tmp_path,
+) -> None:
+    """Phase 31 SHIM-05 D-10: ``_build_pytest_args`` is the SOLE surviving
+    CLI->plugin channel for the resolved YAML path.
+
+    Positive regression on the D-10 IPC channel. When the resolver supplies
+    ``mcp_config_path=PATH``, ``_build_pytest_args`` MUST emit
+    ``-o mcp_config_file=PATH`` so the in-subprocess plugin's
+    ``pytest_configure`` can read it through the same ini key library-mode
+    operators set in ``[tool.pytest.ini_options]``.
+    """
+    from mcp_test_framework._runner import _build_pytest_args
+
+    cfg_path = tmp_path / "cfg.yaml"
+    args = _build_pytest_args(
+        junit_xml=None,
+        pytest_args=None,
+        mcp_config_path=cfg_path,
+    )
+    # The `-o mcp_config_file=PATH` pair MUST be present in argv. Match
+    # adjacent positions so we don't accept an accidental orphan `-o`.
+    expected = f"mcp_config_file={cfg_path}"
+    assert expected in args, args
+    idx = args.index(expected)
+    assert idx > 0 and args[idx - 1] == "-o", args

@@ -247,9 +247,9 @@ def _emit_operator_error_for_validation(
 
     Mapping rules:
     - version mismatch (config version N not supported by this build) ->
-        D-11 generic operator-tone rejection (V1DROP-03). The current build
-        accepts only version 2; the message names the actual mismatch and
-        points at `config-init` as the recovery mechanism.
+        generic operator-tone rejection. The current build accepts only
+        version 2; the message names the actual mismatch and points at
+        `config-init` as the recovery mechanism.
     - missing required field -> point at config.example.yaml
     - other validation errors -> generic detail block with the field path
 
@@ -289,11 +289,10 @@ def _emit_operator_error_for_validation(
         return cleaned
 
     if loc == "version" and "not supported by this build" in msg:
-        # v1-rejection: generic operator-tone (V1DROP-03); historical
-        # migration verbiage retired in Phase 31. Parse the actual version
-        # value from the Pydantic error message body --
+        # v1-rejection: generic operator-tone wording. Parse the actual
+        # version value from the Pydantic error message body --
         # `_validate_version` raises with "config version {v} not supported
-        # by this build"; extract for substitution into the D-11 wording.
+        # by this build"; extract for substitution into the rendered wording.
         m = re.search(r"config version (\S+) not supported", msg)
         version_val = m.group(1) if m else "?"
         _emit_operator_error(
@@ -307,32 +306,32 @@ def _emit_operator_error_for_validation(
                 "current scaffold"
             ),
         )
-    # SHIM-04 (Phase 31): the v1.4-introduced `cfg.sdet.*` alias is removed
-    # in v1.5. The Config model's bare `extra="forbid"` surfaces top-level
-    # `sdet:` as a Pydantic `extra_forbidden` error with `loc=('sdet',)`.
-    # Map that exact shape to the D-02 operator-tone three-part message
-    # (operator-approved during /gsd-discuss-phase; do NOT reword). Scan the
-    # FULL errors list rather than relying on `primary` -- the `sdet` error
-    # may co-occur with other errors (mirroring the `version_err` idiom
-    # above). Other `extra_forbidden` errors (e.g. typo'd keys) fall through
-    # to the generic fallback below -- this branch is targeted, not blanket.
-    sdet_err = next(
+    # The legacy `cfg.sdet.*` alias was removed in v1.5. The Config model's  # noqa: sdet-rename-shim
+    # bare `extra="forbid"` surfaces a top-level `sdet:` key as a Pydantic  # noqa: sdet-rename-shim
+    # `extra_forbidden` error with `loc=('sdet',)`. Map that exact shape to  # noqa: sdet-rename-shim
+    # an operator-tone three-part rejection telling the operator to rename
+    # the key. Scan the FULL errors list rather than relying on `primary` --
+    # the `sdet` error may co-occur with other errors (mirroring the  # noqa: sdet-rename-shim
+    # `version_err` idiom above). Other `extra_forbidden` errors (e.g. typo'd
+    # keys) fall through to the generic fallback below -- this branch is
+    # targeted, not blanket.
+    sdet_err = next(  # noqa: sdet-rename-shim
         (
             e
             for e in errors
             if e.get("type") == "extra_forbidden"
-            and tuple(e.get("loc", ())) == ("sdet",)
+            and tuple(e.get("loc", ())) == ("sdet",)  # noqa: sdet-rename-shim
         ),
         None,
     )
-    if sdet_err is not None:
+    if sdet_err is not None:  # noqa: sdet-rename-shim
         _emit_operator_error(
-            summary="unknown config key: sdet",
+            summary="unknown config key: sdet",  # noqa: sdet-rename-shim
             detail=[
-                "the `sdet:` key was renamed to `test_code:` in v1.4 and removed in v1.5.",
-                "your existing block under `sdet:` ports forward unchanged -- just rename the top-level key.",
+                "the `sdet:` key was renamed to `test_code:` in v1.4 and removed in v1.5.",  # noqa: sdet-rename-shim
+                "your existing block under `sdet:` ports forward unchanged -- just rename the top-level key.",  # noqa: sdet-rename-shim
             ],
-            next_step="rename the `sdet:` key to `test_code:` in your config.yaml",
+            next_step="rename the `sdet:` key to `test_code:` in your config.yaml",  # noqa: sdet-rename-shim
         )
     if err_type in ("missing", "value_error.missing"):
         _emit_operator_error(

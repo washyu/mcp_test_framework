@@ -8,13 +8,13 @@ The fixture body resolves through two tiers (post-Phase-27):
      subprocesses pytest with ``-o "mcp_config_file=PATH"`` (CLI mode).
   2. Bare ``Config()`` fallback for tests that bypass the plugin.
 
-Bug repro (pre-fix): the fixture called bare ``Config()`` unconditionally.
-``settings_customise_sources`` fell back to ``MCPTF_CONFIG_FILE`` env var
-which the post-Phase-27 runner no longer writes, so the YAML never loaded
-and ``Config`` validation failed with ``test_code: Field required`` for
-every injected contract test parametrize. Surfaced during Phase 30 UAT-1
-when the operator ran ``mcp-contracts run --test-code --config config.yaml``
-against a tools-populated config.
+Bug repro (pre-fix): the fixture called bare ``Config()`` unconditionally,
+without consulting the ``_mcp_contracts_config`` stash set by
+``_plugin.pytest_configure``. The YAML never loaded and ``Config``
+validation failed with ``test_code: Field required`` for every injected
+contract test parametrize. Surfaced during Phase 30 UAT-1 when the operator
+ran ``mcp-contracts run --test-code --config config.yaml`` against a
+tools-populated config.
 
 These tests use ``types.SimpleNamespace`` fakes for ``request.session.config``
 so the fixture imports + executes with no live pytest session.
