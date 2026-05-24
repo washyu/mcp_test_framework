@@ -313,6 +313,33 @@ def _emit_operator_error_for_validation(
                 "existing config"
             ),
         )
+    # SHIM-04 (Phase 31): the v1.4-introduced `cfg.sdet.*` alias is removed
+    # in v1.5. The Config model's bare `extra="forbid"` surfaces top-level
+    # `sdet:` as a Pydantic `extra_forbidden` error with `loc=('sdet',)`.
+    # Map that exact shape to the D-02 operator-tone three-part message
+    # (operator-approved during /gsd-discuss-phase; do NOT reword). Scan the
+    # FULL errors list rather than relying on `primary` -- the `sdet` error
+    # may co-occur with other errors (mirroring the `version_err` idiom
+    # above). Other `extra_forbidden` errors (e.g. typo'd keys) fall through
+    # to the generic fallback below -- this branch is targeted, not blanket.
+    sdet_err = next(
+        (
+            e
+            for e in errors
+            if e.get("type") == "extra_forbidden"
+            and tuple(e.get("loc", ())) == ("sdet",)
+        ),
+        None,
+    )
+    if sdet_err is not None:
+        _emit_operator_error(
+            summary="unknown config key: sdet",
+            detail=[
+                "the `sdet:` key was renamed to `test_code:` in v1.4 and removed in v1.5.",
+                "your existing block under `sdet:` ports forward unchanged -- just rename the top-level key.",
+            ],
+            next_step="rename the `sdet:` key to `test_code:` in your config.yaml",
+        )
     if err_type in ("missing", "value_error.missing"):
         _emit_operator_error(
             summary=f"config file is missing a required field: {loc}",
