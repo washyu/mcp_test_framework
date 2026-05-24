@@ -78,7 +78,8 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 ### 🚧 v1.5 Shim Retirement + Operator Escape Hatches (Phases 31–35) — IN PROGRESS
 
-- [x] **Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission** — Tighten the config surface around `mcp_config_file` ini route as the sole library-mode config source; delete the v1→v2 migration path; relax pinned-message self-tests. (completed 2026-05-24)
+- [x] **Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission** — Tighten the config surface around `mcp_config_file` ini route as the sole library-mode config source; delete the v1→v2 migration path; relax pinned-message self-tests.
+ (completed 2026-05-24)
 - [ ] **Phase 32: Surface-shim removals — CLI + package + fixtures + discovery** — Delete the v1.4-introduced `sdet`-flavored CLI, package, fixture, console-script, and discovery shims; operator hits operator-tone migration errors pointing at the post-v1.4 names.
 - [ ] **Phase 33: Per-bucket skip granularity in `ToolConfig` (999.1)** — Operator escape hatch for required-field tools: opt out of the output bucket per tool while preserving schema + judge signal; collection-time filtering; digest + `--explain` reflect per-bucket skip; docs walkthrough.
 - [ ] **Phase 34: Opt-in host isolation passthrough (999.3)** — Audit bare `Config()` callers; ship `host_isolation: strict | passthrough` so live-UAT + SDET scenarios reach operator credentials; passthrough clamps xdist to 1; SEED-022 safety delegation surfaced in docs.
@@ -111,10 +112,16 @@ Plans:
 **Requirements**: SHIM-01, SHIM-02, SHIM-03, SHIM-06, SHIM-07, SHIM-08
 **Success Criteria** (what must be TRUE):
   1. Operator running `from mcp_test_framework.sdet import mcp_session` sees `ModuleNotFoundError` with an operator-tone message pointing at `mcp_test_framework.test_code`; the `sdet` package directory and barrel exports no longer ship.
-  2. Operator running `mcp-contracts run --sdet` or `mcp-contracts gen-sdet-classes` hits a Typer UsageError naming `--test-code` / `gen-test-classes`; the legacy flag/command are no longer registered.
-  3. Operator running `mcp-test-framework run` cannot start the framework — the legacy console-script entry-point is gone from `pyproject.toml` `[project.scripts]`; `mcp-contracts` is the sole console script.
-  4. Operator's tests under `tests/sdet/` are no longer auto-discovered (only `tests/test_code/` is); operator-authored tests referencing the unprefixed `config` / `judge` / `client` / `target_tool` fixtures fail at fixture-resolution time with the prefixed names (`mcp_config` / `mcp_judge` / `mcp_client` / `mcp_target_tool`) surfaced in the error.
-**Plans**: TBD
+  2. Operator running `mcp-contracts run --sdet` or `mcp-contracts gen-sdet-classes` hits an operator-tone Typer error naming `--test-code` / `gen-test-classes` as the replacement; the legacy flag/command remain registered as hidden intercepts for v1.5 so the pointer text is guaranteed (clean-delete deferred to v1.6 per CONTEXT D-04 + 32-RESEARCH §SHIM-02/03).
+  3. Operator running `mcp-test-framework run` cannot start the framework — the legacy console-script body hard-rejects with an operator-tone message naming `mcp-contracts` and exits non-zero; the `[project.scripts]` entry remains wired to `_deprecated_script:main` for v1.5 so the pointer text is guaranteed, with clean-delete deferred to v1.6 (per CONTEXT D-07 + 32-RESEARCH §SHIM-08). `mcp-contracts` is the only console script that actually runs the framework.
+  4. Operator's tests under `tests/sdet/` are no longer auto-discovered (only `tests/test_code/` is); operator-authored tests referencing any of the six unprefixed fixture aliases in `_plugin.py` (`config`, `judge`, `target_tool`, `rubric_clarity`, `rubric_disambiguation`, `rubric_parameters`) fail at fixture-resolution time with the `mcp_*`-prefixed equivalent surfaced in the error (per CONTEXT <domain> post-research correction — the earlier four-name SC#4 wording was imprecise; the post-v1.4 prefixed names are `mcp_config`, `mcp_judge`, `mcp_target_tool`, `mcp_rubric_clarity`, `mcp_rubric_disambiguation`, `mcp_rubric_parameters`).
+**Plans**: 6 plans
+  - [ ] 32-01-PLAN.md — SHIM-01: mcp_test_framework.sdet hard-raise removal stub
+  - [ ] 32-02-PLAN.md — SHIM-02: --sdet Typer flag hard-rejects with operator-tone pointer to --test-code
+  - [ ] 32-03-PLAN.md — SHIM-03: gen-sdet-classes Typer command hard-rejects with operator-tone pointer to gen-test-classes
+  - [ ] 32-04-PLAN.md — SHIM-06: tests/sdet/ discovery removed; warn-on-presence detector + marker scrub + sdet→test_code kwarg rename
+  - [ ] 32-05-PLAN.md — SHIM-07: six unprefixed fixture aliases become stub-raise pytest.fail with prefixed-name pointer
+  - [ ] 32-06-PLAN.md — SHIM-08: mcp-test-framework console-script hard-rejects + cross-doc scrub to mcp-contracts
 
 ### Phase 33: Per-bucket skip granularity in `ToolConfig` (999.1)
 **Goal**: Operator can opt out of named test buckets (`schema`, `judge`, `output`) per tool in `config.yaml` while leaving other buckets enabled — the required-field-tool escape hatch identified during Phase 30 UAT-1.
