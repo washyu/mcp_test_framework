@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: completed
+status: executing
 stopped_at: Phase 32 context gathered
-last_updated: "2026-05-24T17:27:08.614Z"
-last_activity: 2026-05-24 -- Phase 31 execution complete (6/6 plans landed; 687 framework tests pass)
+last_updated: "2026-05-24T20:30:40.584Z"
+last_activity: 2026-05-24 -- Phase 32 planning complete
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 6
+  total_plans: 12
   completed_plans: 6
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 Phase: 31 (config-surface-cleanup-drop-mcptf-config-file-cfg-sdet-alias) — COMPLETE
 Plan: 6 of 6
-Status: Phase 31 complete; ready for Phase 32
-Last activity: 2026-05-24 -- Phase 31 execution complete (6/6 plans landed; 687 framework tests pass)
+Status: Ready to execute
+Last activity: 2026-05-24 -- Phase 32 planning complete
 
 ## Performance Metrics
 

@@ -21,14 +21,14 @@ Delete every v1.4-introduced `sdet`-flavored surface shim across the operator-vi
 
 ### Plan decomposition
 
-- **D-01:** 1:1 per SHIM — **six plans, six commits**. Mirrors Phase 31 cadence; atomic rollback per surface; each plan stays small and reviewable. Canonical plan list:
+- **D-01:** `[informational]` 1:1 per SHIM — **six plans, six commits**. Mirrors Phase 31 cadence; atomic rollback per surface; each plan stays small and reviewable. Canonical plan list:
   - `32-01` — SHIM-01: `mcp_test_framework.sdet` package import shim removal
   - `32-02` — SHIM-02: `--sdet` Typer flag removal
   - `32-03` — SHIM-03: `gen-sdet-classes` Typer command removal
   - `32-04` — SHIM-06: `tests/sdet/` discovery-fallback removal
   - `32-05` — SHIM-07: unprefixed fixture-alias removal
   - `32-06` — SHIM-08: `mcp-test-framework` console-script removal
-- **D-02:** Internal plan-execution order is interchangeable (all six removals are orthogonal — no shared module-load or fixture-graph dependencies between them). Recommend canonical numeric order 01→06 unless research surfaces a coupling.
+- **D-02:** `[informational]` Internal plan-execution order is interchangeable (all six removals are orthogonal — no shared module-load or fixture-graph dependencies between them). Recommend canonical numeric order 01→06 unless research surfaces a coupling.
 
 ### Claude's Discretion (recommended defaults — planner free to revisit with research)
 
