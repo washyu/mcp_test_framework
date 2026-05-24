@@ -37,3 +37,30 @@ test fixture, which is Plan 31-06's job.
 config.py, cli.py, and test_error_style.py. Pre-rewriting these test files
 would create a merge-conflict surface against Plan 06 and violate the
 plan-files contract.
+
+## Update from Plan 31-03 (V1DROP-03/04 v1-rejection rewrite)
+
+Plan 31-03 (`<files_modified>` = cli.py, test_error_style.py, test_cli_errors.py)
+mechanically swept the `sdet:` -> `test_code:` literals in
+`tests/framework/unit/test_cli_errors.py` (three occurrences across
+test_list_tools_mcp_spawn_failure, test_config_init_mcp_spawn_failure,
+test_safe_02_cwd_autodiscovery_picks_up_local_config) per the plan's
+Task 2 action items 4-5. That test file is now green (20/20 pass).
+
+Remaining files with un-swapped `sdet:` fixtures (Plan 31-06 scope):
+
+| File | Status |
+|------|--------|
+| tests/framework/unit/test_sdet_cli.py | NOT YET SWAPPED |
+| tests/framework/unit/test_runner_migration.py | NOT YET SWAPPED |
+| tests/framework/unit/test_runner_explain.py | NOT YET SWAPPED |
+| tests/framework/unit/test_list_tools_format.py | NOT YET SWAPPED |
+| tests/framework/unit/test_sdet_fixtures.py | NOT YET SWAPPED |
+| tests/framework/test_runner_verbosity.py | NOT YET SWAPPED |
+| tests/framework/test_runner_subprocess.py | NOT YET SWAPPED |
+| tests/framework/unit/test_cli_errors.py | DONE (Plan 31-03) |
+
+Aggregate baseline at HEAD of Plan 31-03: 26 failed, 534 passed across
+`tests/framework/unit/`. All 26 failures trace to remaining `sdet:` YAML
+fixtures triggering the Plan 01 D-02 rejection -- none are caused by the
+v1-rejection rewrite.
