@@ -34,11 +34,17 @@ def test_error_style_contains_safe_03_message() -> None:
 
 
 def test_error_style_contains_safe_06_message() -> None:
+    """Phase 31 V1DROP-04 RELAX: drop the legacy migration-walkthrough
+    pins (opt-in walkthrough + retired-doc cross-ref) -- the v1-rejection
+    body in cli.py is now D-11 generic operator-tone (V1DROP-03) and the
+    legacy migration doc is deleted in Plan 04.
+
+    Plan 05 (V1DROP-02) scrubs ERROR-STYLE.md itself; pinning the doc's
+    pre-scrub headings here would force a churn through this test in
+    Plan 05. The remaining neutral existence check (file is non-empty
+    with operator-tone framing) survives both Plan 04 and Plan 05."""
     text = ERROR_STYLE.read_text(encoding="utf-8")
-    assert "### Config uses an older schema version" in text
-    assert "config file uses an older format:" in text
-    assert "schema version 2 (opt-in" in text
-    assert "docs/MIGRATION-v1-to-v2.md" in text
+    assert text.strip(), "ERROR-STYLE.md must exist and be non-empty"
 
 
 def test_error_style_safe_03_body_matches_cli_wiring() -> None:
@@ -61,8 +67,8 @@ def test_error_style_safe_04_env_var_branch_is_gone() -> None:
     """Phase 31 SHIM-05 D-05 inversion: the env-var-typo branch in cli.py
     was deleted; the resolver no longer has an MCPTF_CONFIG_FILE arm.
 
-    Replaces the legacy ``test_error_style_safe_04_body_matches_cli_wiring``
-    which pinned the deleted error wording.
+    Replaces the legacy SAFE-04 body-match test which pinned the deleted
+    error wording.
     """
     cli_text = (
         _repo_root() / "src" / "mcp_test_framework" / "cli.py"
@@ -73,18 +79,20 @@ def test_error_style_safe_04_env_var_branch_is_gone() -> None:
 
 
 def test_error_style_safe_06_body_matches_cli_wiring() -> None:
-    """Phase 13 D-08: cli.py's version-mismatch branch must echo the LOCKED
-    SAFE-06 body. This test reads cli.py source and pins the verbatim
-    substrings so the wording cannot drift away from docs/ERROR-STYLE.md."""
+    """Phase 31 V1DROP-03 REWRITE: cli.py's version-mismatch branch now
+    carries the D-11 generic operator-tone rejection (CONTEXT D-11).
+
+    Replaces the Phase-13 D-08 contract that pinned the v1-vs-v2
+    migration-walkthrough body. The new pins are the D-11 three-part
+    verbatim text; future drift in either cli.py or the D-11 wording
+    in CONTEXT.md breaks this assertion."""
     cli_text = (
         _repo_root() / "src" / "mcp_test_framework" / "cli.py"
     ).read_text("utf-8")
-    # These substrings come from docs/ERROR-STYLE.md:57-73 verbatim.
-    assert "schema version 2 (opt-in" in cli_text
-    assert "your config is version 1 (opt-out)" in cli_text
-    assert "in v1 a tool with no entry runs by default, in v2 it skips" in cli_text
-    assert "docs/MIGRATION-v1-to-v2.md" in cli_text
-    assert "config-init -o config.yaml.new" in cli_text
+    # D-11 verbatim substrings (operator-approved during /gsd-discuss-phase).
+    assert "unsupported config version" in cli_text
+    assert "this build supports schema version 2" in cli_text
+    assert "config-init -o config.yaml" in cli_text
 
 
 def test_error_style_sdet_rejection_message(
