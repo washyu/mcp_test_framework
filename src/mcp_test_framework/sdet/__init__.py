@@ -5,7 +5,7 @@ shim survives as this stub for v1.5 so that operators still importing
 the old name see a pointer at the new location rather than Python's
 stock "No module named" message. The stub directory is removed
 outright in a future EOL pass.
-"""
+"""  # noqa: sdet-rename-shim
 from __future__ import annotations  # noqa: sdet-rename-shim
 
 raise ModuleNotFoundError(  # noqa: sdet-rename-shim
@@ -17,5 +17,5 @@ raise ModuleNotFoundError(  # noqa: sdet-rename-shim
     "is re-exported unchanged from the new location.\n"
     "\n"
     "next: replace `from mcp_test_framework.sdet import X` with "
-    "`from mcp_test_framework.test_code import X` in your tests."
+    "`from mcp_test_framework.test_code import X` in your tests."  # noqa: sdet-rename-shim
 )

@@ -648,7 +648,7 @@ def _sdet_flag_removed(value: bool) -> bool:  # noqa: sdet-rename-shim
     `_warn_sdet_flag` DeprecationWarning. The option stays registered
     (hidden=True) so legacy argv still parses far enough to surface
     this message rather than producing Typer's stock "No such option"
-    block."""
+    block."""  # noqa: sdet-rename-shim
     if value:
         raise typer.BadParameter(
             "--sdet was removed in v1.5\n"
@@ -657,7 +657,7 @@ def _sdet_flag_removed(value: bool) -> bool:  # noqa: sdet-rename-shim
             "removed in v1.5.\n"
             "every behavior is unchanged -- only the flag spelling moved.\n"
             "\n"
-            "next: pass `--test-code` instead of `--sdet` to `mcp-contracts run`."
+            "next: pass `--test-code` instead of `--sdet` to `mcp-contracts run`."  # noqa: sdet-rename-shim
         )
     return value
 
@@ -738,7 +738,7 @@ def run(
     ),
     sdet_legacy: bool = typer.Option(  # noqa: sdet-rename-shim
         False,
-        "--sdet",
+        "--sdet",  # noqa: sdet-rename-shim
         hidden=True,
         help="Removed in v1.5; use --test-code (this flag raises if passed).",
         callback=_sdet_flag_removed,  # noqa: sdet-rename-shim
@@ -1429,7 +1429,7 @@ def _gen_sdet_classes_removed(
         "in v1.4 and removed in v1.5.\n"
         "every flag is unchanged -- only the command name moved.\n"
         "\n"
-        "next: invoke `mcp-contracts gen-test-classes` (same flags)."
+        "next: invoke `mcp-contracts gen-test-classes` (same flags)."  # noqa: sdet-rename-shim
     )
 
 
