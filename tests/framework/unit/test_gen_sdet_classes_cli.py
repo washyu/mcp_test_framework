@@ -60,9 +60,13 @@ def _write_config(
 
 
 def test_help_lists_flags() -> None:
-    result = _invoke("gen-sdet-classes", "--help")
+    """The canonical command exposes --config; --output-dir and --force are
+    deliberately absent per D-08. (The legacy `gen-sdet-classes` alias was
+    removed in v1.5; its `--config` is now hidden so it no longer appears
+    in --help.)"""
+    result = _invoke("gen-test-classes", "--help")
     assert result.exit_code == 0, result.output
-    assert "gen-sdet-classes" in result.output
+    assert "gen-test-classes" in result.output
     assert "--config" in result.output
     # No --output-dir or --force per D-08
     assert "--output-dir" not in result.output
@@ -73,7 +77,7 @@ def test_no_config_safe03_fails_loud(tmp_path: Path, monkeypatch: pytest.MonkeyP
     """SAFE-03: no --config, no MCPTF_CONFIG_FILE, no ./config.yaml -> exit 2."""
     monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     monkeypatch.chdir(tmp_path)  # ensure no ./config.yaml is discoverable
-    result = _invoke("gen-sdet-classes")
+    result = _invoke("gen-test-classes")
     assert result.exit_code == 2, result.output
 
 
@@ -81,7 +85,7 @@ def test_config_path_not_found_fails_loud(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     monkeypatch.chdir(tmp_path)
     fake = tmp_path / "does-not-exist.yaml"
-    result = _invoke("gen-sdet-classes", "--config", str(fake))
+    result = _invoke("gen-test-classes", "--config", str(fake))
     assert result.exit_code == 2, result.output
 
 
@@ -91,7 +95,7 @@ def test_mcp_command_not_on_path_operator_error(
     """FileNotFoundError branch: operator-tone error + exit 2."""
     monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     cfg = _write_config(tmp_path, command="this-command-does-not-exist-anywhere-12345")
-    result = _invoke("gen-sdet-classes", "--config", str(cfg))
+    result = _invoke("gen-test-classes", "--config", str(cfg))
     assert result.exit_code == 2, result.output
     # Operator-tone error mentioning the missing command
     assert "this-command-does-not-exist-anywhere-12345" in result.output
@@ -195,8 +199,8 @@ def test_e2e_emits_generated_dir_for_stub_server(
 
 @pytest.mark.live_homelab
 def test_live_homelab_emit_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Against live homelab-mcp (gated by marker), confirms gen-sdet-classes
-    populates ``<cfg.sdet.generated_root>/<homelab-mcp-slug>/``.
+    """Against live homelab-mcp (gated by marker), confirms gen-test-classes
+    populates ``<cfg.test_code.generated_root>/<homelab-mcp-slug>/``.
 
     Phase 21.1 RELOC-03 reworked: writes into tmp_path, not the installed
     framework package."""
@@ -211,7 +215,7 @@ def test_live_homelab_emit_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     target_slug_dir = generated_root / "homelab_mcp"
 
-    result = _invoke("gen-sdet-classes", "--config", str(cfg))
+    result = _invoke("gen-test-classes", "--config", str(cfg))
     assert result.exit_code == 0, result.output
     assert target_slug_dir.is_dir()
     assert (target_slug_dir / "__init__.py").is_file()

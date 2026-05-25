@@ -1,12 +1,12 @@
-"""Phase 21.1 RELOC-02: gen-test-classes is config-driven via cfg.sdet.generated_root.
+"""Phase 21.1 RELOC-02: gen-test-classes is config-driven via cfg.test_code.generated_root.
 
 Phase 25 RENAME-02 (plan 25-02) renamed the Typer command from
 gen-sdet-classes to gen-test-classes and the Python function from
-gen_sdet_classes to gen_test_classes. The legacy CLI name still works
-as a deprecation shim. Tests below pin the canonical new function symbol
-via inspect; the legacy `_invoke("gen-sdet-classes", ...)` paths still
-work for now but emit a DeprecationWarning -- those continue to exercise
-the shim, which is intentional coverage for the v1.4 deprecation window.
+gen_sdet_classes to gen_test_classes. The legacy CLI name was removed
+in v1.5 (the v1.4 deprecation window closed); the hidden intercept now
+hard-raises with an operator-tone pointer. Tests below invoke the
+canonical `gen-test-classes` surface and pin the function symbol via
+inspect.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _write_config_without_sdet(tmp_path: Path) -> Path:
 
 
 def test_help_does_not_mention_legacy_hardcoded_path() -> None:
-    result = _invoke("gen-sdet-classes", "--help")
+    result = _invoke("gen-test-classes", "--help")
     assert result.exit_code == 0, result.output
     assert "src/mcp_test_framework/sdet/generated" not in result.output, (
         "docstring still references the legacy hardcoded path; update per RELOC-02"
@@ -43,11 +43,13 @@ def test_help_does_not_mention_legacy_hardcoded_path() -> None:
 def test_missing_sdet_generated_root_exits_2(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MCPTF_CONFIG_FILE", raising=False)
     cfg = _write_config_without_sdet(tmp_path)
-    result = _invoke("gen-sdet-classes", "--config", str(cfg))
+    result = _invoke("gen-test-classes", "--config", str(cfg))
     assert result.exit_code == 2, result.output
     # Existing SAFE-03 missing-required-field message is the contract.
     assert "missing a required field" in result.output
-    assert "sdet" in result.output
+    # The canonical surface now refers to test_code; the rejection message
+    # carries that field name.
+    assert "test_code" in result.output
 
 
 def test_source_no_longer_hardcodes_path() -> None:
