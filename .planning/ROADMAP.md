@@ -118,7 +118,7 @@ Plans:
 **Plans**: 6 plans
   - [x] 32-01-PLAN.md — SHIM-01: mcp_test_framework.sdet hard-raise removal stub
   - [x] 32-02-PLAN.md — SHIM-02: --sdet Typer flag hard-rejects with operator-tone pointer to --test-code
-  - [ ] 32-03-PLAN.md — SHIM-03: gen-sdet-classes Typer command hard-rejects with operator-tone pointer to gen-test-classes
+  - [x] 32-03-PLAN.md — SHIM-03: gen-sdet-classes Typer command hard-rejects with operator-tone pointer to gen-test-classes
   - [ ] 32-04-PLAN.md — SHIM-06: tests/sdet/ discovery removed; warn-on-presence detector + marker scrub + sdet→test_code kwarg rename
   - [ ] 32-05-PLAN.md — SHIM-07: six unprefixed fixture aliases become stub-raise pytest.fail with prefixed-name pointer
   - [ ] 32-06-PLAN.md — SHIM-08: mcp-test-framework console-script hard-rejects + cross-doc scrub to mcp-contracts
@@ -197,7 +197,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
-| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 2/6 | In Progress|  |
+| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 3/6 | In Progress|  |
 | 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/0 | Not started | — |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
 | 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
@@ -208,7 +208,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 **Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with v1.5 Phase 33 (per-bucket skip) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
 
