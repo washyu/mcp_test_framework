@@ -218,6 +218,35 @@ def test_error_style_gen_sdet_classes_removed(
     ) in combined
 
 
+def test_error_style_tests_sdet_discovery_warn() -> None:
+    """SHIM-06: pin the verbatim three-part operator-tone text emitted by
+    the `tests/sdet/` warn-on-presence detector in `_plugin.py`'s
+    `pytest_collection` hook. Mirrors Plan 31-01's
+    `test_error_style_sdet_rejection_message` shape: the pytester-driven
+    regression test in `test_plugin_tests_sdet_warning.py` covers
+    runtime behavior; THIS test is the canonical ERROR-STYLE-registry
+    entry preventing silent message drift in `_plugin.py`.
+
+    Pins the verbatim summary / detail / next-step strings sourced from
+    the warn block defined in Task 1 of Plan 32-04. Future drift -- in
+    either _plugin.py or this test -- breaks the assertion."""
+    plugin_text = (
+        _repo_root() / "src" / "mcp_test_framework" / "_plugin.py"
+    ).read_text("utf-8")
+    # Verbatim three-part text from the pytest_collection warn block.
+    assert "tests/sdet/ is no longer auto-discovered as of v1.5" in plugin_text
+    assert (
+        "the `tests/sdet/` directory contains test_*.py files but is"
+        in plugin_text
+    )
+    assert (
+        "every scenario should live under `tests/test_code/`" in plugin_text
+    )
+    assert (
+        "next: move your `tests/sdet/test_*.py` files to" in plugin_text
+    )
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 
