@@ -70,6 +70,33 @@ from mcp_test_framework.fixtures import (  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
+# Operator-tone warning renderer.
+#
+# Module-level so multiple warn sites in this plugin (the legacy
+# MCPTF_CONFIG_FILE env-var detector in pytest_configure AND the
+# tests/sdet/ presence detector in pytest_collection) share a single
+# renderer. Saving the stdlib formatter once at import time lets each
+# call site swap in this formatter under a try/finally and restore the
+# stdlib formatter afterwards without rebuilding the saver each call.
+# ---------------------------------------------------------------------------
+
+_original_formatwarning = warnings.formatwarning
+
+
+def _mcptf_formatwarning(message, category, filename, lineno, line=None):
+    """Operator-tone single-block render. Bypasses pytest's default
+    "<file>:<line>: DeprecationWarning: <msg>" shape so the warning
+    is unambiguously distinct from pytest's own deprecation chatter."""
+    prefix = "[mcp-contracts]"
+    try:
+        if sys.stderr.isatty():
+            prefix = f"\x1b[31m{prefix}\x1b[0m"
+    except Exception:
+        pass
+    return f"\n{prefix} {message}\n\n"
+
+
+# ---------------------------------------------------------------------------
 # Synthetic contracts-module collector
 #
 # Subclasses `_pytest.python.Module` so pytest collects from a real on-disk
@@ -151,20 +178,6 @@ def pytest_configure(config: pytest.Config) -> None:
     # grandfathered in src/ for v1.5; planned removal lands in v1.6
     # alongside the other operator-facing env-var removals.
     if os.environ.get("MCPTF_CONFIG_FILE"):
-        _original_formatwarning = warnings.formatwarning
-
-        def _mcptf_formatwarning(message, category, filename, lineno, line=None):
-            # Operator-tone single-block render. Bypasses pytest's default
-            # "<file>:<line>: DeprecationWarning: <msg>" shape so the warning
-            # is unambiguously distinct from pytest's own deprecation chatter.
-            prefix = "[mcp-contracts]"
-            try:
-                if sys.stderr.isatty():
-                    prefix = f"\x1b[31m{prefix}\x1b[0m"
-            except Exception:
-                pass
-            return f"\n{prefix} {message}\n\n"
-
         warnings.formatwarning = _mcptf_formatwarning
         try:
             warnings.warn(
@@ -277,6 +290,29 @@ def pytest_collection(session: pytest.Session) -> None:
     to `Function` children in this construction path. Both gaps are
     closed in the sibling hook below.
     """
+    # tests/sdet/ is no longer auto-discovered as of v1.5; this detector
+    # survives the surface removal so operators mid-migration see a loud
+    # signal. Planned removal: future EOL pass.
+    legacy_dir = session.config.rootpath / "tests" / "sdet"
+    if legacy_dir.is_dir() and any(legacy_dir.glob("test_*.py")):
+        warnings.formatwarning = _mcptf_formatwarning
+        try:
+            warnings.warn(
+                "tests/sdet/ is no longer auto-discovered as of v1.5\n"
+                "\n"
+                "the `tests/sdet/` directory contains test_*.py files but is "
+                "no longer collected by `mcp-contracts run --test-code`.\n"
+                "every scenario should live under `tests/test_code/`; the "
+                "two layouts are otherwise identical.\n"
+                "\n"
+                "next: move your `tests/sdet/test_*.py` files to "
+                "`tests/test_code/` and re-run.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        finally:
+            warnings.formatwarning = _original_formatwarning
+
     cfg = getattr(session.config, "_mcp_contracts_config", None)
     if cfg is None:
         return  # silent no-op carry-forward; operator opted out
