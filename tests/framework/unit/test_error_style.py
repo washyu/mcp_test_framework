@@ -164,6 +164,34 @@ def test_error_style_sdet_package_removed(
     ) in msg
 
 
+def test_error_style_sdet_flag_removed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """SHIM-02: `mcp-contracts run --sdet` raises typer.BadParameter
+    (exit code 2) with operator-tone three-part text pointing at
+    `--test-code`. Future drift in either cli.py or this test breaks
+    the assertion."""
+    from typer.testing import CliRunner
+
+    from mcp_test_framework.cli import app
+
+    # Click 8.3 dropped the `mix_stderr` kwarg; output captures combined
+    # streams by default. Pin against `result.output` only.
+    runner = CliRunner()
+    result = runner.invoke(app, ["run", "--sdet"])
+    combined = result.output or ""
+    assert result.exit_code == 2, (
+        f"expected exit_code=2, got {result.exit_code!r}; output={combined!r}"
+    )
+    # Verbatim three-part text from _sdet_flag_removed in cli.py.
+    assert "--sdet was removed in v1.5" in combined
+    assert "--test-code" in combined
+    assert "next:" in combined
+    assert (
+        "pass `--test-code` instead of `--sdet` to `mcp-contracts run`"
+    ) in combined
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 
