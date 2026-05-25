@@ -9,9 +9,12 @@ deleted:
     the plugin's `pytest_collection_modifyitems` to every
     framework-injected contract test, including the synthetic
     `<mcp-contracts>::test_*` nodeids that no path-prefix could match).
-  - SECONDARY: items whose nodeid starts with `tests/test_code/` or
-    `tests/sdet/` — test-code-author scenarios that do NOT carry the
-    contract marker but still drive a live MCP session.
+  - SECONDARY: items whose nodeid starts with `tests/test_code/` —
+    test-code-author scenarios that do NOT carry the contract marker
+    but still drive a live MCP session. The legacy `tests/sdet/`
+    prefix was dropped from the predicate in v1.5; operators see the
+    SHIM-06 warn-on-presence detector from `pytest_collection`
+    instead.
 
 Pre-flip behavior pinned the path-prefix-only check fixed in
 quick-task 260513-chh. The marker branch covers the plugin's
@@ -108,13 +111,15 @@ def test_legacy_tests_contract_prefix_is_not_live_scope():
     )
 
 
-def test_one_sdet_item_returns_true():
-    """tests/sdet/ items hit the live homelab-mcp + Ollama stack (Phase 18)."""
+def test_legacy_tests_sdet_path_no_longer_arms_preflight():
+    """tests/sdet/ was dropped from _LIVE_PREFIXES in v1.5; a stale legacy
+    nodeid no longer arms preflight. Operators see the SHIM-06 warn-on-
+    presence detector from pytest_collection instead."""
     assert (
         _session_needs_preflight(
             _fake_request_nodeids("tests/sdet/test_scenario.py::test_z")
         )
-        is True
+        is False
     )
 
 
@@ -138,13 +143,15 @@ def test_mixed_unit_plus_marked_contract_returns_true():
     )
 
 
-def test_mixed_unit_plus_sdet_returns_true():
-    """Live scope wins — any sdet item in the collection arms preflight."""
+def test_mixed_unit_plus_test_code_returns_true():
+    """Live scope wins — any tests/test_code/ item in the collection arms
+    preflight (legacy tests/sdet/ no longer participates in the live
+    detection set as of v1.5)."""
     assert (
         _session_needs_preflight(
             _fake_request_nodeids(
                 "tests/framework/unit/test_foo.py::test_x",
-                "tests/sdet/test_scenario.py::test_live",
+                "tests/test_code/test_scenario.py::test_live",
             )
         )
         is True

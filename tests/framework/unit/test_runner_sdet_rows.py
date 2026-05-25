@@ -1,9 +1,12 @@
-"""Phase 19: regression pins for the SDET-classname parse branch and the
+"""Regression pins for the test-code classname parse branch and the
 scenario-block rendering in _render_per_tool_rows.
 
 Tests synthesize JUnit XML strings, write them to tmp_path, and run them
 through parse_junit_xml -> ParsedRun -> _render_per_tool_rows. Pure unit
 tests; no pytest subprocess, no live MCP.
+
+The historical `tests.sdet.*` classname branch was removed in v1.5; all
+scenario classnames now flow through `tests.test_code.*` exclusively.
 """
 from __future__ import annotations
 
@@ -39,7 +42,7 @@ def test_sdet_pass_emits_synthetic_key(tmp_path):
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="1" failures="0" errors="0" skipped="0">
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm" time="0.5"/>
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm" time="0.5"/>
         </testsuite></testsuites>
         """,
     )
@@ -55,7 +58,7 @@ def test_sdet_fail_carries_em_dash_message(tmp_path):
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="1" failures="1" errors="0" skipped="0">
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm">
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm">
             <properties>
               <property name="mcptf_error_code" value="E_SUBTREE"/>
               <property name="mcptf_error_message" value="vmid not found"/>
@@ -77,7 +80,7 @@ def test_sdet_skip_carries_reason(tmp_path):
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="1" failures="0" errors="0" skipped="1">
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm">
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm">
             <skipped message="Skipped: requires homelab" type="pytest.skip"/>
           </testcase>
         </testsuite></testsuites>
@@ -104,7 +107,7 @@ def test_contract_parametrize_still_works(tmp_path):
     assert "::" not in "list_tools"
 
 
-def test_classname_outside_tests_sdet_still_dropped(tmp_path):
+def test_classname_outside_tests_test_code_still_dropped(tmp_path):
     path = _write_xml(
         tmp_path,
         """\
@@ -118,13 +121,13 @@ def test_classname_outside_tests_sdet_still_dropped(tmp_path):
     assert parsed.per_tool == {}
 
 
-def test_sdet_classname_with_alt_prefix_still_works(tmp_path):
+def test_scenario_classname_alternate_module_grouped(tmp_path):
     path = _write_xml(
         tmp_path,
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="1" failures="0" errors="0" skipped="0">
-          <testcase classname="tests.sdet.test_other_scenario" name="test_step_one"/>
+          <testcase classname="tests.test_code.test_other_scenario" name="test_step_one"/>
         </testsuite></testsuites>
         """,
     )
@@ -138,8 +141,8 @@ def test_multiple_sdet_tests_same_module_grouped_distinctly(tmp_path):
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="2" failures="0" errors="0" skipped="0">
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm"/>
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_modify_accepts_cpu_increase"/>
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm"/>
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_modify_accepts_cpu_increase"/>
         </testsuite></testsuites>
         """,
     )
@@ -148,15 +151,15 @@ def test_multiple_sdet_tests_same_module_grouped_distinctly(tmp_path):
     assert "proxmox_vm_lifecycle::modify_accepts_cpu_increase" in parsed.per_tool
 
 
-def test_sdet_testcase_with_brackets_uses_bracket_path(tmp_path):
-    # Defensive: if an SDET test ever gets parametrized, the bracket
-    # extraction wins (legacy precedence).
+def test_scenario_testcase_with_brackets_uses_bracket_path(tmp_path):
+    # Defensive: if a test-code scenario ever gets parametrized, the
+    # bracket extraction wins (legacy precedence).
     path = _write_xml(
         tmp_path,
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="1" failures="0" errors="0" skipped="0">
-          <testcase classname="tests.sdet.test_x" name="test_y[foo]"/>
+          <testcase classname="tests.test_code.test_x" name="test_y[foo]"/>
         </testsuite></testsuites>
         """,
     )
@@ -337,13 +340,13 @@ def test_render_scenario_block_fixture_error_cascade(tmp_path):
         """\
         <?xml version="1.0" encoding="utf-8"?>
         <testsuites><testsuite name="pytest" tests="3" failures="0" errors="1" skipped="2">
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm">
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_create_returns_pending_vm">
             <error message="fixture proxmox_vm_lifecycle setup failed">trace</error>
           </testcase>
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_modify_accepts_cpu_increase">
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_modify_accepts_cpu_increase">
             <skipped message="fixture proxmox_vm_lifecycle failed" type="pytest.skip"/>
           </testcase>
-          <testcase classname="tests.sdet.test_proxmox_vm_lifecycle" name="test_delete_returns_ok">
+          <testcase classname="tests.test_code.test_proxmox_vm_lifecycle" name="test_delete_returns_ok">
             <skipped message="fixture proxmox_vm_lifecycle failed" type="pytest.skip"/>
           </testcase>
         </testsuite></testsuites>

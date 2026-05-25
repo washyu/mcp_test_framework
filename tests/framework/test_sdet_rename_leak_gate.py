@@ -18,7 +18,11 @@ PLANNING_ID_PATTERN = re.compile(  # noqa: sdet-rename-shim
     r"\b(SDET|RENAME|PERSONA|CLEAN|CLI|CODEGEN|PACK|LIB|REPORTER|"
     r"CFG|CLOSE|STATE|UI|UX|UAT|SAFE|SURFACE|RUNNER|SEED)-\d+(\.\d+)?\b"
 )
-SDET_TERM_PATTERN = re.compile(r"\bsdet\b|\bSDET\b")  # noqa: sdet-rename-shim
+# The pattern intentionally excludes the SEED-022 doctrinal compound
+# `SDET-safety` (framework-primitives / SDET-safety principle); that
+# phrase is the locked doctrinal reference for the black-box guard
+# rationale, not deprecated v1.4 terminology to be scrubbed.
+SDET_TERM_PATTERN = re.compile(r"\bsdet\b|\bSDET\b(?!-safety)")  # noqa: sdet-rename-shim
 
 # D-18 marker (case-sensitive)
 NOQA_MARKER = "noqa: sdet-rename-shim"  # noqa: sdet-rename-shim

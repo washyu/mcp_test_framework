@@ -209,16 +209,18 @@ def test_scenario_test_code_fall_through() -> None:
     assert bucket.verdict == "PASS"
 
 
-def test_scenario_legacy_sdet_fall_through() -> None:  # noqa: sdet-rename-shim
-    """tests/sdet legacy nodeid -> synthetic group::row key (rename shim)."""
-    nodeid = "tests/sdet/test_legacy.py::test_foo"  # noqa: sdet-rename-shim
+def test_scenario_legacy_sdet_nodeid_dropped() -> None:
+    """tests/sdet/ legacy nodeid is no longer recognized; classnames not
+    starting with tests.test_code.test_ get dropped from the scenario
+    fall-through. The dual-discovery branch was removed in v1.5."""
+    nodeid = "tests/sdet/test_legacy.py::test_foo"
     reports = [
         _make_report(nodeid, "setup", "passed"),
         _make_report(nodeid, "call", "passed"),
         _make_report(nodeid, "teardown", "passed"),
     ]
     run = _build_parsed_run_from_reports(reports)
-    assert list(run.per_tool.keys()) == ["legacy::foo"]
+    assert run.per_tool == {}
 
 
 # ---------------------------------------------------------------------------

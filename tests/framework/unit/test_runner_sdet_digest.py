@@ -149,7 +149,7 @@ def test_scenario_digest_accepts_file_kwarg() -> None:
 def test_collect_test_code_scenarios_empty_when_directory_absent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """D-06: missing tests/sdet/ -> ([], {})."""
+    """Missing tests/test_code/ -> ([], {})."""
     monkeypatch.chdir(tmp_path)
     stems, skipped = _collect_test_code_scenarios(_ctx())
     assert stems == []
@@ -159,19 +159,19 @@ def test_collect_test_code_scenarios_empty_when_directory_absent(
 def test_collect_test_code_scenarios_returns_stems_alphabetized(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """D-06: tests/sdet/test_X.py -> X (sorted)."""
-    sdet_dir = tmp_path / "tests" / "sdet"
-    sdet_dir.mkdir(parents=True)
-    (sdet_dir / "test_zoo.py").write_text("# scenario z\n", encoding="utf-8")
-    (sdet_dir / "test_alpha.py").write_text("# scenario a\n", encoding="utf-8")
-    (sdet_dir / "test_proxmox_vm_lifecycle.py").write_text("# p\n", encoding="utf-8")
+    """tests/test_code/test_X.py -> X (sorted)."""
+    tc_dir = tmp_path / "tests" / "test_code"
+    tc_dir.mkdir(parents=True)
+    (tc_dir / "test_zoo.py").write_text("# scenario z\n", encoding="utf-8")
+    (tc_dir / "test_alpha.py").write_text("# scenario a\n", encoding="utf-8")
+    (tc_dir / "test_proxmox_vm_lifecycle.py").write_text("# p\n", encoding="utf-8")
     # Non-test_*.py files must be ignored.
-    (sdet_dir / "conftest.py").write_text("# noscan\n", encoding="utf-8")
-    (sdet_dir / "helpers.py").write_text("# noscan\n", encoding="utf-8")
+    (tc_dir / "conftest.py").write_text("# noscan\n", encoding="utf-8")
+    (tc_dir / "helpers.py").write_text("# noscan\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     stems, skipped = _collect_test_code_scenarios(_ctx())
     assert stems == ["alpha", "proxmox_vm_lifecycle", "zoo"]
-    assert skipped == {}  # Phase 18 ships discovery only; Phase 19 adds skip detection.
+    assert skipped == {}  # discovery only; skip detection is a future extension.
 
 
 # ---------------------------------------------------------------------------

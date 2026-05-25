@@ -41,7 +41,7 @@ def test_build_pytest_args_appends_force() -> None:
         None,
         [],
         with_framework=False,
-        sdet=False,  # noqa: sdet-rename-shim
+        test_code=False,
         mcp_config_path=None,
         domain_ui_mode="force",
     )
@@ -58,7 +58,7 @@ def test_build_pytest_args_omits_when_off() -> None:
         None,
         [],
         with_framework=False,
-        sdet=False,  # noqa: sdet-rename-shim
+        test_code=False,
         mcp_config_path=None,
     )
     assert not any(a.startswith("--mcp-domain-ui") for a in argv), argv
@@ -68,7 +68,7 @@ def test_build_pytest_args_omits_when_off() -> None:
         None,
         [],
         with_framework=False,
-        sdet=False,  # noqa: sdet-rename-shim
+        test_code=False,
         mcp_config_path=None,
         domain_ui_mode="off",
     )
@@ -81,7 +81,7 @@ def test_build_pytest_args_appends_auto() -> None:
         None,
         [],
         with_framework=False,
-        sdet=False,  # noqa: sdet-rename-shim
+        test_code=False,
         mcp_config_path=None,
         domain_ui_mode="auto",
     )
@@ -96,7 +96,7 @@ def test_build_pytest_args_rejects_invalid_mode() -> None:
             None,
             [],
             with_framework=False,
-            sdet=False,  # noqa: sdet-rename-shim
+            test_code=False,
             mcp_config_path=None,
             domain_ui_mode="bogus",
         )
@@ -110,7 +110,7 @@ def test_build_pytest_args_flag_appended_after_forwarded() -> None:
         None,
         ["--mcp-domain-ui=off"],  # operator-supplied earlier
         with_framework=False,
-        sdet=False,  # noqa: sdet-rename-shim
+        test_code=False,
         mcp_config_path=None,
         domain_ui_mode="force",
     )

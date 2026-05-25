@@ -74,7 +74,7 @@ from mcp_test_framework.fixtures import (  # noqa: F401
 #
 # Module-level so multiple warn sites in this plugin (the legacy
 # MCPTF_CONFIG_FILE env-var detector in pytest_configure AND the
-# tests/sdet/ presence detector in pytest_collection) share a single
+# tests/sdet/ presence detector in pytest_collection) share a single  # noqa: sdet-rename-shim
 # renderer. Saving the stdlib formatter once at import time lets each
 # call site swap in this formatter under a try/finally and restore the
 # stdlib formatter afterwards without rebuilding the saver each call.
@@ -290,22 +290,22 @@ def pytest_collection(session: pytest.Session) -> None:
     to `Function` children in this construction path. Both gaps are
     closed in the sibling hook below.
     """
-    # tests/sdet/ is no longer auto-discovered as of v1.5; this detector
+    # tests/sdet/ is no longer auto-discovered as of v1.5; this detector  # noqa: sdet-rename-shim
     # survives the surface removal so operators mid-migration see a loud
     # signal. Planned removal: future EOL pass.
-    legacy_dir = session.config.rootpath / "tests" / "sdet"
+    legacy_dir = session.config.rootpath / "tests" / "sdet"  # noqa: sdet-rename-shim
     if legacy_dir.is_dir() and any(legacy_dir.glob("test_*.py")):
         warnings.formatwarning = _mcptf_formatwarning
         try:
             warnings.warn(
-                "tests/sdet/ is no longer auto-discovered as of v1.5\n"
+                "tests/sdet/ is no longer auto-discovered as of v1.5\n"  # noqa: sdet-rename-shim
                 "\n"
-                "the `tests/sdet/` directory contains test_*.py files but is "
+                "the `tests/sdet/` directory contains test_*.py files but is "  # noqa: sdet-rename-shim
                 "no longer collected by `mcp-contracts run --test-code`.\n"
                 "every scenario should live under `tests/test_code/`; the "
                 "two layouts are otherwise identical.\n"
                 "\n"
-                "next: move your `tests/sdet/test_*.py` files to "
+                "next: move your `tests/sdet/test_*.py` files to "  # noqa: sdet-rename-shim
                 "`tests/test_code/` and re-run.",
                 DeprecationWarning,
                 stacklevel=2,
