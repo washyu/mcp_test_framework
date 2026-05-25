@@ -163,7 +163,6 @@ in [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md). Run scenarios
 with `mcp-contracts run --test-code`.
 
 <!-- mirrors live runner output — re-run the framework and refresh this block when the operator-facing output format changes; see docs/TEST-CODE-AUTHORING.md for the test-code mode digest contract -->
-<!-- noqa: sdet-rename-shim — the fenced text snapshot below is a verbatim pre-rename capture; the v1.4 close milestone owns the re-capture against the renamed surface. The "(SDET)" header, "Judges: (none — SDET scope)" line, and "mcp_test_framework.sdet.errors.ToolCallError" rows are intentionally preserved here for the duration of the v1.4 deprecation window. -->
 
 ```python
 # tests/test_code/test_proxmox_vm_lifecycle.py
@@ -235,13 +234,13 @@ async def test_delete_returns_ok(proxmox_vm_lifecycle):
 
 ```text
 ========================================
-MCP Test Framework (SDET) <!-- noqa: sdet-rename-shim -->
+MCP Test Framework (test-code)
 ========================================
 MCP server:  uvx homelab-mcp
 Discovered:  1 scenarios
 Running:      1  (proxmox_vm_lifecycle)
 Skipping:     0  (use --explain to list)
-Judges:      (none — SDET scope) <!-- noqa: sdet-rename-shim -->
+Judges:      (none — test-code scope)
 
 skipped:
   analyze_network_topology                 – SKIP — not selected in config
@@ -303,8 +302,8 @@ skipped:
   update_device_fingerprint_preview        – SKIP — not selected in config
   validate_infrastructure_changes          – SKIP — not selected in config
 proxmox_vm_lifecycle
-  ✗ create_returns_pending_vm — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'" <!-- noqa: sdet-rename-shim -->
-  ✗ delete_returns_ok — failed on setup with "mcp_test_framework.sdet.errors.ToolCallError: Input validation error: None is not of type 'string'" <!-- noqa: sdet-rename-shim -->
+  ✗ create_returns_pending_vm — failed on setup with "mcp_test_framework.test_code.ToolCallError: Input validation error: None is not of type 'string'"
+  ✗ delete_returns_ok — failed on setup with "mcp_test_framework.test_code.ToolCallError: Input validation error: None is not of type 'string'"
 
 Result: 0 PASS / 2 FAIL / 58 SKIP  in 6.2s
 ```
