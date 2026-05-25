@@ -7,7 +7,7 @@ pytest_configure after Config is loaded.
 
 The guard is GENERIC despite mentioning `homelab_mcp` by name: that
 string is the framework's MVP target SUT, and the black-box principle
-is what's being enforced (framework-primitives / SDET-safety principle).  # noqa: sdet-rename-shim
+is what's being enforced (framework-primitives / SDET-safety principle).
 Generalizing to a config-driven allowlist is deferred to a later milestone.
 """
 from __future__ import annotations

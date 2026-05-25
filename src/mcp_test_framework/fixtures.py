@@ -124,15 +124,13 @@ def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `confi
 # must skip preflight so it runs cleanly on a machine with no
 # homelab-mcp / Ollama configured.
 #
-# Phase 27: `tests/contract/` removed — the plugin applies the
-# `mcp_contract` marker to every injected contract test;
-# `_session_needs_preflight` detects them via marker iteration. The
-# test-code-author paths (tests/test_code/ + legacy tests/sdet/) stay  # noqa: sdet-rename-shim
-# on path-prefix detection because they do NOT carry the contract
+# The plugin applies the `mcp_contract` marker to every injected
+# contract test; `_session_needs_preflight` detects them via marker
+# iteration. The test-code-author path (`tests/test_code/`) stays on
+# path-prefix detection because items there do NOT carry the contract
 # marker.
 _LIVE_PREFIXES: tuple[str, ...] = (
     "tests/test_code/",
-    "tests/sdet/",  # noqa: sdet-rename-shim
 )
 
 
@@ -149,10 +147,8 @@ def _session_needs_preflight(request: pytest.FixtureRequest) -> bool:
 
       SECONDARY (nodeid prefix): any item whose nodeid starts with
         ``_LIVE_PREFIXES``. Covers hand-authored test-code-author
-        scenarios under ``tests/test_code/`` (and the legacy
-        ``tests/sdet/`` path retained for v1.4 dual-discovery), which do  # noqa: sdet-rename-shim
-        NOT carry the contract marker but still drive a live MCP
-        session.
+        scenarios under ``tests/test_code/``, which do NOT carry the
+        contract marker but still drive a live MCP session.
 
     Framework-only test suites (``tests/framework/...``) are pure-data and
     must NOT trigger preflight -- a developer with no homelab-mcp /
@@ -201,11 +197,10 @@ async def _preflight(request: pytest.FixtureRequest):
     120s httpx.Timeout the first time a judge call fires.
 
     The session-scope guard ``_session_needs_preflight`` short-circuits when
-    no items carry the ``mcp_contract`` marker AND no items live under
-    test-code-author scopes (``tests/test_code/`` or the legacy
-    ``tests/sdet/`` retained for v1.4 dual-discovery) are  # noqa: sdet-rename-shim
-    collected -- framework self-tests under ``tests/framework/...`` have no
-    MCP/Ollama dependency and must not be gated by integration preconditions.
+    no items carry the ``mcp_contract`` marker AND no items live under the
+    test-code-author scope (``tests/test_code/``) -- framework self-tests
+    under ``tests/framework/...`` have no MCP/Ollama dependency and must
+    not be gated by integration preconditions.
 
     The ``config`` fixture is requested *lazily* via
     ``request.getfixturevalue`` AFTER the live-MCP scope check, instead of
