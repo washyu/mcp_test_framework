@@ -84,7 +84,7 @@ def _build_pytest_args(
     pytest_args: list[str] | None,
     *,
     with_framework: bool = False,
-    sdet: bool = False,  # noqa: sdet-rename-shim
+    test_code: bool = False,
     mcp_config_path: Path | None = None,
     domain_ui_mode: str = "off",
 ) -> list[str]:
@@ -104,16 +104,12 @@ def _build_pytest_args(
       - ``with_framework=True`` APPENDS ``tests/framework`` (not REPLACE) so
         ``--with-framework`` is a superset matching the pre-split
         ``pytest tests/`` collection.
-      - ``sdet=True`` (operator-facing flag is ``--test-code``) SWAPS the  # noqa: sdet-rename-shim
-        operator-surface scope from ``tests/contract`` to ``tests/test_code``
-        (not additive). Dual-discovery: the legacy ``tests/sdet/`` path is  # noqa: sdet-rename-shim
-        retained as a fallback for v1.4 only (removed in v1.5); if
-        it exists AND contains ``test_*.py`` files, both paths are passed
-        to pytest. The session-once ``DeprecationWarning`` is fired from
-        ``tests/test_code/conftest.py`` when items collect from the legacy
-        path. ``with_framework=True`` remains ALWAYS additive on top of
-        whichever scope is active. The wrapper-owned ``--test-code`` /
-        ``--sdet`` flags never reach pytest's argv.  # noqa: sdet-rename-shim
+      - ``test_code=True`` (operator-facing flag is ``--test-code``) SWAPS
+        the operator-surface scope from ``tests/contract`` to
+        ``tests/test_code`` (not additive). Single-discovery: only
+        ``tests/test_code/`` is collected. ``with_framework=True`` remains
+        ALWAYS additive on top of whichever scope is active. The
+        wrapper-owned ``--test-code`` flag never reaches pytest's argv.
 
     Config-path threading:
       - ``mcp_config_path`` (when set) is forwarded to the subprocess pytest
@@ -125,22 +121,16 @@ def _build_pytest_args(
         ``[tool.pytest.ini_options] mcp_config_file = PATH`` drives in
         library mode -- one config-resolution mechanism end-to-end across
         CLI and library modes (no env-var write).
-    """  # noqa: sdet-rename-shim
+    """
     if domain_ui_mode not in ("off", "auto", "force"):
         raise ValueError(
             f"domain_ui_mode must be one of 'off'/'auto'/'force', got {domain_ui_mode!r}"
         )
     forwarded = list(pytest_args or [])
-    if sdet:  # noqa: sdet-rename-shim
+    if test_code:
         # --test-code SWAPS the operator-surface scope (NOT additive).
-        # Dual-discovery: tests/test_code/ is the v1.4 primary path; the
-        # legacy fallback path is kept for one milestone.  # noqa: sdet-rename-shim
-        # The session-once DeprecationWarning fires from
-        # tests/test_code/conftest.py when items collect from the legacy path.
+        # Single-discovery: only tests/test_code/ is collected.
         args: list[str] = ["tests/test_code"]
-        legacy_sdet_dir = Path("tests/sdet")  # noqa: sdet-rename-shim
-        if legacy_sdet_dir.is_dir() and any(legacy_sdet_dir.glob("test_*.py")):  # noqa: sdet-rename-shim
-            args.append("tests/sdet")  # noqa: sdet-rename-shim
     else:
         args = ["tests/contract"]
     if with_framework:
@@ -208,7 +198,7 @@ def run_pytest_subprocess(
     pytest_args: list[str] | None,
     raw: bool,
     with_framework: bool = False,
-    sdet: bool = False,  # noqa: sdet-rename-shim
+    test_code: bool = False,
     mcp_config_path: Path | None = None,
     domain_ui_mode: str = "off",
     stream_stdout: bool = False,
@@ -273,7 +263,7 @@ def run_pytest_subprocess(
             junit_xml,
             pytest_args,
             with_framework=with_framework,
-            sdet=sdet,  # noqa: sdet-rename-shim
+            test_code=test_code,
             mcp_config_path=mcp_config_path,
             domain_ui_mode=domain_ui_mode,
         )
@@ -309,7 +299,7 @@ def run_pytest_subprocess(
         None,
         pytest_args,
         with_framework=with_framework,
-        sdet=sdet,  # noqa: sdet-rename-shim
+        test_code=test_code,
         mcp_config_path=mcp_config_path,
         domain_ui_mode=domain_ui_mode,
     )
@@ -604,20 +594,14 @@ def parse_junit_xml(xml_path: Path) -> ParsedRun:
         tool = _extract_tool_name(name)
         if tool is None:
             # test-code-scope fall-through: testcases under tests/test_code/
-            # are hand-authored (no parametrize bracket). The legacy
-            # tests/sdet/ path is also discovered during the v1.4 dual-  # noqa: sdet-rename-shim
-            # discovery window; classnames from both prefixes share the
-            # same synthetic bucket shape. Group by the classname's
-            # trailing module name
-            # with `test_` stripped; use the test function name (also
-            # `test_` stripped) as the row label. Synthetic key shape
-            # `<group>::<row_label>` keeps the parser->renderer dataclass
-            # surface frozen (no new ToolVerdict fields).
+            # are hand-authored (no parametrize bracket). Group by the
+            # classname's trailing module name with `test_` stripped; use
+            # the test function name (also `test_` stripped) as the row
+            # label. Synthetic key shape `<group>::<row_label>` keeps the
+            # parser->renderer dataclass surface frozen (no new
+            # ToolVerdict fields).
             classname = tc.get("classname", "")
-            if (
-                classname.startswith("tests.test_code.test_")
-                or classname.startswith("tests.sdet.test_")  # noqa: sdet-rename-shim
-            ):
+            if classname.startswith("tests.test_code.test_"):
                 group = classname.rsplit(".", 1)[-1].removeprefix("test_")
                 row_label = name.removeprefix("test_")
                 tool = f"{group}::{row_label}"
@@ -754,10 +738,9 @@ def _build_parsed_run_from_reports(reports: list[pytest.TestReport]) -> ParsedRu
     Scenario fall-through: nodeids without a ``[<tool>]`` parametrize
     suffix produce a synthetic bucket key ``"<group>::<row_label>"`` when
     the classname (derived from the nodeid file path) starts with
-    ``tests.test_code.test_`` OR ``tests.sdet.test_`` (legacy dual-
-    discovery window). Mirrors parse_junit_xml lines 540-563 verbatim so
-    the renderer sees identical bucket shapes across both input paths.
-    (noqa: sdet-rename-shim covers the legacy classname-prefix mention.)
+    ``tests.test_code.test_``. Mirrors parse_junit_xml's scenario-
+    bucketing branch verbatim so the renderer sees identical bucket
+    shapes across both input paths.
 
     Pitfall 4 (ToolCallError on user_properties): scenario tests
     set ``mcptf_error_code`` / ``mcptf_error_message`` /
@@ -792,16 +775,12 @@ def _build_parsed_run_from_reports(reports: list[pytest.TestReport]) -> ParsedRu
     for nodeid, phases in by_nodeid.items():
         tool = _extract_tool_name(nodeid)
         if tool is None:
-            # Scenario fall-through: mirror parse_junit_xml:540-563 verbatim.
-            # tests/test_code/ are hand-authored (no parametrize bracket);
-            # tests/sdet/ is the v1.4 dual-discovery legacy path. Both share  # noqa: sdet-rename-shim
-            # the same synthetic bucket shape so the renderer's per-tool
-            # block stays input-agnostic.
+            # Scenario fall-through: mirror parse_junit_xml's scenario branch
+            # verbatim. tests/test_code/ tests are hand-authored (no
+            # parametrize bracket); the synthetic bucket shape keeps the
+            # renderer's per-tool block input-agnostic.
             classname = _classname_from_nodeid(nodeid)
-            if (
-                classname.startswith("tests.test_code.test_")
-                or classname.startswith("tests.sdet.test_")  # noqa: sdet-rename-shim
-            ):
+            if classname.startswith("tests.test_code.test_"):
                 group = classname.rsplit(".", 1)[-1].removeprefix("test_")
                 func = nodeid.rsplit("::", 1)[-1]
                 if "[" in func:
@@ -1267,8 +1246,7 @@ def _render_scenario_pre_run_digest(
 def _collect_test_code_scenarios(
     ctx: "RenderContext",
 ) -> tuple[list[str], dict[str, str]]:
-    """Enumerate scenario module stems under ``tests/test_code/``
-    (and the legacy ``tests/sdet/`` path as a v1.4 fallback).  # noqa: sdet-rename-shim
+    """Enumerate scenario module stems under ``tests/test_code/``.
 
     The discovery side ships scenario stems; preflight-skip detection (for
     scenarios skipped by env-reachability probes) is a future extension.
@@ -1280,14 +1258,12 @@ def _collect_test_code_scenarios(
 
     Returns:
         (scenario_stems: list[str] sorted alphabetically, skipped: dict[str, str])
-    """  # noqa: sdet-rename-shim
+    """
     stems: list[str] = []
-    for dir_path in (Path("tests/test_code"), Path("tests/sdet")):  # noqa: sdet-rename-shim
-        if not dir_path.is_dir():
-            continue
+    dir_path = Path("tests/test_code")
+    if dir_path.is_dir():
         for p in dir_path.glob("test_*.py"):
             stems.append(p.stem.removeprefix("test_"))
-    # De-duplicate (legacy and primary may both exist transiently).
     return (sorted(set(stems)), {})
 
 
