@@ -116,7 +116,7 @@ Plans:
   3. Operator running `mcp-test-framework run` cannot start the framework — the legacy console-script body hard-rejects with an operator-tone message naming `mcp-contracts` and exits non-zero; the `[project.scripts]` entry remains wired to `_deprecated_script:main` for v1.5 so the pointer text is guaranteed, with clean-delete deferred to v1.6 (per CONTEXT D-07 + 32-RESEARCH §SHIM-08). `mcp-contracts` is the only console script that actually runs the framework.
   4. Operator's tests under `tests/sdet/` are no longer auto-discovered (only `tests/test_code/` is); operator-authored tests referencing any of the six unprefixed fixture aliases in `_plugin.py` (`config`, `judge`, `target_tool`, `rubric_clarity`, `rubric_disambiguation`, `rubric_parameters`) fail at fixture-resolution time with the `mcp_*`-prefixed equivalent surfaced in the error (per CONTEXT <domain> post-research correction — the earlier four-name SC#4 wording was imprecise; the post-v1.4 prefixed names are `mcp_config`, `mcp_judge`, `mcp_target_tool`, `mcp_rubric_clarity`, `mcp_rubric_disambiguation`, `mcp_rubric_parameters`).
 **Plans**: 6 plans
-  - [ ] 32-01-PLAN.md — SHIM-01: mcp_test_framework.sdet hard-raise removal stub
+  - [x] 32-01-PLAN.md — SHIM-01: mcp_test_framework.sdet hard-raise removal stub
   - [ ] 32-02-PLAN.md — SHIM-02: --sdet Typer flag hard-rejects with operator-tone pointer to --test-code
   - [ ] 32-03-PLAN.md — SHIM-03: gen-sdet-classes Typer command hard-rejects with operator-tone pointer to gen-test-classes
   - [ ] 32-04-PLAN.md — SHIM-06: tests/sdet/ discovery removed; warn-on-presence detector + marker scrub + sdet→test_code kwarg rename
@@ -197,7 +197,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
-| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 0/0 | Not started | — |
+| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 1/6 | In Progress|  |
 | 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/0 | Not started | — |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
 | 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
@@ -208,7 +208,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/6 plans executed
 
 **Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with v1.5 Phase 33 (per-bucket skip) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
 
