@@ -138,6 +138,32 @@ def test_error_style_sdet_rejection_message(
         )
 
 
+def test_error_style_sdet_package_removed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """SHIM-01: importing `mcp_test_framework.sdet` raises
+    ModuleNotFoundError with operator-tone three-part text pointing at
+    `mcp_test_framework.test_code`. Future drift in either the stub
+    module or this test breaks the assertion."""
+    import importlib
+    import sys
+
+    # Force a fresh import even if the module was previously cached
+    # by another test in this session.
+    sys.modules.pop("mcp_test_framework.sdet", None)
+    with pytest.raises(ModuleNotFoundError) as exc_info:
+        importlib.import_module("mcp_test_framework.sdet")
+    msg = str(exc_info.value)
+    # Verbatim three-part text from sdet/__init__.py.
+    assert "mcp_test_framework.sdet was removed in v1.5" in msg
+    assert "mcp_test_framework.test_code" in msg
+    assert "next:" in msg
+    assert (
+        "replace `from mcp_test_framework.sdet import X` with "
+        "`from mcp_test_framework.test_code import X`"
+    ) in msg
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 
