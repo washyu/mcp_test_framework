@@ -192,6 +192,32 @@ def test_error_style_sdet_flag_removed(
     ) in combined
 
 
+def test_error_style_gen_sdet_classes_removed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """SHIM-03: `mcp-contracts gen-sdet-classes` raises typer.BadParameter
+    (exit code 2) with operator-tone three-part text pointing at
+    `gen-test-classes`. Future drift in either cli.py or this test
+    breaks the assertion."""
+    from typer.testing import CliRunner
+
+    from mcp_test_framework.cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["gen-sdet-classes"])
+    combined = result.output or ""
+    assert result.exit_code == 2, (
+        f"expected exit_code=2, got {result.exit_code!r}; output={combined!r}"
+    )
+    # Verbatim three-part text from _gen_sdet_classes_removed in cli.py.
+    assert "gen-sdet-classes was removed in v1.5" in combined
+    assert "gen-test-classes" in combined
+    assert "next:" in combined
+    assert (
+        "invoke `mcp-contracts gen-test-classes` (same flags)"
+    ) in combined
+
+
 def test_error_style_no_banned_tokens_outside_checklist() -> None:
     """Operator-facing prose has no spec IDs / phase IDs / file:line refs.
 
