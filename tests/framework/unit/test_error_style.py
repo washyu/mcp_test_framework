@@ -30,7 +30,7 @@ def test_error_style_contains_safe_03_message() -> None:
     text = ERROR_STYLE.read_text(encoding="utf-8")
     assert "### No config found, framework refuses to run" in text
     assert "no config file found: ./config.yaml" in text
-    assert "next: run `mcp-test-framework config-init -o config.yaml`" in text
+    assert "next: run `mcp-contracts config-init -o config.yaml`" in text
 
 
 def test_error_style_contains_safe_06_message() -> None:

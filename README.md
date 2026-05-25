@@ -419,11 +419,11 @@ uv sync
 `mcp-contracts` console script under `.venv/Scripts/` (Windows) or
 `.venv/bin/` (Unix).
 
-**Legacy script alias:** the `mcp-test-framework` console-script is retained
-in v1.4 as a back-compat shim. Invoking it emits a `DeprecationWarning`
-carrying the literal copy `mcp-test-framework command is deprecated since v1.4 and will be removed in v1.5 — use mcp-contracts instead.`
-and then dispatches to the same Typer app. The shim drops in v1.5
-alongside every other v1.4 deprecation.
+**Legacy script alias:** the legacy console-script was removed in v1.5.
+Invoking it now prints an operator-tone message to stderr pointing at
+`mcp-contracts` and exits non-zero — every subcommand and every flag
+is unchanged, only the script name moved. Use `mcp-contracts` directly
+for all invocations.
 
 ### Run the test suite
 

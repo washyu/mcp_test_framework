@@ -19,7 +19,7 @@ feature of the persona, not a test-discipline rule you must obey.
 
 ### Step 1 — discover the surface
 
-Run `mcp-test-framework list-tools --config config.yaml` against your server's
+Run `mcp-contracts list-tools --config config.yaml` against your server's
 launch command (if you don't have a `config.yaml` yet, see Step 2 below for the
 bootstrap recipe). You will see one block per tool, for example:
 
@@ -30,13 +30,13 @@ list_keyring_credentials(service: str)
 
 The parameter signature comes from the tool's declared `inputSchema`. Add
 `--full` to see the full description and per-parameter descriptions:
-`mcp-test-framework list-tools --config config.yaml --full --name keyring`. The `--name PATTERN`
+`mcp-contracts list-tools --config config.yaml --full --name keyring`. The `--name PATTERN`
 flag substring-matches case-insensitively, useful at large surfaces (~70+
 tools).
 
 ### Step 2 — scaffold a config
 
-Run `mcp-test-framework config-init --command uvx --arg homelab-mcp -o config.yaml`.
+Run `mcp-contracts config-init --command uvx --arg homelab-mcp -o config.yaml`.
 The framework will launch the server, list its tools, and write a
 self-contained config file with every discovered tool listed as `skip: true`
 and a hint to remove the skip from the ones you want to test. No tool will
@@ -49,7 +49,7 @@ If your server isn't on `PATH` directly — for example, you launch it with
 `--command` and the package (plus any args) as repeated `--arg` flags:
 
 ```bash
-mcp-test-framework config-init --command uvx --arg homelab-mcp -o config.yaml
+mcp-contracts config-init --command uvx --arg homelab-mcp -o config.yaml
 ```
 
 These flags override `mcp_server.command` / `mcp_server.args` for this one
@@ -57,7 +57,7 @@ invocation, so the framework can launch the server, list its tools, and
 write the scaffold even on a fresh checkout with no pre-existing
 `config.yaml`. After the scaffold lands, edit the generated `mcp_server`
 block to record the same `command` / `args` values, so subsequent
-`mcp-test-framework run --config config.yaml` invocations work without the
+`mcp-contracts run --config config.yaml` invocations work without the
 flags.
 
 If the launch still fails (the launcher itself isn't on `PATH`, or the
@@ -79,7 +79,7 @@ out.
 
 ### Step 4 — run
 
-`mcp-test-framework run --config config.yaml`. The framework spawns the
+`mcp-contracts run --config config.yaml`. The framework spawns the
 server, calls each enabled tool, asks the configured Ollama judge to
 evaluate the description against the rubrics you listed, and exits 0 if
 every test passed.
@@ -210,12 +210,12 @@ the field reference. This section walks the workflow.
 
 **Where to drop the recipe:** `config.yaml` (or whichever YAML overlay your `--config` flag points at). No edits to `tests/conftest.py` or framework source are required.
 
-1. **Discover.** Run `uv run mcp-test-framework list-tools --config config.yaml` to see every tool the connected server advertises.
+1. **Discover.** Run `uv run mcp-contracts list-tools --config config.yaml` to see every tool the connected server advertises.
 2. **Decide.** For each tool, decide whether to `skip`, restrict the `judges` subset, or pre-fill `call_arguments`. Tools you say nothing about run with all rubrics and an empty argument map (the safe defaults).
 3. **Add a `tools.<tool_name>:` block** under the top-level `tools:` key in your config YAML. See [Per-tool configuration](../README.md#per-tool-configuration) for the field reference; the worked example below uses the skip-with-reason pattern.
-4. **Verify.** Re-run `uv run mcp-test-framework run --config config.yaml`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
+4. **Verify.** Re-run `uv run mcp-contracts run --config config.yaml`. The per-tool summary printed at the end of the session shows `<tool_name>: PASS|FAIL|SKIP -- <reason>` so you can confirm the new entry took effect.
 
-Replace the placeholder tool name below with one from your `mcp-test-framework list-tools` output.
+Replace the placeholder tool name below with one from your `mcp-contracts list-tools` output.
 
 ```yaml
 # config.yaml -- per-tool config overlay
@@ -277,7 +277,7 @@ If you find yourself wanting to add an entry to `_PASSTHROUGH_ALLOWLIST`, the
 right workflow is:
 
 1. **Identify the real need.** What does the spawned MCP server fail to do
-   without the var? Capture a reproducer (`uv run mcp-test-framework run -v`
+   without the var? Capture a reproducer (`uv run mcp-contracts run -v`
    with the var stripped vs. present).
 2. **Try the override path first.** Most "I need X env var" cases are
    actually "I need a redirected `HOME`" -- see the existing `_HOME_OVERRIDES`
