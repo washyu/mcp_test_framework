@@ -642,20 +642,24 @@ def _discover_tools_for_run(cfg: Config) -> list[str]:
         )
 
 
-def _warn_sdet_flag(value: bool) -> bool:  # noqa: sdet-rename-shim
-    """Eager Typer/Click callback that emits the --sdet -> --test-code  # noqa: sdet-rename-shim
-    deprecation warning during option parsing, BEFORE --help short-circuits
-    the command body. Fires once per process via Python's default filter.
-    """  # noqa: sdet-rename-shim
+def _sdet_flag_removed(value: bool) -> bool:  # noqa: sdet-rename-shim
+    """Eager Typer/Click callback that hard-rejects `--sdet` with an
+    operator-tone pointer to `--test-code`. Replaces the v1.4
+    `_warn_sdet_flag` DeprecationWarning. The option stays registered
+    (hidden=True) so legacy argv still parses far enough to surface
+    this message rather than producing Typer's stock "No such option"
+    block."""
     if value:
-        import warnings
-        warnings.warn(  # noqa: sdet-rename-shim
-            "--sdet is deprecated since v1.4 and will be removed in v1.5 — "  # noqa: sdet-rename-shim
-            "use --test-code instead.",  # noqa: sdet-rename-shim
-            DeprecationWarning,  # noqa: sdet-rename-shim
-            stacklevel=2,  # noqa: sdet-rename-shim
-        )  # noqa: sdet-rename-shim
-    return value  # noqa: sdet-rename-shim
+        raise typer.BadParameter(
+            "--sdet was removed in v1.5\n"
+            "\n"
+            "the `--sdet` flag was renamed to `--test-code` in v1.4 and "
+            "removed in v1.5.\n"
+            "every behavior is unchanged -- only the flag spelling moved.\n"
+            "\n"
+            "next: pass `--test-code` instead of `--sdet` to `mcp-contracts run`."
+        )
+    return value
 
 
 @app.command(
@@ -733,12 +737,12 @@ def run(
         ),
     ),
     sdet_legacy: bool = typer.Option(  # noqa: sdet-rename-shim
-        False,  # noqa: sdet-rename-shim
-        "--sdet",  # noqa: sdet-rename-shim
-        hidden=True,  # noqa: sdet-rename-shim
-        help="Deprecated alias for --test-code; removed in v1.5.",  # noqa: sdet-rename-shim
-        callback=_warn_sdet_flag,  # noqa: sdet-rename-shim
-        is_eager=True,  # noqa: sdet-rename-shim
+        False,
+        "--sdet",
+        hidden=True,
+        help="Removed in v1.5; use --test-code (this flag raises if passed).",
+        callback=_sdet_flag_removed,  # noqa: sdet-rename-shim
+        is_eager=True,
     ),
     explain: bool = typer.Option(
         False,
@@ -783,12 +787,6 @@ def run(
     effect inside the subprocess -- `run` MUST NOT pass an explicit `-m`
     flag.
     """
-    if sdet_legacy:  # noqa: sdet-rename-shim
-        # Deprecation warning fires from _warn_sdet_flag eager callback during  # noqa: sdet-rename-shim
-        # option parsing (so it surfaces even on `--sdet --help`); body only  # noqa: sdet-rename-shim
-        # coerces the legacy flag to the new behavior.
-        test_code = True  # legacy operators get the same behavior  # noqa: sdet-rename-shim
-
     # Reconfigure sys.stdout to utf-8 with errors='replace' BEFORE any
     # rendering or any _load_config error path. On Windows the default
     # console code page is cp1252, which cannot encode the renderer's
