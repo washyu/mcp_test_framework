@@ -14,8 +14,8 @@ exercise stateful tool sequences end-to-end.
 
 - A configured MCP server (a working `config.yaml`; see `docs/EXTENDING.md`
   for the bootstrap flow).
-- `mcp-test-framework` installed in the project's `uv` environment
-  (`uv sync` once, then `uv run mcp-test-framework --help`).
+- `mcp-contracts` installed in the project's `uv` environment
+  (`uv sync` once, then `uv run mcp-contracts --help`).
 - A `tests/test_code/` directory at the repo root. The framework's runner
   discovers test-code scenarios from this scope only.
 - Tests are async-only under `pytest-asyncio` strict mode. Every test-code
@@ -33,7 +33,7 @@ field rename or type change shows up as drift in the regenerated module the
 moment you re-run the generator.
 
 ```bash
-uv run mcp-test-framework gen-test-classes
+uv run mcp-contracts gen-test-classes
 ```
 
 The generator overwrites ONLY the

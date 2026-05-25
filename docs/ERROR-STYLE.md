@@ -1,6 +1,6 @@
 # Error message style guide
 
-Operator-facing error messages in `mcp-test-framework` follow four rules.
+Operator-facing error messages in `mcp-contracts` follow four rules.
 This guide is the citation target for every rewritten error site and the
 canonical source for the missing-config and schema-mismatch reference
 messages that the config-safety code implements verbatim.
@@ -51,7 +51,7 @@ implementations copy them verbatim — copy exactly, do not reword.
     otherwise call every tool the server advertises -- including any
     destructive ones. you must explicitly opt in to which tools run.
 
-    next: run `mcp-test-framework config-init -o config.yaml` to generate
+    next: run `mcp-contracts config-init -o config.yaml` to generate
           a starter config, then edit it to enable the tools you want to test
 
 ### Config uses an older schema version
