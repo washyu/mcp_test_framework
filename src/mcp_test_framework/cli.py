@@ -1416,24 +1416,21 @@ def gen_test_classes(
 
 
 @app.command("gen-sdet-classes", hidden=True)  # noqa: sdet-rename-shim
-def _gen_sdet_classes_shim(  # noqa: sdet-rename-shim
-    config: Path | None = typer.Option(  # noqa: sdet-rename-shim
-        None,  # noqa: sdet-rename-shim
-        "--config",  # noqa: sdet-rename-shim
-        help=(  # noqa: sdet-rename-shim
-            "Path to a YAML config (overrides ./config.yaml autodiscovery)."  # noqa: sdet-rename-shim
-        ),  # noqa: sdet-rename-shim
-    ),  # noqa: sdet-rename-shim
-) -> None:  # noqa: sdet-rename-shim
-    """Deprecated alias for `gen-test-classes` -- removed in v1.5."""  # noqa: sdet-rename-shim
-    import warnings  # noqa: sdet-rename-shim
-    warnings.warn(  # noqa: sdet-rename-shim
-        "gen-sdet-classes is deprecated since v1.4 and will be removed in v1.5 — "  # noqa: sdet-rename-shim
-        "use gen-test-classes instead.",  # noqa: sdet-rename-shim
-        DeprecationWarning,  # noqa: sdet-rename-shim
-        stacklevel=2,  # noqa: sdet-rename-shim
-    )  # noqa: sdet-rename-shim
-    gen_test_classes(config=config)  # noqa: sdet-rename-shim
+def _gen_sdet_classes_removed(
+    config: Path | None = typer.Option(None, "--config", hidden=True),
+) -> None:
+    """Removed in v1.5 -- see error message. The command stays registered
+    (hidden=True) so legacy operator argv parses far enough to surface
+    this pointer message rather than Typer's stock "No such command"."""
+    raise typer.BadParameter(
+        "gen-sdet-classes was removed in v1.5\n"
+        "\n"
+        "the `gen-sdet-classes` command was renamed to `gen-test-classes` "
+        "in v1.4 and removed in v1.5.\n"
+        "every flag is unchanged -- only the command name moved.\n"
+        "\n"
+        "next: invoke `mcp-contracts gen-test-classes` (same flags)."
+    )
 
 
 # Serializes concurrent _run_codegen_handshake calls in the same
