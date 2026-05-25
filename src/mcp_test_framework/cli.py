@@ -832,7 +832,7 @@ def run(
             pytest_args=pytest_args,
             raw=True,
             with_framework=with_framework,
-            sdet=test_code,  # noqa: sdet-rename-shim
+            test_code=test_code,
             mcp_config_path=resolved,
         )
         mapped, warning = _runner._map_exit_code(rc)
@@ -935,7 +935,7 @@ def run(
         pytest_args=pytest_args,
         raw=False,
         with_framework=with_framework,
-        sdet=test_code,  # noqa: sdet-rename-shim
+        test_code=test_code,
         mcp_config_path=resolved,
         domain_ui_mode=domain_ui_mode,
         stream_stdout=stream_stdout,
