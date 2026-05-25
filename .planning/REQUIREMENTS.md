@@ -14,14 +14,14 @@ Grouped by category. Each REQ is atomic, testable, and user-centric. Traceabilit
 
 All shims below were introduced in v1.4 with one-milestone deprecation windows explicitly locked to expire in v1.5 (see PROJECT.md "Carry-forward debt" and MILESTONES.md v1.4 entry).
 
-- [ ] **SHIM-01**: Operator can no longer `from mcp_test_framework.sdet import ...` — the `sdet` package shim is removed; import raises `ModuleNotFoundError` with operator-tone message pointing at `mcp_test_framework.test_code`.
-- [ ] **SHIM-02**: Operator can no longer pass `--sdet` to `mcp-contracts run` — flag removed; UsageError points at `--test-code`.
-- [ ] **SHIM-03**: Operator can no longer invoke `gen-sdet-classes` — CLI command removed; UsageError points at `gen-test-classes`.
+- [x] **SHIM-01**: Operator can no longer `from mcp_test_framework.sdet import ...` — the `sdet` package shim is removed; import raises `ModuleNotFoundError` with operator-tone message pointing at `mcp_test_framework.test_code`.
+- [x] **SHIM-02**: Operator can no longer pass `--sdet` to `mcp-contracts run` — flag removed; UsageError points at `--test-code`.
+- [x] **SHIM-03**: Operator can no longer invoke `gen-sdet-classes` — CLI command removed; UsageError points at `gen-test-classes`.
 - [ ] **SHIM-04**: Operator's `config.yaml` using the legacy `sdet:` key (Pydantic `Field(alias=...)`) is rejected — `cfg.sdet.*` alias removed; `extra="forbid"` model surfaces an operator-tone migration error pointing at `test_code:`.
 - [ ] **SHIM-05**: Operator can no longer point the framework at a config via `MCPTF_CONFIG_FILE=...` env var — env-var route removed; pytest ini key `[tool.pytest.ini_options] mcp_config_file = PATH` is the sole library-mode config route; `mcp-contracts run --config PATH` is the sole CLI route.
-- [ ] **SHIM-06**: Operator's test code under `tests/sdet/` is no longer auto-discovered — discovery fallback removed; only `tests/test_code/` is discovered by default; operator-tone DeprecationWarning replaced by clean removal.
-- [ ] **SHIM-07**: Framework fixtures resolve only under the prefixed names — `mcp_config` / `mcp_judge` / `mcp_client` / `mcp_target_tool`; unprefixed aliases (`config` / `judge` / `client` / `target_tool`) are removed; operator-authored tests referencing legacy names fail at fixture-resolution time.
-- [ ] **SHIM-08**: Operator can no longer invoke the legacy `mcp-test-framework` console-script — entry-point removed; `mcp-contracts` is the sole console script; `pyproject.toml` `[project.scripts]` reflects removal.
+- [x] **SHIM-06**: Operator's test code under `tests/sdet/` is no longer auto-discovered — discovery fallback removed; only `tests/test_code/` is discovered by default; operator-tone DeprecationWarning replaced by clean removal.
+- [x] **SHIM-07**: Framework fixtures resolve only under the prefixed names — `mcp_config` / `mcp_judge` / `mcp_client` / `mcp_target_tool`; unprefixed aliases (`config` / `judge` / `client` / `target_tool`) are removed; operator-authored tests referencing legacy names fail at fixture-resolution time.
+- [x] **SHIM-08**: Operator can no longer invoke the legacy `mcp-test-framework` console-script — entry-point removed; `mcp-contracts` is the sole console script; `pyproject.toml` `[project.scripts]` reflects removal.
 - [ ] **SHIM-09**: Regression-test gate pins zero-shim state in CI — a single test sweep across the importable surface (`mcp_test_framework.sdet`), CLI surface (`--sdet`, `gen-sdet-classes`, `mcp-test-framework`), config surface (`cfg.sdet.*`, `MCPTF_CONFIG_FILE`), fixture names (unprefixed quartet), and discovery surface (`tests/sdet/`) returns zero matches and blocks reintroduction.
 
 ### BUCKET — Per-bucket / per-judge opt-in granularity in ToolConfig (999.1)

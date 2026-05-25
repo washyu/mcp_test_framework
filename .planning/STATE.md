@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: executing
+status: ready_to_plan
 stopped_at: Phase 32 context gathered
 last_updated: "2026-05-25T00:23:29.847Z"
 last_activity: 2026-05-25 -- Phase 32 execution started
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 12
   completed_plans: 6
-  percent: 50
+  percent: 29
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 ## Current Position
 
-Phase: 32 (surface-shim-removals-cli-package-fixtures-discovery) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 32
-Last activity: 2026-05-25 -- Phase 32 execution started
+Phase: 999.2
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-25
 
 ## Performance Metrics
 

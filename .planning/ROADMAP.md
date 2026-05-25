@@ -197,7 +197,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 29. Live domain-UI reporter plugin | v1.4 | 3/3 | Complete | 2026-05-17 |
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
-| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 6/6 | Complete   | 2026-05-25 |
+| 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 6/6 | Complete    | 2026-05-25 |
 | 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/0 | Not started | — |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
 | 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
