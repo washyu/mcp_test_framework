@@ -9,11 +9,11 @@ Current skeleton:
     `pytest_addoption`) are pre-declared with no-op bodies.
   - Session-scoped fixtures are re-exported from `mcp_test_framework.fixtures`
     under their renamed `mcp_*` names.
-  - Six unprefixed deprecation aliases (`config`, `judge`, `target_tool`,
-    `rubric_clarity`, `rubric_disambiguation`, `rubric_parameters`) are
-    declared here as separate `@pytest.fixture` defs that depend on the
-    prefixed fixture and emit a one-time DeprecationWarning per process.
-    All six aliases drop in v1.5.
+  - Six removal stubs (`config`, `judge`, `target_tool`, `rubric_clarity`,
+    `rubric_disambiguation`, `rubric_parameters`) survive as parameter-less
+    `@pytest.fixture` defs whose bodies immediately call `pytest.fail` with
+    an operator-tone pointer to the `mcp_*`-prefixed equivalent. Planned
+    full removal: future EOL pass.
 
 A library-mode milestone fills the hook bodies with an ini-driven
 entry point: operators set
@@ -452,87 +452,116 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Deprecation aliases:
+# Removal stubs (six unprefixed fixture names):
 #
-# Each unprefixed alias is a separate `@pytest.fixture` def that:
-#   1. Receives the prefixed fixture as a parameter (DI; no manual lookup).
-#   2. Calls `warnings.warn(DeprecationWarning, stacklevel=2)` once per
-#      process per alias — the default Python warning filter dedups, so
-#      a session-wide use prints exactly one warning per alias.
-#   3. Returns the prefixed value unchanged (identity passthrough).
+# Each unprefixed fixture is registered as a parameter-less stub whose body
+# immediately calls `pytest.fail(MSG, pytrace=False)` with an operator-tone
+# three-part message naming the `mcp_*`-prefixed equivalent. Dropping the
+# prefixed-fixture parameter is load-bearing: it prevents the prefixed
+# fixture's session-scoped setup (including potential MCP subprocess spawn)
+# from running before the failure fires. `pytrace=False` suppresses
+# pytest's traceback render so operators see only the MSG verbatim.
 #
-# Six aliases drop coherently in v1.5 alongside every other v1.4
-# deprecation shim. Hardcoded deprecation copy per call site (no central
-# constant).
+# Planned full removal: future EOL pass.
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session")
-def config(mcp_config):
-    """Deprecated alias for `mcp_config` — removed in v1.5."""
-    warnings.warn(
-        "the `config` fixture is deprecated since v1.4 and will be removed in v1.5 — "
-        "use `mcp_config` instead.",
-        DeprecationWarning,
-        stacklevel=2,
+def config():  # noqa: sdet-rename-shim -- stub-raise; prefixed-fixture parameter dropped
+    """Removed in v1.5 -- use `mcp_config` instead."""
+    pytest.fail(
+        "the `config` fixture was removed in v1.5\n"
+        "\n"
+        "the `config` fixture was renamed to `mcp_config` in v1.4 and "
+        "removed in v1.5.\n"
+        "the fixture body, scope, and return value are unchanged -- only "
+        "the name moved.\n"
+        "\n"
+        "next: rename `config` to `mcp_config` in your test signature "
+        "(e.g. `def test_X(mcp_config): ...`).",
+        pytrace=False,
     )
-    return mcp_config
 
 
 @pytest.fixture(scope="session")
-def judge(mcp_judge):
-    """Deprecated alias for `mcp_judge` — removed in v1.5."""
-    warnings.warn(
-        "the `judge` fixture is deprecated since v1.4 and will be removed in v1.5 — "
-        "use `mcp_judge` instead.",
-        DeprecationWarning,
-        stacklevel=2,
+def judge():  # noqa: sdet-rename-shim -- stub-raise; prefixed-fixture parameter dropped
+    """Removed in v1.5 -- use `mcp_judge` instead."""
+    pytest.fail(
+        "the `judge` fixture was removed in v1.5\n"
+        "\n"
+        "the `judge` fixture was renamed to `mcp_judge` in v1.4 and "
+        "removed in v1.5.\n"
+        "the fixture body, scope, and return value are unchanged -- only "
+        "the name moved.\n"
+        "\n"
+        "next: rename `judge` to `mcp_judge` in your test signature "
+        "(e.g. `def test_X(mcp_judge): ...`).",
+        pytrace=False,
     )
-    return mcp_judge
 
 
 @pytest.fixture(scope="session")
-def target_tool(mcp_target_tool):
-    """Deprecated alias for `mcp_target_tool` — removed in v1.5."""
-    warnings.warn(
-        "the `target_tool` fixture is deprecated since v1.4 and will be removed in v1.5 — "
-        "use `mcp_target_tool` instead.",
-        DeprecationWarning,
-        stacklevel=2,
+def target_tool():  # noqa: sdet-rename-shim -- stub-raise; prefixed-fixture parameter dropped
+    """Removed in v1.5 -- use `mcp_target_tool` instead."""
+    pytest.fail(
+        "the `target_tool` fixture was removed in v1.5\n"
+        "\n"
+        "the `target_tool` fixture was renamed to `mcp_target_tool` in v1.4 and "
+        "removed in v1.5.\n"
+        "the fixture body, scope, and return value are unchanged -- only "
+        "the name moved.\n"
+        "\n"
+        "next: rename `target_tool` to `mcp_target_tool` in your test signature "
+        "(e.g. `def test_X(mcp_target_tool): ...`).",
+        pytrace=False,
     )
-    return mcp_target_tool
 
 
 @pytest.fixture(scope="session")
-def rubric_clarity(mcp_rubric_clarity):
-    """Deprecated alias for `mcp_rubric_clarity` — removed in v1.5."""
-    warnings.warn(
-        "the `rubric_clarity` fixture is deprecated since v1.4 and will be removed in v1.5 — "
-        "use `mcp_rubric_clarity` instead.",
-        DeprecationWarning,
-        stacklevel=2,
+def rubric_clarity():  # noqa: sdet-rename-shim -- stub-raise; prefixed-fixture parameter dropped
+    """Removed in v1.5 -- use `mcp_rubric_clarity` instead."""
+    pytest.fail(
+        "the `rubric_clarity` fixture was removed in v1.5\n"
+        "\n"
+        "the `rubric_clarity` fixture was renamed to `mcp_rubric_clarity` in v1.4 and "
+        "removed in v1.5.\n"
+        "the fixture body, scope, and return value are unchanged -- only "
+        "the name moved.\n"
+        "\n"
+        "next: rename `rubric_clarity` to `mcp_rubric_clarity` in your test signature "
+        "(e.g. `def test_X(mcp_rubric_clarity): ...`).",
+        pytrace=False,
     )
-    return mcp_rubric_clarity
 
 
 @pytest.fixture(scope="session")
-def rubric_disambiguation(mcp_rubric_disambiguation):
-    """Deprecated alias for `mcp_rubric_disambiguation` — removed in v1.5."""
-    warnings.warn(
-        "the `rubric_disambiguation` fixture is deprecated since v1.4 and will be removed in v1.5 — "
-        "use `mcp_rubric_disambiguation` instead.",
-        DeprecationWarning,
-        stacklevel=2,
+def rubric_disambiguation():  # noqa: sdet-rename-shim -- stub-raise; prefixed-fixture parameter dropped
+    """Removed in v1.5 -- use `mcp_rubric_disambiguation` instead."""
+    pytest.fail(
+        "the `rubric_disambiguation` fixture was removed in v1.5\n"
+        "\n"
+        "the `rubric_disambiguation` fixture was renamed to `mcp_rubric_disambiguation` in v1.4 and "
+        "removed in v1.5.\n"
+        "the fixture body, scope, and return value are unchanged -- only "
+        "the name moved.\n"
+        "\n"
+        "next: rename `rubric_disambiguation` to `mcp_rubric_disambiguation` in your test signature "
+        "(e.g. `def test_X(mcp_rubric_disambiguation): ...`).",
+        pytrace=False,
     )
-    return mcp_rubric_disambiguation
 
 
 @pytest.fixture(scope="session")
-def rubric_parameters(mcp_rubric_parameters):
-    """Deprecated alias for `mcp_rubric_parameters` — removed in v1.5."""
-    warnings.warn(
-        "the `rubric_parameters` fixture is deprecated since v1.4 and will be removed in v1.5 — "
-        "use `mcp_rubric_parameters` instead.",
-        DeprecationWarning,
-        stacklevel=2,
+def rubric_parameters():  # noqa: sdet-rename-shim -- stub-raise; prefixed-fixture parameter dropped
+    """Removed in v1.5 -- use `mcp_rubric_parameters` instead."""
+    pytest.fail(
+        "the `rubric_parameters` fixture was removed in v1.5\n"
+        "\n"
+        "the `rubric_parameters` fixture was renamed to `mcp_rubric_parameters` in v1.4 and "
+        "removed in v1.5.\n"
+        "the fixture body, scope, and return value are unchanged -- only "
+        "the name moved.\n"
+        "\n"
+        "next: rename `rubric_parameters` to `mcp_rubric_parameters` in your test signature "
+        "(e.g. `def test_X(mcp_rubric_parameters): ...`).",
+        pytrace=False,
     )
-    return mcp_rubric_parameters
