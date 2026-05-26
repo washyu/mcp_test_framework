@@ -145,6 +145,69 @@ def test_reserved_fields_typed_but_runtime_no_op() -> None:
     assert tc.depends_on == ["a", "b"]
 
 
+# ===========================================================================
+# Phase 33 Plan 01 -- skip_buckets field (BUCKET-01 + BUCKET-03)
+# ===========================================================================
+
+
+def test_skip_buckets_default_is_empty_list() -> None:
+    """BUCKET-01: ToolConfig() with no skip_buckets kwarg reads back as []."""
+    tc = ToolConfig()
+    assert tc.skip_buckets == []
+
+
+def test_skip_buckets_accepts_single_valid_bucket() -> None:
+    """BUCKET-01: skip_buckets=['output'] constructs and reads back correctly."""
+    tc = ToolConfig(skip_buckets=["output"])
+    assert tc.skip_buckets == ["output"]
+
+
+def test_skip_buckets_accepts_empty_list() -> None:
+    """BUCKET-01: skip_buckets=[] (explicit empty) is equivalent to default."""
+    tc = ToolConfig(skip_buckets=[])
+    assert tc.skip_buckets == []
+
+
+def test_skip_buckets_accepts_all_three_buckets() -> None:
+    """BUCKET-01: skip_buckets=['schema', 'judge', 'output'] constructs successfully."""
+    tc = ToolConfig(skip_buckets=["schema", "judge", "output"])
+    assert tc.skip_buckets == ["schema", "judge", "output"]
+
+
+def test_skip_buckets_rejects_typo_names_all_valid_in_error() -> None:
+    """BUCKET-03: Unknown bucket name raises ValidationError naming all three valid values.
+
+    Pydantic's stock Literal error lists each valid option. We assert that
+    each of 'schema', 'judge', 'output' appears in the error message so the
+    operator can self-correct without consulting the docs.
+    """
+    with pytest.raises(ValidationError) as exc_info:
+        ToolConfig(skip_buckets=["otput"])
+    error_text = str(exc_info.value)
+    assert "'schema'" in error_text, (
+        f"Expected valid bucket name 'schema' in error; got:\n{error_text}"
+    )
+    assert "'judge'" in error_text, (
+        f"Expected valid bucket name 'judge' in error; got:\n{error_text}"
+    )
+    assert "'output'" in error_text, (
+        f"Expected valid bucket name 'output' in error; got:\n{error_text}"
+    )
+
+
+def test_skip_buckets_rejects_string_not_list() -> None:
+    """BUCKET-01: skip_buckets must be a list; a bare string raises ValidationError."""
+    with pytest.raises(ValidationError):
+        ToolConfig(skip_buckets="output")  # type: ignore[arg-type]
+
+
+def test_skip_buckets_is_frozen_with_toolconfig() -> None:
+    """BUCKET-01: skip_buckets is frozen along with the rest of ToolConfig."""
+    tc = ToolConfig(skip_buckets=["schema"])
+    with pytest.raises(Exception):  # pydantic.ValidationError or AttributeError
+        tc.skip_buckets = ["judge"]  # type: ignore[misc]
+
+
 def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     """D-20: YAML overlay path reaches `tools:` block correctly.
 

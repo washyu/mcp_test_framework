@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 33 context gathered
-last_updated: "2026-05-26T16:12:31.432Z"
-last_activity: 2026-05-26 -- Phase 33 planning complete
+last_updated: "2026-05-26T16:25:01.195Z"
+last_activity: 2026-05-26 -- Phase 33 execution started
 progress:
   total_phases: 7
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 **Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 32 — surface-shim-removals-cli-package-fixtures-discovery
+**Current focus:** Phase 33 — per-bucket-skip-granularity-in-toolconfig-999-1
 
 ## Current Position
 
-Phase: 999.2
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-26 -- Phase 33 planning complete
+Phase: 33 (per-bucket-skip-granularity-in-toolconfig-999-1) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 33
+Last activity: 2026-05-26 -- Phase 33 execution started
 
 ## Performance Metrics
 
