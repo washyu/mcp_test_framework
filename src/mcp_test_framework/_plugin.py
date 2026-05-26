@@ -45,6 +45,10 @@ from pydantic import ValidationError
 
 from mcp_test_framework._black_box_guard import check_black_box
 from mcp_test_framework.config import Config
+from mcp_test_framework.contracts._buckets import (
+    TEST_FUNCTION_BUCKETS,
+    BucketName,
+)
 from mcp_test_framework.mcp_client import McpTestClient
 
 # Re-export the renamed prefixed fixtures from fixtures.py so the pytest
@@ -403,6 +407,21 @@ def pytest_collection_modifyitems(
         # pytest_generate_tests on each test function) -- distinct from
         # the bare collector.collect() which bypasses parametrize.
         for item in session.genitems(collector):
+            # Drop [NOTSET] placeholder items synthesized when
+            # `pytest_generate_tests` calls
+            # `metafunc.parametrize("mcp_target_tool", [], indirect=True, ids=[])`
+            # for a test function whose every opted-in tool skipped
+            # the owning bucket. Pytest 9.0.3 emits one such
+            # placeholder per test function with
+            # `callspec.id == "NOTSET"` and a synthesized skip marker
+            # carrying reason "got empty parameter set for (...)" --
+            # which, left in items, renders as a runtime SKIPPED row
+            # and violates SC#1 (project memory
+            # MEM:project_v1_1_skip_bug forbids runtime pytest.skip
+            # for collection-time-excluded cells).
+            callspec = getattr(item, "callspec", None)
+            if callspec is not None and callspec.id == "NOTSET":
+                continue
             item.add_marker(pytest.mark.mcp_contract)
             items.append(item)
 
@@ -417,7 +436,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
     Opt-in invariant: parametrize list is the pre-filtered
     `_mcp_parametrize_tools` stash; excluded tools were never collected
-    in the first place (no runtime `pytest.skip()` for excluded tools).
+    in the first place (collection-time exclusion, never runtime skip).
 
     Sentinel-reading nuance: `metafunc.module` is the imported Python
     module object (`mcp_test_framework.contracts._tests`), NOT the
@@ -441,8 +460,35 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     if synth_collector is None:
         return
     names = getattr(synth_collector, "_mcp_parametrize_tools", [])
-    if not names:
-        return  # defensive: empty allowlist should not reach here
+    # Per-bucket filter: drop tools whose skip_buckets contains the
+    # bucket owning this test function. Symmetric with the v1.1.1
+    # whole-tool collection-time filter -- excluded (tool, test) cells
+    # are absent from `pytest --collect-only` rather than rendered as
+    # runtime SKIPPED rows. Project memory MEM:project_v1_1_skip_bug
+    # locks the "no runtime pytest.skip() for excluded cells"
+    # invariant.
+    #
+    # If `names` is empty after filtering (every opted-in tool skipped
+    # this bucket), the parametrize call below still runs with an
+    # empty list. Pytest 9.0.3 emits ONE `test_<func>[NOTSET]`
+    # placeholder item in that case; `pytest_collection_modifyitems`
+    # below strips those placeholders before pytest reports them.
+    cfg = getattr(metafunc.config, "_mcp_contracts_config", None)
+    if cfg is not None:
+        func_name = metafunc.function.__name__
+        owning_bucket: BucketName | None = None
+        for bucket_name, fn_set in TEST_FUNCTION_BUCKETS.items():
+            if func_name in fn_set:
+                owning_bucket = bucket_name  # type: ignore[assignment]
+                break
+        if owning_bucket is not None:
+            filtered: list[str] = []
+            for tool_name in names:
+                tcfg = cfg.tools.get(tool_name)
+                if tcfg is None or owning_bucket not in tcfg.skip_buckets:
+                    filtered.append(tool_name)
+            names = filtered
+
     metafunc.parametrize(
         "mcp_target_tool",
         names,

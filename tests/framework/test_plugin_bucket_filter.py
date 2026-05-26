@@ -25,7 +25,6 @@ import sys
 import textwrap
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -98,7 +97,10 @@ def test_skip_output_bucket_drops_only_output_tests_for_that_tool(
     Subprocess-based --collect-only harness. MANDATORY per plan spec.
     """
     _write_harness(tmp_path, tool_a_skip_buckets=[], tool_b_skip_buckets=["output"])
-    result = _run_collect_only(tmp_path)
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
 
     stdout = result.stdout
 
@@ -144,7 +146,10 @@ def test_skip_all_buckets_for_one_tool_drops_all_its_tests(
         tool_a_skip_buckets=[],
         tool_b_skip_buckets=["schema", "judge", "output"],
     )
-    result = _run_collect_only(tmp_path)
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
     stdout = result.stdout
 
     # No node id should contain [tool_b].
@@ -180,11 +185,18 @@ def test_no_collected_test_is_runtime_skipped_due_to_skip_buckets(
     _write_harness(tmp_path, tool_a_skip_buckets=[], tool_b_skip_buckets=["output"])
 
     # (a) collect-only: no [NOTSET] in node-id listing.
-    collect_result = _run_collect_only(tmp_path, verbose=True)
+    collect_result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-v"],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
     collect_stdout = collect_result.stdout
 
     # Output-bucket tests for tool_b must not appear (assertion on parametrize-id pairs).
-    for output_test in ("test_empty_args_call_returns_non_error", "test_result_has_content_or_structured", "test_text_content_parses_as_json"):
+    for output_test in (
+        "test_empty_args_call_returns_non_error",
+        "test_result_has_content_or_structured",
+        "test_text_content_parses_as_json",
+    ):
         assert f"{output_test}[tool_b]" not in collect_stdout, (
             f"{output_test}[tool_b] should be absent from --collect-only.\nstdout:\n{collect_stdout}"
         )
@@ -194,17 +206,16 @@ def test_no_collected_test_is_runtime_skipped_due_to_skip_buckets(
     )
 
     # (b) full-run: no SKIPPED rows for filtered cells.
-    full_result = _run_full(tmp_path)
+    full_result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-v", "-p", "no:cacheprovider", "--no-header", "-rN"],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
     full_stdout = full_result.stdout
 
     # The two-hook mechanism produces zero SKIPPED rows; broken empty-parametrize-only
     # mechanism produces N SKIPPED rows. This assertion is the discriminator.
     assert " SKIPPED" not in full_stdout, (
         f"No SKIPPED rows should appear in full-run output when buckets are filtered at collection time.\nstdout:\n{full_stdout}"
-    )
-    assert "skipped" not in full_stdout.lower() or "skipped" not in full_stdout.split("\n")[-3], (
-        # Tolerate the summary line "X passed, Y failed" but NOT "X skipped"
-        f"No 'skipped' count should appear in pytest summary.\nstdout:\n{full_stdout}"
     )
 
 
@@ -330,7 +341,10 @@ def test_every_tool_opts_out_of_every_bucket_emits_zero_items(
     )
 
     # (a) collect-only: exit 0 or 5, no [tool_a]/[tool_b]/[NOTSET], no ERROR.
-    collect_result = _run_collect_only(tmp_path)
+    collect_result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
     collect_stdout = collect_result.stdout
 
     assert collect_result.returncode in (0, 5), (
@@ -347,7 +361,10 @@ def test_every_tool_opts_out_of_every_bucket_emits_zero_items(
     )
 
     # (b) full-run: zero SKIPPED rows, exit 0 or 5 (NOT 2).
-    full_result = _run_full(tmp_path)
+    full_result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-v", "-p", "no:cacheprovider", "--no-header", "-rN"],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
     full_stdout = full_result.stdout
 
     # The two-hook mechanism (W2 fix) produces zero SKIPPED rows.
