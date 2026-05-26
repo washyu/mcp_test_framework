@@ -159,3 +159,94 @@ def test_count_bucket_skips_helper() -> None:
     # Edge: all empty
     assert _count_bucket_skips({}) == 0
     assert _count_bucket_skips({"t": ToolConfig()}) == 0
+
+
+# ---------------------------------------------------------------------------
+# Test 5 (regression, phase 33-06): Test plan: count deducts skip_buckets
+# CR-01 BLOCKER guard: pins digest internal consistency between the
+# Bucket skips: line and the Test plan: line. The expected value is
+# computed dynamically from TEST_FUNCTION_BUCKETS so a future re-balance
+# of bucket contents in contracts/_buckets.py does not silently break
+# this regression test.
+# ---------------------------------------------------------------------------
+
+
+def test_digest_test_plan_count_deducts_skip_buckets() -> None:
+    """`Test plan: N contract cases` reflects per-tool skip_buckets deductions.
+
+    Pins CR-01 (33-VERIFICATION.md). Without the bucket-aware loop in
+    _render_pre_run_digest, this line overstates planned cases by
+    len(skip_buckets) * bucket_size per tool — internally contradicting
+    the Bucket skips: line emitted directly above it.
+    """
+    from mcp_test_framework.contracts._buckets import TEST_FUNCTION_BUCKETS
+
+    bucket_size = {b: len(fns) for b, fns in TEST_FUNCTION_BUCKETS.items()}
+    full_tool = sum(bucket_size.values())  # == 10 by invariant
+
+    def _plan_count(out: str) -> int:
+        plan_lines = [
+            line for line in out.splitlines() if line.startswith("Test plan:")
+        ]
+        assert len(plan_lines) == 1, (
+            f"expected exactly 1 'Test plan:' line, got {len(plan_lines)}: {out!r}"
+        )
+        # Format: "Test plan:   {N} contract cases"
+        parts = plan_lines[0].split()
+        # parts == ["Test", "plan:", "{N}", "contract", "cases"]
+        return int(parts[2])
+
+    # --- Scenario A: baseline (no skip_buckets anywhere) -------------------
+    ctx_a = _ctx(
+        discovered=["tool_a", "tool_b"],
+        tools_config={"tool_a": ToolConfig(), "tool_b": ToolConfig()},
+    )
+    buf_a = io.StringIO()
+    _render_pre_run_digest(ctx_a, file=buf_a)
+    expected_a = 2 * full_tool  # 20
+    assert _plan_count(buf_a.getvalue()) == expected_a, (
+        f"baseline mismatch: expected {expected_a}, output: {buf_a.getvalue()!r}"
+    )
+
+    # --- Scenario B: one tool, one bucket skipped --------------------------
+    ctx_b = _ctx(
+        discovered=["create_proxmox_vm"],
+        tools_config={"create_proxmox_vm": ToolConfig(skip_buckets=["output"])},
+    )
+    buf_b = io.StringIO()
+    _render_pre_run_digest(ctx_b, file=buf_b)
+    expected_b = full_tool - bucket_size["output"]  # 10 - 3 = 7
+    assert _plan_count(buf_b.getvalue()) == expected_b, (
+        f"single-bucket skip mismatch: expected {expected_b}, output: {buf_b.getvalue()!r}"
+    )
+
+    # --- Scenario C: one tool, all three buckets skipped -------------------
+    ctx_c = _ctx(
+        discovered=["tool_a"],
+        tools_config={
+            "tool_a": ToolConfig(skip_buckets=["schema", "judge", "output"]),
+        },
+    )
+    buf_c = io.StringIO()
+    _render_pre_run_digest(ctx_c, file=buf_c)
+    expected_c = 0
+    assert _plan_count(buf_c.getvalue()) == expected_c, (
+        f"all-buckets skip mismatch: expected {expected_c}, output: {buf_c.getvalue()!r}"
+    )
+
+    # --- Scenario D: two tools, different buckets skipped ------------------
+    ctx_d = _ctx(
+        discovered=["tool_a", "tool_b"],
+        tools_config={
+            "tool_a": ToolConfig(skip_buckets=["judge"]),
+            "tool_b": ToolConfig(skip_buckets=["output"]),
+        },
+    )
+    buf_d = io.StringIO()
+    _render_pre_run_digest(ctx_d, file=buf_d)
+    expected_d = (full_tool - bucket_size["judge"]) + (
+        full_tool - bucket_size["output"]
+    )  # 7 + 7 = 14
+    assert _plan_count(buf_d.getvalue()) == expected_d, (
+        f"multi-tool mixed-bucket mismatch: expected {expected_d}, output: {buf_d.getvalue()!r}"
+    )
