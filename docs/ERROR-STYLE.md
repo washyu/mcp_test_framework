@@ -64,6 +64,17 @@ implementations copy them verbatim — copy exactly, do not reword.
     next: run `mcp-contracts config-init -o config.yaml` to generate a
           current scaffold
 
+### skip and skip_buckets are both set
+
+    skip=true and skip_buckets are mutually exclusive
+
+    skip=true is whole-tool: every bucket is already skipped.
+    layering skip_buckets on top is redundant intent and the framework
+    will not silently pick which lever wins.
+
+    next: keep skip=true to disable every bucket, OR remove skip and
+          use skip_buckets alone to disable named buckets.
+
 ## Banned strings (manual review checklist)
 
 When rewriting an error message, grep the rewritten output for these
