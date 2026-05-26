@@ -149,6 +149,29 @@ class ToolConfig(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def _skip_buckets_not_with_whole_tool_skip(self) -> "ToolConfig":
+        """``skip=True`` and a non-empty ``skip_buckets`` are mutually exclusive.
+
+        ``skip: true`` is whole-tool: every bucket is already skipped, so
+        layering an additional per-bucket opt-out is redundant intent and
+        leaves the operator unsure which lever the framework honored. Fail
+        loud at config load with an operator-tone three-part message rather
+        than silently picking precedence.
+        """
+        if self.skip and self.skip_buckets:
+            raise ValueError(
+                "skip=true and skip_buckets are mutually exclusive\n"
+                "\n"
+                "skip=true is whole-tool: every bucket is already skipped.\n"
+                "layering skip_buckets on top is redundant intent and the "
+                "framework will not silently pick which lever wins.\n"
+                "\n"
+                "next: keep skip=true to disable every bucket, OR remove "
+                "skip and use skip_buckets alone to disable named buckets."
+            )
+        return self
+
 
 class HomelabProxmoxConfig(BaseModel):
     """Proxmox-specific knobs for test-code dogfood scenarios.
