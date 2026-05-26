@@ -80,7 +80,8 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
 
 - [x] **Phase 31: Config-surface cleanup — drop `MCPTF_CONFIG_FILE` + `cfg.sdet.*` alias + v1-schema decommission** — Tighten the config surface around `mcp_config_file` ini route as the sole library-mode config source; delete the v1→v2 migration path; relax pinned-message self-tests.
  (completed 2026-05-24)
-- [x] **Phase 32: Surface-shim removals — CLI + package + fixtures + discovery** — Delete the v1.4-introduced `sdet`-flavored CLI, package, fixture, console-script, and discovery shims; operator hits operator-tone migration errors pointing at the post-v1.4 names. (completed 2026-05-25)
+- [x] **Phase 32: Surface-shim removals — CLI + package + fixtures + discovery** — Delete the v1.4-introduced `sdet`-flavored CLI, package, fixture, console-script, and discovery shims; operator hits operator-tone migration errors pointing at the post-v1.4 names.
+ (completed 2026-05-25)
 - [ ] **Phase 33: Per-bucket skip granularity in `ToolConfig` (999.1)** — Operator escape hatch for required-field tools: opt out of the output bucket per tool while preserving schema + judge signal; collection-time filtering; digest + `--explain` reflect per-bucket skip; docs walkthrough.
 - [ ] **Phase 34: Opt-in host isolation passthrough (999.3)** — Audit bare `Config()` callers; ship `host_isolation: strict | passthrough` so live-UAT + SDET scenarios reach operator credentials; passthrough clamps xdist to 1; SEED-022 safety delegation surfaced in docs.
 - [ ] **Phase 35: Zero-shim regression gate (capstone)** — Single CI-runnable sweep across import / CLI / config / fixture / discovery surfaces pinning zero matches for every retired shim; blocks reintroduction.
@@ -132,7 +133,13 @@ Plans:
   2. Operator typing `skip_buckets: ["otput"]` (or any other unknown bucket) sees a Pydantic validation error at load time naming the three valid buckets (`schema`, `judge`, `output`).
   3. Operator running with `--explain` sees a grep-able per-tool block listing which buckets were skipped and the config field that drove the skip; the pre-run digest reflects per-bucket skip counts alongside the existing whole-tool skip counts.
   4. Operator reading README + `docs/LIBRARY-MODE.md` finds a worked example showing a required-field tool skipping only the `output` bucket while schema + judge still run.
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 33-01-PLAN.md - BUCKET-01/03: ToolConfig.skip_buckets field + contracts/_buckets.py source-of-truth mapping
+- [ ] 33-02-PLAN.md - BUCKET-01: skip + skip_buckets redundancy validator + docs/ERROR-STYLE.md registration
+- [ ] 33-03-PLAN.md - BUCKET-02: collection-time per-bucket filter in pytest_generate_tests (v1.1.1 pattern extended)
+- [ ] 33-04-PLAN.md - BUCKET-04: --explain per-tool block extension + pre-run digest per-bucket counts
+- [ ] 33-05-PLAN.md - BUCKET-05: worked example in README + docs/LIBRARY-MODE.md using create_proxmox_vm + EXTENDING.md scrub
 
 ### Phase 34: Opt-in host isolation passthrough (999.3)
 **Goal**: Operator can opt into `host_isolation: passthrough` so live-UAT and SDET scenarios reach the operator's real credentials, HOME, and keyring — at the explicit cost of xdist parallelism — while every bare `Config()` caller in src/ + tests/ is audited so neither mode silently leaks env across the seam.
@@ -198,7 +205,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
 | 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 6/6 | Complete    | 2026-05-25 |
-| 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/0 | Not started | — |
+| 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 0/5 | In progress | — |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
 | 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
 
