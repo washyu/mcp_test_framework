@@ -114,6 +114,28 @@ class ToolConfig(BaseModel):
         ),
     )
 
+    @field_validator("skip_buckets", mode="after")
+    @classmethod
+    def _no_duplicate_buckets(cls, v: list[BucketName]) -> list[BucketName]:
+        """Reject duplicate bucket names in ``skip_buckets``.
+
+        Pydantic's ``Literal`` validation accepts duplicates by default
+        (each element passes the per-element check). Downstream consumers
+        (``_count_bucket_skips``, ``--explain`` renderer) treat the field
+        as a multiset, so ``skip_buckets=["output", "output"]`` would
+        silently inflate ``Bucket skips: N`` and emit duplicate
+        ``bucket=output: ...`` rows. A duplicate is almost certainly a
+        typo, not deliberate intent; fail loud at config load with an
+        operator-tone message (matches docs/ERROR-STYLE.md).
+        """
+        if len(set(v)) != len(v):
+            raise ValueError(
+                "skip_buckets contains duplicate bucket name(s); each "
+                "bucket may appear at most once. valid values: "
+                "'schema', 'judge', 'output'."
+            )
+        return v
+
     @field_validator("judges", mode="after")
     @classmethod
     def _validate_judge_ids(cls, v: Optional[list[str]]) -> Optional[list[str]]:

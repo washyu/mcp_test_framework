@@ -244,6 +244,25 @@ def test_skip_true_with_non_empty_skip_buckets_rejected() -> None:
     assert "skip_buckets" in msg
 
 
+def test_skip_buckets_rejects_duplicate_entries() -> None:
+    """WR-01 regression: duplicate bucket names in skip_buckets are rejected.
+
+    Pydantic's per-element Literal validator allows duplicates by default
+    (each ``"output"`` is independently a valid BucketName). Downstream
+    consumers treat the field as a multiset, so a duplicate would silently
+    inflate ``Bucket skips: N`` and emit duplicate explain rows. Validator
+    rejects at load time with an operator-tone message.
+    """
+    with pytest.raises(ValidationError) as exc_info:
+        ToolConfig(skip_buckets=["output", "output"])
+    msg = str(exc_info.value)
+    assert "duplicate" in msg
+    assert "skip_buckets" in msg
+    # Mixed duplicate (two valid distinct buckets, one repeated) also rejected
+    with pytest.raises(ValidationError):
+        ToolConfig(skip_buckets=["schema", "judge", "schema"])
+
+
 def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     """D-20: YAML overlay path reaches `tools:` block correctly.
 
