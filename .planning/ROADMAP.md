@@ -133,7 +133,7 @@ Plans:
   2. Operator typing `skip_buckets: ["otput"]` (or any other unknown bucket) sees a Pydantic validation error at load time naming the three valid buckets (`schema`, `judge`, `output`).
   3. Operator running with `--explain` sees a grep-able per-tool block listing which buckets were skipped and the config field that drove the skip; the pre-run digest reflects per-bucket skip counts alongside the existing whole-tool skip counts.
   4. Operator reading README + `docs/LIBRARY-MODE.md` finds a worked example showing a required-field tool skipping only the `output` bucket while schema + judge still run.
-**Plans:** 5/5 plans complete
+**Plans:** 6/6 plans complete
 Plans:
 - [x] 33-01-PLAN.md - BUCKET-01/03: ToolConfig.skip_buckets field + contracts/_buckets.py source-of-truth mapping
 - [x] 33-02-PLAN.md - BUCKET-01: skip + skip_buckets redundancy validator + docs/ERROR-STYLE.md registration
@@ -205,7 +205,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 30. CLI demotion + carry-forward UAT closure + docs rewrite | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
 | 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 6/6 | Complete    | 2026-05-25 |
-| 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 5/5 | Complete   | 2026-05-26 |
+| 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 6/6 | Complete   | 2026-05-26 |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 0/0 | Not started | — |
 | 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
 
