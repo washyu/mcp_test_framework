@@ -28,11 +28,11 @@ All shims below were introduced in v1.4 with one-milestone deprecation windows e
 
 Operator-facing escape hatch that surfaced during Phase 30 UAT-1: `ToolConfig.skip: true` is whole-tool only; required-field tools need to skip the empty-args output bucket while preserving schema + judge signal. SEED-022 respected — operator still chooses; framework gets a more precise lever.
 
-- [ ] **BUCKET-01**: Operator can set `tools.<name>.skip_buckets: list[Literal["schema","judge","output"]] = []` in `config.yaml` to opt out of named test buckets per tool while leaving others enabled.
-- [ ] **BUCKET-02**: Per-bucket skip filters at parametrize collection time, not runtime — skipped buckets are absent from `pytest --collect-only` output, not rendered as runtime-SKIPPED rows (same hotfix pattern as v1.1.1 / 260508-p0b for whole-tool skip).
-- [ ] **BUCKET-03**: Invalid bucket name (typo, unknown bucket) is rejected by Pydantic with an operator-tone validation error naming the valid buckets.
-- [ ] **BUCKET-04**: Pre-run digest reflects per-bucket skip counts and `--explain` surfaces bucket-level rationale (grep-able N+5-line block per tool listing which buckets were skipped and why per the config).
-- [ ] **BUCKET-05**: README + `docs/LIBRARY-MODE.md` document per-bucket skip with a worked example (required-field tool skipping only the `output` bucket; schema + judge still run).
+- [x] **BUCKET-01**: Operator can set `tools.<name>.skip_buckets: list[Literal["schema","judge","output"]] = []` in `config.yaml` to opt out of named test buckets per tool while leaving others enabled.
+- [x] **BUCKET-02**: Per-bucket skip filters at parametrize collection time, not runtime — skipped buckets are absent from `pytest --collect-only` output, not rendered as runtime-SKIPPED rows (same hotfix pattern as v1.1.1 / 260508-p0b for whole-tool skip).
+- [x] **BUCKET-03**: Invalid bucket name (typo, unknown bucket) is rejected by Pydantic with an operator-tone validation error naming the valid buckets.
+- [x] **BUCKET-04**: Pre-run digest reflects per-bucket skip counts and `--explain` surfaces bucket-level rationale (grep-able N+5-line block per tool listing which buckets were skipped and why per the config).
+- [x] **BUCKET-05**: README + `docs/LIBRARY-MODE.md` document per-bucket skip with a worked example (required-field tool skipping only the `output` bucket; schema + judge still run).
 
 ### ISOL — Opt-in host isolation passthrough (999.3)
 

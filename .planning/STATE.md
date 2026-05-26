@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: executing
+status: ready_to_plan
 stopped_at: Phase 33 context gathered
 last_updated: "2026-05-26T18:48:59.389Z"
 last_activity: 2026-05-26 -- Phase 33 execution started
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 18
   completed_plans: 17
-  percent: 94
+  percent: 43
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 ## Current Position
 
-Phase: 33 (per-bucket-skip-granularity-in-toolconfig-999-1) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 33
-Last activity: 2026-05-26 -- Phase 33 execution started
+Phase: 999.2
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-26
 
 ## Performance Metrics
 
