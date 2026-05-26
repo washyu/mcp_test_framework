@@ -1395,11 +1395,17 @@ def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
             # surface them indented beneath. Pydantic-rejected at load
             # time per Plan 33-02; emitted here for traceability if
             # bypassed.
+            #
+            # WR-03 (phase 33 review): use a 4-space lead so the bucket
+            # rows visually nest under their tool line, matching Section 2's
+            # shape (tool header at 2 spaces, bucket rows at 4). Without the
+            # extra indent the bucket rows appear as peer rows to the em-dashed
+            # tool line, which is visually misleading.
             tcfg = ctx.tools_config.get(tool)
             if tcfg is not None and tcfg.skip_buckets:
                 for bucket in tcfg.skip_buckets:
                     print(
-                        f"  bucket={bucket}: skipped via tools.{tool}.skip_buckets",
+                        f"    bucket={bucket}: skipped via tools.{tool}.skip_buckets",
                         file=file,
                     )
         print("", file=file)

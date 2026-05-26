@@ -163,6 +163,38 @@ def test_explain_grep_anchor() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_explain_section_1_defensive_bucket_emit_uses_four_space_indent() -> None:
+    """WR-03: Section 1's defensive bucket emit must use 4-space indent (matches Section 2).
+
+    The model validator rejects ``skip=True + skip_buckets`` at load time, so
+    this branch is normally unreachable. We use ``ToolConfig.model_construct``
+    to bypass validation and exercise the defensive path directly. The 4-space
+    indent ensures the bucket rows visually nest under their tool's whole-tool
+    line, matching Section 2's nested shape.
+    """
+    bypass = ToolConfig.model_construct(
+        skip=True,
+        skip_reason="legacy_bypass",
+        skip_buckets=["output"],
+    )
+    ctx = _ctx(
+        discovered=["tool_a"],
+        tools_config={"tool_a": bypass},
+    )
+    buf = io.StringIO()
+    _render_skipped_tools_explain(ctx, file=buf)
+    out = buf.getvalue()
+
+    # Defensive bucket row uses 4-space indent (Section 2 shape)
+    assert "    bucket=output: skipped via tools.tool_a.skip_buckets" in out, (
+        f"Section 1 defensive emit should use 4-space indent: {out!r}"
+    )
+    # The OLD 2-space layout must NOT appear (would indicate the bug)
+    assert "\n  bucket=output:" not in out, (
+        f"Section 1 defensive emit still uses 2-space indent: {out!r}"
+    )
+
+
 def test_explain_section_2_excludes_undiscovered_bucket_skipped_tools() -> None:
     """WR-02: a configured-but-undiscovered tool with skip_buckets must not
     appear in Section 2 (Bucket-skipped tools).
