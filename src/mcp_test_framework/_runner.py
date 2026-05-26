@@ -1016,6 +1016,19 @@ def _compose_pre_run_skip_reasons(
     )
 
 
+def _count_bucket_skips(tools_config: dict) -> int:
+    """Total (tool, bucket) pairs across all tools' ``skip_buckets``.
+
+    Returns 0 when no tool has bucket-level opt-out; in that case the
+    digest's per-bucket line is omitted entirely so v1.5 operators not
+    using the feature see no new digest noise.
+    """
+    total = 0
+    for tcfg in tools_config.values():
+        total += len(getattr(tcfg, "skip_buckets", []) or [])
+    return total
+
+
 def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
     """Build the digest's ``Judges:`` union, honoring ToolConfig.judges semantics.
 
@@ -1123,7 +1136,8 @@ def _render_pre_run_digest(
 ) -> None:
     """Pre-run digest emitted before pytest runs.
 
-    Lines (exact order, <= 10 total in default mode; up to 11 with with_framework=True):
+    Lines (exact order, <= 10 total in default mode; up to 12 with with_framework=True
+    and bucket skips active):
       ========================================
       MCP Test Framework
       ========================================
@@ -1131,10 +1145,14 @@ def _render_pre_run_digest(
       Discovered:  {N} tools
       Running:     {R}  ({comma-joined names, sorted})
       Skipping:    {S}  (use --explain to list)   [hint omitted if explain=True]
+      Bucket skips: {B}  (use --explain to list)  [only if any tool has skip_buckets]
       Judges:      {comma-joined, sorted}
       Test plan:   {R * CASES_PER_CONTRACT_TOOL} contract cases
                    + framework self-tests        [only if with_framework=True]
       (blank line)
+
+    Bucket skips line emits only when at least one tool has non-empty skip_buckets;
+    absent for v1.5 operators not using the feature.
 
     ``file=None`` -> ``sys.stdout`` at call-time (capsys-friendly; see
     ``_render_header`` docstring for the rationale).
@@ -1177,6 +1195,18 @@ def _render_pre_run_digest(
         print(f"Skipping:    {skipping_n:>2}", file=file)
     else:
         print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+    # Bucket skips: line emits only when at least one tool has non-empty
+    # skip_buckets; omitted entirely for v1.5 operators not using the feature
+    # (T-33-12 mitigation: no new digest noise when feature is unused).
+    bucket_skip_n = _count_bucket_skips(ctx.tools_config)
+    if bucket_skip_n > 0:
+        if explain:
+            print(f"Bucket skips:{bucket_skip_n:>3}", file=file)
+        else:
+            print(
+                f"Bucket skips:{bucket_skip_n:>3}  (use --explain to list)",
+                file=file,
+            )
     print(f"Judges:      {judges_text}", file=file)
     print(f"Test plan:   {planned_cases} contract cases", file=file)
     # --with-framework suffix emits IMMEDIATELY after Test plan line, BEFORE
