@@ -31,6 +31,7 @@ from pydantic import (
     model_validator,
 )
 
+from mcp_test_framework.contracts._buckets import BucketName
 from mcp_test_framework.rubrics import RUBRIC_IDS, resolve_rubric_id
 
 
@@ -99,6 +100,19 @@ class ToolConfig(BaseModel):
     judges: Optional[list[str]] = None
     setup: Optional[Any] = None  # reserved; runtime no-op
     depends_on: Optional[list[str]] = None  # reserved; runtime no-op
+    skip_buckets: list[BucketName] = Field(
+        default_factory=list,
+        description=(
+            "Test buckets to opt out of for this tool. Valid values: "
+            "'schema', 'judge', 'output'. Skipped buckets are filtered "
+            "at parametrize collection time (matches v1.1.1 whole-tool "
+            "skip pattern) -- they do not appear in `pytest --collect-only` "
+            "output and are not rendered as runtime SKIPPED rows. "
+            "Empty list (default) = no per-bucket skipping; use `skip: true` "
+            "for whole-tool skip. Setting both `skip: true` and a non-empty "
+            "`skip_buckets` is rejected at load time as redundant."
+        ),
+    )
 
     @field_validator("judges", mode="after")
     @classmethod
