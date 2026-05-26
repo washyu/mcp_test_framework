@@ -42,6 +42,12 @@ import pytest
 import typer
 
 from .rubrics import RUBRIC_IDS
+from mcp_test_framework.contracts._buckets import TEST_FUNCTION_BUCKETS
+
+# Per-bucket case counts derived from the source-of-truth mapping in
+# contracts/_buckets.py. Sum across buckets == CASES_PER_CONTRACT_TOOL (10),
+# pinned invariant by tests/framework/test_bucket_map.py.
+_BUCKET_SIZE: dict[str, int] = {b: len(fns) for b, fns in TEST_FUNCTION_BUCKETS.items()}
 
 
 # ===========================================================================
@@ -1181,7 +1187,23 @@ def _render_pre_run_digest(
     skipping_n = max(0, discovered_n - running_n)
     judges_text = ", ".join(ctx.judges) if ctx.judges else "(none configured)"
     running_text = ", ".join(running) if running else "(none)"
-    planned_cases = running_n * CASES_PER_CONTRACT_TOOL
+    # Per-tool, bucket-aware total. For each running tool, sum the case
+    # counts of every bucket NOT in that tool's skip_buckets. When no
+    # tool has skip_buckets, the result is mathematically identical to
+    # running_n * CASES_PER_CONTRACT_TOOL — baseline byte-identity is
+    # preserved (the invariant tested by test_pre_run_digest_buckets.py's
+    # baseline case). For a tool with skip_buckets=["output"] (3 cases),
+    # the tool contributes 7 instead of 10. CR-01 fix (phase 33-06):
+    # without this loop the Test plan: line would contradict the
+    # Bucket skips: line emitted above (digest internal consistency).
+    planned_cases = 0
+    for t in running:
+        skipped_buckets = set(
+            getattr(ctx.tools_config.get(t), "skip_buckets", []) or []
+        )
+        planned_cases += sum(
+            sz for b, sz in _BUCKET_SIZE.items() if b not in skipped_buckets
+        )
 
     print("=" * 40, file=file)
     print("MCP Test Framework", file=file)
