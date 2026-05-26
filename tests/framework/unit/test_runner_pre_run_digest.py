@@ -287,6 +287,47 @@ def test_judges_line_reports_none_configured_when_judges_explicitly_empty(
     assert "Judges:      (none configured)" in out, repr(out)
 
 
+def test_judges_line_suppresses_tools_with_judge_in_skip_buckets(capsys) -> None:
+    """WR-04 regression: tools that bucket-skip judges must NOT contribute
+    to the digest's ``Judges:`` line.
+
+    A tool with ``skip_buckets: ["judge"]`` runs zero judge tests at
+    collection time. If its ``judges`` field (default None = all rubrics)
+    still flows into the union, the digest reports rubrics that will not
+    actually fire -- same failure mode the None->[] collapse bug fixed.
+    """
+    # Single tool, all bucket-skipped judges -> union is empty
+    tools_config_single = {
+        "tool_a": ToolConfig(skip_buckets=["judge"]),
+    }
+    assert _compose_judges_from_tool_configs(tools_config_single) == []
+
+    # Two tools: tool_a opts out via skip_buckets, tool_b runs all judges
+    # -> union reflects only tool_b's contribution
+    tools_config_mixed = {
+        "tool_a": ToolConfig(skip_buckets=["judge"]),
+        "tool_b": ToolConfig(),  # default None = all three rubrics
+    }
+    assert _compose_judges_from_tool_configs(tools_config_mixed) == [
+        "clarity",
+        "disambiguation",
+        "parameters",
+    ]
+
+    # End-to-end via renderer: single tool with judge bucket-skipped reports
+    # (none configured), NOT the full rubric set.
+    ctx = RenderContext(
+        server_cmd="uvx homelab-mcp",
+        discovered_tools=["tool_a"],
+        tools_config=tools_config_single,
+        judges=_compose_judges_from_tool_configs(tools_config_single),
+        total_planned_cases=0,
+    )
+    _render_pre_run_digest(ctx)
+    out = capsys.readouterr().out
+    assert "Judges:      (none configured)" in out, repr(out)
+
+
 def test_judges_line_lists_subset_when_judges_explicit(capsys) -> None:
     """TOOLCFG-06: explicit subset lists pass through literally and the
     union de-duplicates + sorts alphabetically. With tool A: ['clarity']

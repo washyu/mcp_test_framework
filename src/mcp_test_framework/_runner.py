@@ -1069,11 +1069,23 @@ def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
     collapsed the None default to ``[]`` and produced an empty union even
     when every tool was running all three rubrics at runtime.
 
+    WR-04 (phase 33 review): a tool with ``"judge" in skip_buckets`` runs
+    NO judge tests at collection time. Its ``judges`` contribution to the
+    digest's ``Judges:`` line must be suppressed -- otherwise the digest
+    lies about activity (same failure mode the None->[] collapse bug fixed).
+    Tools that bucket-skip judges are not iterated; everything else uses
+    the existing ToolConfig.judges semantics.
+
     Returns: sorted list of rubric IDs that will fire for at least one
-    configured tool. Empty list iff every tool explicitly opts out via [].
+    configured tool. Empty list iff every tool explicitly opts out via []
+    or via skip_buckets=["judge"].
     """
     judges_set: set[str] = set()
     for tool_cfg in tools_config.values():
+        # WR-04: skip tools that bucket-skip judges -- they contribute zero
+        # judge tests at collection time.
+        if "judge" in (getattr(tool_cfg, "skip_buckets", []) or []):
+            continue
         declared = getattr(tool_cfg, "judges", None)
         if declared is None:
             judges_set.update(RUBRIC_IDS)  # None default = run all rubrics
