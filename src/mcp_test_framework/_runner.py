@@ -1022,15 +1022,35 @@ def _compose_pre_run_skip_reasons(
     )
 
 
-def _count_bucket_skips(tools_config: dict) -> int:
+def _count_bucket_skips(
+    tools_config: dict,
+    discovered: list[str] | None = None,
+) -> int:
     """Total (tool, bucket) pairs across all tools' ``skip_buckets``.
 
     Returns 0 when no tool has bucket-level opt-out; in that case the
     digest's per-bucket line is omitted entirely so v1.5 operators not
     using the feature see no new digest noise.
+
+    WR-02 (phase 33 review): when ``discovered`` is supplied, restrict
+    the count to tools that the MCP server actually advertises. A tool
+    that the operator configured with ``skip_buckets`` but that the
+    server does not expose is consistent with the rest of the digest
+    (such tools are absent from both ``Running`` and ``Skipping``) and
+    must not inflate ``Bucket skips: N``. When ``discovered`` is None
+    (legacy callers / direct unit tests), every entry in ``tools_config``
+    is counted -- preserves the pre-WR-02 behavior for callers that
+    haven't been threaded through with the discovery list yet.
     """
     total = 0
-    for tcfg in tools_config.values():
+    if discovered is None:
+        for tcfg in tools_config.values():
+            total += len(getattr(tcfg, "skip_buckets", []) or [])
+        return total
+    discovered_set = set(discovered)
+    for name, tcfg in tools_config.items():
+        if name not in discovered_set:
+            continue
         total += len(getattr(tcfg, "skip_buckets", []) or [])
     return total
 
@@ -1220,7 +1240,7 @@ def _render_pre_run_digest(
     # Bucket skips: line emits only when at least one tool has non-empty
     # skip_buckets; omitted entirely for v1.5 operators not using the feature
     # (T-33-12 mitigation: no new digest noise when feature is unused).
-    bucket_skip_n = _count_bucket_skips(ctx.tools_config)
+    bucket_skip_n = _count_bucket_skips(ctx.tools_config, ctx.discovered_tools)
     if bucket_skip_n > 0:
         if explain:
             print(f"Bucket skips:{bucket_skip_n:>3}", file=file)
@@ -1389,11 +1409,17 @@ def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
         print("Skipping (0):", file=file)
         print("", file=file)
 
-    # Section 2: bucket-skipped running tools (Phase 33, BUCKET-04)
+    # Section 2: bucket-skipped running tools (Phase 33, BUCKET-04).
+    # WR-02 (phase 33 review): filter by ctx.discovered_tools so a
+    # configured-but-undiscovered tool with skip_buckets does not appear
+    # here. Consistent with the rest of the digest: undiscovered tools
+    # are absent from both Running and Skipping; they must also be
+    # absent from the bucket-skip explain block.
+    discovered_set = set(ctx.discovered_tools)
     bucket_skipped = {
         name: tcfg.skip_buckets
         for name, tcfg in ctx.tools_config.items()
-        if tcfg.skip_buckets and not tcfg.skip
+        if tcfg.skip_buckets and not tcfg.skip and name in discovered_set
     }
     if bucket_skipped:
         print(f"Bucket-skipped tools ({len(bucket_skipped)}):", file=file)

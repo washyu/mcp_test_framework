@@ -162,6 +162,56 @@ def test_count_bucket_skips_helper() -> None:
 
 
 # ---------------------------------------------------------------------------
+# WR-02 regression: _count_bucket_skips honors discovered filter
+# ---------------------------------------------------------------------------
+
+
+def test_count_bucket_skips_filters_by_discovered() -> None:
+    """WR-02: configured-but-undiscovered tools must not inflate the count.
+
+    Consistent with the rest of the digest (such tools are absent from
+    both Running and Skipping). When ``discovered`` is supplied, only
+    tools present in ``discovered`` contribute to the total. When omitted
+    (legacy callers), every entry in ``tools_config`` is counted.
+    """
+    tools_config = {
+        "tool_a": ToolConfig(skip_buckets=["output"]),          # 1
+        "ghost_tool": ToolConfig(skip_buckets=["schema"]),       # 1, but undiscovered
+        "tool_c": ToolConfig(skip_buckets=["schema", "judge"]), # 2
+    }
+    # Legacy behavior preserved when discovered is None
+    assert _count_bucket_skips(tools_config) == 4
+
+    # With discovered list, ghost_tool's 1 bucket is excluded
+    assert _count_bucket_skips(tools_config, ["tool_a", "tool_c"]) == 3
+
+    # Empty discovered set excludes everything
+    assert _count_bucket_skips(tools_config, []) == 0
+
+
+def test_digest_bucket_skips_excludes_undiscovered_tools() -> None:
+    """WR-02 integration: digest Bucket skips: count excludes configured-but-undiscovered tools."""
+    ctx = _ctx(
+        discovered=["tool_a"],
+        tools_config={
+            "tool_a": ToolConfig(skip_buckets=["output"]),
+            # Configured but NOT in discovered list -- must be ignored
+            "ghost_tool": ToolConfig(skip_buckets=["schema", "judge"]),
+        },
+    )
+    buf = io.StringIO()
+    _render_pre_run_digest(ctx, file=buf)
+    out = buf.getvalue()
+
+    bucket_lines = [line for line in out.splitlines() if line.startswith("Bucket skips:")]
+    assert len(bucket_lines) == 1, f"expected 1 Bucket skips: line: {out!r}"
+    # Only tool_a's 1 bucket should count -- not ghost_tool's 2
+    assert "1" in bucket_lines[0] and "3" not in bucket_lines[0], (
+        f"undiscovered tool inflated the count: {bucket_lines[0]!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Test 5 (regression, phase 33-06): Test plan: count deducts skip_buckets
 # CR-01 BLOCKER guard: pins digest internal consistency between the
 # Bucket skips: line and the Test plan: line. The expected value is
