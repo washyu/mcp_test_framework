@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 33 context gathered
-last_updated: "2026-05-26T16:25:01.195Z"
-last_activity: 2026-05-26 -- Phase 33 execution started
+last_updated: "2026-05-26T18:46:23.546Z"
+last_activity: 2026-05-26 -- Phase 33 planning complete
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 17
-  completed_plans: 12
-  percent: 71
+  total_plans: 18
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 Phase: 33 (per-bucket-skip-granularity-in-toolconfig-999-1) — EXECUTING
 Plan: 1 of 5
-Status: Executing Phase 33
-Last activity: 2026-05-26 -- Phase 33 execution started
+Status: Ready to execute
+Last activity: 2026-05-26 -- Phase 33 planning complete
 
 ## Performance Metrics
 
