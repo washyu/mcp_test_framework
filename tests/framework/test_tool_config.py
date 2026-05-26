@@ -208,6 +208,42 @@ def test_skip_buckets_is_frozen_with_toolconfig() -> None:
         tc.skip_buckets = ["judge"]  # type: ignore[misc]
 
 
+# ===========================================================================
+# Phase 33 Plan 02 -- skip + skip_buckets redundancy validation (BUCKET-01)
+# ===========================================================================
+
+
+def test_skip_true_with_empty_skip_buckets_is_valid() -> None:
+    """BUCKET-01: skip=True + skip_reason + empty skip_buckets is valid (no redundancy)."""
+    tc = ToolConfig(skip=True, skip_reason="reason", skip_buckets=[])
+    assert tc.skip is True
+    assert tc.skip_buckets == []
+
+
+def test_skip_false_with_non_empty_skip_buckets_is_valid() -> None:
+    """BUCKET-01: skip=False + non-empty skip_buckets is valid (per-bucket opt-out)."""
+    tc = ToolConfig(skip=False, skip_buckets=["output"])
+    assert tc.skip is False
+    assert tc.skip_buckets == ["output"]
+
+
+def test_skip_false_with_empty_skip_buckets_is_valid() -> None:
+    """BUCKET-01: Default state (skip=False, skip_buckets=[]) constructs successfully."""
+    tc = ToolConfig(skip=False, skip_buckets=[])
+    assert tc.skip is False
+    assert tc.skip_buckets == []
+
+
+def test_skip_true_with_non_empty_skip_buckets_rejected() -> None:
+    """BUCKET-01: skip=True + non-empty skip_buckets raises ValidationError (redundant intent)."""
+    with pytest.raises(ValidationError) as exc_info:
+        ToolConfig(skip=True, skip_reason="r", skip_buckets=["output"])
+    msg = str(exc_info.value)
+    assert "skip=true and skip_buckets are mutually exclusive" in msg
+    assert "next: keep skip=true" in msg
+    assert "skip_buckets" in msg
+
+
 def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     """D-20: YAML overlay path reaches `tools:` block correctly.
 
