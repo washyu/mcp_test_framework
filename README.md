@@ -385,6 +385,51 @@ tools:
     judges: [clarity]
 ```
 
+### Skipping individual test buckets per tool
+
+Some tools have required input fields and cannot satisfy the output-bucket
+tests (which call the tool with no arguments by default). Use `skip_buckets`
+on the per-tool entry to opt out of named test buckets while keeping the
+others enabled. Valid test buckets are `schema`, `judge`, and `output`.
+(The English word "bucket" also appears in the runner's per-tool result
+aggregation — those are *result buckets*; the values here are *test
+buckets*.)
+
+Example: `create_proxmox_vm` requires VM name, node, cores, memory, etc.,
+so the empty-args output check cannot succeed. Keep the schema and judge
+signal while dropping the output bucket:
+
+```yaml
+tools:
+  create_proxmox_vm:
+    skip_buckets: ["output"]
+```
+
+Run with `--explain` to verify which (tool, bucket) cells were filtered out
+at collection time:
+
+```text
+Skipping (0):
+
+Bucket-skipped tools (1):
+  create_proxmox_vm:
+    bucket=output: skipped via tools.create_proxmox_vm.skip_buckets
+```
+
+The pre-run digest summarizes the same counts:
+
+```text
+Running:      1  (create_proxmox_vm)
+Skipping:     0  (use --explain to list)
+Bucket skips:  1  (use --explain to list)
+```
+
+The three output-bucket tests for `create_proxmox_vm` are absent from
+`pytest --collect-only` — they are not collected, not rendered as
+runtime-SKIPPED rows. Setting both `skip: true` and a non-empty
+`skip_buckets` for the same tool is rejected at config load (the two
+levers express redundant intent).
+
 The third per-tool knob, `call_arguments: {key: value}`, lets you pass fixed arguments to the tool's `call_tool` invocation -- useful when the tool requires non-empty input. See `config.example.yaml` for shape.
 
 For a complete real-server config, see [`config.example.yaml`](config.example.yaml).
