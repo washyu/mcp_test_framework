@@ -1016,6 +1016,19 @@ def _compose_pre_run_skip_reasons(
     )
 
 
+def _count_bucket_skips(tools_config: dict) -> int:
+    """Total (tool, bucket) pairs across all tools' ``skip_buckets``.
+
+    Returns 0 when no tool has bucket-level opt-out; in that case the
+    digest's per-bucket line is omitted entirely so v1.5 operators not
+    using the feature see no new digest noise.
+    """
+    total = 0
+    for tcfg in tools_config.values():
+        total += len(getattr(tcfg, "skip_buckets", []) or [])
+    return total
+
+
 def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
     """Build the digest's ``Judges:`` union, honoring ToolConfig.judges semantics.
 
@@ -1123,7 +1136,8 @@ def _render_pre_run_digest(
 ) -> None:
     """Pre-run digest emitted before pytest runs.
 
-    Lines (exact order, <= 10 total in default mode; up to 11 with with_framework=True):
+    Lines (exact order, <= 10 total in default mode; up to 12 with with_framework=True
+    and bucket skips active):
       ========================================
       MCP Test Framework
       ========================================
@@ -1131,10 +1145,14 @@ def _render_pre_run_digest(
       Discovered:  {N} tools
       Running:     {R}  ({comma-joined names, sorted})
       Skipping:    {S}  (use --explain to list)   [hint omitted if explain=True]
+      Bucket skips: {B}  (use --explain to list)  [only if any tool has skip_buckets]
       Judges:      {comma-joined, sorted}
       Test plan:   {R * CASES_PER_CONTRACT_TOOL} contract cases
                    + framework self-tests        [only if with_framework=True]
       (blank line)
+
+    Bucket skips line emits only when at least one tool has non-empty skip_buckets;
+    absent for v1.5 operators not using the feature.
 
     ``file=None`` -> ``sys.stdout`` at call-time (capsys-friendly; see
     ``_render_header`` docstring for the rationale).
@@ -1177,6 +1195,18 @@ def _render_pre_run_digest(
         print(f"Skipping:    {skipping_n:>2}", file=file)
     else:
         print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+    # Bucket skips: line emits only when at least one tool has non-empty
+    # skip_buckets; omitted entirely for v1.5 operators not using the feature
+    # (T-33-12 mitigation: no new digest noise when feature is unused).
+    bucket_skip_n = _count_bucket_skips(ctx.tools_config)
+    if bucket_skip_n > 0:
+        if explain:
+            print(f"Bucket skips:{bucket_skip_n:>3}", file=file)
+        else:
+            print(
+                f"Bucket skips:{bucket_skip_n:>3}  (use --explain to list)",
+                file=file,
+            )
     print(f"Judges:      {judges_text}", file=file)
     print(f"Test plan:   {planned_cases} contract cases", file=file)
     # --with-framework suffix emits IMMEDIATELY after Test plan line, BEFORE
@@ -1270,13 +1300,32 @@ def _collect_test_code_scenarios(
 def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
     """``--explain`` expansion of the digest's Skipping hint.
 
-    Lines (alphabetical order):
-      Skipping (N):
-        <tool>  — <reason>      [N times, sorted alphabetically]
-      (blank line)
+    Two sections (Phase 33 extension):
 
-    Reasons sourced from ``_compose_pre_run_skip_reasons`` (the pure composer
-    called with ``ran_tools=set()`` since pytest hasn't run yet).
+    1. Whole-tool skips -- existing v1.2 behavior, byte-identical when
+       no tool has skip_buckets set:
+
+         Skipping (N):
+           <tool>  — <reason>
+           ...
+
+       For tools that are whole-tool-skipped AND also list skip_buckets
+       (load-time-rejected by ToolConfig._skip_buckets_not_with_whole_tool_skip,
+       but defensive-rendering here in case a future caller bypasses
+       validation): the bucket lines hang under their tool's whole-tool
+       line.
+
+    2. Bucket-level skips on running tools (Phase 33, BUCKET-04 / SC#3):
+
+         Bucket-skipped tools (M):
+           <tool>:
+             bucket=<bucket>: skipped via tools.<tool>.skip_buckets
+             bucket=<bucket>: skipped via tools.<tool>.skip_buckets
+           ...
+
+       Section omitted entirely when M == 0. Grep-able on the literal
+       ``bucket=`` for operators auditing which (tool, bucket) cells
+       were filtered out at collection time.
 
     Format invariants (grep-able at N=70):
       - One tool per line, no wrapping.
@@ -1291,20 +1340,49 @@ def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
         file = sys.stdout
 
     skipped = _compose_pre_run_skip_reasons(ctx.discovered_tools, ctx.tools_config)
-    if not skipped:
-        # Edge: nothing to explain. Emit a zero-tool header so the operator
-        # sees the empty state explicitly rather than silence.
+
+    # Section 1: whole-tool skips (existing behavior; preserve byte-shape)
+    if skipped:
+        name_width = max(len(t) for t in skipped)
+        print(f"Skipping ({len(skipped)}):", file=file)
+        for tool in sorted(skipped.keys()):
+            # U+2014 em-dash; two spaces before + after. Matches the
+            # `  ✗ {tag} — {failure_message}` shape in _render_per_tool_rows.
+            print(f"  {tool.ljust(name_width)}  — {skipped[tool]}", file=file)
+            # Defensive: if a whole-tool-skipped tool ALSO has skip_buckets,
+            # surface them indented beneath. Pydantic-rejected at load
+            # time per Plan 33-02; emitted here for traceability if
+            # bypassed.
+            tcfg = ctx.tools_config.get(tool)
+            if tcfg is not None and tcfg.skip_buckets:
+                for bucket in tcfg.skip_buckets:
+                    print(
+                        f"  bucket={bucket}: skipped via tools.{tool}.skip_buckets",
+                        file=file,
+                    )
+        print("", file=file)
+    else:
+        # Edge: nothing to whole-tool-skip. Emit a zero-tool header so the
+        # operator sees the empty state explicitly. Preserve v1.5 wording.
         print("Skipping (0):", file=file)
         print("", file=file)
-        return
 
-    name_width = max(len(t) for t in skipped)
-    print(f"Skipping ({len(skipped)}):", file=file)
-    for tool in sorted(skipped.keys()):
-        # U+2014 em-dash; two spaces before + after. Matches the
-        # `  ✗ {tag} — {failure_message}` shape in _render_per_tool_rows.
-        print(f"  {tool.ljust(name_width)}  — {skipped[tool]}", file=file)
-    print("", file=file)
+    # Section 2: bucket-skipped running tools (Phase 33, BUCKET-04)
+    bucket_skipped = {
+        name: tcfg.skip_buckets
+        for name, tcfg in ctx.tools_config.items()
+        if tcfg.skip_buckets and not tcfg.skip
+    }
+    if bucket_skipped:
+        print(f"Bucket-skipped tools ({len(bucket_skipped)}):", file=file)
+        for tool in sorted(bucket_skipped.keys()):
+            print(f"  {tool}:", file=file)
+            for bucket in bucket_skipped[tool]:
+                print(
+                    f"    bucket={bucket}: skipped via tools.{tool}.skip_buckets",
+                    file=file,
+                )
+        print("", file=file)
 
 
 # ---------------------------------------------------------------------------
