@@ -212,7 +212,7 @@ The pre-run digest summarizes the same counts:
 
 ```text
 Running:      1  (create_proxmox_vm)
-Skipping:     0  (use --explain to list)
+Skipping:      0  (use --explain to list)
 Bucket skips:  1  (use --explain to list)
 ```
 

@@ -1245,10 +1245,17 @@ def _render_pre_run_digest(
     print(f"Running:     {running_n:>2}  ({running_text})", file=file)
     # Omit "(use --explain to list)" hint when explain=True (the explain block
     # renders right below, so the hint would lie).
+    #
+    # WR-05 (phase 33 review): widen Skipping's number field from :>2 to
+    # :>3 so it aligns with `Bucket skips:{n:>3}` (their right edges land
+    # in the same column). The previous :>2 vs :>3 drift was a 1-character
+    # misalignment that grew worse at homelab-mcp's 70-tool scale where
+    # 3-digit bucket totals occur. Running stays :>2 (small N upper bound
+    # for a given run; alignment with Skipping reads naturally either way).
     if explain:
-        print(f"Skipping:    {skipping_n:>2}", file=file)
+        print(f"Skipping:    {skipping_n:>3}", file=file)
     else:
-        print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+        print(f"Skipping:    {skipping_n:>3}  (use --explain to list)", file=file)
     # Bucket skips: line emits only when at least one tool has non-empty
     # skip_buckets; omitted entirely for v1.5 operators not using the feature
     # (T-33-12 mitigation: no new digest noise when feature is unused).

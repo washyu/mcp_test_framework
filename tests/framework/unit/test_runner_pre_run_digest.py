@@ -113,7 +113,8 @@ def test_pre_run_digest_emits_banner_and_label_block(capsys) -> None:
     assert "MCP server:  uvx homelab-mcp" in out
     assert "Discovered:  3 tools" in out
     assert "Running:      1  (alpha)" in out, repr(out)
-    assert "Skipping:     2  (use --explain to list)" in out, repr(out)
+    # WR-05 (phase 33 review): Skipping uses :>3 to align with `Bucket skips:{:>3}`.
+    assert "Skipping:      2  (use --explain to list)" in out, repr(out)
     assert "Judges:      clarity" in out
     assert "Test plan:   10 contract cases" in out, repr(out)
 
