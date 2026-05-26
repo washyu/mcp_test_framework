@@ -114,6 +114,28 @@ class ToolConfig(BaseModel):
         ),
     )
 
+    @field_validator("skip_buckets", mode="after")
+    @classmethod
+    def _no_duplicate_buckets(cls, v: list[BucketName]) -> list[BucketName]:
+        """Reject duplicate bucket names in ``skip_buckets``.
+
+        Pydantic's ``Literal`` validation accepts duplicates by default
+        (each element passes the per-element check). Downstream consumers
+        (``_count_bucket_skips``, ``--explain`` renderer) treat the field
+        as a multiset, so ``skip_buckets=["output", "output"]`` would
+        silently inflate ``Bucket skips: N`` and emit duplicate
+        ``bucket=output: ...`` rows. A duplicate is almost certainly a
+        typo, not deliberate intent; fail loud at config load with an
+        operator-tone message (matches docs/ERROR-STYLE.md).
+        """
+        if len(set(v)) != len(v):
+            raise ValueError(
+                "skip_buckets contains duplicate bucket name(s); each "
+                "bucket may appear at most once. valid values: "
+                "'schema', 'judge', 'output'."
+            )
+        return v
+
     @field_validator("judges", mode="after")
     @classmethod
     def _validate_judge_ids(cls, v: Optional[list[str]]) -> Optional[list[str]]:
@@ -134,6 +156,37 @@ class ToolConfig(BaseModel):
         return v
 
     @model_validator(mode="after")
+    def _skip_buckets_not_with_whole_tool_skip(self) -> "ToolConfig":
+        """``skip=True`` and a non-empty ``skip_buckets`` are mutually exclusive.
+
+        ``skip: true`` is whole-tool: every bucket is already skipped, so
+        layering an additional per-bucket opt-out is redundant intent and
+        leaves the operator unsure which lever the framework honored. Fail
+        loud at config load with an operator-tone three-part message rather
+        than silently picking precedence.
+
+        WR-06 (phase 33 review): this validator runs BEFORE
+        ``_skip_requires_reason``. When an operator writes
+        ``skip=True, skip_buckets=["output"]`` with no skip_reason, both
+        rules are violated; surfacing the mutual-exclusion message first
+        steers the operator to drop one of the two levers in one round
+        trip rather than two (drop skip_buckets first, then -- if they
+        kept ``skip: true`` -- supply skip_reason on the next attempt).
+        """
+        if self.skip and self.skip_buckets:
+            raise ValueError(
+                "skip=true and skip_buckets are mutually exclusive\n"
+                "\n"
+                "skip=true is whole-tool: every bucket is already skipped.\n"
+                "layering skip_buckets on top is redundant intent and the "
+                "framework will not silently pick which lever wins.\n"
+                "\n"
+                "next: keep skip=true to disable every bucket, OR remove "
+                "skip and use skip_buckets alone to disable named buckets."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _skip_requires_reason(self) -> "ToolConfig":
         """``skip=True`` MUST come with non-empty ``skip_reason``.
 
@@ -146,29 +199,6 @@ class ToolConfig(BaseModel):
             raise ValueError(
                 "skip=True requires a non-empty skip_reason "
                 "(the reason surfaces in pytest skip output)"
-            )
-        return self
-
-    @model_validator(mode="after")
-    def _skip_buckets_not_with_whole_tool_skip(self) -> "ToolConfig":
-        """``skip=True`` and a non-empty ``skip_buckets`` are mutually exclusive.
-
-        ``skip: true`` is whole-tool: every bucket is already skipped, so
-        layering an additional per-bucket opt-out is redundant intent and
-        leaves the operator unsure which lever the framework honored. Fail
-        loud at config load with an operator-tone three-part message rather
-        than silently picking precedence.
-        """
-        if self.skip and self.skip_buckets:
-            raise ValueError(
-                "skip=true and skip_buckets are mutually exclusive\n"
-                "\n"
-                "skip=true is whole-tool: every bucket is already skipped.\n"
-                "layering skip_buckets on top is redundant intent and the "
-                "framework will not silently pick which lever wins.\n"
-                "\n"
-                "next: keep skip=true to disable every bucket, OR remove "
-                "skip and use skip_buckets alone to disable named buckets."
             )
         return self
 

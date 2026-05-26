@@ -244,6 +244,54 @@ def test_skip_true_with_non_empty_skip_buckets_rejected() -> None:
     assert "skip_buckets" in msg
 
 
+def test_skip_buckets_mutual_exclusion_takes_priority_over_skip_reason() -> None:
+    """WR-06 regression: when skip=True + skip_buckets + no skip_reason all
+    violate, the mutual-exclusion error must surface first.
+
+    Pre-fix the source-declaration order put ``_skip_requires_reason``
+    ahead of ``_skip_buckets_not_with_whole_tool_skip``, so the operator
+    saw the skip_reason error first, fixed it, then saw the mutual-exclusion
+    error on the next config load (two round-trips on the same edit). The
+    more informative message in this case is the mutual-exclusion one --
+    once the operator drops skip_buckets, the skip-with-reason rule is the
+    obvious next step.
+
+    This test locks the validator order: WR-06 reorders the validators so
+    the mutual-exclusion check runs first.
+    """
+    # Both rules violated: skip=True + skip_buckets non-empty + no skip_reason
+    with pytest.raises(ValidationError) as exc_info:
+        ToolConfig(skip=True, skip_buckets=["output"])
+    msg = str(exc_info.value)
+    # The mutual-exclusion error must be present; the skip-reason error
+    # may or may not also surface depending on Pydantic's error aggregation,
+    # but the headline guarantee is that the mutual-exclusion message
+    # appears.
+    assert "skip=true and skip_buckets are mutually exclusive" in msg, (
+        f"WR-06: mutual-exclusion error must surface when both rules are "
+        f"violated; got: {msg!r}"
+    )
+
+
+def test_skip_buckets_rejects_duplicate_entries() -> None:
+    """WR-01 regression: duplicate bucket names in skip_buckets are rejected.
+
+    Pydantic's per-element Literal validator allows duplicates by default
+    (each ``"output"`` is independently a valid BucketName). Downstream
+    consumers treat the field as a multiset, so a duplicate would silently
+    inflate ``Bucket skips: N`` and emit duplicate explain rows. Validator
+    rejects at load time with an operator-tone message.
+    """
+    with pytest.raises(ValidationError) as exc_info:
+        ToolConfig(skip_buckets=["output", "output"])
+    msg = str(exc_info.value)
+    assert "duplicate" in msg
+    assert "skip_buckets" in msg
+    # Mixed duplicate (two valid distinct buckets, one repeated) also rejected
+    with pytest.raises(ValidationError):
+        ToolConfig(skip_buckets=["schema", "judge", "schema"])
+
+
 def test_yaml_overlay_loads_tools_block(tmp_path: Path, monkeypatch) -> None:
     """D-20: YAML overlay path reaches `tools:` block correctly.
 

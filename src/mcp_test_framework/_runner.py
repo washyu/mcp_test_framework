@@ -1022,15 +1022,35 @@ def _compose_pre_run_skip_reasons(
     )
 
 
-def _count_bucket_skips(tools_config: dict) -> int:
+def _count_bucket_skips(
+    tools_config: dict,
+    discovered: list[str] | None = None,
+) -> int:
     """Total (tool, bucket) pairs across all tools' ``skip_buckets``.
 
     Returns 0 when no tool has bucket-level opt-out; in that case the
     digest's per-bucket line is omitted entirely so v1.5 operators not
     using the feature see no new digest noise.
+
+    WR-02 (phase 33 review): when ``discovered`` is supplied, restrict
+    the count to tools that the MCP server actually advertises. A tool
+    that the operator configured with ``skip_buckets`` but that the
+    server does not expose is consistent with the rest of the digest
+    (such tools are absent from both ``Running`` and ``Skipping``) and
+    must not inflate ``Bucket skips: N``. When ``discovered`` is None
+    (legacy callers / direct unit tests), every entry in ``tools_config``
+    is counted -- preserves the pre-WR-02 behavior for callers that
+    haven't been threaded through with the discovery list yet.
     """
     total = 0
-    for tcfg in tools_config.values():
+    if discovered is None:
+        for tcfg in tools_config.values():
+            total += len(getattr(tcfg, "skip_buckets", []) or [])
+        return total
+    discovered_set = set(discovered)
+    for name, tcfg in tools_config.items():
+        if name not in discovered_set:
+            continue
         total += len(getattr(tcfg, "skip_buckets", []) or [])
     return total
 
@@ -1049,11 +1069,23 @@ def _compose_judges_from_tool_configs(tools_config: dict) -> list[str]:
     collapsed the None default to ``[]`` and produced an empty union even
     when every tool was running all three rubrics at runtime.
 
+    WR-04 (phase 33 review): a tool with ``"judge" in skip_buckets`` runs
+    NO judge tests at collection time. Its ``judges`` contribution to the
+    digest's ``Judges:`` line must be suppressed -- otherwise the digest
+    lies about activity (same failure mode the None->[] collapse bug fixed).
+    Tools that bucket-skip judges are not iterated; everything else uses
+    the existing ToolConfig.judges semantics.
+
     Returns: sorted list of rubric IDs that will fire for at least one
-    configured tool. Empty list iff every tool explicitly opts out via [].
+    configured tool. Empty list iff every tool explicitly opts out via []
+    or via skip_buckets=["judge"].
     """
     judges_set: set[str] = set()
     for tool_cfg in tools_config.values():
+        # WR-04: skip tools that bucket-skip judges -- they contribute zero
+        # judge tests at collection time.
+        if "judge" in (getattr(tool_cfg, "skip_buckets", []) or []):
+            continue
         declared = getattr(tool_cfg, "judges", None)
         if declared is None:
             judges_set.update(RUBRIC_IDS)  # None default = run all rubrics
@@ -1213,14 +1245,21 @@ def _render_pre_run_digest(
     print(f"Running:     {running_n:>2}  ({running_text})", file=file)
     # Omit "(use --explain to list)" hint when explain=True (the explain block
     # renders right below, so the hint would lie).
+    #
+    # WR-05 (phase 33 review): widen Skipping's number field from :>2 to
+    # :>3 so it aligns with `Bucket skips:{n:>3}` (their right edges land
+    # in the same column). The previous :>2 vs :>3 drift was a 1-character
+    # misalignment that grew worse at homelab-mcp's 70-tool scale where
+    # 3-digit bucket totals occur. Running stays :>2 (small N upper bound
+    # for a given run; alignment with Skipping reads naturally either way).
     if explain:
-        print(f"Skipping:    {skipping_n:>2}", file=file)
+        print(f"Skipping:    {skipping_n:>3}", file=file)
     else:
-        print(f"Skipping:    {skipping_n:>2}  (use --explain to list)", file=file)
+        print(f"Skipping:    {skipping_n:>3}  (use --explain to list)", file=file)
     # Bucket skips: line emits only when at least one tool has non-empty
     # skip_buckets; omitted entirely for v1.5 operators not using the feature
     # (T-33-12 mitigation: no new digest noise when feature is unused).
-    bucket_skip_n = _count_bucket_skips(ctx.tools_config)
+    bucket_skip_n = _count_bucket_skips(ctx.tools_config, ctx.discovered_tools)
     if bucket_skip_n > 0:
         if explain:
             print(f"Bucket skips:{bucket_skip_n:>3}", file=file)
@@ -1375,11 +1414,17 @@ def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
             # surface them indented beneath. Pydantic-rejected at load
             # time per Plan 33-02; emitted here for traceability if
             # bypassed.
+            #
+            # WR-03 (phase 33 review): use a 4-space lead so the bucket
+            # rows visually nest under their tool line, matching Section 2's
+            # shape (tool header at 2 spaces, bucket rows at 4). Without the
+            # extra indent the bucket rows appear as peer rows to the em-dashed
+            # tool line, which is visually misleading.
             tcfg = ctx.tools_config.get(tool)
             if tcfg is not None and tcfg.skip_buckets:
                 for bucket in tcfg.skip_buckets:
                     print(
-                        f"  bucket={bucket}: skipped via tools.{tool}.skip_buckets",
+                        f"    bucket={bucket}: skipped via tools.{tool}.skip_buckets",
                         file=file,
                     )
         print("", file=file)
@@ -1389,11 +1434,17 @@ def _render_skipped_tools_explain(ctx: RenderContext, file=None) -> None:
         print("Skipping (0):", file=file)
         print("", file=file)
 
-    # Section 2: bucket-skipped running tools (Phase 33, BUCKET-04)
+    # Section 2: bucket-skipped running tools (Phase 33, BUCKET-04).
+    # WR-02 (phase 33 review): filter by ctx.discovered_tools so a
+    # configured-but-undiscovered tool with skip_buckets does not appear
+    # here. Consistent with the rest of the digest: undiscovered tools
+    # are absent from both Running and Skipping; they must also be
+    # absent from the bucket-skip explain block.
+    discovered_set = set(ctx.discovered_tools)
     bucket_skipped = {
         name: tcfg.skip_buckets
         for name, tcfg in ctx.tools_config.items()
-        if tcfg.skip_buckets and not tcfg.skip
+        if tcfg.skip_buckets and not tcfg.skip and name in discovered_set
     }
     if bucket_skipped:
         print(f"Bucket-skipped tools ({len(bucket_skipped)}):", file=file)
