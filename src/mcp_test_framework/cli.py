@@ -1393,6 +1393,7 @@ def gen_test_classes(
             server_version=server_version,
             tools=tools,
             out_root=out_root,
+            tools_config=cfg.tools,  # Phase 999.2 / GEN-02: thread cfg.tools so examples: drives smoke emission
         )
     except _codegen.SchemaValidityError as exc:
         _emit_operator_error(
