@@ -621,6 +621,7 @@ def generate(
     tools: list[Tool],
     out_root: Path,
     timestamp: str | None = None,
+    tools_config: "dict[str, object] | None" = None,
 ) -> dict[str, int]:
     """Wipe-and-write generated/<slug>/ from a list of Tool objects.
 
@@ -630,6 +631,14 @@ def generate(
 
     `timestamp=None` uses `datetime.now(UTC)` at sub-second precision; tests
     pass a fixed value for byte-identical idempotency.
+
+    Optional `tools_config` is a `{tool_name: ToolConfig}` mapping (duck-typed
+    here as `dict[str, object]` to avoid importing `models.ToolConfig` from
+    this pure-data module). When provided, each entry's `examples` attribute
+    drives the `<tool>_call_smoke.py` scenario emission for required-field
+    tools (Phase 999.2 / GEN-02). When omitted or when a tool has no entry,
+    required-field tools still get a `<tool>_call_smoke.py` -- the TODO/skip
+    branch (D-02) -- so the operator sees scaffolding immediately.
 
     Returns counts: {"tools": <N>, "degraded_fields": <M>}.
     """
@@ -657,6 +666,26 @@ def generate(
         counts["tools"] += 1
         counts["degraded_fields"] += degraded_n
         registry_entries.append((tool.name, pascal_case(tool.name)))
+
+        # Phase 999.2 / GEN-02: emit <tool>_call_smoke.py for required-field tools.
+        # Gate on len(inputSchema.required) > 0 -- tools with required:[] or no
+        # `required` key get NO smoke file (zero-output for clarity).
+        required = tool.inputSchema.get("required") if isinstance(tool.inputSchema, dict) else None
+        if isinstance(required, list) and len(required) > 0:
+            tool_cfg = (tools_config or {}).get(tool.name)
+            # Duck-typed read: tool_cfg is a ToolConfig but we do not import it
+            # here. `examples` is the field added in plan 01 (default None).
+            examples = getattr(tool_cfg, "examples", None) if tool_cfg is not None else None
+            smoke_source = _emit_smoke_scenario(
+                tool,
+                slug=slug,
+                server_name=server_name,
+                server_version=server_version,
+                timestamp=timestamp,
+                examples=examples,
+            )
+            smoke_path = target / f"{module_name(tool.name)}_call_smoke.py"
+            smoke_path.write_text(smoke_source, encoding="utf-8")
 
     # Write __init__.py LAST so partial states fail clean, not half-imported.
     init_text = _render_init(
