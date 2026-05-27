@@ -636,9 +636,9 @@ def generate(
     here as `dict[str, object]` to avoid importing `models.ToolConfig` from
     this pure-data module). When provided, each entry's `examples` attribute
     drives the `<tool>_call_smoke.py` scenario emission for required-field
-    tools (Phase 999.2 / GEN-02). When omitted or when a tool has no entry,
-    required-field tools still get a `<tool>_call_smoke.py` -- the TODO/skip
-    branch (D-02) -- so the operator sees scaffolding immediately.
+    tools. When omitted or when a tool has no entry, required-field tools
+    still get a `<tool>_call_smoke.py` -- the TODO/skip branch -- so the
+    operator sees scaffolding immediately.
 
     Returns counts: {"tools": <N>, "degraded_fields": <M>}.
     """
@@ -712,26 +712,25 @@ def _emit_smoke_scenario(
     Pure-data: returns a string. File I/O is owned by ``generate()``.
 
     Three branches:
-      - examples is None or [] -> TODO/skip module (D-02 + D-02a). Module is
+      - examples is None or [] -> TODO/skip module. Module is
         fully importable; pytest.skip(allow_module_level=True) appears AFTER
         the ``from .<tool> import <Pascal>Params`` import so an ImportError
         would surface as a real codegen bug rather than being masked.
       - len(examples) == 1     -> single ``await tool("<name>").call(params)`` body
       - len(examples) > 1      -> @pytest.mark.parametrize with positional
-        ``example-{i}`` ids (Pitfall 4 -- stable across operator example edits)
+        ``example-{i}`` ids (stable across operator example edits)
 
     Operator-supplied ``examples`` values are serialized via json.dumps() so
     embedded ``"`` / newline cannot close the dict literal early and inject
-    executable source. Mirrors the V5 mitigation at _codegen.py:582-590
-    (registry_lines tool-name escaping) and _codegen.py:62-71 (server_name
-    / server_version header escaping). Generated scenario is fixture-loaded
-    via the mcp_session synthetic-package loader (session.py:97-101), which
-    requires the relative ``from .<mod> import ...`` shape (Pitfall 2).
+    executable source. Mirrors the tool-name escaping in registry_lines and
+    the header escaping for server_name / server_version. Generated scenario
+    is fixture-loaded via the mcp_session synthetic-package loader, which
+    requires the relative ``from .<mod> import ...`` shape.
 
-    D-03a: 4-line header sentinel is shared with <tool>.py via _render_header
+    The 4-line header sentinel is shared with <tool>.py via _render_header
     so a single grep across _generated/ finds both kinds of generated files.
 
-    D-04 / SEED-022: this emitter does NOT read or warn about skip_buckets.
+    This emitter does NOT read or warn about skip_buckets.
     Examples-present and skip_buckets-set are independent operator surfaces.
     """
     header = _render_header(
@@ -756,7 +755,8 @@ def _emit_smoke_scenario(
         "\n"
     )
 
-    # Branch C: TODO / skip (D-02). Import BEFORE pytest.skip per research Q6.
+    # Branch C: TODO / skip. Import BEFORE pytest.skip so an ImportError
+    # surfaces as a real codegen bug rather than being masked by the skip.
     if not examples:
         return (
             f"{preamble}"

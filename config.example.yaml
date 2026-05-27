@@ -83,8 +83,8 @@ tools:
     # so `mcp-contracts gen-test-classes` emits a real-args smoke scenario
     # under tests/test_code/_generated/<server>/<tool>_call_smoke.py.
     # The schema + judge buckets still run; the output-bucket signal is
-    # replaced by the codegen scenario (operator owns the pairing decision
-    # per SEED-022 -- the framework does not auto-pair these fields).
+    # replaced by the codegen scenario. The framework does not auto-pair
+    # these two fields -- the operator owns the pairing decision.
     skip_buckets: ["output"]
     examples:
       - <required_arg_a>: <value>

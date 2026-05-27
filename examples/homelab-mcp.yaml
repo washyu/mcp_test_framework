@@ -93,7 +93,7 @@ tools:
   create_proxmox_vm:
     skip: true
     skip_reason: "destructive: provisions Proxmox VM"
-    # To opt in to the Phase 999.2 codegen-driven smoke scenario, REMOVE the
+    # To opt in to the codegen-driven smoke scenario, REMOVE the
     # two lines above (skip + skip_reason) and UNCOMMENT the block below.
     # Replace example values with VM specs that are safe to create AND destroy
     # in your environment -- the smoke scenario actually provisions a VM, so
