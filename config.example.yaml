@@ -71,3 +71,23 @@ tools:
     # reason verbatim in the per-tool summary.
     skip: true
     skip_reason: "destructive: writes to production inventory"
+
+  <required_field_tool>:
+    # Pattern D -- required-field tool with examples + bucket skip.
+    # Required-field tools cannot satisfy the empty-args output bucket
+    # (the deterministic output-conformance check calls the tool with
+    # call_arguments defaulting to {}, which the server rejects with
+    # `Field required` before the framework can grade the response).
+    #
+    # Recommended pairing: skip the output bucket AND populate examples:
+    # so `mcp-contracts gen-test-classes` emits a real-args smoke scenario
+    # under tests/test_code/_generated/<server>/<tool>_call_smoke.py.
+    # The schema + judge buckets still run; the output-bucket signal is
+    # replaced by the codegen scenario (operator owns the pairing decision
+    # per SEED-022 -- the framework does not auto-pair these fields).
+    skip_buckets: ["output"]
+    examples:
+      - <required_arg_a>: <value>
+        <required_arg_b>: <value>
+      # Add additional dicts to parametrize the smoke scenario; each example
+      # becomes one scenario invocation with positional id `example-<N>`.
