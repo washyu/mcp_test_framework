@@ -667,3 +667,108 @@ def generate(
     (target / "__init__.py").write_text(init_text, encoding="utf-8")
 
     return counts
+
+
+def _emit_smoke_scenario(
+    tool: Tool,
+    *,
+    slug: str,
+    server_name: str,
+    server_version: str,
+    timestamp: str,
+    examples: list[dict[str, object]] | None,
+) -> str:
+    """Render the source for tests/test_code/_generated/<slug>/<tool>_call_smoke.py.
+
+    Pure-data: returns a string. File I/O is owned by ``generate()``.
+
+    Three branches:
+      - examples is None or [] -> TODO/skip module (D-02 + D-02a). Module is
+        fully importable; pytest.skip(allow_module_level=True) appears AFTER
+        the ``from .<tool> import <Pascal>Params`` import so an ImportError
+        would surface as a real codegen bug rather than being masked.
+      - len(examples) == 1     -> single ``await tool("<name>").call(params)`` body
+      - len(examples) > 1      -> @pytest.mark.parametrize with positional
+        ``example-{i}`` ids (Pitfall 4 -- stable across operator example edits)
+
+    Operator-supplied ``examples`` values are serialized via json.dumps() so
+    embedded ``"`` / newline cannot close the dict literal early and inject
+    executable source. Mirrors the V5 mitigation at _codegen.py:582-590
+    (registry_lines tool-name escaping) and _codegen.py:62-71 (server_name
+    / server_version header escaping). Generated scenario is fixture-loaded
+    via the mcp_session synthetic-package loader (session.py:97-101), which
+    requires the relative ``from .<mod> import ...`` shape (Pitfall 2).
+
+    D-03a: 4-line header sentinel is shared with <tool>.py via _render_header
+    so a single grep across _generated/ finds both kinds of generated files.
+
+    D-04 / SEED-022: this emitter does NOT read or warn about skip_buckets.
+    Examples-present and skip_buckets-set are independent operator surfaces.
+    """
+    header = _render_header(
+        slug=slug,
+        server_name=server_name,
+        server_version=server_version,
+        timestamp=timestamp,
+    )
+    mod = module_name(tool.name)
+    params_cls = f"{pascal_case(tool.name)}Params"
+    tool_name_repr = json.dumps(tool.name)
+
+    # Common preamble (header + future + pytest + test_code public surface)
+    # for ALL three branches.
+    preamble = (
+        f"{header}"
+        "from __future__ import annotations\n"
+        "\n"
+        "import pytest\n"
+        "\n"
+        "from mcp_test_framework.test_code import mcp_session, tool  # noqa: F401\n"
+        "\n"
+    )
+
+    # Branch C: TODO / skip (D-02). Import BEFORE pytest.skip per research Q6.
+    if not examples:
+        return (
+            f"{preamble}"
+            f"from .{mod} import {params_cls}  # noqa: F401\n"
+            "\n"
+            "pytest.skip(\n"
+            f"    \"no examples; populate tools.{tool.name}.examples: in "
+            "config.yaml to enable this smoke\",\n"
+            "    allow_module_level=True,\n"
+            ")\n"
+        )
+
+    # Branch A: single example -> direct CreateXParams(**{...}) call.
+    if len(examples) == 1:
+        example_lit = json.dumps(examples[0], indent=4)
+        return (
+            f"{preamble}"
+            f"from .{mod} import {params_cls}\n"
+            "\n"
+            "\n"
+            "@pytest.mark.asyncio(loop_scope=\"session\")\n"
+            f"async def test_{mod}_call_smoke(mcp_session):\n"
+            f"    params = {params_cls}(**{example_lit})\n"
+            f"    response = await tool({tool_name_repr}).call(params)\n"
+            "    assert response.is_error is False\n"
+        )
+
+    # Branch B: multi-example -> parametrize with positional example-{i} ids.
+    examples_lit = json.dumps(list(examples), indent=4)
+    return (
+        f"{preamble}"
+        f"from .{mod} import {params_cls}\n"
+        "\n"
+        "\n"
+        f"_EXAMPLES = {examples_lit}\n"
+        "\n"
+        "\n"
+        "@pytest.mark.asyncio(loop_scope=\"session\")\n"
+        "@pytest.mark.parametrize(\"example\", _EXAMPLES, ids=[f\"example-{i}\" for i in range(len(_EXAMPLES))])\n"
+        f"async def test_{mod}_call_smoke(mcp_session, example):\n"
+        f"    params = {params_cls}(**example)\n"
+        f"    response = await tool({tool_name_repr}).call(params)\n"
+        "    assert response.is_error is False\n"
+    )
