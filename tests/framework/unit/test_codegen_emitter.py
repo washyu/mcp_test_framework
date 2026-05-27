@@ -41,7 +41,7 @@ def test_emitter_writes_one_file_per_tool_plus_init(tmp_path: Path) -> None:
     assert (slug_dir / "create_vm.py").is_file()
     assert (slug_dir / "delete_vm.py").is_file()
     assert (slug_dir / "__init__.py").is_file()
-    assert counts == {"tools": 2, "degraded_fields": 0}
+    assert counts == {"tools": 2, "degraded_fields": 0, "smoke_scenarios": 0, "smoke_todos": 0}
 
 
 def test_emitter_header_marker_on_every_file(tmp_path: Path) -> None:
@@ -157,7 +157,7 @@ def test_emitter_counts_degraded_fields(tmp_path: Path) -> None:
         server_name="homelab-mcp", server_version="0.5.2",
         tools=tools, out_root=tmp_path, timestamp=_FIXED_TS,
     )
-    assert counts == {"tools": 1, "degraded_fields": 2}
+    assert counts == {"tools": 1, "degraded_fields": 2, "smoke_scenarios": 0, "smoke_todos": 1}
 
 
 def test_emitter_loud_fail_on_empty_server_name(tmp_path: Path) -> None:

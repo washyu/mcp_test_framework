@@ -1414,6 +1414,11 @@ def gen_test_classes(
         f"  degraded:  {counts['degraded_fields']} fields "
         f"(grep \"codegen: degraded\" for details)"
     )
+    typer.echo(
+        f"  smoke:     {counts['smoke_scenarios']} scenario(s), "
+        f"{counts['smoke_todos']} placeholder(s) "
+        f"(add examples: to config.yaml to promote placeholders)"
+    )
 
 
 @app.command("gen-sdet-classes", hidden=True)  # noqa: sdet-rename-shim
