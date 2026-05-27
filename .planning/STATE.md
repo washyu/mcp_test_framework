@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 34 Plan 05 (xdist clamp) complete
-last_updated: "2026-05-27T16:52:41.606Z"
+last_updated: "2026-05-27T16:59:25.320Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 30
-  percent: 94
+  completed_plans: 31
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 ## Current Position
 
 Phase: 34 (Opt-in host isolation passthrough (999.3)) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-05-27
 
@@ -54,6 +54,7 @@ Last activity: 2026-05-27
 | Phase 34 P04 | 25 min | 3 tasks | 6 files |
 | Phase 34 P06 | ~20 minutes | 3 tasks | 5 files |
 | Phase Phase 34 PP05 | ~15 minutes | 2 tasks tasks | 2 files files |
+| Phase Phase 34 PP07 | ~3 minutes | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,7 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 34 Plan 05: dual mutation (numprocesses=1 AND tx=['popen']) pinned by unit test -- xdist NodeManager reads tx, not numprocesses
 - [Phase ?]: Phase 34 Plan 05: clamp banner uses UserWarning (not DeprecationWarning) -- runtime mode constraint, not deprecation
 - [Phase ?]: Phase 34 Plan 05: test_xdist_clamp uses warnings.catch_warnings(record=True) not capsys -- pytest's warning filter intercepts UserWarning before stderr
+- [Phase ?]: Phase 34 Plan 07: config-init scaffold emits 'host_isolation: strict' with 5-line PRECEDING-comment-block trade-off explanation between version: 2 and test_code: blocks; fallback path at cli.py:1254 inherits via _format_tools_yaml_scaffold([]) -- no separate edit
 
 ### Roadmap Evolution
 
@@ -133,6 +135,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-27T16:52:41.598Z
+Last session: 2026-05-27T16:59:20.625Z
 Stopped at: Phase 34 Plan 05 (xdist clamp) complete
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
