@@ -167,12 +167,23 @@ class ToolConfig(BaseModel):
         a test failure rather than a config error). This validator catches
         only the malformed-config case (operator wrote a scalar where a
         mapping was intended).
+
+        WR-02: tuples and other non-list non-dict iterables are coerced to
+        list so the for-loop below fires for any sequence type, not just
+        list. YAML always produces list; Python-API callers may pass tuples.
         """
         if v is None:
             return v
+        if not isinstance(v, (list, dict)):
+            # Coerce tuple/other sequences to list so the for-loop below
+            # fires uniformly. Let TypeError (non-iterable) fall through
+            # to Pydantic's own type-rejection.
+            try:
+                v = list(v)
+            except TypeError:
+                return v  # let Pydantic's type error handle non-iterables
         if not isinstance(v, list):
-            # Let Pydantic's own type-rejection handle the top-level shape
-            # (e.g. examples={"vmid": 9001}) with its standard message.
+            # dict case: let Pydantic's type-rejection handle it.
             return v
         for i, item in enumerate(v):
             if not isinstance(item, dict):
