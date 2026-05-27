@@ -232,3 +232,98 @@ def test_emitter_still_emits_typing_and_field_when_used(tmp_path: Path) -> None:
     assert "from pydantic import BaseModel, ConfigDict, Field\n" in text, (
         f"Field should be imported (count uses Field(default=1)). File:\n{text}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 999.2 / GEN-02: tools_config kwarg + per-tool smoke file emission
+# ---------------------------------------------------------------------------
+
+class _ToolCfgShim:
+    """Duck-typed stand-in for ToolConfig -- only needs .examples for the generate() loop."""
+    def __init__(self, examples=None):
+        self.examples = examples
+
+
+def test_generate_accepts_tools_config_kwarg_when_omitted(tmp_path: Path) -> None:
+    """Backward-compat: existing callers passing no tools_config kwarg still work."""
+    t = _t("create_vm")  # required: []
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[t], out_root=tmp_path, timestamp=_FIXED_TS,
+    )
+    assert (tmp_path / "homelab_mcp" / "create_vm.py").exists()
+    assert (tmp_path / "homelab_mcp" / "__init__.py").exists()
+
+
+def test_generate_emits_smoke_file_for_required_field_tool_with_examples(tmp_path: Path) -> None:
+    t = _t("create_vm", input_schema={
+        "type": "object",
+        "properties": {"vmid": {"type": "integer"}, "name": {"type": "string"}},
+        "required": ["vmid", "name"],
+    })
+    tools_cfg = {"create_vm": _ToolCfgShim(examples=[{"vmid": 9001, "name": "smoke"}])}
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[t], out_root=tmp_path, timestamp=_FIXED_TS,
+        tools_config=tools_cfg,
+    )
+    smoke = (tmp_path / "homelab_mcp" / "create_vm_call_smoke.py").read_text(encoding="utf-8")
+    assert "@pytest.mark.asyncio(loop_scope=\"session\")" in smoke
+    assert "from .create_vm import CreateVmParams" in smoke
+    assert "pytest.skip" not in smoke  # examples-present, NOT the TODO branch
+    assert "await tool(\"create_vm\").call(params)" in smoke
+
+
+def test_generate_emits_todo_smoke_file_for_required_field_tool_without_examples(tmp_path: Path) -> None:
+    """D-02: required-field tool with no tools_config entry -> TODO/skip module emitted."""
+    t = _t("create_vm", input_schema={
+        "type": "object",
+        "properties": {"vmid": {"type": "integer"}, "name": {"type": "string"}},
+        "required": ["vmid", "name"],
+    })
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[t], out_root=tmp_path, timestamp=_FIXED_TS,
+        tools_config=None,  # explicit None -- operator has no examples: for this tool
+    )
+    smoke = (tmp_path / "homelab_mcp" / "create_vm_call_smoke.py").read_text(encoding="utf-8")
+    assert "pytest.skip(" in smoke
+    assert "allow_module_level=True" in smoke
+    # D-02a grep-able reason
+    assert "populate tools.create_vm.examples: in config.yaml to enable this smoke" in smoke
+    # D-02 -- module remains fully importable: relative import still present
+    assert "from .create_vm import CreateVmParams" in smoke
+
+
+def test_generate_does_not_emit_smoke_file_for_no_required_field_tool(tmp_path: Path) -> None:
+    """GEN-02 zero-output: required: [] -> no <tool>_call_smoke.py."""
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[_t("ping")],  # default _t() -> required: []
+        out_root=tmp_path, timestamp=_FIXED_TS,
+    )
+    assert not (tmp_path / "homelab_mcp" / "ping_call_smoke.py").exists()
+    assert (tmp_path / "homelab_mcp" / "ping.py").exists()  # <tool>.py still emitted
+
+
+def test_generate_writes_init_py_after_smoke_files(tmp_path: Path) -> None:
+    """Init-last invariant (Pitfall 5): smoke files must be written BEFORE __init__.py
+    so a partial generate() failure leaves a broken state that fails clean rather than
+    being half-imported.
+    """
+    t = _t("create_vm", input_schema={
+        "type": "object",
+        "properties": {"vmid": {"type": "integer"}},
+        "required": ["vmid"],
+    })
+    tools_cfg = {"create_vm": _ToolCfgShim(examples=[{"vmid": 9001}])}
+    generate(
+        server_name="homelab-mcp", server_version="0.5.2",
+        tools=[t], out_root=tmp_path, timestamp=_FIXED_TS,
+        tools_config=tools_cfg,
+    )
+    smoke_path = tmp_path / "homelab_mcp" / "create_vm_call_smoke.py"
+    init_path = tmp_path / "homelab_mcp" / "__init__.py"
+    assert smoke_path.exists() and init_path.exists()
+    # init_path written last (or simultaneously) -- never before
+    assert smoke_path.stat().st_mtime_ns <= init_path.stat().st_mtime_ns
