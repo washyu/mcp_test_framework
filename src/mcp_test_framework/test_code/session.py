@@ -42,6 +42,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
 import pytest_asyncio
 
 from mcp_test_framework.config import Config
@@ -52,7 +53,10 @@ from mcp_test_framework.test_code._slugs import server_slug
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_session(mcp_client: McpTestClient):
+async def mcp_session(
+    request: pytest.FixtureRequest,
+    mcp_client: McpTestClient,
+):
     """Live ClientSession driver + active test-code registry."""
     # Step 1+2: server name -> slug (single source of truth: _slugs.server_slug).
     assert mcp_client.server_info is not None, (
@@ -63,8 +67,13 @@ async def mcp_session(mcp_client: McpTestClient):
     slug = server_slug(server_name)
 
     # Step 3: load the generated package from cfg.test_code.generated_root/<slug>/.
-    # Config-driven path, file-location loader, no sys.path mutation.
-    cfg = Config()
+    # Audit: route through the plugin stash so the operator's resolved Config
+    # (and its host_isolation setting) reaches the fixture. Bare-Config fallback
+    # preserved for framework self-tests + the test_sdet_fixtures
+    # `_install_session_config` monkeypatch shim. Mirrors fixtures.py:108-111.
+    cfg = getattr(request.session.config, "_mcp_contracts_config", None)
+    if cfg is None:
+        cfg = Config()  # framework-self-test fallback; mirrors fixtures.py:108-111
     generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():
         generated_root = Path.cwd() / generated_root

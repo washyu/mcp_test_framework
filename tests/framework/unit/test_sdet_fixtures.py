@@ -215,9 +215,21 @@ async def _run_fixture(mcp_session_func, client) -> tuple[object, dict]:
     """Drive the async generator fixture and capture state at yield time.
 
     Returns (yielded_value, state_snapshot_at_yield_time).
+
+    Phase 34 ISOL-05 (Plan 34-06 Task 2): mcp_session gained
+    ``request: pytest.FixtureRequest`` as its first parameter. The fixture
+    body reads the stashed Config from
+    ``request.session.config._mcp_contracts_config`` and falls back to a
+    bare ``Config()`` when the stash is absent. The fake request below
+    leaves the stash empty so the bare-Config fallback fires -- the path
+    the ``_install_session_config`` monkeypatch shim depends on.
     """
     func = _unwrap(mcp_session_func)
-    agen = func(client)
+    fake_session = SimpleNamespace(
+        config=SimpleNamespace(_mcp_contracts_config=None),
+    )
+    fake_request = SimpleNamespace(session=fake_session)
+    agen = func(fake_request, client)
     yielded = await agen.__anext__()
     # Snapshot registries by deep-copying the dict so post-teardown asserts
     # against the yield-time state still see the activated synthetic slug.
@@ -311,7 +323,14 @@ async def test_mcp_session_fail_loud_on_missing_generated_module(
 
     client = _make_fake_client("missing-server")
     func = _unwrap(mcp_session)
-    agen = func(client)
+    # Phase 34 Plan 34-06 Task 2: mcp_session gained request as first param.
+    # Empty stash -> bare Config() fallback fires, which the monkeypatch
+    # shim above replaces with Config(yaml_file=...).
+    fake_session = SimpleNamespace(
+        config=SimpleNamespace(_mcp_contracts_config=None),
+    )
+    fake_request = SimpleNamespace(session=fake_session)
+    agen = func(fake_request, client)
     with pytest.raises(pytest.exit.Exception) as exc_info:
         await agen.__anext__()
 
