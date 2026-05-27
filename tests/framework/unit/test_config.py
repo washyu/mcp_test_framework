@@ -283,6 +283,16 @@ def test_sub_model_is_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
         cfg.ollama.model = "X"  # type: ignore[misc]
 
 
+def test_host_isolation_default_is_strict() -> None:
+    """ISOL-01 D-03: bare Config() returns host_isolation='strict'.
+
+    Phase 35 SHIM-09 regression gate depends on this default -- a future
+    capstone-style sweep greps for the top-level `host_isolation` field
+    AND asserts the v1.5-shipped default value is preserved."""
+    cfg = Config(test_code=_TEST_CODE_STUB)
+    assert cfg.host_isolation == "strict"
+
+
 def test_no_yaml_path_uses_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Config() with no kwargs returns model defaults."""
     _clear_env(monkeypatch)
