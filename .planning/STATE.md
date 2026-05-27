@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: verifying
+status: ready_to_plan
 stopped_at: Phase 999.2 context gathered
 last_updated: "2026-05-27T01:51:12.931Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
   completed_plans: 24
-  percent: 100
+  percent: 71
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 ## Current Position
 
-Phase: 999.2 (codegen-driven-parameter-test-generation-for-required-field-) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 999.5
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-27
 
 ## Performance Metrics
