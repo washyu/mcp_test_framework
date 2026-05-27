@@ -216,7 +216,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 
 **Goal:** Extend `mcp-contracts gen-test-classes` to emit `<tool>_call_smoke.py` typed SDET scenarios for every tool whose `inputSchema.required` is non-empty. Operator drops example arg dicts under `tools.<name>.examples:` in `config.yaml`; codegen owns the boilerplate, operator owns the values (SEED-022). Pairs with Phase 33 per-bucket skip — operator pairs `skip_buckets: ["output"]` + `examples:` to restore output-bucket signal via codegen scenarios.
 **Requirements:** GEN-01, GEN-02, GEN-03, GEN-04, GEN-05, GEN-06, GEN-07, GEN-08 (derived in 999.2-RESEARCH.md; ROADMAP-level requirements remain TBD until v1.6+ promotion)
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 999.2-01-PLAN.md — GEN-01: ToolConfig.examples field + validator (Wave 1)
@@ -224,7 +224,7 @@ Plans:
 - [x] 999.2-03-PLAN.md — GEN-02/06: generate() loop wiring + cli.py thread-through + 5 integration tests (Wave 2)
 - [x] 999.2-04-PLAN.md — GEN-08: end-to-end self-tests (header parity, overwrite, init integrity, importability) (Wave 3)
 - [x] 999.2-05-PLAN.md — GEN-07: config.example.yaml Pattern D + examples/homelab-mcp.yaml opt-in template (Wave 1)
-- [ ] 999.2-06-PLAN.md — GEN-07: docs touch (LIBRARY-MODE + TEST-CODE-AUTHORING + README) (Wave 3)
+- [x] 999.2-06-PLAN.md — GEN-07: docs touch (LIBRARY-MODE + TEST-CODE-AUTHORING + README) (Wave 3)
 
 **Context (captured 2026-05-19 during Phase 30 UAT-1):** The output-conformance bucket calls every enabled tool with `tool_config.call_arguments` (defaults to `{}`). For tools whose inputSchema declares `required: [...]`, the empty-args call is rejected upstream — the test is structurally non-meaningful unless the operator hand-authors `call_arguments:` per tool. Phase 17 / SEED-014 already ships codegen that derives `<ToolName>Params` Pydantic classes from each tools inputSchema. Proposal: extend `gen-test-classes` to ALSO emit a `tests/test_code/_generated/<tool>_call_smoke.py` per required-field tool — a typed SDET scenario that constructs `<ToolName>Params(...)` from inputSchema example values (or operator-supplied `examples:` blocks) and calls the tool through `tool("name").call(params)` with the Phase 24 `exclude_unset=True` serializer. Authoring story: the operator drops `examples:` into `config.yaml` or `pyproject.toml`, `gen-test-classes` reads them, generated scenarios show up under `tests/test_code/` and run in the test-code surface. Codegen owns the boilerplate; the operator owns the example values (SEED-022 respected). Adjacent: a CLI subcommand `mcp-contracts list-required` that reads inputSchema + emits the example-values template the operator needs to fill in. Pairs with v1.5 Phase 33 (per-bucket skip) — operator can keep the schema+judge buckets running while output-bucket coverage shifts to codegen-generated SDET scenarios.
 
