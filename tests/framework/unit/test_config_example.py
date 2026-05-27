@@ -38,11 +38,16 @@ def test_config_example_yaml_parses() -> None:
         assert key in data, f"top-level {key!r} missing"
 
 
-def test_config_example_has_three_placeholder_tools() -> None:
-    """D-13: exactly three placeholder entries demonstrating the patterns."""
+def test_config_example_has_placeholder_tools() -> None:
+    """D-13 + Phase 999.2 D-01: placeholder entries demonstrate Patterns A/B/C/D."""
     data = _load()
     tools = data["tools"]
-    expected = {"<safe_read_tool_a>", "<safe_read_tool_b>", "<destructive_tool_c>"}
+    expected = {
+        "<safe_read_tool_a>",
+        "<safe_read_tool_b>",
+        "<destructive_tool_c>",
+        "<required_field_tool>",
+    }
     assert set(tools.keys()) == expected, (
         f"unexpected tool entries: got {set(tools.keys())}, want {expected}"
     )
@@ -79,13 +84,14 @@ def test_config_example_no_banned_tokens() -> None:
     assert not found, f"banned tokens in config.example.yaml: {found}"
 
 
-def test_config_example_has_three_pattern_comments() -> None:
-    """The header comment block names the three patterns; the per-tool
+def test_config_example_has_pattern_comments() -> None:
+    """The header comment block names the patterns; the per-tool
     comments label which pattern each entry implements."""
     text = CFG_EXAMPLE.read_text(encoding="utf-8")
     assert "Pattern A" in text
     assert "Pattern B" in text
     assert "Pattern C" in text
+    assert "Pattern D" in text
 
 
 def test_config_example_pattern_a_has_judges() -> None:
