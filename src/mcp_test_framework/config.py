@@ -24,6 +24,7 @@ silently confused.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import (
@@ -62,6 +63,8 @@ class Config(BaseSettings):
     judge_timeout_seconds: int = 120
 
     version: int = 2
+
+    host_isolation: Literal['strict', 'passthrough'] = 'strict'
 
     # Per-tool registry. Runtime semantics are opt-in: only tools listed
     # here (with ``skip != True``) participate in the contract pass.
