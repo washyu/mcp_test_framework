@@ -321,6 +321,34 @@ Default `mcp-contracts run` collects only `tests/contract/`; the
 `--test-code` flag opts the test-code scope into the run. See the
 [Appendix: CLI usage](#appendix-cli-usage) section below for full flag composition.
 
+### Codegen-driven smoke scenarios for required-field tools
+
+For tools like `create_proxmox_vm` that declare required input fields, add an
+`examples:` block to `config.yaml`, run `mcp-contracts gen-test-classes`, and
+the framework emits `tests/test_code/_generated/<server>/<tool>_call_smoke.py`
+— a typed smoke scenario that calls the tool with your supplied arguments under
+the existing `mcp_session` fixture. No hand-authoring required for the basic
+call-and-assert pattern.
+
+```yaml
+# config.yaml
+tools:
+  create_proxmox_vm:
+    skip_buckets: ["output"]   # drop the empty-args output bucket
+    examples:
+      - vmid: 9001
+        name: smoke-test-vm
+        node: pve1
+        host: pve1
+```
+
+The `skip_buckets` + `examples:` pairing is the operator's call — the framework
+does not auto-pair these fields (SEED-022). See the
+[Skipping individual test buckets per tool](#skipping-individual-test-buckets-per-tool)
+section below for the `skip_buckets` walkthrough and
+[`docs/LIBRARY-MODE.md`](docs/LIBRARY-MODE.md#codegen-driven-smoke-scenarios-for-required-field-tools)
+for the full `examples:` field reference.
+
 ## Configuration
 
 Precedence: **CLI flag > env var > `.env` > YAML overlay > default**.
