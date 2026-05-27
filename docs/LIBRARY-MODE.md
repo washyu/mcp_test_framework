@@ -222,6 +222,62 @@ runtime-SKIPPED rows. Setting both `skip: true` and a non-empty
 `skip_buckets` for the same tool is rejected at config load (the two
 levers express redundant intent).
 
+## Host isolation
+
+Library-mode consumers — `mcp-contracts` as an auto-loaded pytest plugin, or
+the `mcp_test_framework.test_code` import surface — set `host_isolation` via
+the same `config.yaml` the CLI loads. The plugin reads your YAML at
+`pytest_configure` time and stashes the resolved `Config` for the contract
+and test-code fixtures to consume.
+
+By default (`host_isolation: strict`), the spawned MCP subprocess sees an
+isolated env — allowlist + tempdir HOME redirect + null keyring backend.
+Test-code scenarios authored under `tests/test_code/` inherit this for
+reproducibility.
+
+For live-stack scenarios that need operator credentials reachable from the
+spawned subprocess (canonical case: a test-code scenario calling
+`homelab-mcp create_proxmox_vm` against your real Proxmox keyring credentials),
+opt into passthrough:
+
+```yaml
+# config.yaml
+host_isolation: passthrough
+test_code:
+  generated_root: tests/test_code/_generated
+```
+
+The spawned MCP subprocess inherits your full `os.environ` — `HOME`,
+`USERPROFILE`, `TEMP`, `MCP_*`, keyring backend. Nothing stripped, nothing
+injected. Your test-code scenario calls into the live stack with credential
+reachability restored.
+
+Trade-off — pytest-xdist parallelism clamps to 1:
+
+```text
+xdist worker count clamped to 1
+
+host_isolation=passthrough serializes subprocess spawns so the operator's
+credentials remain a single-owner resource.
+
+next: switch to host_isolation=strict for parallel xdist runs
+```
+
+**Library-mode locks:**
+
+- **SEED-022 — operator owns safety.** Framework primitives take data, not
+  Config blobs: `_build_subprocess_env(mode, isolated_home)` takes a plain
+  `Literal[str]` mode. The framework does not reason about which tools or env
+  vars are "dangerous"; the operator decided what to call.
+- **No keyring faking.** Test-code scenarios run against your actual keyring
+  backend under passthrough; the framework will not synthesize credentials or
+  virtualize the keyring.
+- **xdist incompatibility surfaced inline, not as a sidebar.** A library-mode
+  consumer who sets `host_isolation: passthrough` in `config.yaml` AND runs
+  `pytest -n 4` sees the banner above at session start; the plugin clamps the
+  worker count to 1 in `pytest_configure(tryfirst=True)` before xdist's own
+  `DSession` registration runs.
+
 ## Markers
 
 | Marker | Auto-applied | Purpose |
