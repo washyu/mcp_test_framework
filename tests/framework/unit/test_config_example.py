@@ -114,3 +114,20 @@ def test_config_example_pattern_c_has_skip_with_reason() -> None:
     c = data["tools"]["<destructive_tool_c>"]
     assert c.get("skip") is True
     assert c.get("skip_reason"), "Pattern C must have non-empty skip_reason"
+
+
+def test_config_example_pattern_d_has_examples_and_skip_buckets() -> None:
+    """Pattern D = required-field tool with examples: + skip_buckets: pairing."""
+    data = _load()
+    d = data["tools"]["<required_field_tool>"]
+    assert "examples" in d, (
+        "Pattern D entry must demonstrate the examples: field "
+        "(codegen-driven smoke scenario -- Phase 999.2)"
+    )
+    assert isinstance(d["examples"], list) and len(d["examples"]) > 0, (
+        "Pattern D examples: must be a non-empty list of argument dicts"
+    )
+    assert "skip_buckets" in d, (
+        "Pattern D entry must demonstrate the skip_buckets: pairing "
+        "(recommended companion to examples: for required-field tools)"
+    )
