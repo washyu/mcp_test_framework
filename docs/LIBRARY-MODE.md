@@ -330,6 +330,80 @@ See [`docs/TEST-CODE-AUTHORING.md`](TEST-CODE-AUTHORING.md) for the full
 import patterns, the typed `Params` / `Response` attribute surface, and the
 scenario authoring walkthrough that builds on generated classes.
 
+### Codegen-driven smoke scenarios for required-field tools
+
+Some tools declare required input fields that the framework's empty-args output
+bucket cannot satisfy. `create_proxmox_vm`, for example, requires `vmid`, `name`,
+`node`, and `host` — the server rejects a no-argument call with `Field required`.
+The standard response is to opt out of the output bucket with `skip_buckets:
+["output"]` (see [Skipping individual test buckets per tool](#skipping-individual-test-buckets-per-tool)
+above) so the schema and judge buckets keep running. But that leaves no
+output-level verification at all. The `examples:` field closes that gap:
+populate it with representative argument dicts and `gen-test-classes` emits a
+typed smoke scenario that calls the tool with real arguments.
+
+**Output path:** for every tool whose `inputSchema.required` array is non-empty,
+`gen-test-classes` writes
+`tests/test_code/_generated/<server>/<tool>_call_smoke.py` alongside the
+existing `<tool>.py` Params/Response class file.
+
+**Scenario mechanics:** the generated scenario constructs
+`<ToolName>Params(**example)` from each example dict and calls
+`await tool("<name>").call(params)`. The call routes through the
+`exclude_unset=True` serializer at `tool().call()` — operator-omitted optional
+fields are not sent to the server, so only the keys you specify in each example
+dict appear on the wire.
+
+**Operator surface** — add an `examples:` list under the tool entry in
+`config.yaml`:
+
+```yaml
+tools:
+  create_proxmox_vm:
+    skip_buckets: ["output"]   # see "Skipping individual test buckets per tool" above
+    examples:
+      - vmid: 9001
+        name: smoke-test-vm
+        node: pve1
+        host: pve1
+```
+
+**Multi-example behavior:** each dict in the `examples:` list becomes one
+parametrized scenario invocation with a positional id `example-<N>`. Keys are
+NOT validated against `inputSchema.required` at config load — missing or
+misspelled required keys surface at runtime as a clean Pydantic
+`ValidationError` naming the offending key when `<ToolName>Params(**example)`
+is constructed inside the generated scenario.
+
+**Pairing with `skip_buckets`:** the operator decides whether to pair `examples:`
+with `skip_buckets: ["output"]`. The framework does not auto-pair these fields
+(SEED-022 — operator decides). The pattern above is the recommended combination:
+skip the empty-args output bucket and drive a real-args smoke in its place. But
+you can set `examples:` without `skip_buckets` (the codegen scenario fires
+alongside the output-bucket tests) or `skip_buckets` without `examples:`
+(output bucket is skipped, no codegen scenario emitted).
+
+**Missing-examples behavior:** if a required-field tool has no `examples:` block
+in `config.yaml`, `gen-test-classes` still emits `<tool>_call_smoke.py` — a
+placeholder scenario that calls:
+
+```python
+pytest.skip("no examples; populate tools.<name>.examples: in config.yaml to enable this smoke", allow_module_level=True)
+```
+
+The file is fully importable (no `NameError` on the Params import) and appears
+in `pytest --collect-only` output so you discover the scaffold immediately.
+Populate `examples:` and re-run `gen-test-classes` to replace the skip with a
+real call.
+
+**Files in `_generated/` are wiped and rewritten on every `gen-test-classes`
+run.** If you need setup/teardown, multi-step lifecycle, or dependency-ordered
+tool calls, copy the scaffold out of `_generated/` into a hand-authored sibling
+under `tests/test_code/` and edit there. See
+[`docs/TEST-CODE-AUTHORING.md`](TEST-CODE-AUTHORING.md) for the module-scope
+yield fixture pattern that handles create/verify/delete lifecycle in a single
+scenario file.
+
 ## Error tone
 
 Operator-facing errors from the framework follow the conventions in
