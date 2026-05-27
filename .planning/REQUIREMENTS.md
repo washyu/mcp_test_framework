@@ -38,7 +38,7 @@ Operator-facing escape hatch that surfaced during Phase 30 UAT-1: `ToolConfig.sk
 
 Operator-facing escape hatch that surfaced during Phase 30 UAT-1 / UAT-2 closure: always-on isolation strips operator HOME/USERPROFILE/keyring before MCP spawn, breaking every live-stack UAT and SDET scenario that needs real credentials. Operator-locked: no keyring faking. SEED-022 respected — passthrough is the operator's explicit choice, operator owns the safety implications.
 
-- [ ] **ISOL-01**: Operator can set top-level `host_isolation: strict | passthrough` in `config.yaml`; default is `strict` (preserves v1.0–v1.4 always-on isolation behavior); operator can opt into `passthrough` per config file.
+- [x] **ISOL-01**: Operator can set top-level `host_isolation: strict | passthrough` in `config.yaml`; default is `strict` (preserves v1.0–v1.4 always-on isolation behavior); operator can opt into `passthrough` per config file.
 - [ ] **ISOL-02**: `host_isolation: passthrough` mode inherits operator's full environment (HOME, USERPROFILE, TEMP, full env vars) into the MCP subprocess — allowlist + tempdir redirect bypassed.
 - [ ] **ISOL-03**: `host_isolation: passthrough` mode does NOT inject `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` — operator's keyring backend is reachable from the spawned MCP subprocess.
 - [ ] **ISOL-04**: `host_isolation: passthrough` mode serializes MCP subprocess spawns — pytest-xdist worker count clamped to 1 with an operator-tone explanation that passthrough sacrifices parallelism for credential reachability; `strict` mode unchanged (xdist-compatible).
