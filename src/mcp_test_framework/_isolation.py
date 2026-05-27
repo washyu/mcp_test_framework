@@ -6,7 +6,10 @@ ONLY allowlisted environment variables and a HOME/USERPROFILE redirected to
 a per-session tempdir.
 
 Design constraints:
-- Isolation is ALWAYS-ON. No toggle, no ``--no-isolation`` CLI escape hatch.
+- Isolation is ON BY DEFAULT (``host_isolation='strict'``) and disabled
+  per-config-file via ``host_isolation='passthrough'``. The maintainer
+  warning below stays in force for the strict allowlist; passthrough is
+  all-or-nothing by design (no per-var widening, no per-tool toggle).
 - NO ``IsolationConfig`` model, NO ``extra_env`` field, NO new public Config
   surface. The allowlist lives at the spawn site as a module-level constant --
   not a Config sub-model -- to keep the public configuration surface frozen.
@@ -40,6 +43,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Literal
 
 # Module-level constants: allowlist exact, no widening, no Config field.
 # Underscore-private to match the framework's existing convention for non-public
@@ -102,3 +106,39 @@ def _build_isolated_env(isolated_home: Path) -> dict[str, str]:
         env[name] = home_str
     env.update(_KEYRING_OVERRIDES)
     return env
+
+
+def _build_passthrough_env() -> dict[str, str]:
+    """Return a literal ``dict(os.environ)`` copy -- passthrough mode contract.
+
+    Operator opted into ``host_isolation='passthrough'``: the spawned MCP subprocess
+    sees the operator's full env, including HOME / USERPROFILE / TEMP and the
+    operator's keyring backend. Nothing stripped, nothing injected. The hermetic
+    property is explicitly traded for credential reachability.
+
+    Framework-primitive contract (SDET-safety): this primitive takes no Config
+    blob -- the caller passed the mode as plain data.
+    """
+    return dict(os.environ)
+
+
+def _build_subprocess_env(
+    mode: Literal['strict', 'passthrough'],
+    isolated_home: Path | None,
+) -> dict[str, str]:
+    """Dispatch to the right env builder based on ``host_isolation`` mode.
+
+    Spawn-site callers (``fixtures.py``, ``mcp_client.py``, ``_plugin.py``) pass
+    ``cfg.host_isolation`` as ``mode`` and the resolved ``_isolated_home`` Path
+    (or None under passthrough where the tempdir is unallocated).
+
+    Strict mode REQUIRES an ``isolated_home`` -- the assertion is a defensive
+    guard against caller drift; passthrough mode ignores it.
+    """
+    if mode == 'passthrough':
+        return _build_passthrough_env()
+    assert isolated_home is not None, (
+        "_build_subprocess_env(mode='strict') requires isolated_home; "
+        "caller must allocate the tempdir before invoking strict-mode dispatch"
+    )
+    return _build_isolated_env(isolated_home)
