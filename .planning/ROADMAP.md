@@ -216,12 +216,12 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 
 **Goal:** Extend `mcp-contracts gen-test-classes` to emit `<tool>_call_smoke.py` typed SDET scenarios for every tool whose `inputSchema.required` is non-empty. Operator drops example arg dicts under `tools.<name>.examples:` in `config.yaml`; codegen owns the boilerplate, operator owns the values (SEED-022). Pairs with Phase 33 per-bucket skip — operator pairs `skip_buckets: ["output"]` + `examples:` to restore output-bucket signal via codegen scenarios.
 **Requirements:** GEN-01, GEN-02, GEN-03, GEN-04, GEN-05, GEN-06, GEN-07, GEN-08 (derived in 999.2-RESEARCH.md; ROADMAP-level requirements remain TBD until v1.6+ promotion)
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 - [x] 999.2-01-PLAN.md — GEN-01: ToolConfig.examples field + validator (Wave 1)
 - [x] 999.2-02-PLAN.md — GEN-03/04/05: _emit_smoke_scenario pure-data emitter + 10 unit tests (Wave 1)
-- [ ] 999.2-03-PLAN.md — GEN-02/06: generate() loop wiring + cli.py thread-through + 5 integration tests (Wave 2)
+- [x] 999.2-03-PLAN.md — GEN-02/06: generate() loop wiring + cli.py thread-through + 5 integration tests (Wave 2)
 - [ ] 999.2-04-PLAN.md — GEN-08: end-to-end self-tests (header parity, overwrite, init integrity, importability) (Wave 3)
 - [x] 999.2-05-PLAN.md — GEN-07: config.example.yaml Pattern D + examples/homelab-mcp.yaml opt-in template (Wave 1)
 - [ ] 999.2-06-PLAN.md — GEN-07: docs touch (LIBRARY-MODE + TEST-CODE-AUTHORING + README) (Wave 3)
