@@ -462,6 +462,55 @@ The third per-tool knob, `call_arguments: {key: value}`, lets you pass fixed arg
 
 For a complete real-server config, see [`config.example.yaml`](config.example.yaml).
 
+## Host isolation: strict vs passthrough
+
+By default (`host_isolation: strict`), the framework spawns the MCP subprocess
+with an isolated environment — narrow `PATH`/`SYSTEMROOT` allowlist, a per-session
+tempdir as `HOME`/`USERPROFILE`, and a null keyring backend — so test runs are
+reproducible and your real credentials never leak into a subprocess under test.
+
+Canonical worked example where you need the opposite: an operator has Proxmox
+credentials in their keyring (`uvx homelab-mcp credentials list` confirms),
+wants to drive `homelab-mcp create_proxmox_vm` against their cluster, but under
+strict mode the spawned subprocess sees `No Proxmox credentials found` because
+the null keyring backend hides them. Opt into passthrough:
+
+```yaml
+# config.yaml
+host_isolation: passthrough  # operator's real env reaches the MCP subprocess
+```
+
+Same scenario, before / after:
+
+```text
+# host_isolation: strict (default)
+create_proxmox_vm  ✗ FAIL — No Proxmox credentials found
+
+# host_isolation: passthrough
+create_proxmox_vm  ✓ PASS — VM created (vmid=9001)
+```
+
+Passthrough is incompatible with pytest-xdist parallelism. When you also pass
+`-n N`, the plugin clamps to a single worker at session start and emits:
+
+```text
+xdist worker count clamped to 1
+
+host_isolation=passthrough serializes subprocess spawns so the operator's
+credentials remain a single-owner resource.
+
+next: switch to host_isolation=strict for parallel xdist runs
+```
+
+**Locks (read before opting in):**
+
+- **SEED-022 — operator owns safety.** The framework does not reason about which
+  tools or env vars are "dangerous"; passthrough hands the subprocess your full
+  environment and you choose which scenarios to run.
+- **No keyring faking.** The framework will not synthesize credentials or
+  virtualize the keyring; passthrough delegates fully to your real host env.
+- **xdist trade-off.** Strict preserves `-n N`; passthrough clamps to 1.
+
 ## Appendix: CLI usage
 
 The `mcp-contracts` CLI provides a self-contained test runner that does not
