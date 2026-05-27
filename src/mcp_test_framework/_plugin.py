@@ -145,6 +145,7 @@ async def _discover_tools_live(cfg: Config) -> list[str]:
         cfg.mcp_server.command,
         cfg.mcp_server.args,
         cfg.mcp_server.timeout_seconds,
+        host_isolation=cfg.host_isolation,
     ) as client:
         tools = await client.list_tools()
     return [t.name for t in tools]
