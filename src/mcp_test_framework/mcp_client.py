@@ -39,13 +39,13 @@ import shutil
 import tempfile
 from contextlib import AsyncExitStack
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult, Implementation, Tool
 
-from mcp_test_framework._isolation import _build_isolated_env
+from mcp_test_framework._isolation import _build_subprocess_env
 
 _log = logging.getLogger("mcp_test_framework.mcp_client.stderr")
 
@@ -108,10 +108,20 @@ class _LoggerWriter(io.TextIOBase):
 class McpTestClient:
     """Async stdio MCP client over the official mcp SDK. See module docstring."""
 
-    def __init__(self, command: str, args: list[str], timeout_seconds: int) -> None:
+    def __init__(
+        self,
+        command: str,
+        args: list[str],
+        timeout_seconds: int,
+        *,
+        host_isolation: Literal['strict', 'passthrough'] = 'strict',
+    ) -> None:
         self._command = command
         self._args = list(args)  # defensive copy
         self._timeout_seconds = timeout_seconds
+        # Stored as plain data (not a Config object) so this primitive stays
+        # caller-passes-data and never imports the config module.
+        self._host_isolation = host_isolation
         self._stack: AsyncExitStack | None = None
         self._session: ClientSession | None = None
         # serverInfo from the MCP initialize handshake. Set by __aenter__
@@ -156,6 +166,10 @@ class McpTestClient:
         instance._command = "<wrapped>"
         instance._args = []
         instance._timeout_seconds = timeout_seconds
+        # The wrapped path bypasses __aenter__'s spawn-site logic entirely;
+        # the owner task (fixtures.py) drove the spawn with its own env. The
+        # attribute is set defensively to keep introspection consistent.
+        instance._host_isolation = 'strict'
         instance._stack = None
         instance._session = session
         instance.server_info = server_info
@@ -177,16 +191,24 @@ class McpTestClient:
             # stdio_client so reverse-order unwind tears down the subprocess
             # first, then deletes the tempdir -- correct on Windows (closed
             # file handles before rmdir) and POSIX.
-            isolated_home = Path(
-                stack.enter_context(
-                    tempfile.TemporaryDirectory(prefix="mcp-test-fw-cli-")
+            #
+            # Mode branching: under passthrough, skip the tempdir allocation
+            # entirely; the HOME redirect it was supporting is disabled and
+            # the dispatcher accepts None as "no redirect needed".
+            if self._host_isolation == 'strict':
+                isolated_home: Path | None = Path(
+                    stack.enter_context(
+                        tempfile.TemporaryDirectory(prefix="mcp-test-fw-cli-")
+                    )
                 )
-            )
+            else:
+                isolated_home = None
             params = StdioServerParameters(
                 command=self._command,
                 args=self._args,
-                # Allowlisted env + HOME redirect to the isolation tempdir.
-                env=_build_isolated_env(isolated_home),
+                # Strict: allowlist + HOME redirect. Passthrough: full
+                # os.environ copy; tempdir unallocated.
+                env=_build_subprocess_env(self._host_isolation, isolated_home),
             )
             read, write = await stack.enter_async_context(
                 stdio_client(params)
