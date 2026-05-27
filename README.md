@@ -343,7 +343,7 @@ tools:
 ```
 
 The `skip_buckets` + `examples:` pairing is the operator's call — the framework
-does not auto-pair these fields (SEED-022). See the
+does not auto-pair these fields (operator decides). See the
 [Skipping individual test buckets per tool](#skipping-individual-test-buckets-per-tool)
 section below for the `skip_buckets` walkthrough and
 [`docs/LIBRARY-MODE.md`](docs/LIBRARY-MODE.md#codegen-driven-smoke-scenarios-for-required-field-tools)

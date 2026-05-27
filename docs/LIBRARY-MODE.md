@@ -377,7 +377,7 @@ is constructed inside the generated scenario.
 
 **Pairing with `skip_buckets`:** the operator decides whether to pair `examples:`
 with `skip_buckets: ["output"]`. The framework does not auto-pair these fields
-(SEED-022 — operator decides). The pattern above is the recommended combination:
+(operator decides). The pattern above is the recommended combination:
 skip the empty-args output bucket and drive a real-args smoke in its place. But
 you can set `examples:` without `skip_buckets` (the codegen scenario fires
 alongside the output-bucket tests) or `skip_buckets` without `examples:`

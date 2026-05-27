@@ -508,7 +508,7 @@ with a positional id `example-<N>`. The recommended pairing with
 `skip_buckets: ["output"]` keeps the schema and judge buckets running while the
 codegen-driven scenario replaces the output-bucket signal. See
 [`docs/LIBRARY-MODE.md`](LIBRARY-MODE.md#codegen-driven-smoke-scenarios-for-required-field-tools)
-for the full reference on the `examples:` field, the SEED-022 pairing
+for the full reference on the `examples:` field, the pairing
 decision, and the multi-example parametrize behavior.
 
 **Missing-examples behavior:** without an `examples:` block, the scaffold still
