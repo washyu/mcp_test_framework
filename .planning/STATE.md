@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 34 context gathered
-last_updated: "2026-05-27T03:59:19.686Z"
-last_activity: 2026-05-27 -- Phase 34 planning complete
+last_updated: "2026-05-27T04:01:29.288Z"
+last_activity: 2026-05-27 -- Phase 34 execution started
 progress:
   total_phases: 7
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 **Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 999.2 — codegen-driven-parameter-test-generation-for-required-field-
+**Current focus:** Phase 34 — Opt-in host isolation passthrough (999.3)
 
 ## Current Position
 
-Phase: 999.5
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-27 -- Phase 34 planning complete
+Phase: 34 (Opt-in host isolation passthrough (999.3)) — EXECUTING
+Plan: 1 of 8
+Status: Executing Phase 34
+Last activity: 2026-05-27 -- Phase 34 execution started
 
 ## Performance Metrics
 
