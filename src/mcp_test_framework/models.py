@@ -113,6 +113,18 @@ class ToolConfig(BaseModel):
             "`skip_buckets` is rejected at load time as redundant."
         ),
     )
+    examples: Optional[list[dict[str, Any]]] = Field(
+        default=None,
+        description=(
+            "Example argument dicts the codegen uses to drive "
+            "tests/test_code/_generated/<server>/<tool>_call_smoke.py. "
+            "Each example becomes one parametrized scenario invocation. "
+            "Keys are NOT validated against inputSchema.required at config "
+            "load -- that surfaces at runtime as a Pydantic ValidationError "
+            "when <ToolName>Params(**example) is constructed inside the "
+            "generated scenario."
+        ),
+    )
 
     @field_validator("skip_buckets", mode="after")
     @classmethod
@@ -134,6 +146,31 @@ class ToolConfig(BaseModel):
                 "bucket may appear at most once. valid values: "
                 "'schema', 'judge', 'output'."
             )
+        return v
+
+    @field_validator("examples", mode="after")
+    @classmethod
+    def _validate_examples_shape(
+        cls, v: Optional[list[dict[str, Any]]]
+    ) -> Optional[list[dict[str, Any]]]:
+        """Reject non-list / non-dict-item shapes at config load time.
+
+        D-01b: load-time validation is shape-only. Per-example key validation
+        against the tool's inputSchema.required is a RUNTIME concern (the
+        generated scenario constructs <ToolName>Params(**example), which
+        raises ValidationError if a required key is missing -- surfacing as
+        a test failure rather than a config error). This validator catches
+        only the malformed-config case (operator wrote a scalar where a
+        mapping was intended).
+        """
+        if v is None:
+            return v
+        for i, item in enumerate(v):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"examples[{i}] must be a mapping of argument-name to "
+                    f"argument-value; got {type(item).__name__}"
+                )
         return v
 
     @field_validator("judges", mode="after")
