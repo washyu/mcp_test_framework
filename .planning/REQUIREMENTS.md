@@ -42,7 +42,7 @@ Operator-facing escape hatch that surfaced during Phase 30 UAT-1 / UAT-2 closure
 - [x] **ISOL-02**: `host_isolation: passthrough` mode inherits operator's full environment (HOME, USERPROFILE, TEMP, full env vars) into the MCP subprocess — allowlist + tempdir redirect bypassed.
 - [x] **ISOL-03**: `host_isolation: passthrough` mode does NOT inject `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` — operator's keyring backend is reachable from the spawned MCP subprocess.
 - [ ] **ISOL-04**: `host_isolation: passthrough` mode serializes MCP subprocess spawns — pytest-xdist worker count clamped to 1 with an operator-tone explanation that passthrough sacrifices parallelism for credential reachability; `strict` mode unchanged (xdist-compatible).
-- [ ] **ISOL-05**: Bare `Config()` constructor callers in `src/` and `tests/` are audited and documented — every call site states which mode it implicitly assumes; bare callers under both modes route through the resolved-config seam (no silent operator-env leak under `strict`; no missing-passthrough surprise under `passthrough`).
+- [x] **ISOL-05**: Bare `Config()` constructor callers in `src/` and `tests/` are audited and documented — every call site states which mode it implicitly assumes; bare callers under both modes route through the resolved-config seam (no silent operator-env leak under `strict`; no missing-passthrough surprise under `passthrough`).
 - [ ] **ISOL-06**: README + `docs/LIBRARY-MODE.md` document the `strict`-vs-`passthrough` trade-off, cite SEED-022 safety-delegation, and warn about the no-keyring-faking lock; passthrough's xdist-incompatibility surfaced in the same section.
 
 ### V1DROP — Drop v1-schema support (999.4)

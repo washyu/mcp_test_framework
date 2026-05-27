@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 34 context gathered
-last_updated: "2026-05-27T16:12:34.638Z"
+last_updated: "2026-05-27T16:34:05.542Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 28
-  percent: 88
+  completed_plans: 29
+  percent: 91
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 ## Current Position
 
 Phase: 34 (Opt-in host isolation passthrough (999.3)) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-05-27
 
@@ -52,6 +52,7 @@ Last activity: 2026-05-27
 | Phase 999.2 P06 | 4min | 3 tasks | 3 files |
 | Phase 34 P02 | 10 min | 2 tasks | 2 files |
 | Phase 34 P04 | 25 min | 3 tasks | 6 files |
+| Phase 34 P06 | ~20 minutes | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - **Out of v1.5 (deferred to v1.6+):** SEED-002 (xdist parallelism — informs ISOL-04 clamp but not delivered), SEED-005 (OpenAI-compat judge backend), SEED-003 + Phase 16 D-11 (dynamic rubrics + per-judge breakdown), backlog 999.2 (codegen-driven param-test gen — pairs with Phase 33 BUCKET but scoped out), backlog 999.5 (self-test env pollution — likely re-surfaces during Phase 34 ISOL-05 audit; re-assess at v1.5 close). All explicitly captured in REQUIREMENTS.md "Future Requirements" section.
 - [Phase ?]: Phase 34 Plan 02: operator-tone host_isolation literal_error branch lives in cli.py and is reached by both CLI and library-mode personas via the existing _plugin.py lazy import; no shared-helper refactor
 - [Phase ?]: Phase 34 Plan 04: McpTestClient takes host_isolation as plain Literal kw-only param (caller-passes-data); _isolated_home yields None under passthrough without allocating tempdir
+- [Phase ?]: ISOL-05 audit shipped as inventory document; not a per-site refactor (CONTEXT.md lock honored)
+- [Phase ?]: Open Question 3 recommendation (b) implemented: bare-Config fallback preserved at session.py
+- [Phase ?]: src/ actionable bare-Config count corrected from 3 (CONTEXT.md) to 2 (cli.py:15 is docstring text)
 
 ### Roadmap Evolution
 
@@ -124,6 +128,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-27T16:12:13.277Z
+Last session: 2026-05-27T16:33:46.158Z
 Stopped at: Phase 34 context gathered
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
