@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
-stopped_at: Phase 34 context gathered
-last_updated: "2026-05-27T16:34:05.542Z"
+stopped_at: Phase 34 Plan 05 (xdist clamp) complete
+last_updated: "2026-05-27T16:52:41.606Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 29
-  percent: 91
+  completed_plans: 30
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 ## Current Position
 
 Phase: 34 (Opt-in host isolation passthrough (999.3)) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-05-27
 
@@ -53,6 +53,7 @@ Last activity: 2026-05-27
 | Phase 34 P02 | 10 min | 2 tasks | 2 files |
 | Phase 34 P04 | 25 min | 3 tasks | 6 files |
 | Phase 34 P06 | ~20 minutes | 3 tasks | 5 files |
+| Phase Phase 34 PP05 | ~15 minutes | 2 tasks tasks | 2 files files |
 
 ## Accumulated Context
 
@@ -77,6 +78,10 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: ISOL-05 audit shipped as inventory document; not a per-site refactor (CONTEXT.md lock honored)
 - [Phase ?]: Open Question 3 recommendation (b) implemented: bare-Config fallback preserved at session.py
 - [Phase ?]: src/ actionable bare-Config count corrected from 3 (CONTEXT.md) to 2 (cli.py:15 is docstring text)
+- [Phase ?]: Phase 34 Plan 05: pytest_configure decorated @pytest.hookimpl(tryfirst=True); clamp block reads stash via getattr so it fires regardless of ini-arm execution path
+- [Phase ?]: Phase 34 Plan 05: dual mutation (numprocesses=1 AND tx=['popen']) pinned by unit test -- xdist NodeManager reads tx, not numprocesses
+- [Phase ?]: Phase 34 Plan 05: clamp banner uses UserWarning (not DeprecationWarning) -- runtime mode constraint, not deprecation
+- [Phase ?]: Phase 34 Plan 05: test_xdist_clamp uses warnings.catch_warnings(record=True) not capsys -- pytest's warning filter intercepts UserWarning before stderr
 
 ### Roadmap Evolution
 
@@ -128,6 +133,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-27T16:33:46.158Z
-Stopped at: Phase 34 context gathered
+Last session: 2026-05-27T16:52:41.598Z
+Stopped at: Phase 34 Plan 05 (xdist clamp) complete
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
