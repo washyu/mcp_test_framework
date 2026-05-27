@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 999.2 context gathered
-last_updated: "2026-05-27T01:09:42.021Z"
-last_activity: 2026-05-27 -- Phase 999.2 planning complete
+last_updated: "2026-05-27T01:18:39.317Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 24
-  completed_plans: 18
-  percent: 75
+  completed_plans: 19
+  percent: 79
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 **Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 33 — per-bucket-skip-granularity-in-toolconfig-999-1
+**Current focus:** Phase 999.2 — codegen-driven-parameter-test-generation-for-required-field-
 
 ## Current Position
 
-Phase: 999.2
-Plan: Not started
+Phase: 999.2 (codegen-driven-parameter-test-generation-for-required-field-) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-05-27 -- Phase 999.2 planning complete
+Last activity: 2026-05-27
 
 ## Performance Metrics
 
@@ -116,6 +116,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-27T00:34:40.101Z
+Last session: 2026-05-27T01:18:39.308Z
 Stopped at: Phase 999.2 context gathered
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
