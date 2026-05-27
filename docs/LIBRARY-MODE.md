@@ -265,10 +265,10 @@ next: switch to host_isolation=strict for parallel xdist runs
 
 **Library-mode locks:**
 
-- **SEED-022 — operator owns safety.** Framework primitives take data, not
-  Config blobs: `_build_subprocess_env(mode, isolated_home)` takes a plain
-  `Literal[str]` mode. The framework does not reason about which tools or env
-  vars are "dangerous"; the operator decided what to call.
+- **Operator owns safety.** Framework primitives take data, not Config blobs:
+  `_build_subprocess_env(mode, isolated_home)` takes a plain `Literal[str]`
+  mode. The framework does not reason about which tools or env vars are
+  "dangerous"; the operator decided what to call.
 - **No keyring faking.** Test-code scenarios run against your actual keyring
   backend under passthrough; the framework will not synthesize credentials or
   virtualize the keyring.

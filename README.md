@@ -504,8 +504,8 @@ next: switch to host_isolation=strict for parallel xdist runs
 
 **Locks (read before opting in):**
 
-- **SEED-022 — operator owns safety.** The framework does not reason about which
-  tools or env vars are "dangerous"; passthrough hands the subprocess your full
+- **Operator owns safety.** The framework does not reason about which tools or
+  env vars are "dangerous"; passthrough hands the subprocess your full
   environment and you choose which scenarios to run.
 - **No keyring faking.** The framework will not synthesize credentials or
   virtualize the keyring; passthrough delegates fully to your real host env.
