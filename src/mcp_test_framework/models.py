@@ -148,12 +148,17 @@ class ToolConfig(BaseModel):
             )
         return v
 
-    @field_validator("examples", mode="after")
+    @field_validator("examples", mode="before")
     @classmethod
     def _validate_examples_shape(
-        cls, v: Optional[list[dict[str, Any]]]
-    ) -> Optional[list[dict[str, Any]]]:
+        cls, v: Any
+    ) -> Any:
         """Reject non-list / non-dict-item shapes at config load time.
+
+        Runs in ``mode="before"`` so the operator-tone error message
+        (naming the offending index as ``examples[i]``) fires before
+        Pydantic's own list-item coercion, which would otherwise surface
+        as ``examples.i`` (dot notation) with a generic Pydantic message.
 
         D-01b: load-time validation is shape-only. Per-example key validation
         against the tool's inputSchema.required is a RUNTIME concern (the
@@ -164,6 +169,10 @@ class ToolConfig(BaseModel):
         mapping was intended).
         """
         if v is None:
+            return v
+        if not isinstance(v, list):
+            # Let Pydantic's own type-rejection handle the top-level shape
+            # (e.g. examples={"vmid": 9001}) with its standard message.
             return v
         for i, item in enumerate(v):
             if not isinstance(item, dict):
