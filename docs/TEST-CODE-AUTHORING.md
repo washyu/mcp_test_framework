@@ -461,6 +461,80 @@ which means fewer `_probe()` callables overall. Until then,
 author-defined probes are the canonical way to keep scenarios honest in
 both live and CI environments.
 
+## Smoke scaffolds for required-field tools
+
+`mcp-contracts gen-test-classes` does double duty: it emits both the typed
+`Params` and `Response` classes AND a `<tool>_call_smoke.py` scaffold for
+every tool whose `inputSchema.required` array is non-empty. The scaffold
+lives next to its Params/Response sibling:
+
+```
+tests/test_code/_generated/<server>/<tool>_call_smoke.py
+```
+
+**Generated scenario shape** (using `create_proxmox_vm` as the worked example):
+
+```python
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_proxmox_vm_call_smoke(mcp_session):
+    params = CreateProxmoxVmParams(**{"vmid": 9001, "name": "smoke-test-vm",
+                                      "node": "pve1", "host": "pve1"})
+    response = await tool("create_proxmox_vm").call(params)
+    assert response.is_error is False
+```
+
+The `loop_scope="session"` argument is the same invariant documented in the
+"Writing your first test" section above (lines covering `mcp_session` session
+scope). Do not use a bare `@pytest.mark.asyncio` marker — it binds the test to
+a new event loop that cannot share the session fixture's streams and the wire
+call will hang.
+
+**Operator surface:** populate `tools.<name>.examples:` in `config.yaml` to
+drive the scaffold with real argument dicts:
+
+```yaml
+tools:
+  create_proxmox_vm:
+    skip_buckets: ["output"]
+    examples:
+      - vmid: 9001
+        name: smoke-test-vm
+        node: pve1
+        host: pve1
+```
+
+Each dict in the `examples:` list becomes one parametrized scenario invocation
+with a positional id `example-<N>`. The recommended pairing with
+`skip_buckets: ["output"]` keeps the schema and judge buckets running while the
+codegen-driven scenario replaces the output-bucket signal. See
+[`docs/LIBRARY-MODE.md`](LIBRARY-MODE.md#codegen-driven-smoke-scenarios-for-required-field-tools)
+for the full reference on the `examples:` field, the SEED-022 pairing
+decision, and the multi-example parametrize behavior.
+
+**Missing-examples behavior:** without an `examples:` block, the scaffold still
+lands at the generated path as a placeholder module:
+
+```python
+pytest.skip(
+    "no examples; populate tools.<name>.examples: in config.yaml to enable this smoke",
+    allow_module_level=True,
+)
+```
+
+The module is fully importable (no `NameError` on the Params import) and
+appears in `pytest --collect-only` output so you discover the scaffold
+immediately. Fill in `examples:` and re-run `gen-test-classes` to replace the
+skip with a real call.
+
+**Customizing beyond examples (lift-out-of-_generated escape hatch):** the smoke
+scaffold is a starting point. Files in `_generated/` are wiped and rewritten on
+every `gen-test-classes` run — do not hand-edit them. For multi-step lifecycle,
+setup/teardown, or dependency-ordered tool calls, copy the scenario out of
+`_generated/` into a hand-authored sibling under `tests/test_code/` and edit
+there. The module-scope yield fixture pattern in the "Sharing state across
+tests" section above is the canonical template for that kind of extended
+lifecycle scenario.
+
 ## Failure handling: ToolCallError
 
 When the MCP server returns `result.isError = True`, `tool().call()` raises
