@@ -43,7 +43,7 @@ Operator-facing escape hatch that surfaced during Phase 30 UAT-1 / UAT-2 closure
 - [x] **ISOL-03**: `host_isolation: passthrough` mode does NOT inject `PYTHON_KEYRING_BACKEND=keyring.backends.null.Null` — operator's keyring backend is reachable from the spawned MCP subprocess.
 - [x] **ISOL-04**: `host_isolation: passthrough` mode serializes MCP subprocess spawns — pytest-xdist worker count clamped to 1 with an operator-tone explanation that passthrough sacrifices parallelism for credential reachability; `strict` mode unchanged (xdist-compatible).
 - [x] **ISOL-05**: Bare `Config()` constructor callers in `src/` and `tests/` are audited and documented — every call site states which mode it implicitly assumes; bare callers under both modes route through the resolved-config seam (no silent operator-env leak under `strict`; no missing-passthrough surprise under `passthrough`).
-- [ ] **ISOL-06**: README + `docs/LIBRARY-MODE.md` document the `strict`-vs-`passthrough` trade-off, cite SEED-022 safety-delegation, and warn about the no-keyring-faking lock; passthrough's xdist-incompatibility surfaced in the same section.
+- [x] **ISOL-06**: README + `docs/LIBRARY-MODE.md` document the `strict`-vs-`passthrough` trade-off, cite SEED-022 safety-delegation, and warn about the no-keyring-faking lock; passthrough's xdist-incompatibility surfaced in the same section.
 
 ### V1DROP — Drop v1-schema support (999.4)
 
@@ -100,7 +100,7 @@ Each REQ-ID maps to exactly one phase. Populated by gsd-roadmapper 2026-05-23.
 | ISOL-03 | Phase 34 | TBD |
 | ISOL-04 | Phase 34 | TBD |
 | ISOL-05 | Phase 34 | TBD |
-| ISOL-06 | Phase 34 | TBD |
+| ISOL-06 | Phase 34 | 34-08 |
 | V1DROP-01 | Phase 31 | TBD |
 | V1DROP-02 | Phase 31 | TBD |
 | V1DROP-03 | Phase 31 | TBD |
