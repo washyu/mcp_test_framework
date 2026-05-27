@@ -333,6 +333,40 @@ def _emit_operator_error_for_validation(
             ],
             next_step="rename the `sdet:` key to `test_code:` in your config.yaml",  # noqa: sdet-rename-shim
         )
+    # Operator typo'ing the host_isolation value (e.g.
+    # `host_isolation: hermetic`) surfaces as a Pydantic `literal_error`
+    # at `loc=('host_isolation',)`. Wrap with operator-tone three-part
+    # text that names both valid modes and the trade-off and points at
+    # docs/LIBRARY-MODE.md host-isolation. Mirrors the `sdet_err`
+    # scan-all-errors precedent so a co-occurring missing-field error
+    # does not steal the rendering. The Config model emits the stock
+    # literal_error; the operator-tone wrapping lives ONLY here.
+    literal_host_isolation_err = next(
+        (
+            e
+            for e in errors
+            if e.get("type") == "literal_error"
+            and tuple(e.get("loc", ())) == ("host_isolation",)
+        ),
+        None,
+    )
+    if literal_host_isolation_err is not None:
+        bad_value = literal_host_isolation_err.get("input", "?")
+        _emit_operator_error(
+            summary=f"unknown host_isolation mode: {bad_value!r}",
+            detail=[
+                "host_isolation accepts only 'strict' or 'passthrough'.",
+                "strict (default) isolates the spawned MCP subprocess from "
+                "your host credentials and HOME;",
+                "passthrough hands the operator's full env to the subprocess "
+                "(xdist clamped to 1 worker).",
+            ],
+            next_step=(
+                "set `host_isolation: strict` or `host_isolation: passthrough` "
+                "in your config.yaml; see docs/LIBRARY-MODE.md §host-isolation "
+                "for the trade-off"
+            ),
+        )
     if err_type in ("missing", "value_error.missing"):
         _emit_operator_error(
             summary=f"config file is missing a required field: {loc}",
