@@ -640,7 +640,7 @@ def generate(
     still get a `<tool>_call_smoke.py` -- the TODO/skip branch -- so the
     operator sees scaffolding immediately.
 
-    Returns counts: {"tools": <N>, "degraded_fields": <M>}.
+    Returns counts: {"tools": <N>, "degraded_fields": <M>, "smoke_scenarios": <S>, "smoke_todos": <T>}.
     """
     if timestamp is None:
         timestamp = _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds")
@@ -652,7 +652,7 @@ def generate(
     shutil.rmtree(target, ignore_errors=True)
     target.mkdir(parents=True, exist_ok=True)
 
-    counts = {"tools": 0, "degraded_fields": 0}
+    counts = {"tools": 0, "degraded_fields": 0, "smoke_scenarios": 0, "smoke_todos": 0}
     registry_entries: list[tuple[str, str]] = []
 
     # Sorted emission for diff-stability.
@@ -686,6 +686,11 @@ def generate(
             )
             smoke_path = target / f"{module_name(tool.name)}_call_smoke.py"
             smoke_path.write_text(smoke_source, encoding="utf-8")
+            # Count real scenarios vs TODO/skip placeholders.
+            if examples:
+                counts["smoke_scenarios"] = counts["smoke_scenarios"] + 1
+            else:
+                counts["smoke_todos"] = counts["smoke_todos"] + 1
 
     # Write __init__.py LAST so partial states fail clean, not half-imported.
     init_text = _render_init(

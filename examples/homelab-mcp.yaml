@@ -32,13 +32,10 @@ version: 2
 # Non-absolute paths are resolved relative to the current working
 # directory when the config is loaded.
 #
-# This example intentionally uses the LEGACY `sdet:` key to document the  # noqa: sdet-rename-shim
-# back-compat alias. Either `sdet:` (v1.3, deprecated) or `test_code:`  # noqa: sdet-rename-shim
-# (v1.4, canonical) loads into the same model; mixing both keys in one
-# config raises a friendly validation error. The legacy `sdet:` key emits  # noqa: sdet-rename-shim
-# a one-shot DeprecationWarning at load time and is removed in v1.5.
-sdet:  # noqa: sdet-rename-shim
-  generated_root: "tests/sdet/_generated"  # noqa: sdet-rename-shim
+# test_code: block is required for gen-test-classes and mcp_session fixture.
+# Non-absolute paths resolve relative to the current working directory.
+test_code:
+  generated_root: "tests/test_code/_generated"
 
 # test-code dogfood scenarios use a pinned VMID range to avoid colliding
 # with operator-owned VMs. Override this if your cluster reserves 9990-9999
