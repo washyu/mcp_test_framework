@@ -138,6 +138,50 @@ def test_error_style_sdet_rejection_message(
         )
 
 
+def test_error_style_host_isolation_literal_rejection(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Phase 34 ISOL-01 D-04: an unknown `host_isolation` value triggers
+    the three-part operator-tone rejection message via the
+    `_emit_operator_error_for_validation` dispatcher branch added in Task 2.
+
+    Pins the verbatim summary/detail/next_step text from CONTEXT D-04 /
+    RESEARCH Finding 5. Future drift -- in either cli.py or this test --
+    breaks the assertion."""
+    import typer
+    from pydantic import ValidationError
+
+    from mcp_test_framework.cli import _emit_operator_error_for_validation
+    from mcp_test_framework.config import Config
+
+    cfg = tmp_path / "host_isolation.yaml"
+    cfg.write_text(
+        "version: 2\n"
+        "host_isolation: hermetic\n"
+        "test_code:\n"
+        "  generated_root: out\n",
+        encoding="utf-8",
+    )
+    try:
+        Config(yaml_file=str(cfg))
+    except ValidationError as exc:
+        with pytest.raises(typer.Exit) as exit_info:
+            _emit_operator_error_for_validation(exc, source=str(cfg))
+        assert exit_info.value.exit_code == 2
+        captured = capsys.readouterr()
+        text = captured.out + captured.err
+        assert "unknown host_isolation mode: 'hermetic'" in text
+        assert "host_isolation accepts only 'strict' or 'passthrough'." in text
+        assert "passthrough hands the operator's full env to the subprocess" in text
+        assert "docs/LIBRARY-MODE.md" in text
+        assert "host-isolation" in text  # the §host-isolation anchor next_step points at
+    else:
+        raise AssertionError(
+            "Config(yaml_file=...) with host_isolation: hermetic should have raised ValidationError"
+        )
+
+
 def test_error_style_sdet_package_removed(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
