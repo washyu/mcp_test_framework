@@ -75,6 +75,26 @@ implementations copy them verbatim — copy exactly, do not reword.
     next: keep skip=true to disable every bucket, OR remove skip and
           use skip_buckets alone to disable named buckets.
 
+### host_isolation literal_error
+
+Trigger: operator sets `host_isolation: <unknown>` in `config.yaml` where
+`<unknown>` is neither `strict` nor `passthrough`. Source: the
+`(literal_error, ('host_isolation',))` branch in
+`_emit_operator_error_for_validation` (cli error mapper). Pinned by
+`tests/framework/unit/test_error_style.py::test_error_style_host_isolation_literal_rejection`.
+
+    unknown host_isolation mode: '<bad_value>'
+
+    host_isolation accepts only 'strict' or 'passthrough'.
+    strict (default) isolates the spawned MCP subprocess from your host
+    credentials and HOME;
+    passthrough hands the operator's full env to the subprocess (xdist
+    clamped to 1 worker).
+
+    next: set `host_isolation: strict` or `host_isolation: passthrough`
+          in your config.yaml; see docs/LIBRARY-MODE.md §host-isolation
+          for the trade-off
+
 ## Banned strings (manual review checklist)
 
 When rewriting an error message, grep the rewritten output for these
