@@ -152,7 +152,16 @@ Plans:
   3. Operator running `pytest -n 4` with `host_isolation: passthrough` sees worker count clamped to 1 with an operator-tone explanation that passthrough sacrifices parallelism for credential reachability; `strict` mode preserves xdist compatibility.
   4. Every bare `Config()` constructor call site in `src/` and `tests/` is identified, documented (which mode it implicitly assumes), and routed through the resolved-config seam so neither mode silently leaks operator env or surprises the operator with a missing-passthrough path.
   5. Operator reading README + `docs/LIBRARY-MODE.md` finds the `strict`-vs-`passthrough` trade-off documented, the SEED-022 safety-delegation cited, the no-keyring-faking lock surfaced, and the passthrough xdist-incompatibility called out in the same section.
-**Plans**: TBD
+**Plans:** 8 plans
+Plans:
+- [ ] 34-01-PLAN.md - ISOL-01: add top-level host_isolation Literal field to Config + default-pin test
+- [ ] 34-02-PLAN.md - ISOL-01: operator-tone literal_error branch in cli.py error mapper + pinned test
+- [ ] 34-03-PLAN.md - ISOL-02/03: _build_passthrough_env + _build_subprocess_env dispatcher in _isolation.py + module docstring rewording
+- [ ] 34-04-PLAN.md - ISOL-02/03: spawn-site routing (fixtures.py + mcp_client.py + _plugin.py) + _isolated_home D-06 short-circuit + McpTestClient host_isolation kw-only param
+- [ ] 34-05-PLAN.md - ISOL-04: xdist clamp in _plugin.py pytest_configure (tryfirst + dual mutation of numprocesses AND tx + operator-tone banner)
+- [ ] 34-06-PLAN.md - ISOL-05: bare-Config audit deliverable + test_code/session.py:67 stash routing + Proxmox scenario inline comments
+- [ ] 34-07-PLAN.md - ISOL-01 Claude's Discretion: config-init scaffold emits host_isolation: strict with 5-line trade-off comment block
+- [ ] 34-08-PLAN.md - ISOL-06: README + LIBRARY-MODE.md worked example (Proxmox repro) + ERROR-STYLE.md registration + EXTENDING.md scrub
 
 ### Phase 35: Zero-shim regression gate (capstone)
 **Goal**: A single CI-runnable test sweeps every retired-shim surface and returns zero matches — pinning the v1.5 zero-shim state so accidental reintroduction blocks at PR time.
