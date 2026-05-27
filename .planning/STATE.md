@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 999.2 context gathered
-last_updated: "2026-05-27T01:18:39.317Z"
+last_updated: "2026-05-27T01:23:58.828Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 24
-  completed_plans: 19
-  percent: 79
+  completed_plans: 20
+  percent: 83
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 ## Current Position
 
 Phase: 999.2 (codegen-driven-parameter-test-generation-for-required-field-) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-05-27
 
@@ -116,6 +116,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-27T01:18:39.308Z
+Last session: 2026-05-27T01:23:58.820Z
 Stopped at: Phase 999.2 context gathered
 Resume next: `/gsd-plan-phase 31` to plan Phase 31 (config-surface cleanup)
