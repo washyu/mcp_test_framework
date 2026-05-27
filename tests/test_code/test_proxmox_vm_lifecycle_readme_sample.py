@@ -64,6 +64,8 @@ def _load_generated_homelab_mcp():
     a configured homelab-mcp server; otherwise raises FileNotFoundError pointing
     at the configured root.
     """
+    # NOTE (ISOL-05 audit, Phase 34): bare Config() in operator-authored scenario.
+    # Inherits host_isolation='strict' default; scenario does not consume the field.
     cfg = Config()
     generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():
@@ -193,6 +195,8 @@ async def _next_free_readme_vmid(host: str, node: str, lo: int, hi: int) -> int:
 @pytest_asyncio.fixture(scope="module", loop_scope="session")
 async def proxmox_vm_lifecycle_readme(mcp_session):
     """Module-scope yield fixture: create VM, yields state, delete VM in finalizer."""
+    # NOTE (ISOL-05 audit, Phase 34): bare Config() in operator-authored scenario.
+    # Inherits host_isolation='strict' default; scenario does not consume the field.
     cfg = Config()
     lo, hi = cfg.homelab.proxmox.dogfood_vmid_range
     host = _require_env("MCPTF_DOGFOOD_PROXMOX_HOST")
