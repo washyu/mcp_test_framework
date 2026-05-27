@@ -93,6 +93,27 @@ tools:
   create_proxmox_vm:
     skip: true
     skip_reason: "destructive: provisions Proxmox VM"
+    # To opt in to the Phase 999.2 codegen-driven smoke scenario, REMOVE the
+    # two lines above (skip + skip_reason) and UNCOMMENT the block below.
+    # Replace example values with VM specs that are safe to create AND destroy
+    # in your environment -- the smoke scenario actually provisions a VM, so
+    # the example values must reflect an isolated test cluster, not production.
+    #
+    # The pairing:
+    #   skip_buckets: ["output"] -- the empty-args output bucket cannot succeed
+    #                              for required-field tools; skip it.
+    #   examples: [...]          -- gen-test-classes reads this and emits
+    #                              tests/test_code/_generated/homelab_mcp/
+    #                              create_proxmox_vm_call_smoke.py with real
+    #                              args -- restoring the output-bucket signal
+    #                              via a typed test-code scenario instead.
+    #
+    # skip_buckets: ["output"]
+    # examples:
+    #   - vmid: 9001
+    #     name: smoke-test-vm
+    #     node: pve1
+    #     host: pve1
   decommission_device:
     skip: true
     skip_reason: "destructive: decommissions a managed device"
