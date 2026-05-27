@@ -37,7 +37,7 @@ import pytest_asyncio
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
-from mcp_test_framework._isolation import _build_isolated_env
+from mcp_test_framework._isolation import _build_subprocess_env
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
@@ -108,6 +108,8 @@ def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `confi
     cfg = getattr(request.session.config, "_mcp_contracts_config", None)
     if cfg is not None:
         return cfg
+    # Audit: stash-miss fallback for framework self-tests that bypass the
+    # plugin. Returns Config() defaults including host_isolation='strict'.
     return Config()
 
 
@@ -362,7 +364,7 @@ async def _preflight(request: pytest.FixtureRequest):
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def _isolated_home():
+async def _isolated_home(mcp_config: Config):
     """Per-session tempdir owning the HOME/USERPROFILE redirect target.
 
     Single source of truth for the isolation tempdir. Verification tests
@@ -371,9 +373,17 @@ async def _isolated_home():
     Future fixtures that need isolation guarantees depend on the same
     fixture -- no duplicate tempdir creation.
 
-    Lifecycle owned via ``AsyncExitStack`` -- cleanup is automatic on
-    session exit. ``tempfile.TemporaryDirectory`` is a SYNC context
-    manager, so we use ``stack.enter_context`` (not
+    Mode branching:
+      - ``host_isolation='strict'`` (default): allocate a TemporaryDirectory
+        and yield its Path. v1.0-v1.4 behavior preserved verbatim.
+      - ``host_isolation='passthrough'``: short-circuit; yield ``None``
+        without engaging the tempdir machinery. Passthrough disables the
+        HOME redirect this tempdir was supporting, so allocating it would
+        be dead state.
+
+    Lifecycle (strict branch) owned via ``AsyncExitStack`` -- cleanup is
+    automatic on session exit. ``tempfile.TemporaryDirectory`` is a SYNC
+    context manager, so we use ``stack.enter_context`` (not
     ``enter_async_context``). This is safe with respect to the
     "no anyio cancel scope across the yield" invariant because
     ``TemporaryDirectory`` is stdlib sync -- it opens no anyio cancel scope.
@@ -381,6 +391,9 @@ async def _isolated_home():
     Tempdir prefix ``mcp-test-fw-`` so orphaned tempdirs (should cleanup
     ever fail) are debuggable from ``dir %TEMP%`` output.
     """
+    if mcp_config.host_isolation == 'passthrough':
+        yield None
+        return
     async with AsyncExitStack() as stack:
         tmpdir = stack.enter_context(
             tempfile.TemporaryDirectory(prefix="mcp-test-fw-")
@@ -394,7 +407,7 @@ async def _isolated_home():
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path):  # param `config`→`mcp_config`
+async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path | None):  # param `config`→`mcp_config`
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
@@ -428,8 +441,9 @@ async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path):  # p
     params = StdioServerParameters(
         command=mcp_config.mcp_server.command,
         args=mcp_config.mcp_server.args,
-        # Allowlisted env + HOME redirect to the shared isolation tempdir.
-        env=_build_isolated_env(_isolated_home),
+        # Strict (default): allowlist + HOME redirect to the shared isolation
+        # tempdir. Passthrough: full os.environ copy; tempdir unallocated.
+        env=_build_subprocess_env(mcp_config.host_isolation, _isolated_home),
     )
     loop = asyncio.get_running_loop()
     ready: asyncio.Future[McpTestClient] = loop.create_future()
