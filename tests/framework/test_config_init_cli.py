@@ -135,3 +135,44 @@ def test_scaffold_round_trips_through_config(
     cfg = Config(test_code=TestCodeConfig(generated_root="tests/sdet/_generated"))  # MUST NOT raise
     assert cfg.version == 2
     assert len(cfg.tools) >= 1
+
+
+# ===========================================================================
+# Unit-level: scaffold emits host_isolation default (no live server needed)
+# ===========================================================================
+
+
+def test_config_init_scaffold_emits_host_isolation_strict(tmp_path: Path) -> None:
+    """Scaffold emits ``host_isolation: strict`` with a preceding-comment-block
+    trade-off explanation, and the emitted scaffold round-trips back into
+    Config with ``host_isolation == 'strict'``.
+
+    Operator who runs ``config-init`` sees the new knob immediately, with the
+    strict-vs-passthrough trade-off explained inline. The comment-block style
+    (PRECEDING block, not end-of-line) matches the surrounding scaffold's
+    visual rhythm -- every other field in this scaffold uses preceding
+    comments.
+
+    Unit-level test: invokes ``_format_tools_yaml_scaffold([])`` directly --
+    no live MCP server needed (the empty tools list exercises the header path
+    that carries the host_isolation block)."""
+    from mcp_test_framework.cli import _format_tools_yaml_scaffold
+    from mcp_test_framework.config import Config
+    from mcp_test_framework.models import TestCodeConfig
+
+    scaffold_text = _format_tools_yaml_scaffold([])
+    assert "host_isolation: strict" in scaffold_text
+    assert "# Host isolation mode." in scaffold_text  # preceding comment block present
+
+    # Round-trip: emitted scaffold parses back with the strict default preserved.
+    # The empty tools section emits `tools: {}` so the YAML loads cleanly; the
+    # bare-Config kwargs supply test_code (REQUIRED post Phase 21.1 RELOC-01;
+    # the scaffold itself emits a test_code block but the bare kwargs here
+    # cover the construction shape).
+    scaffold_file = tmp_path / "config.yaml"
+    scaffold_file.write_text(scaffold_text, encoding="utf-8")
+    parsed = Config(
+        yaml_file=str(scaffold_file),
+        test_code=TestCodeConfig(generated_root="tests/test_code/_generated"),
+    )
+    assert parsed.host_isolation == "strict"
