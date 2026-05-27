@@ -157,6 +157,7 @@ async def _discover_tools_live(cfg: Config) -> list[str]:
 # pyproject.toml or the entry-point declaration.
 # ---------------------------------------------------------------------------
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
     """Register the `mcp_contract` marker and (if `mcp_config_file` ini is set)
     load the operator's YAML config, run the black-box guard, and stash the
@@ -200,52 +201,83 @@ def pytest_configure(config: pytest.Config) -> None:
         finally:
             warnings.formatwarning = _original_formatwarning
 
-    # Read ini; empty string = operator opted out, silent no-op.
+    # Read ini; empty string = operator opted out of the ini-driven load
+    # arm. Any pre-stashed Config (test paths, future direct injection) is
+    # still consumed by the clamp block below.
     raw = (config.getini("mcp_config_file") or "").strip()
-    if not raw:
-        return
+    if raw:
+        # Resolve relative to pyproject.toml's directory.
+        path = Path(raw)
+        if not path.is_absolute():
+            path = config.rootpath / path
 
-    # Resolve relative to pyproject.toml's directory.
-    path = Path(raw)
-    if not path.is_absolute():
-        path = config.rootpath / path
-
-    # Fail-loud if path doesn't exist or isn't a file.
-    if not path.is_file():
-        pytest.exit(
-            f"mcp_config_file points at {path!s} which does not exist or "
-            f"is not a file\n"
-            f"\nnext: check the path in [tool.pytest.ini_options] in "
-            f"pyproject.toml, or run `mcp-contracts config-init -o config.yaml`",
-            returncode=2,
-        )
-
-    # Load via existing pydantic-settings yaml_file= kwarg path.
-    # On ValidationError, render operator-tone and pytest.exit(2).
-    try:
-        cfg = Config(yaml_file=str(path))
-    except ValidationError as exc:
-        # Lazy-import to avoid cli.py <-> _plugin.py circular at module load.
-        from mcp_test_framework.cli import _emit_operator_error_for_validation
-        try:
-            _emit_operator_error_for_validation(exc, source=str(path))
-        except SystemExit:
-            # _emit_operator_error_for_validation raises typer.Exit (SystemExit
-            # subclass) with code=2. Translate to pytest.exit so the convention
-            # `returncode=2 = setup error` is preserved end-to-end.
+        # Fail-loud if path doesn't exist or isn't a file.
+        if not path.is_file():
             pytest.exit(
-                f"mcp_config_file validation failed: {path!s}\n"
-                f"\nnext: check the YAML against config.example.yaml or run "
-                f"`mcp-contracts config-init -o config.yaml`",
+                f"mcp_config_file points at {path!s} which does not exist or "
+                f"is not a file\n"
+                f"\nnext: check the path in [tool.pytest.ini_options] in "
+                f"pyproject.toml, or run `mcp-contracts config-init -o config.yaml`",
                 returncode=2,
             )
 
-    # Relocated black-box guard. Raises RuntimeError on sys.modules leak;
-    # let it propagate (pytest surfaces it as a session-startup error).
-    check_black_box()
+        # Load via existing pydantic-settings yaml_file= kwarg path.
+        # On ValidationError, render operator-tone and pytest.exit(2).
+        try:
+            cfg = Config(yaml_file=str(path))
+        except ValidationError as exc:
+            # Lazy-import to avoid cli.py <-> _plugin.py circular at module load.
+            from mcp_test_framework.cli import _emit_operator_error_for_validation
+            try:
+                _emit_operator_error_for_validation(exc, source=str(path))
+            except SystemExit:
+                # _emit_operator_error_for_validation raises typer.Exit (SystemExit
+                # subclass) with code=2. Translate to pytest.exit so the convention
+                # `returncode=2 = setup error` is preserved end-to-end.
+                pytest.exit(
+                    f"mcp_config_file validation failed: {path!s}\n"
+                    f"\nnext: check the YAML against config.example.yaml or run "
+                    f"`mcp-contracts config-init -o config.yaml`",
+                    returncode=2,
+                )
 
-    # Stash for the collection hook to consume.
-    config._mcp_contracts_config = cfg  # type: ignore[attr-defined]
+        # Relocated black-box guard. Raises RuntimeError on sys.modules leak;
+        # let it propagate (pytest surfaces it as a session-startup error).
+        check_black_box()
+
+        # Stash for the collection hook to consume.
+        config._mcp_contracts_config = cfg  # type: ignore[attr-defined]
+
+    # Under host_isolation='passthrough', clamp pytest-xdist worker count to
+    # 1 so MCP subprocess spawns serialize. xdist's NodeManager reads
+    # config.option.tx (not numprocesses) -- BOTH must be mutated together.
+    # Hook ordering: this function is decorated @pytest.hookimpl(tryfirst=True)
+    # so the mutation lands BEFORE xdist's pytest_configure(trylast=True)
+    # registers DSession. Banner emitted as UserWarning under the
+    # _mcptf_formatwarning red-banner override; the clamp is a runtime mode
+    # constraint, not a deprecation.
+    stashed_cfg = getattr(config, "_mcp_contracts_config", None)
+    if (
+        stashed_cfg is not None
+        and stashed_cfg.host_isolation == "passthrough"
+        and getattr(config.option, "numprocesses", 0)
+    ):
+        warnings.formatwarning = _mcptf_formatwarning
+        try:
+            warnings.warn(
+                "xdist worker count clamped to 1\n"
+                "\n"
+                "host_isolation=passthrough serializes subprocess spawns so the "
+                "operator's credentials remain a single-owner resource.\n"
+                "\n"
+                "next: switch to host_isolation=strict for parallel xdist runs",
+                UserWarning,
+                stacklevel=2,
+            )
+        finally:
+            warnings.formatwarning = _original_formatwarning
+        config.option.numprocesses = 1
+        config.option.tx = ["popen"]
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

@@ -15,6 +15,7 @@ session.
 """
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -60,7 +61,6 @@ def _make_fake_config(
 
 def test_passthrough_clamps_xdist_numprocesses_and_tx(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Passthrough mode + ``-n 4`` clamps BOTH ``numprocesses`` and ``tx``.
 
@@ -69,7 +69,11 @@ def test_passthrough_clamps_xdist_numprocesses_and_tx(
     spawn 4 workers regardless of the ``numprocesses=1`` clamp.
 
     Banner-text pin asserts the three operator-tone locked phrases survive
-    in captured stderr.
+    in the emitted UserWarning. Uses ``warnings.catch_warnings(record=True)``
+    rather than ``capsys`` because pytest's warning filter intercepts the
+    warning before it reaches stderr -- the same pattern locked by
+    ``test_plugin_mcptf_config_file_deprecation.py`` for the
+    MCPTF_CONFIG_FILE banner.
     """
     fake = _make_fake_config(
         host_isolation="passthrough",
@@ -79,7 +83,9 @@ def test_passthrough_clamps_xdist_numprocesses_and_tx(
     assert fake.option.numprocesses == 4
     assert len(fake.option.tx) == 4
 
-    _plugin.pytest_configure(fake)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _plugin.pytest_configure(fake)
 
     assert fake.option.numprocesses == 1, (
         "passthrough mode must clamp numprocesses to 1"
@@ -89,16 +95,23 @@ def test_passthrough_clamps_xdist_numprocesses_and_tx(
         "load-bearing because xdist's NodeManager reads tx, not numprocesses"
     )
 
-    captured = capsys.readouterr()
-    text = captured.out + captured.err
-    assert "xdist worker count clamped to 1" in text
-    assert "single-owner resource" in text
-    assert "host_isolation=strict for parallel" in text
+    clamp_warnings = [
+        w for w in caught
+        if issubclass(w.category, UserWarning)
+        and "xdist worker count clamped to 1" in str(w.message)
+    ]
+    assert len(clamp_warnings) == 1, (
+        f"expected exactly one clamp UserWarning, got {len(clamp_warnings)}; "
+        f"all captured: {[str(w.message) for w in caught]}"
+    )
+    msg = str(clamp_warnings[0].message)
+    assert "xdist worker count clamped to 1" in msg
+    assert "single-owner resource" in msg
+    assert "host_isolation=strict for parallel" in msg
 
 
 def test_strict_mode_does_not_clamp_xdist(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Strict mode + ``-n 4`` leaves both attributes untouched.
 
@@ -112,7 +125,9 @@ def test_strict_mode_does_not_clamp_xdist(
         tmp_path=tmp_path,
     )
 
-    _plugin.pytest_configure(fake)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _plugin.pytest_configure(fake)
 
     assert fake.option.numprocesses == 4, (
         "strict mode must NOT clamp -- operator gets full xdist parallelism"
@@ -121,14 +136,18 @@ def test_strict_mode_does_not_clamp_xdist(
         "strict mode must NOT overwrite tx -- xdist runs with all workers"
     )
 
-    captured = capsys.readouterr()
-    text = captured.out + captured.err
-    assert "xdist worker count clamped" not in text
+    clamp_warnings = [
+        w for w in caught
+        if "xdist worker count clamped" in str(w.message)
+    ]
+    assert clamp_warnings == [], (
+        f"strict mode must NOT emit the clamp banner; got: "
+        f"{[str(w.message) for w in clamp_warnings]}"
+    )
 
 
 def test_passthrough_with_no_xdist_flag_does_not_emit_banner(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Passthrough mode with ``numprocesses=0`` (operator did not pass -n)
     fires no banner. The clamp guard's ``and config.option.numprocesses``
@@ -140,11 +159,18 @@ def test_passthrough_with_no_xdist_flag_does_not_emit_banner(
         tmp_path=tmp_path,
     )
 
-    _plugin.pytest_configure(fake)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _plugin.pytest_configure(fake)
 
     assert fake.option.numprocesses == 0
     assert fake.option.tx == []
 
-    captured = capsys.readouterr()
-    text = captured.out + captured.err
-    assert "xdist worker count clamped" not in text
+    clamp_warnings = [
+        w for w in caught
+        if "xdist worker count clamped" in str(w.message)
+    ]
+    assert clamp_warnings == [], (
+        "passthrough with no -n flag must NOT emit the clamp banner; got: "
+        f"{[str(w.message) for w in clamp_warnings]}"
+    )
