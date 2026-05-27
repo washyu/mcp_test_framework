@@ -164,7 +164,12 @@ def generated(tmp_path: Path) -> Path:
         out_root=tmp_path,
         timestamp=_FIXED_TS,
     )
-    assert counts == {"tools": 3, "degraded_fields": 0}, counts
+    assert counts == {
+        "tools": 3,
+        "degraded_fields": 0,
+        "smoke_scenarios": 0,
+        "smoke_todos": 3,
+    }, counts
     slug_dir = tmp_path / _SYNTHETIC_SLUG
     assert slug_dir.is_dir(), f"expected {slug_dir} to exist; got {list(tmp_path.iterdir())}"
     return slug_dir
@@ -332,4 +337,9 @@ def test_generate_counts_reports_degraded_fields(tmp_path: Path) -> None:
         out_root=tmp_path,
         timestamp=_FIXED_TS,
     )
-    assert counts == {"tools": 1, "degraded_fields": 1}
+    assert counts == {
+        "tools": 1,
+        "degraded_fields": 1,
+        "smoke_scenarios": 0,
+        "smoke_todos": 1,
+    }
