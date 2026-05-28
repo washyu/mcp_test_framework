@@ -86,7 +86,7 @@ Quick task in milestone: 260512-dcs (CLEAN-03 closure — example configs migrat
  (completed 2026-05-26)
 - [x] **Phase 34: Opt-in host isolation passthrough (999.3)** — Audit bare `Config()` callers; ship `host_isolation: strict | passthrough` so live-UAT + SDET scenarios reach operator credentials; passthrough clamps xdist to 1; SEED-022 safety delegation surfaced in docs.
  (completed 2026-05-27)
-- [ ] **Phase 35: Zero-shim regression gate (capstone)** — Single CI-runnable sweep across import / CLI / config / fixture / discovery surfaces pinning zero matches for every retired shim; blocks reintroduction.
+- [x] **Phase 35: Zero-shim regression gate (capstone)** — Single CI-runnable sweep across import / CLI / config / fixture / discovery surfaces pinning zero matches for every retired shim; blocks reintroduction. (completed 2026-05-28)
 
 ## Phase Details
 
@@ -173,9 +173,9 @@ Plans:
   1. Operator running `uv run pytest tests/framework/` sees a single regression-gate test pass that sweeps the importable surface (`mcp_test_framework.sdet`), CLI surface (`--sdet`, `gen-sdet-classes`, `mcp-test-framework`), config surface (`cfg.sdet.*`, `MCPTF_CONFIG_FILE`), fixture names (`config` / `judge` / `client` / `target_tool` unprefixed), and discovery surface (`tests/sdet/`) and returns zero matches across all five.
   2. Reintroducing any retired shim (e.g. re-adding `--sdet` to the Typer CLI or re-adding `Field(alias="sdet")` to the config model) fails the gate locally and in CI; the failure message names which surface regressed.
   3. Gate is a single file under `tests/framework/` with no shared fixtures or runtime cost beyond regex sweeps + import probes — runs in <1s standalone.
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 35-01-PLAN.md — SHIM-09: five-surface behavioral zero-shim regression gate + D-06 RENAME-06 docstring fix
+- [x] 35-01-PLAN.md — SHIM-09: five-surface behavioral zero-shim regression gate + D-06 RENAME-06 docstring fix
 
 ## Progress
 
@@ -221,7 +221,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 6/6 | Complete    | 2026-05-25 |
 | 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 6/6 | Complete    | 2026-05-26 |
 | 34. Opt-in host isolation passthrough (999.3) | v1.5 | 9/9 | Complete    | 2026-05-28 |
-| 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
+| 35. Zero-shim regression gate (capstone) | v1.5 | 1/1 | Complete   | 2026-05-28 |
 
 ## Backlog
 
