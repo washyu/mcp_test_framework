@@ -1,7 +1,7 @@
 """RENAME-06 acceptance gate: scan operator-facing surfaces for residual `sdet` terminology and planning-ID leaks.
 
 Implements D-17 patterns + D-16 scope + D-18 exclusions for the Phase 25 public-API rename.
-Removed in v1.5 when the deprecation shims drop and the gate becomes a no-op.
+Survives v1.5 — the grandfathered hard-reject intercepts keep the # noqa: sdet-rename-shim exclusions live until the v1.6 clean-delete.
 """  # noqa: sdet-rename-shim
 from __future__ import annotations
 
