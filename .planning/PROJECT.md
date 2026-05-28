@@ -2,29 +2,22 @@
 
 ## What This Is
 
-A pytest-based Python framework for testing MCP (Model Context Protocol) servers. It connects to one MCP server over stdio, discovers and exercises every tool the server advertises (modulo a configurable allowlist), runs deterministic schema/output checks per tool, and uses a local Ollama-hosted LLM as a judge for description quality. v1.3 added the **SDET persona** as a second first-class user — alongside the operator's auto-graded contract pass, an SDET can author intentional stateful scenarios (`create → modify → delete` with cleanup-on-failure) against the same MCP server, with typed Pydantic params/response classes generated from the server's live `inputSchema`/`outputSchema`. The CLI (`mcp-test-framework run|run --sdet|list-tools|gen-sdet-classes|config-init|version`) drives `homelab-mcp` end-to-end against a live Ollama judge.
+A pytest-based Python framework for testing MCP (Model Context Protocol) servers, shipped as an importable pytest plugin (`mcp-contracts`). It connects to one MCP server over stdio, discovers and exercises every tool the server advertises (modulo a configurable allowlist), runs deterministic schema/output checks per tool, and uses a local Ollama-hosted LLM as a judge for description quality. v1.3 added the **test-code-author persona** as a second first-class user — alongside the operator's auto-graded contract pass, the author can write intentional stateful scenarios (`create → modify → delete` with cleanup-on-failure) against the same MCP server, with typed Pydantic params/response classes generated from the server's live `inputSchema`/`outputSchema`. As of v1.5 the public surface is `test_code`-only (the v1.4 `sdet`-flavored deprecation shims are fully retired) and the config surface is one schema (`version: 2`) reached via two routes (`mcp-contracts run --config PATH` for CLI, `mcp_config_file` ini key for library mode). The CLI (`mcp-contracts run|list-tools|gen-test-classes|config-init|version`) drives `homelab-mcp` end-to-end against a live Ollama judge.
 
 ## Core Value
 
 A `pytest`-runnable test suite that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage — exits non-zero on any failure, no `homelab-mcp`-specific code in the framework's `src/` tree (SEED-022).
 
-## Current Milestone: v1.5 Shim Retirement + Operator Escape Hatches
+## Current Milestone: planning next (v1.6)
 
-**Goal:** Retire v1.4-introduced deprecation shims (locked at v1.5 expiry), decommission the unused v1-schema migration path, and ship the two operator escape hatches (per-bucket skip + isolation passthrough) that v1.4 dogfood revealed as needed.
-
-**Target features:**
-- Drop v1.4 deprecation shims — `sdet` package shim, `--sdet` / `gen-sdet-classes` CLI shims, `cfg.sdet.*` config alias, `MCPTF_CONFIG_FILE` env-var route, unprefixed fixture aliases (`config`/`judge`/`client`/`target_tool`), `mcp-test-framework` console-script alias.
-- 999.1 Per-bucket skip in `ToolConfig` — `skip_buckets: list[Literal["schema","judge","output"]] = []` so required-field tools opt out of the empty-args output bucket while preserving schema + judge signal.
-- 999.3 Opt-in host isolation passthrough — `host_isolation: strict|passthrough` config field (default `strict`); passthrough inherits operator env/HOME for live-UAT (locked: no keyring faking) and serializes spawns (no xdist). Audits bare `Config()` callers in scope.
-- 999.4 Drop v1-schema support — decommission-by-deletion: remove `docs/MIGRATION-v1-to-v2.md`, scrub README + ERROR-STYLE.md refs, relax self-tests pinning v1-rejection verbiage.
-
-**Explicit non-goals (deferred to v1.6+):** SEED-002 xdist parallelism, SEED-005 OpenAI-compat judge backend, SEED-003 + Phase 16 D-11 dynamic rubrics + per-judge breakdown, 999.2 codegen-driven param-test gen, 999.5 self-test env pollution fix (likely re-surfaces during 999.3; will assess then).
+v1.5 Shim Retirement + Operator Escape Hatches **shipped 2026-05-28** (see Current State). Next milestone is scoped via `/gsd-new-milestone`. The post-v1.3 indicative roadmap pencils **dynamic rubrics (rubrics-as-data, SEED-003 + Phase 16 D-11)** and the deferred **SEED-002 xdist parallelism** / **SEED-005 OpenAI-compat judge backend** cohort as the leading v1.6 candidates, plus backlog 999.2 (codegen-driven param-test gen, executed in parallel during v1.5) and 999.5 (self-test env pollution) for promotion.
 
 ## Current State
 
-**Shipped:** v1.4 Library Mode Delivery (2026-05-22)
+**Shipped:** v1.5 Shim Retirement + Operator Escape Hatches (2026-05-28)
 
-- 33 phases shipped (v1.0 + v1.1 + v1.2 + v1.3 + v1.4), 138 plans across five milestones, 142/144 requirements satisfied (29 + 25 + 31 + 29 + 28; LIB-05 + CFG-02 removed-by-decision at Phase 27 D-01)
+- v1.5 delivered: all six v1.4 `sdet`-flavored surface shims retired (import package, `--sdet` flag, `gen-sdet-classes`, `tests/sdet/` discovery, six unprefixed fixtures, `mcp-test-framework` console-script) — each raising an operator-tone migration pointer; config surface collapsed to one schema (`version: 2`) and two routes (`--config` / `mcp_config_file`), with the `cfg.sdet.*` alias, `MCPTF_CONFIG_FILE` env-var route, and v1→v2 migration doc all removed; two operator escape hatches shipped (`skip_buckets` per-bucket skip for required-field tools; `host_isolation: strict|passthrough` for live-credential reachability at the cost of xdist); a single sub-1s CI zero-shim regression gate pins all five retired surfaces against reintroduction. 5 phases / 28 plans / 24/24 reqs. Framework self-tests green at 793 passed / 2 skipped / 1 xfailed / 0 failed. Phase 31 verified retroactively via operator-driven UAT (31-UAT.md, 5/5).
+- 38 phases shipped (v1.0–v1.5), 166 plans across six milestones, 166/168 requirements satisfied (29 + 25 + 31 + 29 + 28 + 24; LIB-05 + CFG-02 removed-by-decision at Phase 27 D-01)
 - v1.4 delivered: framework is now an importable pytest plugin shipped as `mcp-contracts`. Operator adds the wheel to `pyproject.toml`, sets one line in `[tool.pytest.ini_options] mcp_config_file = "./config.yaml"`, and parametrized contract tests appear in their own `pytest` collection. Public API surface renamed (`sdet` → `test_code`) and locked. PyPI dist name corrected (`mvp-test-framework` → `mcp-contracts`); py.typed markers ship; wheel-introspection CI gate live. Domain UI available behind opt-in `--mcp-domain-ui` reporter plugin driven by live `pytest_runtest_logreport` events. Codegen output path is operator-owned (no smart default; pre-handshake site-packages guard). CLI demoted to README appendix; `docs/LIBRARY-MODE.md` is the primary reference. Framework dogfoods library mode via its own `pyproject.toml`.
 - v1.4 carry-forward UATs closed during the dogfood pass: README test-code-scenarios PASS-sample verified post-Phase-24 (UAT-1), Phase 17 SC1 confirmed at 58 enabled tools with pyright clean (UAT-2), Phase 14 CLI/library parity verified at 7-identical-contract-failure resolution (UAT-4). UAT-3 (v1→v2 migration walkthrough) retired-by-deletion (closed via backlog 999.4).
 - ~53,000+ LOC Python overall (v1.4 alone added +34,284 / −2,120 across 181 files — dominated by `src/mcp_test_framework/_plugin.py` + `_reporter.py` + `contracts/` sub-package + tests + docs rewrite)
@@ -126,14 +119,21 @@ Indicative, not committed. `/gsd-new-milestone` formally scopes each milestone i
 - ✓ Planning-ID scrub — operator-facing `--help` and entire `src/mcp_test_framework/` tree show zero matches for the locked planning-ID regex; regression test pinned at `test_no_planning_ids_in_src.py` — v1.3 (SCRUB-SRC-01)
 - ✓ Tool-call wire serializer — `tool().call()` uses `model_dump(mode="json", exclude_unset=True)`; SDET-omitted optionals stay off the wire; explicit `field=None` still flows null (SEED-022 user-intent discriminator); 3 payload-asserting unit tests + renamed kwargs-spy test lock all three behaviors — v1.3 (SERIALIZER-01)
 - ✓ SERIALIZER-DOC-01 partial — `docs/SDET-AUTHORING.md` §inputSchema-workaround softened (workaround now framed as explicit null-test escape hatch only); README §SDET-scenarios PASS-sample re-capture deferred to manual live-UAT (operator-approved regen-failed contract per Plan 24-02; tracked in STATE.md L184 `live-uat` row) — v1.3 (SERIALIZER-DOC-01)
+- ✓ Library-mode delivery — framework shipped as importable pytest plugin `mcp-contracts`; public API renamed `sdet` → `test_code` and locked; dist-name corrected to `mcp-contracts` + py.typed + wheel-introspection CI gate; `mcp_config_file` ini key as single config route across CLI + library; opt-in `--mcp-domain-ui` live reporter plugin; operator-owned codegen output path; CLI demoted to README appendix — v1.4 (LIB, CODEGEN, RENAME, packaging reqs; LIB-05 + CFG-02 removed-by-decision at Phase 27 D-01)
+- ✓ Shim retirement — all six v1.4 `sdet`-flavored surfaces retired with operator-tone migration pointers — v1.5 (SHIM-01..03, SHIM-06..08)
+- ✓ Config-surface cleanup — `cfg.sdet.*` alias + `MCPTF_CONFIG_FILE` env-var route removed; `version: 1` rejected cleanly; `docs/MIGRATION-v1-to-v2.md` deleted + cross-refs scrubbed — v1.5 (SHIM-04, SHIM-05, V1DROP-01..04)
+- ✓ Per-bucket skip granularity — `tools.<name>.skip_buckets` (collection-time filtering; `--explain` + digest reflect it) — v1.5 (BUCKET-01..05)
+- ✓ Opt-in host-isolation passthrough — `host_isolation: strict|passthrough` (passthrough reaches real credentials/keyring, clamps xdist to 1); bare `Config()` callers audited and routed through the resolved-config seam — v1.5 (ISOL-01..06)
+- ✓ Zero-shim regression gate — single sub-1s CI test sweeps all five retired surfaces, blocks reintroduction — v1.5 (SHIM-09)
 
 ### Active
 
-Scoped for v1.5 — see "Current Milestone" above. REQ-IDs land in `.planning/REQUIREMENTS.md` after roadmap creation.
+No active requirements — v1.5 shipped and its requirements moved to Validated. Next milestone (v1.6) scoped via `/gsd-new-milestone`; REQ-IDs land in a fresh `.planning/REQUIREMENTS.md` at roadmap creation.
 
-Carry-forward outside v1.5 scope:
-- 15 dormant seeds in backlog parking lot — re-triage at v1.5 close (SEED-001/002/003/005/006/012/013/016/017/018/021 etc.)
-- Backlog 999.2 (codegen-driven param-test gen) + 999.5 (self-test env pollution) — deferred; 999.5 likely re-surfaces during 999.3 isolation work.
+Carry-forward candidates for v1.6+ triage:
+- 18 dormant seeds in backlog parking lot — acknowledged & deferred at v1.5 close (SEED-001..018 cohort); leading candidates SEED-002 (xdist parallelism), SEED-005 (OpenAI-compat judge), SEED-003 + Phase 16 D-11 (dynamic rubrics + per-judge breakdown).
+- Backlog 999.2 (codegen-driven param-test gen) — executed in parallel during v1.5 but not part of the v1.5 requirement set; promote/formalize at v1.6 scoping.
+- Backlog 999.5 (self-test env pollution) — the `MCPTF_CONFIG_FILE` env-var trigger was removed in v1.5 Phase 31, but the underlying pydantic-settings deep-merge class-of-bug under bare `Config()` callers survives; re-assess at v1.6.
 
 ### Out of Scope
 
@@ -204,6 +204,12 @@ Carry-forward outside v1.5 scope:
 | Phase 23 — INSERTED to green-up `tests/framework/` pre-Phase-24 | `tests/framework/` accumulated 12 fails + 1 error from v1.2 folder split + v2 schema migration; Phase 24's serializer change needs an isolated ripple | ✓ Good — 575 passed close-gate; D-02 invariant (zero `src/` changes) held |
 | Phase 24 — `exclude_unset=True` (not `exclude_none=True`) | SEED-022 user-intent discriminator: distinguish SDET-omitted (unset) from SDET-explicitly-null (set); `exclude_none` would mask upstream null-handling bugs | ✓ Good — 3 payload-asserting tests lock all three behaviors; SDET who tests null-handling explicitly still triggers the upstream bug |
 | Phase 24 — Plan 24-02 regen-failed contract for README live-UAT | Proxmox keyring unreachable from agent subprocess; explicit partial-completion contract over silent skip | ✓ Good — README untouched at HEAD; STATE.md `live-uat` row tracks the manual UAT; pattern reusable for future live-stack-dependent doc captures |
+| Phase 32 — keep retired CLI/console shims as hidden hard-reject intercepts (clean-delete deferred to v1.6) | Guarantees the operator-tone migration pointer text even after removal; clean argv parsing preserved | ✓ Good — operator hits a friendly pointer instead of an opaque "unknown option"; zero-shim gate treats grandfathered intercepts as compliant, not reintroductions |
+| Phase 31 — bare `extra="forbid"` replaces all `sdet`-alias machinery (no validators/pre-scans) | Pydantic's native `extra_forbidden` + a targeted dispatcher branch carries the operator-tone surface; ~197 lines of shim deleted | ✓ Good — one rejection mechanism; `version: 1` and `sdet:` both route to operator-tone errors with no migration verbiage |
+| Phase 33 — per-bucket skip filters at collection time (v1.1.1 / 260508-p0b pattern), not runtime-SKIPPED rows | Skipped buckets should be absent from `--collect-only`, not 10× SKIPPED noise | ✓ Good — required-field tools keep schema+judge signal while dropping the empty-args output bucket; digest + `--explain` stay internally consistent (33-06 CR-01 fix) |
+| Phase 34 — `host_isolation: passthrough` clamps xdist to 1 (dual mutation of numprocesses AND tx) rather than failing | Credential reachability and parallelism are mutually exclusive given non-thread-safe MCP servers; serialize instead of refuse | ✓ Good — operator-tone banner explains the trade-off; `strict` default preserves v1.0–v1.4 xdist-compatible isolation; SEED-022 keeps the framework out of credential synthesis |
+| Phase 34 — bare `Config()` audited, not auto-fixed framework-wide | bare `Config()` raises ValidationError since Phase 21.1; the four real call sites get explicit `TestCodeConfig` construction (ISOL-05) | ✓ Good — no silent operator-env leak under either mode; regression pin guards against reversion |
+| Phase 35 — zero-shim regression gate as a 1-req capstone phase | The gate can't semantically pass until every SHIM/V1DROP surface ships; earns its own phase rather than riding the last feature phase | ✓ Good — single sub-1s static/behavioral sweep across five surfaces; reintroducing any shim fails the gate and names the regressed surface |
 
 ## Plant Seed: LLM-Generated Test Cases (Post-MVP)
 
@@ -227,4 +233,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 — v1.5 Phase 35 (zero-shim regression gate capstone) complete; all v1.5 feature phases (31–35) shipped, milestone ready for close. Original scoping note: v1.5 Shim Retirement + Operator Escape Hatches. Theme: close v1.4 dogfood feedback (per-bucket skip + isolation passthrough) and retire the v1.4-introduced deprecation shims locked at v1.5 expiry; decommission v1-schema migration path. Out of v1.5: xdist (SEED-002), OpenAI-compat judge (SEED-005), rubrics-as-data (SEED-003 + Phase 16 D-11), 999.2 codegen param-tests, 999.5 self-test env pollution.*
+*Last updated: 2026-05-28 after v1.5 milestone close — Shim Retirement + Operator Escape Hatches shipped (5 phases / 28 plans / 24 reqs). v1.4 deprecation shims retired, v1-schema migration path decommissioned, per-bucket skip + host-isolation passthrough escape hatches delivered, zero-shim regression gate locked. Next: `/gsd-new-milestone` (v1.6 — leading candidates: dynamic rubrics SEED-003, xdist SEED-002, OpenAI-compat judge SEED-005; backlog 999.2 + 999.5 for promotion).*

@@ -1,5 +1,23 @@
 # Milestones — mcp_test_framework
 
+## v1.5 Shim Retirement + Operator Escape Hatches (Shipped: 2026-05-28)
+
+**Phases completed:** 5 phases (31–35), 28 plans, 24/24 requirements (SHIM×9, BUCKET×5, ISOL×6, V1DROP×4)
+
+**Delivered:** Retired the v1.4 deprecation shims on schedule, decommissioned the unused v1-schema migration path, and shipped the two operator escape hatches v1.4 dogfood revealed as needed (per-bucket skip + isolation passthrough) — all behind a CI regression gate that blocks shim reintroduction.
+
+**Key accomplishments:**
+
+- **Surface-shim removal (Phase 32):** Retired all six v1.4 `sdet`-flavored surfaces — the `mcp_test_framework.sdet` import package, `--sdet` flag, `gen-sdet-classes` command, `tests/sdet/` discovery, six unprefixed fixtures, and the `mcp-test-framework` console-script — each now raising an operator-tone migration error pointing at its post-v1.4 replacement.
+- **Config-surface cleanup (Phase 31):** Collapsed the config surface to one schema (`version: 2`) and two resolution routes (`--config` / `mcp_config_file` ini key); dropped the `cfg.sdet.*` alias and the `MCPTF_CONFIG_FILE` env-var route; deleted the v1→v2 migration doc and all migration verbiage.
+- **Per-bucket skip granularity (Phase 33, 999.1):** Operators can opt out of named test buckets (`schema`/`judge`/`output`) per tool via `skip_buckets` — the required-field-tool escape hatch from v1.4 dogfood; collection-time filtering, with `--explain` and the pre-run digest reflecting per-bucket skips.
+- **Opt-in host-isolation passthrough (Phase 34, 999.3):** `host_isolation: strict|passthrough` lets live-UAT and SDET scenarios reach the operator's real credentials/HOME/keyring at the explicit cost of xdist parallelism (clamped to 1 worker); every bare `Config()` caller audited and routed through the resolved-config seam.
+- **Zero-shim regression gate (Phase 35, capstone):** A single sub-1s CI test sweeps all five retired surfaces (import / CLI+console-script / config / fixture / discovery) and returns zero matches, blocking accidental reintroduction at PR time.
+
+**Known deferred items at close:** 18 dormant seeds in the backlog parking lot (acknowledged, carry forward to v1.6+ re-triage — see STATE.md Deferred Items). Backlog phase 999.2 (codegen-driven parameter-test generation) was executed in parallel but is not part of the v1.5 requirement set.
+
+---
+
 ## v1.4 — Library Mode Delivery
 
 **Shipped:** 2026-05-22

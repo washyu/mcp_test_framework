@@ -2,33 +2,33 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: ready_to_plan
+status: planning
 stopped_at: Phase 35 context gathered
-last_updated: "2026-05-28T06:56:21.954Z"
-last_activity: 2026-05-28 -- Phase 35 execution started
+last_updated: "2026-05-28T08:11:45.895Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 34
-  completed_plans: 33
-  percent: 86
+  completed_plans: 34
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
+See: .planning/PROJECT.md (updated 2026-05-28 after v1.5 milestone close)
 
-**Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 35 — zero-shim-regression-gate-capstone
+**Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets a test-code author write typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
+**Current focus:** Planning next milestone (v1.6) — run `/gsd-new-milestone`
 
 ## Current Position
 
-Phase: 999.2
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-28
+Milestone: v1.5 shipped 2026-05-28 (Shim Retirement + Operator Escape Hatches)
+Phase: — (between milestones)
+Status: Milestone complete; awaiting v1.6 scoping
+Last activity: 2026-05-28 — v1.5 milestone close
 
 ## Performance Metrics
 
@@ -138,7 +138,7 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 | defer | Phase 16 D-11 `--debug` per-judge breakdown block | dormant — v1.6+ cohort with SEED-003 (deferred from v1.5) | v1.2 close (2026-05-12) |
 | backlog | Phase 999.2 — Codegen-driven parameter-test generation for required-field tools | Backlog — pairs with v1.5 Phase 33 (BUCKET); promote at v1.5 close if 999.1 lands clean | Phase 30 UAT-1 (2026-05-19) |
 | backlog | Phase 999.5 — Framework self-test pollution when MCPTF_CONFIG_FILE is set | Backlog — likely re-surfaces during v1.5 Phase 34 ISOL-05 audit; re-assess at v1.5 close | Phase 30 UAT-4 (2026-05-19) |
-| seed | 15+ remaining dormant seeds in backlog parking lot (SEED-001/002/003/005/006/012/013/016/017/018/021 etc.) | Backlog parking lot — re-triage at v1.5 close | v1.4 close (2026-05-22) |
+| seed | 18 dormant seeds in backlog parking lot (SEED-001..018 cohort) | Acknowledged & deferred at v1.5 close (2026-05-28) — carry forward to v1.6+ re-triage | v1.4 close (2026-05-22) |
 | quick_task | 260508-p0b / 260512-dcs / 260513-chh quick-task files missing (pre-v1.3 leftover) | Resolved 2026-05-28 — files existed but used `{slug}-SUMMARY.md` naming; renamed to bare `SUMMARY.md` so the audit scanner reads their `status: complete` | v1.3 close (2026-05-15) |
 
 ## Session Continuity

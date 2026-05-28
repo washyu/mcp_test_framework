@@ -166,6 +166,55 @@
 
 ---
 
+## Milestone: v1.5 — Shim Retirement + Operator Escape Hatches
+
+**Shipped:** 2026-05-28
+**Phases:** 5 (31–35) | **Plans:** 28 | **Timeline:** ~6 days (2026-05-23 → 2026-05-28)
+
+### What Was Built
+
+- **Config-surface cleanup** (Phase 31): dropped the `cfg.sdet.*` Pydantic alias (bare `extra="forbid"` + a targeted dispatcher branch replace ~197 lines of shim machinery); unwired the `MCPTF_CONFIG_FILE` env-var config route (now an inert, loudly-warned `[mcp-contracts]`-prefixed detector); rewrote `_validate_version` to reject `version: 1` with a generic config-init pointer; deleted `docs/MIGRATION-v1-to-v2.md` + scrubbed all migration cross-refs.
+- **Surface-shim removals** (Phase 32): retired the `mcp_test_framework.sdet` import package, `--sdet` flag, `gen-sdet-classes` command, `tests/sdet/` discovery, six unprefixed fixtures, and the `mcp-test-framework` console-script — each raising an operator-tone migration pointer. CLI/console shims kept as hidden hard-reject intercepts (clean-delete deferred to v1.6) to guarantee the pointer text.
+- **Per-bucket skip granularity** (Phase 33, 999.1): `tools.<name>.skip_buckets` (`schema`/`judge`/`output`) filters at collection time (v1.1.1 pattern), with `--explain` + pre-run digest reflecting per-bucket skips. Required-field tools keep schema+judge signal while dropping the empty-args output bucket.
+- **Opt-in host-isolation passthrough** (Phase 34, 999.3): `host_isolation: strict|passthrough`; passthrough inherits real env/HOME/keyring and clamps xdist to 1 worker (dual mutation of `numprocesses` + `tx`) with an operator-tone banner; `strict` default unchanged. Every bare `Config()` caller audited and routed through explicit `TestCodeConfig` construction (ISOL-05).
+- **Zero-shim regression gate** (Phase 35, capstone): a single sub-1s `tests/framework/test_zero_shim_regression_gate.py` sweeps all five retired surfaces and returns zero matches, naming the regressed surface on reintroduction.
+
+### What Worked
+
+- **Clean feature delivery, zero INSERTED phases.** The 5-phase plan landed 31→35 in order with no mid-flight scope inserts (compare v1.3's 3-of-9). The shim-retirement scope was well-understood from v1.4's explicitly-locked deprecation windows, so there was little to discover.
+- **Capstone regression gate earned its own phase.** SHIM-09 couldn't pass until every SHIM/V1DROP surface shipped; isolating it as Phase 35 gave a single behavioral pin across import/CLI/config/fixture/discovery that now blocks reintroduction at PR time — and it explicitly grandfathers the hidden intercepts so they don't read as regressions.
+- **Two re-verifications closed cleanly.** Phase 33 (CR-01, digest Test-plan count) and Phase 34 (ISOL-05, bare-Config audit accuracy) both went gaps_found → passed via surgical gap-closure plans (33-06, 34-09), each with a regression pin. The verify→gap-closure→re-verify loop held.
+- **Decommission-by-deletion over migration tooling.** The framework has never been published and no v1-schema operators exist, so V1DROP dropped the whole migration path rather than carrying it — less surface, no versioned-migration verbiage to maintain.
+
+### What Was Inefficient
+
+- **Phase 31 shipped without a VERIFICATION.md.** All six plans executed and committed, but no phase verification artifact was ever produced — the milestone audit flagged it as an unverified-phase blocker. Closed retroactively via operator-driven `/gsd-verify-work` (31-UAT.md, 5/5) at milestone close. The implementation was provably correct the whole time (zero-shim gate + 793 green tests), so this was pure paper-trail debt, but it forced an extra verify cycle at close.
+- **Requirement checkbox drift, again.** SHIM-04/05 + V1DROP-01..04 sat `[ ]` in REQUIREMENTS.md despite shipping; bulk-flipped at close. Fourth milestone running (v1.3, v1.4, now v1.5) where traceability checkboxes lag the work. The per-plan-post-execute auto-toggle proposed at v1.4 close still isn't in place.
+- **Auto-extracted accomplishments still noisy.** `milestone.complete` again pulled `One-liner:` placeholder fragments and swept in the parallel 999.2 backlog phase (reported 6 phases / 34 plans / 58 tasks instead of v1.5's 5 / 28). Hand-curated at close — third milestone with this exact CLI-output problem. The SUMMARY `one_liner:` frontmatter discipline proposed at v1.4 close didn't land.
+- **ROADMAP.md had mixed CRLF/CR line endings** that silently broke multiline string edits during reorganization (single-line edits worked, multi-line didn't, with no obvious cause). Required normalizing to LF via a script. Latent file-hygiene issue worth a repo-wide `.gitattributes` `text=auto` fix.
+
+### Patterns Established
+
+- **Hidden hard-reject intercept for retired surfaces.** Rather than delete a CLI flag/command outright (opaque "unknown option"), keep it registered as `hidden=True` and hard-reject with an operator-tone pointer; clean-delete one milestone later. The regression gate treats these as compliant, not reintroductions.
+- **Behavioral zero-shim gate as capstone.** A single static/in-process test (no subprocess, no network, no shared fixtures, <1s) that probes every retired surface and names the regressed one. Analog of v1.3's `test_no_planning_ids_in_src.py` and v1.4's wheel-introspection gate — structural enforcement over reviewer eyeballs.
+- **Escape hatch over framework intelligence (SEED-022 holding).** Both v1.5 features are operator levers (`skip_buckets`, `host_isolation: passthrough`), not framework auto-detection. Passthrough explicitly delegates credential reachability to the operator and refuses to synthesize keyring entries — the locked "no keyring faking" line.
+- **Backfill verification via operator-driven UAT.** When a phase ships without a VERIFICATION.md, `/gsd-verify-work` produces the artifact of record from user-perceivable acceptance tests — sufficient to close an unverified-phase audit gap without re-running a full verifier pass.
+
+### Key Lessons
+
+1. **A phase isn't done until its VERIFICATION.md exists.** Phase 31's missing artifact passed silently through execution and only surfaced at milestone audit. Add a per-phase gate (or audit-open check) that blocks "complete" status when VERIFICATION.md is absent — don't let it ride to milestone close.
+2. **The checkbox-drift and CLI-accomplishment-noise lessons keep recurring because no mechanism changed.** Four milestones of "bulk-flip at close" and three of "hand-curate accomplishments." These are now structural, not incidental — they need tooling (post-execute checkbox toggle; `one_liner:` frontmatter the CLI trusts), not another lesson entry.
+3. **Well-locked deprecation windows make for clean milestones.** v1.4 locking every shim's expiry to v1.5 meant v1.5 had a crisp, discoverable scope and zero INSERTED phases. Pre-committing removal dates at introduction time is what made the retirement mechanical.
+4. **Mixed line endings are a latent edit hazard.** The CRLF/CR mix in ROADMAP.md broke multiline edits unpredictably. A `.gitattributes` normalization pass would prevent the class.
+
+### Cost Observations
+
+- **Model mix:** Opus 4.7 orchestrator + executors; Sonnet 4.6 on verifier / integration-checker / code-reviewer per config defaults (per `feedback_usage_pacing`, user paces carefully and pauses chains).
+- **Sessions:** ~5–6 distinct sessions across ~6 days, with two natural re-verification boundaries (Phase 33 CR-01, Phase 34 ISOL-05) and a final audit → verify-work → close cluster.
+- **Notable:** Zero INSERTED phases (matches v1.4; better than v1.3's 33%). The only close-time friction was paper-trail debt (Phase 31 verification + checkbox drift), not implementation gaps — the code was green throughout.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -176,6 +225,8 @@
 | v1.1 | 6 (incl. 11 gap-closure) | 17 | Added explicit gap-closure phase pattern; multi-tool generalization without breaking the black-box rule |
 | v1.2 | 5 | 30 | Operator-first refactor: domain UI replaces pytest framing; `tools:` becomes opt-in allowlist; config v1→v2 migration; CLEAN-03 closed via /gsd-quick |
 | v1.3 | 9 (incl. 21.1, 23, 24 inserts) | 42 | SDET persona added; codegen surface + SEED-022 structural enforcement (`src/.../sdet/generated/` deleted); regen-failed partial-completion contract pattern |
+| v1.4 | 6 | 27 | Library-mode delivery (pytest plugin `mcp-contracts`); `register()` dropped for ini config (D-01); `sdet` → `test_code` public-API rename + one-milestone deprecation shims |
+| v1.5 | 5 | 28 | Shim retirement + v1-schema decommission; two operator escape hatches (per-bucket skip, isolation passthrough); zero-shim regression gate capstone; zero INSERTED phases |
 
 ### Cumulative Quality
 
@@ -185,6 +236,8 @@
 | v1.1 | ~5,784 | 25/25 (54/54 cumulative) | ✓ (after Phase 11) |
 | v1.2 | ~7,700 | 31/31 (85/85 cumulative) | ✓ (CLEAN-03 closed via /gsd-quick post-audit) |
 | v1.3 | ~6,098 src / ~19,137 src+tests | 27/29 satisfied + 2 partial-by-design (114/114 cumulative; 2 close-by-design on live-UAT) | tech_debt (operator-approved deferrals tracked) |
+| v1.4 | — (+34,284 / −2,120 across 181 files) | 28/28 (142/144 cumulative; LIB-05 + CFG-02 removed-by-decision) | ✓ (checkboxes bulk-flipped at close) |
+| v1.5 | — (793 framework self-tests green) | 24/24 (166/168 cumulative) | gaps_found → resolved (Phase 31 verification backfilled via UAT; checkboxes bulk-flipped) |
 
 ### Top Lessons (Verified Across Milestones)
 
