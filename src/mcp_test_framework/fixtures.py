@@ -108,9 +108,9 @@ def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `confi
     cfg = getattr(request.session.config, "_mcp_contracts_config", None)
     if cfg is not None:
         return cfg
-    # ISOL-05 (Phase 34-09): stash-miss fallback for framework self-tests that bypass the
-    # plugin. Config.test_code is REQUIRED (Phase 21.1) -- bare Config() raises
-    # ValidationError, so construct explicitly. host_isolation keeps its 'strict' default.
+    # Stash-miss fallback for framework self-tests that bypass the plugin.
+    # Config.test_code is REQUIRED (no default) -- bare Config() raises ValidationError,
+    # so construct explicitly. host_isolation keeps its 'strict' default. (Phase 34-09)
     return Config(test_code=TestCodeConfig(generated_root="tests/test_code/_generated"))
 
 

@@ -74,8 +74,8 @@ async def mcp_session(
     # `_install_session_config` monkeypatch shim. Mirrors fixtures.py:108-111.
     cfg = getattr(request.session.config, "_mcp_contracts_config", None)
     if cfg is None:
-        # ISOL-05 (Phase 34-09): explicit construction -- bare Config() raises ValidationError
-        # (test_code REQUIRED). Mirrors fixtures.py stash-miss fallback.
+        # Explicit construction -- bare Config() raises ValidationError (test_code is REQUIRED
+        # with no default). Mirrors fixtures.py stash-miss fallback. (Phase 34-09)
         cfg = Config(test_code=TestCodeConfig(generated_root="tests/test_code/_generated"))
     generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():

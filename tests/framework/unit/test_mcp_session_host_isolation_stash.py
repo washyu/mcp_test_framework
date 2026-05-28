@@ -47,12 +47,16 @@ def test_mcp_session_signature_takes_request_as_first_param() -> None:
 
 def test_mcp_session_module_source_routes_through_stash() -> None:
     """The fixture body must read from the
-    ``_mcp_contracts_config`` stash with a bare-Config fallback.
+    ``_mcp_contracts_config`` stash with an explicit-construction fallback.
 
     Mirrors ``fixtures.py:108-111``. Source-text pin avoids the
     integration-test cost of spinning up a real session while still
     catching drift (e.g. somebody dropping the fallback line and
     breaking the framework-self-test path).
+
+    Phase 34-09 update: the stash-miss fallback was changed from bare
+    ``Config()`` (which raises ValidationError) to explicit
+    ``Config(test_code=TestCodeConfig(...))`` construction.
     """
     import inspect as _inspect
 
@@ -67,12 +71,13 @@ def test_mcp_session_module_source_routes_through_stash() -> None:
         "mcp_session must route through the `_mcp_contracts_config` stash "
         "(canonical pattern from fixtures.py:108-111). Stash-lookup line missing."
     )
-    # The bare-Config fallback line must remain (recommendation (b) keeps the
-    # framework-self-test path alive).
-    assert re.search(r"cfg\s*=\s*Config\(\)", src), (
-        "mcp_session must preserve the bare-Config fallback so the "
-        "test_sdet_fixtures.py `_install_session_config` monkeypatch shim "
-        "keeps working."
+    # The stash-miss fallback line must use explicit construction (Phase 34-09):
+    # bare Config() raises ValidationError (test_code is REQUIRED with no default),
+    # so the fallback must use Config(test_code=TestCodeConfig(...)).
+    assert re.search(r"cfg\s*=\s*Config\(\s*test_code\s*=\s*TestCodeConfig\(", src), (
+        "mcp_session stash-miss fallback must use explicit Config(test_code=TestCodeConfig(...)) "
+        "construction (Phase 34-09): bare Config() raises ValidationError because test_code "
+        "is a REQUIRED field with no default."
     )
 
 
