@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: ready_to_plan
-stopped_at: Phase 34 Plan 09 complete (ISOL-05 gap closure -- explicit Config construction + CR-02 hoist + audit doc corrected)
-last_updated: "2026-05-28T04:57:27.562Z"
+status: planning
+stopped_at: Phase 35 context gathered
+last_updated: "2026-05-28T06:06:24.173Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 5
   total_plans: 33
   completed_plans: 33
-  percent: 86
+  percent: 100
 ---
 
 # Project State
@@ -143,6 +143,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-28T04:57:27.554Z
-Stopped at: Phase 34 complete (8/8 plans -- ISOL-06 docs landed)
+Last session: 2026-05-28T06:06:24.165Z
+Stopped at: Phase 35 context gathered
 Resume next: phase-level verification of Phase 34, then `/gsd-plan-phase 35` to plan Phase 35 (zero-shim regression gate capstone)
