@@ -227,4 +227,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-22 — v1.5 Shim Retirement + Operator Escape Hatches scoped. Theme: close v1.4 dogfood feedback (per-bucket skip + isolation passthrough) and retire the v1.4-introduced deprecation shims locked at v1.5 expiry; decommission v1-schema migration path. Out of v1.5: xdist (SEED-002), OpenAI-compat judge (SEED-005), rubrics-as-data (SEED-003 + Phase 16 D-11), 999.2 codegen param-tests, 999.5 self-test env pollution.*
+*Last updated: 2026-05-28 — v1.5 Phase 35 (zero-shim regression gate capstone) complete; all v1.5 feature phases (31–35) shipped, milestone ready for close. Original scoping note: v1.5 Shim Retirement + Operator Escape Hatches. Theme: close v1.4 dogfood feedback (per-bucket skip + isolation passthrough) and retire the v1.4-introduced deprecation shims locked at v1.5 expiry; decommission v1-schema migration path. Out of v1.5: xdist (SEED-002), OpenAI-compat judge (SEED-005), rubrics-as-data (SEED-003 + Phase 16 D-11), 999.2 codegen param-tests, 999.5 self-test env pollution.*
