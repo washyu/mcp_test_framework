@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
-status: executing
+status: ready_to_plan
 stopped_at: Phase 34 Plan 09 complete (ISOL-05 gap closure -- explicit Config construction + CR-02 hoist + audit doc corrected)
 last_updated: "2026-05-28T04:57:27.562Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 33
   completed_plans: 33
-  percent: 100
+  percent: 86
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 ## Current Position
 
-Phase: 34 (opt-in-host-isolation-passthrough-999-3) — EXECUTING
-Plan: 2 of 9
-Status: Ready to execute
+Phase: 999.2
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-28
 
 ## Performance Metrics

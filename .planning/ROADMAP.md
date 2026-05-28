@@ -218,7 +218,7 @@ Phases execute in numeric order: 31 → 32 → 33 → 34 → 35. Phase 33 (BUCKE
 | 31. Config-surface cleanup — drop MCPTF_CONFIG_FILE + cfg.sdet.* alias + v1-schema decommission | v1.5 | 6/6 | Complete   | 2026-05-24 |
 | 32. Surface-shim removals — CLI + package + fixtures + discovery | v1.5 | 6/6 | Complete    | 2026-05-25 |
 | 33. Per-bucket skip granularity in ToolConfig (999.1) | v1.5 | 6/6 | Complete    | 2026-05-26 |
-| 34. Opt-in host isolation passthrough (999.3) | v1.5 | 9/9 | Complete   | 2026-05-28 |
+| 34. Opt-in host isolation passthrough (999.3) | v1.5 | 9/9 | Complete    | 2026-05-28 |
 | 35. Zero-shim regression gate (capstone) | v1.5 | 0/0 | Not started | — |
 
 ## Backlog
