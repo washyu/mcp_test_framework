@@ -153,7 +153,7 @@ Plans:
   3. Operator running `pytest -n 4` with `host_isolation: passthrough` sees worker count clamped to 1 with an operator-tone explanation that passthrough sacrifices parallelism for credential reachability; `strict` mode preserves xdist compatibility.
   4. Every bare `Config()` constructor call site in `src/` and `tests/` is identified, documented (which mode it implicitly assumes), and routed through the resolved-config seam so neither mode silently leaks operator env or surprises the operator with a missing-passthrough path.
   5. Operator reading README + `docs/LIBRARY-MODE.md` finds the `strict`-vs-`passthrough` trade-off documented, the SEED-022 safety-delegation cited, the no-keyring-faking lock surfaced, and the passthrough xdist-incompatibility called out in the same section.
-**Plans:** 8/8 plans complete
+**Plans:** 9 plans (8 complete + 1 gap-closure)
 Plans:
 - [x] 34-01-PLAN.md - ISOL-01: add top-level host_isolation Literal field to Config + default-pin test
 - [x] 34-02-PLAN.md - ISOL-01: operator-tone literal_error branch in cli.py error mapper + pinned test
@@ -163,6 +163,7 @@ Plans:
 - [x] 34-06-PLAN.md - ISOL-05: bare-Config audit deliverable + test_code/session.py:67 stash routing + Proxmox scenario inline comments
 - [x] 34-07-PLAN.md - ISOL-01 Claude's Discretion: config-init scaffold emits host_isolation: strict with 5-line trade-off comment block
 - [x] 34-08-PLAN.md - ISOL-06: README + LIBRARY-MODE.md worked example (Proxmox repro) + ERROR-STYLE.md registration + EXTENDING.md scrub (no-op -- already clean)
+- [ ] 34-09-PLAN.md - ISOL-05 gap closure: replace bare Config() at 4 sites with explicit TestCodeConfig construction + _plugin.py CR-02 hoist + correct 34-BARE-CONFIG-AUDIT.md + regression pin
 
 ### Phase 35: Zero-shim regression gate (capstone)
 **Goal**: A single CI-runnable test sweeps every retired-shim surface and returns zero matches — pinning the v1.5 zero-shim state so accidental reintroduction blocks at PR time.
