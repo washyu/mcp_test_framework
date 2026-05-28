@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
-stopped_at: Phase 34 complete (8/8 plans -- ISOL-06 docs landed)
-last_updated: "2026-05-28T04:42:40.626Z"
-last_activity: 2026-05-28 -- Phase 34 planning complete
+stopped_at: Phase 34 Plan 09 complete (ISOL-05 gap closure -- explicit Config construction + CR-02 hoist + audit doc corrected)
+last_updated: "2026-05-28T04:57:27.562Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 33
-  completed_plans: 32
-  percent: 97
+  completed_plans: 33
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 **Core value:** A `pytest`-runnable test suite — now an importable pytest plugin (`mcp-contracts`) — that exercises every MCP tool end-to-end (schema → call → judge) for the operator persona AND lets an SDET author typed scenario tests against the same MCP server for stateful coverage; exits non-zero on any failure, no SUT-specific code in framework `src/` (SEED-022).
-**Current focus:** Phase 34 — Opt-in host isolation passthrough (999.3)
+**Current focus:** Phase 34 — opt-in-host-isolation-passthrough-999-3
 
 ## Current Position
 
-Phase: 34 (Opt-in host isolation passthrough (999.3)) — COMPLETE
-Plan: 8 of 8 (all complete)
+Phase: 34 (opt-in-host-isolation-passthrough-999-3) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-05-28 -- Phase 34 planning complete
+Last activity: 2026-05-28
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Last activity: 2026-05-28 -- Phase 34 planning complete
 | Phase Phase 34 PP05 | ~15 minutes | 2 tasks tasks | 2 files files |
 | Phase Phase 34 PP07 | ~3 minutes | 2 tasks | 2 files |
 | Phase 34 P08 | ~75 minutes | 5 tasks (4 doc edits + 1 human-verify) | 3 files |
+| Phase 34 P09 | ~10 minutes | 4 tasks + 1 deviation-fix | 6 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes asses
 - [Phase ?]: Phase 34 Plan 08: README uses descriptive heading '## Host isolation: strict vs passthrough'; LIBRARY-MODE.md uses bare '## Host isolation' so the slug #host-isolation matches the cli.py error-mapper next_step pointer registered in plan 34-02
 - [Phase ?]: Phase 34 Plan 08: docs/ERROR-STYLE.md entry names the pin test by id (test_error_style_host_isolation_literal_rejection) -- three-way doc/code/test lock makes silent drift mechanically detectable
 - [Phase ?]: Phase 34 Plan 08: docs/EXTENDING.md scrub was a no-op (audit grep returned zero matches); documented in SUMMARY rather than fabricating an edit -- 'light pass to confirm no stale references' satisfied without modifying the file
+- [Phase 34 Plan 09]: explicit Config(test_code=TestCodeConfig(generated_root='tests/test_code/_generated')) at all four bare-Config() sites (ISOL-05 gap closure); bare Config() raises ValidationError since Phase 21.1
+- [Phase 34 Plan 09]: CR-02 option (b) implemented -- check_black_box() and stash assignment hoisted inside try block in _plugin.py; ValidationError path can no longer reach unbound cfg
+- [Phase 34 Plan 09]: 34-BARE-CONFIG-AUDIT.md corrected -- 'inherits strict default' false claim removed; session.py:67 -> session.py:mcp_session throughout; RAISES ValidationError documented at all four sites
 
 ### Roadmap Evolution
 
@@ -139,6 +143,6 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 
 ## Session Continuity
 
-Last session: 2026-05-27T18:30:00.000Z
+Last session: 2026-05-28T04:57:27.554Z
 Stopped at: Phase 34 complete (8/8 plans -- ISOL-06 docs landed)
 Resume next: phase-level verification of Phase 34, then `/gsd-plan-phase 35` to plan Phase 35 (zero-shim regression gate capstone)
