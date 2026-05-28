@@ -39,6 +39,7 @@ import pytest
 import pytest_asyncio
 
 from mcp_test_framework.config import Config
+from mcp_test_framework.models import TestCodeConfig
 from mcp_test_framework.test_code import ToolCallError, mcp_session, tool  # noqa: F401
 
 # Phase 21.1 RELOC-03: classes are loaded on-demand from cfg.sdet.generated_root
@@ -64,9 +65,11 @@ def _load_generated_homelab_mcp():
     a configured homelab-mcp server; otherwise raises FileNotFoundError pointing
     at the configured root.
     """
-    # NOTE (ISOL-05 audit, Phase 34): bare Config() in operator-authored scenario.
-    # Inherits host_isolation='strict' default; scenario does not consume the field.
-    cfg = Config()
+    # ISOL-05 (Phase 34-09): Config.test_code is REQUIRED (Phase 21.1) -- bare Config()
+    # raises ValidationError. Construct explicitly with the project-convention
+    # generated_root so this loader does not get demoted to a wrong-reason pytest.skip.
+    # host_isolation keeps its 'strict' default; this scenario does not consume the field.
+    cfg = Config(test_code=TestCodeConfig(generated_root="tests/test_code/_generated"))
     generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():
         generated_root = Path.cwd() / generated_root
@@ -195,9 +198,10 @@ async def _next_free_readme_vmid(host: str, node: str, lo: int, hi: int) -> int:
 @pytest_asyncio.fixture(scope="module", loop_scope="session")
 async def proxmox_vm_lifecycle_readme(mcp_session):
     """Module-scope yield fixture: create VM, yields state, delete VM in finalizer."""
-    # NOTE (ISOL-05 audit, Phase 34): bare Config() in operator-authored scenario.
-    # Inherits host_isolation='strict' default; scenario does not consume the field.
-    cfg = Config()
+    # ISOL-05 (Phase 34-09): explicit construction -- bare Config() raises ValidationError
+    # (test_code REQUIRED). This fixture body is REACHABLE on live_homelab runs; a bare call
+    # would surface as a fixture error instead of the intended scenario.
+    cfg = Config(test_code=TestCodeConfig(generated_root="tests/test_code/_generated"))
     lo, hi = cfg.homelab.proxmox.dogfood_vmid_range
     host = _require_env("MCPTF_DOGFOOD_PROXMOX_HOST")
     node = os.environ.get("MCPTF_DOGFOOD_PROXMOX_NODE", "pve")
