@@ -47,6 +47,7 @@ import pytest_asyncio
 
 from mcp_test_framework.config import Config
 from mcp_test_framework.fixtures import _pytest_exit_operator_tone
+from mcp_test_framework.models import TestCodeConfig
 from mcp_test_framework.mcp_client import McpTestClient
 from mcp_test_framework.test_code import _tool_factory as _tf
 from mcp_test_framework.test_code._slugs import server_slug
@@ -73,7 +74,9 @@ async def mcp_session(
     # `_install_session_config` monkeypatch shim. Mirrors fixtures.py:108-111.
     cfg = getattr(request.session.config, "_mcp_contracts_config", None)
     if cfg is None:
-        cfg = Config()  # framework-self-test fallback; mirrors fixtures.py:108-111
+        # ISOL-05 (Phase 34-09): explicit construction -- bare Config() raises ValidationError
+        # (test_code REQUIRED). Mirrors fixtures.py stash-miss fallback.
+        cfg = Config(test_code=TestCodeConfig(generated_root="tests/test_code/_generated"))
     generated_root = cfg.test_code.generated_root
     if not generated_root.is_absolute():
         generated_root = Path.cwd() / generated_root

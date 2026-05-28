@@ -41,7 +41,7 @@ from mcp_test_framework._isolation import _build_subprocess_env
 from mcp_test_framework.config import Config
 from mcp_test_framework.judge_protocol import Judge
 from mcp_test_framework.mcp_client import McpTestClient
-from mcp_test_framework.models import ToolConfig
+from mcp_test_framework.models import TestCodeConfig, ToolConfig
 from mcp_test_framework.ollama_judge import OllamaJudge
 from mcp_test_framework.rubrics import (
     ClarityRubric,
@@ -108,9 +108,10 @@ def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `confi
     cfg = getattr(request.session.config, "_mcp_contracts_config", None)
     if cfg is not None:
         return cfg
-    # Audit: stash-miss fallback for framework self-tests that bypass the
-    # plugin. Returns Config() defaults including host_isolation='strict'.
-    return Config()
+    # ISOL-05 (Phase 34-09): stash-miss fallback for framework self-tests that bypass the
+    # plugin. Config.test_code is REQUIRED (Phase 21.1) -- bare Config() raises
+    # ValidationError, so construct explicitly. host_isolation keeps its 'strict' default.
+    return Config(test_code=TestCodeConfig(generated_root="tests/test_code/_generated"))
 
 
 # ---------------------------------------------------------------------------
