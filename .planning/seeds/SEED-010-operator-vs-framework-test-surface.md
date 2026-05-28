@@ -1,14 +1,16 @@
 ---
 id: SEED-010
-status: active
+status: delivered
 planted: 2026-05-08
 planted_during: v1.1 manual UAT exploration (formalized at v1.2 milestone framing 2026-05-08)
-trigger_when: v1.2 milestone framing (active for v1.2)
+trigger_when: N/A — delivered
+delivered: 2026-05-13
+delivered_in: v1.3 — `tests/contract/` + `tests/framework/` split shipped (operator runner scopes to contract tests; framework self-tests run separately)
 scope: Small-Medium
 target_milestone: v1.2 (cohort with SEED-007/008/009/011)
 ---
 
-# SEED-010: Operator vs framework test surface split
+# SEED-010: Operator vs framework test surface split  *[DELIVERED v1.3]*
 
 ## Why This Matters
 

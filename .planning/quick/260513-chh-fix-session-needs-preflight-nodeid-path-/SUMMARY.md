@@ -1,6 +1,7 @@
 ---
 phase: quick-260513-chh
 plan: 01
+status: complete
 subsystem: fixtures / preflight gate
 tags: [bugfix, tdd, quick-task, phase-18-followup, fixtures, preflight]
 dependency_graph:

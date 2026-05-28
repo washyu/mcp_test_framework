@@ -139,7 +139,7 @@ Items acknowledged at v1.0 / v1.1 / v1.2 / v1.3 / v1.4 close and carried into v1
 | backlog | Phase 999.2 — Codegen-driven parameter-test generation for required-field tools | Backlog — pairs with v1.5 Phase 33 (BUCKET); promote at v1.5 close if 999.1 lands clean | Phase 30 UAT-1 (2026-05-19) |
 | backlog | Phase 999.5 — Framework self-test pollution when MCPTF_CONFIG_FILE is set | Backlog — likely re-surfaces during v1.5 Phase 34 ISOL-05 audit; re-assess at v1.5 close | Phase 30 UAT-4 (2026-05-19) |
 | seed | 15+ remaining dormant seeds in backlog parking lot (SEED-001/002/003/005/006/012/013/016/017/018/021 etc.) | Backlog parking lot — re-triage at v1.5 close | v1.4 close (2026-05-22) |
-| quick_task | 260508-p0b / 260512-dcs / 260513-chh quick-task files missing (pre-v1.3 leftover) | Open — file missing; carry to next milestone triage | v1.3 close (2026-05-15) |
+| quick_task | 260508-p0b / 260512-dcs / 260513-chh quick-task files missing (pre-v1.3 leftover) | Resolved 2026-05-28 — files existed but used `{slug}-SUMMARY.md` naming; renamed to bare `SUMMARY.md` so the audit scanner reads their `status: complete` | v1.3 close (2026-05-15) |
 
 ## Session Continuity
 

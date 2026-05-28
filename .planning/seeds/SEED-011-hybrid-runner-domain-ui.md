@@ -1,14 +1,16 @@
 ---
 id: SEED-011
-status: active
+status: delivered
 planted: 2026-05-08
 planted_during: v1.1 manual UAT exploration (formalized at v1.2 milestone framing 2026-05-08)
-trigger_when: v1.2 milestone framing (active for v1.2). Decide BEFORE SEED-010 folder split — runner contract drives the split.
+trigger_when: N/A — delivered
+delivered: 2026-05-22
+delivered_in: v1.4 — domain UI shipped as opt-in `--mcp-domain-ui` reporter plugin (`_reporter.py` renders domain output from live `pytest_runtest_logreport` events)
 scope: Medium
 target_milestone: v1.2 (cohort with SEED-007/008/009/010)
 ---
 
-# SEED-011: Hybrid runner with domain UI
+# SEED-011: Hybrid runner with domain UI  *[DELIVERED v1.4]*
 
 ## Why This Matters
 
