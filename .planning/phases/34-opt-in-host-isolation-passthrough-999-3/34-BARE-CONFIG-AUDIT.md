@@ -3,6 +3,14 @@
 **Audited:** 2026-05-26 (Phase 34 plan-time research)
 **Source of truth:** `34-RESEARCH.md` Finding 4 + Bare `Config()` Inventory section.
 
+## Phase 34-09 correction
+
+Bare `Config()` RAISES `pydantic.ValidationError` because `Config.test_code` is a REQUIRED
+field with no default (Phase 21.1). The earlier audit classification (that bare `Config()`
+would simply use the host_isolation strict default) was false — ValidationError fires before
+any default is evaluated. All four fallback/scenario sites now use explicit
+`Config(test_code=TestCodeConfig(generated_root='tests/test_code/_generated'))` construction.
+
 ## Summary
 
 This audit IS the ISOL-05 deliverable. `34-CONTEXT.md` Claude's Discretion locks the shape:
@@ -14,9 +22,9 @@ where the remediations land (or are intentionally NOT applied).
 Two corrections versus the CONTEXT.md initial framing land here:
 
 1. **`src/` actionable count is 2, not 3.** CONTEXT.md cited `cli.py:15`, `fixtures.py:111`,
-   and `test_code/session.py:67`. `cli.py:15` is a docstring reference inside
+   and `test_code/session.py:mcp_session`. `cli.py:15` is a docstring reference inside
    `_load_config`'s docstring — not a call site. The two real call sites in `src/` are
-   `fixtures.py:111` (mode-agnostic framework-self-test fallback) and `test_code/session.py:67`
+   `fixtures.py:111` (stash-miss fallback) and `test_code/session.py:mcp_session`
    (HIGH RISK — runs after stash population during fixture resolution and bypasses the
    resolved operator YAML under passthrough).
 
@@ -26,7 +34,7 @@ Two corrections versus the CONTEXT.md initial framing land here:
    inline-comment annotations (the operator-authored Proxmox scenario via Plan 34-06
    Task 3), and one is explicitly NOT updated (`tests/framework/unit/test_sdet_fixtures.py`
    keeps its monkeypatch shim load-bearing because Plan 34-06 Task 2 preserves the
-   bare-Config fallback at `test_code/session.py:67`).
+   bare-Config fallback at `test_code/session.py:mcp_session`).
 
 Landing plans referenced by this audit:
 
@@ -35,8 +43,8 @@ Landing plans referenced by this audit:
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-04-PLAN.md` — Task 1
   audit comment at `fixtures.py:111`.
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-06-PLAN.md` — Task 2
-  stash-routing remediation at `test_code/session.py:67`; Task 3 inline comments at
-  `tests/test_code/test_proxmox_vm_lifecycle_readme_sample.py:67, 196`.
+  stash-routing remediation at `test_code/session.py:mcp_session`; Task 3 inline comments at
+  `tests/test_code/test_proxmox_vm_lifecycle_readme_sample.py` (`module:_load_generated_homelab_mcp`, `module:proxmox_vm_lifecycle_readme`).
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-07-PLAN.md` — scaffold
   emission of the `host_isolation: strict` line in `config-init` output; smoke check the
   round-trip through `tests/framework/test_config_init_cli.py`.
@@ -45,8 +53,8 @@ Landing plans referenced by this audit:
 
 | file:line | Category | Recommended Remediation | Landing Plan |
 |-----------|----------|-------------------------|--------------|
-| `src/mcp_test_framework/fixtures.py:111` | Mode-agnostic; framework-self-test fallback when plugin stash absent | 2-line inline audit comment naming the implicit `strict` assumption | Plan 34-04 Task 1 |
-| `src/mcp_test_framework/test_code/session.py:67` | **HIGH RISK** — runs after stash population during fixture resolution; bypasses operator YAML under passthrough | Add `request: pytest.FixtureRequest` to fixture signature; route through stash with bare-Config fallback (mirror `fixtures.py:108-111`) | Plan 34-06 Task 2 |
+| `src/mcp_test_framework/fixtures.py:111` | Stash-miss fallback — bare Config() RAISES ValidationError (test_code REQUIRED since Phase 21.1); now uses explicit Config(test_code=TestCodeConfig(generated_root=...)) | Explicit construction (Phase 34-09) | Plan 34-04 Task 1 + 34-09 |
+| `src/mcp_test_framework/test_code/session.py:mcp_session` | **HIGH RISK** — runs after stash population during fixture resolution; bypasses operator YAML under passthrough; bare Config() RAISES ValidationError (test_code REQUIRED); now uses explicit Config(test_code=TestCodeConfig(generated_root=...)) | Explicit construction (Phase 34-09) | Plan 34-06 Task 2 + 34-09 |
 | `src/mcp_test_framework/cli.py:15` (docstring) | Not a call site — docstring reference inside `_load_config`'s docstring | No remediation | n/a |
 | `src/mcp_test_framework/cli.py:471` (docstring) | Not a call site | No remediation | n/a |
 | `src/mcp_test_framework/cli.py:551` (comment) | Not a call site | No remediation | n/a |
@@ -64,8 +72,8 @@ Net `src/` actionable count: **2** (CONTEXT.md initially flagged 3; cli.py:15 is
 | `tests/framework/unit/test_config.py:280, 287, 300, 314, 358, 365` | Mode-agnostic; pure Config-defaults validation | Add `test_host_isolation_default_is_strict` (Phase 35 SHIM-09 capstone pin) | Plan 34-01 Task 2 |
 | `tests/framework/unit/test_mcp_config_fixture.py:11, 76, 100` (test bodies + comments) | Tests mode directly — Tier 1 stash hit, Tier 2 bare fallback | No remediation | n/a |
 | `tests/framework/unit/test_runner_migration.py:101, 105, 118, 150, 166, 209` | Mode-agnostic; verifies env-var fallback removal (Phase 31 SHIM-05) | No remediation | n/a |
-| `tests/framework/unit/test_sdet_fixtures.py:122, 147` | Tests `test_code/session.py:67`'s bare Config() via `_install_session_config` monkeypatch shim | CONDITIONAL — NOT updated because plan 34-06 Task 2 preserves bare-Config fallback at session.py:67 (Open Question 3 recommendation (b)) | n/a |
-| `tests/test_code/test_proxmox_vm_lifecycle_readme_sample.py:67, 196` | Operator-authored test-code scenario; bare Config() inside scenario body | 2-line inline ISOL-05 audit comment | Plan 34-06 Task 3 |
+| `tests/framework/unit/test_sdet_fixtures.py:122, 147` | Tests `test_code/session.py:mcp_session`'s bare Config() via `_install_session_config` monkeypatch shim | CONDITIONAL — NOT updated because plan 34-06 Task 2 preserves bare-Config fallback at `test_code/session.py:mcp_session` (Open Question 3 recommendation (b)); Phase 34-09 replaces the fallback with explicit construction, so the monkeypatch shim now installs an explicit Config | n/a |
+| `tests/test_code/test_proxmox_vm_lifecycle_readme_sample.py` (`module:_load_generated_homelab_mcp`, `module:proxmox_vm_lifecycle_readme`) | Operator-authored test-code scenario; bare Config() raised ValidationError -- module-level demoted to wrong-reason skip, fixture-body raised on live_homelab | Explicit Config(test_code=TestCodeConfig(generated_root=...)) at both sites (Phase 34-09); bare Config() raised ValidationError — module-level demoted to wrong-reason skip, fixture-body raised on live_homelab | Plan 34-06 Task 3 + 34-09 |
 | `tests/framework/unit/test_config_init.py:100` (comment) | Not a call site | No remediation | n/a |
 
 Net `tests/` actionable count: **1 add** (defaults pin — Plan 34-01) + **2 inline comments** (Plan 34-06 Task 3) + **0 conditional updates** (test_sdet_fixtures preserved by fallback-alive recommendation (b)).
@@ -104,12 +112,12 @@ proposal drifts in this direction:
   (recommendation (b): keep bare-Config fallback alive).
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-PATTERNS.md` —
   stash-lookup-with-fallback pattern (`fixtures.py:108-111`) reused at
-  `test_code/session.py:67`.
+  `test_code/session.py:mcp_session`.
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-01-PLAN.md` —
   Config field + defaults pin.
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-04-PLAN.md` —
   `fixtures.py:111` annotation.
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-06-PLAN.md` —
-  `test_code/session.py:67` stash routing + Proxmox scenario annotations.
+  `test_code/session.py:mcp_session` stash routing + Proxmox scenario annotations.
 - `.planning/phases/34-opt-in-host-isolation-passthrough-999-3/34-07-PLAN.md` —
   scaffold emission of the `host_isolation:` line.
