@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Shim Retirement + Operator Escape Hatches
 status: executing
 stopped_at: Phase 34 complete (8/8 plans -- ISOL-06 docs landed)
-last_updated: "2026-05-27T18:30:00.000Z"
-last_activity: 2026-05-27
+last_updated: "2026-05-28T04:42:40.626Z"
+last_activity: 2026-05-28 -- Phase 34 planning complete
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 4
   total_plans: 33
-  completed_plans: 33
-  percent: 100
+  completed_plans: 32
+  percent: 97
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-22 after v1.4 milestone close)
 
 Phase: 34 (Opt-in host isolation passthrough (999.3)) — COMPLETE
 Plan: 8 of 8 (all complete)
-Status: Phase complete; ready for phase-level verification + close, then Phase 35 capstone
-Last activity: 2026-05-27 -- Phase 34 plan 34-08 (ISOL-06 docs) complete
+Status: Ready to execute
+Last activity: 2026-05-28 -- Phase 34 planning complete
 
 ## Performance Metrics
 
