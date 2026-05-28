@@ -173,7 +173,9 @@ Plans:
   1. Operator running `uv run pytest tests/framework/` sees a single regression-gate test pass that sweeps the importable surface (`mcp_test_framework.sdet`), CLI surface (`--sdet`, `gen-sdet-classes`, `mcp-test-framework`), config surface (`cfg.sdet.*`, `MCPTF_CONFIG_FILE`), fixture names (`config` / `judge` / `client` / `target_tool` unprefixed), and discovery surface (`tests/sdet/`) and returns zero matches across all five.
   2. Reintroducing any retired shim (e.g. re-adding `--sdet` to the Typer CLI or re-adding `Field(alias="sdet")` to the config model) fails the gate locally and in CI; the failure message names which surface regressed.
   3. Gate is a single file under `tests/framework/` with no shared fixtures or runtime cost beyond regex sweeps + import probes — runs in <1s standalone.
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 35-01-PLAN.md — SHIM-09: five-surface behavioral zero-shim regression gate + D-06 RENAME-06 docstring fix
 
 ## Progress
 
