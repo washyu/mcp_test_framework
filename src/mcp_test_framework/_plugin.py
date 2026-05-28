@@ -225,6 +225,15 @@ def pytest_configure(config: pytest.Config) -> None:
         # On ValidationError, render operator-tone and pytest.exit(2).
         try:
             cfg = Config(yaml_file=str(path))
+            # CR-02 (Phase 34-09): hoisted inside try so neither the black-box guard nor the
+            # stash assignment runs on the ValidationError path. Previously these sat after the
+            # except block and relied on _emit_operator_error_for_validation being NoReturn --
+            # fragile coupling that would surface as a NameError on `cfg` if that contract broke.
+            # Relocated black-box guard. Raises RuntimeError on sys.modules leak; let it
+            # propagate (pytest surfaces it as a session-startup error).
+            check_black_box()
+            # Stash for the collection hook to consume.
+            config._mcp_contracts_config = cfg  # type: ignore[attr-defined]
         except ValidationError as exc:
             # Lazy-import to avoid cli.py <-> _plugin.py circular at module load.
             from mcp_test_framework.cli import _emit_operator_error_for_validation
@@ -240,13 +249,6 @@ def pytest_configure(config: pytest.Config) -> None:
                     f"`mcp-contracts config-init -o config.yaml`",
                     returncode=2,
                 )
-
-        # Relocated black-box guard. Raises RuntimeError on sys.modules leak;
-        # let it propagate (pytest surfaces it as a session-startup error).
-        check_black_box()
-
-        # Stash for the collection hook to consume.
-        config._mcp_contracts_config = cfg  # type: ignore[attr-defined]
 
     # Under host_isolation='passthrough', clamp pytest-xdist worker count to
     # 1 so MCP subprocess spawns serialize. xdist's NodeManager reads
