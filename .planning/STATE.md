@@ -60,6 +60,10 @@ Last activity: 2026-05-28 — v1.5 milestone close
 
 ## Accumulated Context
 
+### Pending Todos
+
+- 2026-05-29 — Add env passthrough map to McpServerConfig (`config`): generic `mcp_server.env: dict[str,str]` merged into the spawned subprocess env, so operators declare server env vars (e.g. `PROXMOX_VERIFY_SSL`, `PROXMOX_HOST`) in `config.yaml` instead of shell exports. Must stay SUT-agnostic (SEED-022); compose with `host_isolation`. Surfaced while dogfooding test-code surface vs homelab-mcp. v1.6 candidate. → `.planning/todos/pending/2026-05-29-add-env-passthrough-map-to-mcpserverconfig.md`
+
 ### Decisions
 
 Full decision log lives in PROJECT.md "Key Decisions" table (with outcomes assessed at v1.0 + v1.1 + v1.2 + v1.3 + v1.4 close).
