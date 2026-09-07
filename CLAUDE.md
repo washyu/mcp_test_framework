@@ -4,51 +4,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-This repo is a greenfield Python project scaffolded with `uv`. Only `main.py` (a hello-world stub), `pyproject.toml`, and the MVP spec exist. There is no `src/`, no tests, no implementation yet. **The authoritative design document is `docs/mcp_test_framework_mvp_spec.md` — read it before writing any new code.**
+v1.5 shipped on 2026-05-28 (six milestones, phases 01 to 35). The framework lives under `src/mcp_test_framework/` with self-tests under `tests/`; planning artifacts live in `.planning/` (`STATE.md`, `ROADMAP.md`, `PROJECT.md`). **The original design document is `docs/mcp_test_framework_mvp_spec.md`; current operator-facing docs are `README.md` and `docs/`.**
 
 ## What This Project Is
 
 `mcp_test_framework` is a `pytest`-based framework for testing MCP (Model Context Protocol) servers. The MVP targets a single MCP server (`homelab-mcp`) over stdio and a single tool (`list_registered_servers`), running three categories of tests:
 
-1. **Schema validation** — deterministic structural checks on the tool's declared schema
-2. **Description quality** — uses a local Ollama-hosted LLM (`qwen3.6:latest` at `127.0.0.1:11434`) as a judge with a 1–5 rubric (pass threshold: `score >= 4`)
-3. **Output conformance** — deterministic checks on `CallToolResult` shape, optionally judged
+1. **Schema validation**: deterministic structural checks on the tool's declared schema
+2. **Description quality**: uses a local Ollama-hosted LLM (`qwen3.6:latest` at `127.0.0.1:11434`) as a judge with a 1 to 5 rubric (pass threshold: `score >= 4`)
+3. **Output conformance**: deterministic checks on `CallToolResult` shape, optionally judged
 
-The framework is deliberately narrow for the MVP — see the "Out of Scope" and "Future Work" sections of the spec before suggesting generalizations.
+The framework is deliberately narrow for the MVP. See the "Out of Scope" and "Future Work" sections of the spec before suggesting generalizations.
 
-v1.3 introduced a **test-code author** persona as a second first-class user alongside the operator (the public-API surface uses the `test_code` naming as of v1.4; the legacy `sdet` surface is retained as a deprecation shim until v1.5). The operator runs the contract pass (schema + description + output checks); the test-code author writes stateful scenarios under `tests/test_code/` that exercise the MCP server end-to-end. Both personas share the same CLI surface — the test-code author uses the `--test-code` flag, the `mcp_test_framework.test_code` import surface (`mcp_session`, `tool()`, `ToolCallError`), and the `tests/test_code/` discovery scope. See [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md) for the authoring walkthrough. <!-- noqa: sdet-rename-shim -->
+v1.3 introduced a **test-code author** persona as a second first-class user alongside the operator. The public-API surface uses the `test_code` naming as of v1.4; the legacy `sdet` surface was retired in v1.5 and its entry points now hard-reject with a migration pointer. The operator runs the contract pass (schema + description + output checks); the test-code author writes stateful scenarios under `tests/test_code/` that exercise the MCP server end-to-end. Both personas share the same CLI surface: the test-code author uses the `--test-code` flag, the `mcp_test_framework.test_code` import surface (`mcp_session`, `tool()`, `ToolCallError`), and the `tests/test_code/` discovery scope. See [`docs/TEST-CODE-AUTHORING.md`](docs/TEST-CODE-AUTHORING.md) for the authoring walkthrough. <!-- noqa: sdet-rename-shim -->
 
 ## Tooling
 
-- Python **3.14** (pinned in `.python-version` and `requires-python` in `pyproject.toml`)
+- Python **3.12** (pinned in `.python-version` and `requires-python` in `pyproject.toml`)
 - Dependency management: **`uv`** (single project folder, lockfile-driven)
 - Test runner: `pytest` with `pytest-asyncio` in strict mode
 
-Commands once the project is built out per spec:
+Commands:
 
 ```
 uv sync                                     # install deps
 uv run mcp-contracts list-tools        # connect via stdio, print tool list
-uv run mcp-contracts run               # CI entry point — runs pytest, exits with pytest's code
+uv run mcp-contracts run               # CI entry point: runs pytest, exits with pytest's code
 uv run pytest tests/path::test_name         # run a single test
 ```
 
-The legacy `uv run mcp-test-framework` invocation continues to work in v1.4
-with a DeprecationWarning carrying the literal copy `mcp-test-framework command is deprecated since v1.4 and will be removed in v1.5 — use mcp-contracts instead.`;
-the alias drops in v1.5 alongside every other v1.4 deprecation shim.
-
-Until the CLI is implemented, `uv run python main.py` is the only runnable entry point.
+The legacy `uv run mcp-test-framework` console script no longer runs the framework.
+As of v1.5 it hard-rejects with an operator-tone message pointing at `mcp-contracts` and exits non-zero;
+it is kept only as that pointer and is slated for clean deletion in v1.6.
 
 ## Architecture Notes (must-read before changing the framework)
 
 - **MCP transport is stdio only.** The MCP SDK's `stdio_client` context manager launches the server as a subprocess; do **not** use `subprocess.Popen` directly.
-- **The framework treats `homelab-mcp` as a black box.** Never import from or read its source code — it is a subprocess under test.
+- **The framework treats `homelab-mcp` as a black box.** Never import from or read its source code: it is a subprocess under test.
 - **Ollama specifics:** call `/api/chat` with `stream: false` and `format: json` to get a single structured JSON response. The judge falls back to a failure result with the raw response on parse error rather than crashing the run.
 - **Config precedence:** env vars → `config.yaml` overlay → CLI flags (highest). See spec §Configuration for the full env var list.
 - **Async:** use `asyncio.timeout` (3.11+) around any subprocess or HTTP operation that could hang. All MCP client methods are async; tests use explicit `@pytest.mark.asyncio` markers.
 - **Fixtures are session-scoped** (`mcp_client`, `judge`, `target_tool`, `config`). The `target_tool` fixture must fail the run early if the configured tool is absent from the server.
 
-## Module Layout (per spec, not yet created)
+## Module Layout (per spec)
 
 ```
 src/mcp_test_framework/
@@ -74,7 +72,7 @@ A pytest-based Python framework for testing MCP (Model Context Protocol) servers
 
 ### Constraints
 
-- **Tech stack**: Python 3.14, `uv` for dependency management — pinned in `.python-version` and `pyproject.toml`.
+- **Tech stack**: Python 3.12, `uv` for dependency management — pinned in `.python-version` and `pyproject.toml`.
 - **MCP transport**: stdio only via the official `mcp` SDK's `stdio_client` context manager — no raw `subprocess.Popen`.
 - **Judge backend**: Ollama at `127.0.0.1:11434` with model `qwen3.6:latest`, called via `/api/chat` with `stream: false` and `format: json` for structured JSON output.
 - **Async**: pytest-asyncio in strict mode with explicit `@pytest.mark.asyncio` markers. `asyncio.timeout` (3.11+) wraps any subprocess or HTTP operation that could hang.
@@ -90,7 +88,7 @@ A pytest-based Python framework for testing MCP (Model Context Protocol) servers
 ### Core Technologies
 | Technology | Version (latest as of May 2026) | Purpose | Why Recommended |
 |------------|---------------------------------|---------|-----------------|
-| **Python** | 3.14.4 | Runtime | Pinned by project; full release, EOL 2030-10-31; native `asyncio.timeout` (3.11+), PEP 695 generics, faster interp |
+| **Python** | 3.12 (pinned) | Runtime | Pinned by project; EOL 2028-10; native `asyncio.timeout` (3.11+), PEP 695 generics |
 | **uv** | 0.11.x | Project + venv + lockfile manager | Already chosen by project; 10–100× faster than pip, deterministic `uv.lock`, single-binary, `uv run` wraps the CLI cleanly |
 | **mcp** (Python SDK) | 1.27.0 | Official MCP client over stdio | The only authoritative MCP client for Python; spec mandates `stdio_client` context manager (no raw `subprocess.Popen`); session model (`ClientSession`) handles MCP handshake, tool listing, and `call_tool` natively |
 | **pytest** | 9.0.3 | Test runner | The pytest 9.x line is the current major; full 3.14 classifier; project's spec hard-requires pytest as the test surface |
