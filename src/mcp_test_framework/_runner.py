@@ -41,8 +41,9 @@ from typing import Literal
 import pytest
 import typer
 
-from .rubrics import RUBRIC_IDS
 from mcp_test_framework.contracts._buckets import TEST_FUNCTION_BUCKETS
+
+from .rubrics import RUBRIC_IDS
 
 # Per-bucket case counts derived from the source-of-truth mapping in
 # contracts/_buckets.py. Sum across buckets == CASES_PER_CONTRACT_TOOL (10),
@@ -435,10 +436,12 @@ _SKIP_REASON_CAP: int = 3
 _REASON_NOT_SELECTED = "not selected in config"        # state (a): unlisted
 _REASON_EXPLICIT_DEFAULT = "explicit skip in config"   # state (c): default
 
-# Pre-run "Test plan" multiplier. Pinned by
-# tests/framework/unit/test_runner_pre_run_digest.py::test_cases_per_contract_tool_constant_locked
-# AND by tests/framework/unit/test_runner_pre_run_digest.py::test_cases_per_contract_tool_matches_actual_parametrize_count
-# (which AST-counts test_* funcs in tests/contract/test_mcp_tool_contract.py).
+# Pre-run "Test plan" multiplier. Pinned by two tests in
+# tests/framework/unit/test_runner_pre_run_digest.py:
+#   - test_cases_per_contract_tool_constant_locked
+#   - test_cases_per_contract_tool_matches_actual_parametrize_count
+#     (which AST-counts test_* funcs in
+#     tests/contract/test_mcp_tool_contract.py).
 # Sources: 5 schema validators + 4 judge dimensions + 1 output conformance = 10.
 CASES_PER_CONTRACT_TOOL: int = 10
 

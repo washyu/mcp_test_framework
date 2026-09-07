@@ -44,7 +44,6 @@ import pytest
 
 from mcp_test_framework import _runner
 
-
 # Pitfall: always probe the UN-wrapped original stream. pytest's
 # capturemanager replaces sys.stdout but never touches sys.__stdout__.
 # Evaluating isatty() against sys.stdout would return False inside a

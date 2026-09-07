@@ -49,7 +49,6 @@ from mcp_test_framework.contracts._buckets import (
     TEST_FUNCTION_BUCKETS,
     BucketName,
 )
-from mcp_test_framework.mcp_client import McpTestClient
 
 # Re-export the renamed prefixed fixtures from fixtures.py so the pytest
 # auto-discovery surfaces them without the operator needing
@@ -71,7 +70,7 @@ from mcp_test_framework.fixtures import (  # noqa: F401
     mcp_target_tool,
     tool_config,
 )
-
+from mcp_test_framework.mcp_client import McpTestClient
 
 # ---------------------------------------------------------------------------
 # Operator-tone warning renderer.
@@ -620,12 +619,14 @@ def rubric_disambiguation():  # noqa: sdet-rename-shim -- stub-raise; prefixed-f
     pytest.fail(
         "the `rubric_disambiguation` fixture was removed in v1.5\n"
         "\n"
-        "the `rubric_disambiguation` fixture was renamed to `mcp_rubric_disambiguation` in v1.4 and "
+        "the `rubric_disambiguation` fixture was renamed to "
+        "`mcp_rubric_disambiguation` in v1.4 and "
         "removed in v1.5.\n"
         "the fixture body, scope, and return value are unchanged -- only "
         "the name moved.\n"
         "\n"
-        "next: rename `rubric_disambiguation` to `mcp_rubric_disambiguation` in your test signature "
+        "next: rename `rubric_disambiguation` to "
+        "`mcp_rubric_disambiguation` in your test signature "
         "(e.g. `def test_X(mcp_rubric_disambiguation): ...`).",
         pytrace=False,
     )

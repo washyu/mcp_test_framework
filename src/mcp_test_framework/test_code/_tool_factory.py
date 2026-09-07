@@ -28,7 +28,7 @@ avoid bleed across runs.
 """
 from __future__ import annotations
 
-from typing import Generic, TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pydantic import BaseModel
 

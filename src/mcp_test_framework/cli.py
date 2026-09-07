@@ -306,15 +306,15 @@ def _emit_operator_error_for_validation(
                 "current scaffold"
             ),
         )
-    # The legacy `cfg.sdet.*` alias was removed in v1.5. The Config model's  # noqa: sdet-rename-shim
-    # bare `extra="forbid"` surfaces a top-level `sdet:` key as a Pydantic  # noqa: sdet-rename-shim
-    # `extra_forbidden` error with `loc=('sdet',)`. Map that exact shape to  # noqa: sdet-rename-shim
-    # an operator-tone three-part rejection telling the operator to rename
-    # the key. Scan the FULL errors list rather than relying on `primary` --
-    # the `sdet` error may co-occur with other errors (mirroring the  # noqa: sdet-rename-shim
-    # `version_err` idiom above). Other `extra_forbidden` errors (e.g. typo'd
-    # keys) fall through to the generic fallback below -- this branch is
-    # targeted, not blanket.
+    # The legacy `cfg.sdet.*` alias was removed in v1.5. The Config  # noqa: sdet-rename-shim
+    # model's bare `extra="forbid"` surfaces a top-level `sdet:` key  # noqa: sdet-rename-shim
+    # as a Pydantic `extra_forbidden` error with `loc=('sdet',)`.  # noqa: sdet-rename-shim
+    # Map that exact shape to an operator-tone three-part rejection
+    # telling the operator to rename the key. Scan the FULL errors list
+    # rather than relying on `primary` -- the `sdet` error may co-occur  # noqa: sdet-rename-shim
+    # with other errors (mirroring the `version_err` idiom above). Other
+    # `extra_forbidden` errors (e.g. typo'd keys) fall through to the
+    # generic fallback below -- this branch is targeted, not blanket.
     sdet_err = next(  # noqa: sdet-rename-shim
         (
             e
@@ -329,7 +329,8 @@ def _emit_operator_error_for_validation(
             summary="unknown config key: sdet",  # noqa: sdet-rename-shim
             detail=[
                 "the `sdet:` key was renamed to `test_code:` in v1.4 and removed in v1.5.",  # noqa: sdet-rename-shim
-                "your existing block under `sdet:` ports forward unchanged -- just rename the top-level key.",  # noqa: sdet-rename-shim
+                "your existing block under `sdet:` ports forward unchanged "  # noqa: sdet-rename-shim
+                "-- just rename the top-level key.",
             ],
             next_step="rename the `sdet:` key to `test_code:` in your config.yaml",  # noqa: sdet-rename-shim
         )
@@ -614,7 +615,7 @@ def _load_config(
 # test imports `from mcp_test_framework.cli import _build_pytest_args`
 # continue working. The helper builds the argv passed to the subprocess
 # pytest run.
-from mcp_test_framework._runner import _build_pytest_args  # noqa: E402
+from mcp_test_framework._runner import _build_pytest_args  # noqa: E402, F401
 
 
 def _discover_tools_for_run(cfg: Config) -> list[str]:
@@ -848,8 +849,9 @@ def run(
             # Best-effort.
             pass
 
-    from mcp_test_framework import _runner
     import xml.etree.ElementTree as ET
+
+    from mcp_test_framework import _runner
 
     cfg, resolved = _load_config(config)  # raises typer.Exit(2) on any unrecoverable error.
     # _load_config(path, allow_missing=False) returns a non-None Config plus
@@ -1427,7 +1429,9 @@ def gen_test_classes(
             server_version=server_version,
             tools=tools,
             out_root=out_root,
-            tools_config=cfg.tools,  # Phase 999.2 / GEN-02: thread cfg.tools so examples: drives smoke emission
+            # Thread cfg.tools through so `examples:` entries drive
+            # smoke-scenario emission.
+            tools_config=cfg.tools,
         )
     except _codegen.SchemaValidityError as exc:
         _emit_operator_error(

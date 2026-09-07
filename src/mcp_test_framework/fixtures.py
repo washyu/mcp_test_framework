@@ -86,8 +86,9 @@ def _pytest_exit_operator_tone(
 # ---------------------------------------------------------------------------
 
 
+# Renamed from `config`; the unprefixed alias lives in _plugin.py.
 @pytest.fixture(scope="session")
-def mcp_config(request: pytest.FixtureRequest) -> Config:  # renamed from `config`; unprefixed alias lives in _plugin.py
+def mcp_config(request: pytest.FixtureRequest) -> Config:
     """Return the session's loaded ``Config``.
 
     Resolution order:
@@ -407,8 +408,9 @@ async def _isolated_home(mcp_config: Config):
 # ---------------------------------------------------------------------------
 
 
+# Param renamed from `config` to `mcp_config`.
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path | None):  # param `config`→`mcp_config`
+async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path | None):
     """Long-lived McpTestClient session -- pure-asyncio driver + anyio owner task.
 
     The fixture body holds NO anyio cancel scopes across the yield. That was
@@ -508,8 +510,9 @@ async def mcp_client(mcp_config: Config, _preflight, _isolated_home: Path | None
 # ---------------------------------------------------------------------------
 
 
+# Renamed from `judge`; param renamed from `config` to `mcp_config`.
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
-async def mcp_judge(mcp_config: Config, _preflight) -> Judge:  # renamed from `judge`; param `config`→`mcp_config`
+async def mcp_judge(mcp_config: Config, _preflight) -> Judge:
     """Long-lived ``OllamaJudge`` instance, exposed to tests as ``Judge`` Protocol.
 
     Internal instantiation of ``OllamaJudge`` stays in this fixture body so
@@ -557,8 +560,10 @@ async def mcp_target_tool(  # renamed from `target_tool`
 # ---------------------------------------------------------------------------
 
 
+# Params renamed; the fixture name itself is unchanged (it is not in the
+# SC5 collision list).
 @pytest.fixture
-def tool_config(mcp_config: Config, mcp_target_tool) -> ToolConfig:  # params renamed (fixture name unchanged — not in SC5 collision list)
+def tool_config(mcp_config: Config, mcp_target_tool) -> ToolConfig:
     """Resolve ``config.tools.get(target_tool.name, ToolConfig())`` per test.
 
     Default (function) scope is intentional: the fixture must reflect the

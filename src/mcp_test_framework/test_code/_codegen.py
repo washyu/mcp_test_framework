@@ -589,7 +589,10 @@ def _render_init(
             f"    {json.dumps(tool_name)}: ({params_cls}, {response_cls}),"
         )
 
-    all_block = "__all__ = [\n    " + ",\n    ".join(all_names) + ",\n]" if all_names else "__all__ = []"
+    if all_names:
+        all_block = "__all__ = [\n    " + ",\n    ".join(all_names) + ",\n]"
+    else:
+        all_block = "__all__ = []"
     # Emit the tighter `type[BaseModel]` annotation to match
     # `_tool_factory._REGISTRIES` expectations. Downstream consumers of the
     # generated `_REGISTRY` see a typed Pydantic model class, not bare `type`.
@@ -640,7 +643,8 @@ def generate(
     still get a `<tool>_call_smoke.py` -- the TODO/skip branch -- so the
     operator sees scaffolding immediately.
 
-    Returns counts: {"tools": <N>, "degraded_fields": <M>, "smoke_scenarios": <S>, "smoke_todos": <T>}.
+    Returns counts: {"tools": <N>, "degraded_fields": <M>,
+    "smoke_scenarios": <S>, "smoke_todos": <T>}.
     """
     if timestamp is None:
         timestamp = _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds")
@@ -800,7 +804,8 @@ def _emit_smoke_scenario(
         "\n"
         "\n"
         "@pytest.mark.asyncio(loop_scope=\"session\")\n"
-        "@pytest.mark.parametrize(\"example\", _EXAMPLES, ids=[f\"example-{i}\" for i in range(len(_EXAMPLES))])\n"
+        "@pytest.mark.parametrize(\"example\", _EXAMPLES, "
+        "ids=[f\"example-{i}\" for i in range(len(_EXAMPLES))])\n"
         f"async def test_{mod}_call_smoke(mcp_session, example):\n"
         f"    params = {params_cls}(**example)\n"
         f"    response = await tool({tool_name_repr}).call(params)\n"

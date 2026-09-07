@@ -14,9 +14,9 @@ See docs/TEST-CODE-AUTHORING.md for the authoring walkthrough.
 """
 from __future__ import annotations
 
+from mcp_test_framework.test_code._tool_factory import tool
 from mcp_test_framework.test_code.errors import ToolCallError
 from mcp_test_framework.test_code.response import ToolResponse
 from mcp_test_framework.test_code.session import mcp_session
-from mcp_test_framework.test_code._tool_factory import tool
 
 __all__ = ["ToolCallError", "ToolResponse", "mcp_session", "tool"]

@@ -16,7 +16,6 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict
 
-
 # Hardening preamble -- single source for the SUBJECT-marker contract.
 # Anti-verbosity guidance + delimited-subject reinforcement.
 _HARDENING_PREAMBLE = """\
