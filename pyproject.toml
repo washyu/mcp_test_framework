@@ -1,9 +1,9 @@
 [project]
 name = "mcp-contracts"
-version = "0.1.0"
+version = "1.5.0"
 description = "Pytest framework for testing MCP servers end-to-end."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     # `[cli]` extra pulls Typer transitively. Do NOT declare `typer` directly
     # -- it must remain transitive via mcp[cli] so we have a single source of
@@ -80,7 +80,7 @@ filterwarnings = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "TID"]
@@ -112,7 +112,7 @@ strict = [
     "src/mcp_test_framework/test_code/response.py",
 ]
 reportMissingTypeStubs = false
-pythonVersion = "3.14"
+pythonVersion = "3.12"
 
 [build-system]
 requires = ["hatchling"]

@@ -523,7 +523,7 @@ If you want to try the framework against the example `homelab-mcp` server:
 
 #### Prerequisites
 
-- Python 3.14
+- Python 3.12 or newer
 - [`uv`](https://docs.astral.sh/uv/) (project, venv, and lockfile manager)
 - [Ollama](https://ollama.com/) running at the configured base URL with the configured
   model (defaults: `http://127.0.0.1:11434`, model `qwen3.6:latest`)
@@ -693,7 +693,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.14"
+          python-version: "3.12"
       - run: uv sync
       # Default addopts in pyproject.toml excludes live_homelab + live_ollama markers.
       - run: uv run mcp-contracts run --config config.yaml --junit-xml=results.xml

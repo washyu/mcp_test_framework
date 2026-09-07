@@ -130,7 +130,7 @@ def _synthetic_tools() -> list[Tool]:
 def _run_pyright(generated_root: Path) -> subprocess.CompletedProcess:
     """Invoke pyright as a subprocess against the generated dir."""
     return subprocess.run(
-        [sys.executable, "-m", "pyright", "--pythonversion", "3.14", str(generated_root)],
+        [sys.executable, "-m", "pyright", "--pythonversion", "3.12", str(generated_root)],
         capture_output=True, text=True, check=False, timeout=120,
     )
 
