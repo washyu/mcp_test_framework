@@ -20,3 +20,14 @@ config.yaml
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated test code (auto-generated, not hand-written)
+tests/test_code/_generated/
+tests/sdet/_generated/
+
+# Scratch / temporary work files
+*.txt
+*.xml
+config.scratch.yaml
+config-v2-worktree.yaml
+mcptf_*/
